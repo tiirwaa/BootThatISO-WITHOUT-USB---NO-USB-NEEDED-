@@ -262,17 +262,19 @@ bool MainWindow::OnCopyISO()
         MessageBoxW(NULL, L"Partición 'ISOEFI' no encontrada.", L"Error", MB_OK);
         return false;
     }
-    if (isoCopyManager->extractISOContents(isoPathStr, dest, espDrive)) {
-        LogMessage("Archivos extraídos exitosamente.\r\n");
-        SendMessage(progressBar, PBM_SETPOS, 55, 0);
-    } else {
-        LogMessage("Error al extraer archivos del ISO.\r\n");
-        MessageBoxW(NULL, L"Error al extraer archivos del ISO.", L"Error", MB_OK);
-        return false;
-    }
-    // If RAMDISK mode is selected, copy the full ISO to the data partition so it can be used as a RAM disk image.
     if (selectedBootMode == "RAMDISK") {
-        LogMessage("Modo RAMDISK seleccionado: copiando archivo ISO completo...\r\n");
+        // For RAMDISK: only copy EFI to ESP, do not extract content
+        LogMessage("Modo RAMDISK: copiando solo EFI, sin extraer contenido...\r\n");
+        if (isoCopyManager->extractISOContents(isoPathStr, dest, espDrive, false)) {  // false = no extract content
+            LogMessage("EFI copiado exitosamente.\r\n");
+            SendMessage(progressBar, PBM_SETPOS, 55, 0);
+        } else {
+            LogMessage("Error al copiar EFI.\r\n");
+            MessageBoxW(NULL, L"Error al copiar EFI.", L"Error", MB_OK);
+            return false;
+        }
+        // Then copy the full ISO
+        LogMessage("Copiando archivo ISO completo...\r\n");
         if (isoCopyManager->copyISOFile(isoPathStr, dest)) {
             LogMessage("Archivo ISO copiado exitosamente.\r\n");
             SendMessage(progressBar, PBM_SETPOS, 70, 0);
@@ -282,8 +284,16 @@ bool MainWindow::OnCopyISO()
             return false;
         }
     } else {
-        LogMessage("Modo Extraido seleccionado: se omitirá la copia completa del ISO (solo contenido extraído).\r\n");
-        SendMessage(progressBar, PBM_SETPOS, 70, 0);
+        // For EXTRACTED: extract content and EFI
+        LogMessage("Modo Extraido: extrayendo contenido y EFI...\r\n");
+        if (isoCopyManager->extractISOContents(isoPathStr, dest, espDrive, true)) {  // true = extract content
+            LogMessage("Archivos extraídos exitosamente.\r\n");
+            SendMessage(progressBar, PBM_SETPOS, 70, 0);
+        } else {
+            LogMessage("Error al extraer archivos del ISO.\r\n");
+            MessageBoxW(NULL, L"Error al extraer archivos del ISO.", L"Error", MB_OK);
+            return false;
+        }
     }
     return true;
 }

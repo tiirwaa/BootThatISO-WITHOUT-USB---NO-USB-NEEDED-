@@ -9,7 +9,7 @@ public:
     ISOCopyManager();
     ~ISOCopyManager();
 
-    bool extractISOContents(const std::string& isoPath, const std::string& destPath, const std::string& espPath);
+    bool extractISOContents(const std::string& isoPath, const std::string& destPath, const std::string& espPath, bool extractContent = true);
     bool copyISOFile(const std::string& isoPath, const std::string& destPath);
 
     bool isWindowsISO;

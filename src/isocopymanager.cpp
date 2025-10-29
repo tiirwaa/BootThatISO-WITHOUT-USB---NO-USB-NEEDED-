@@ -27,13 +27,14 @@ std::string ISOCopyManager::exec(const char* cmd) {
     return result;
 }
 
-bool ISOCopyManager::extractISOContents(const std::string& isoPath, const std::string& destPath, const std::string& espPath)
+bool ISOCopyManager::extractISOContents(const std::string& isoPath, const std::string& destPath, const std::string& espPath, bool extractContent)
 {
     // Create log file for debugging
     std::ofstream logFile("iso_extract_log.txt");
     logFile << "Starting ISO extraction from: " << isoPath << "\n";
     logFile << "Destination (data): " << destPath << "\n";
     logFile << "ESP path: " << espPath << "\n";
+    logFile << "Extract content: " << (extractContent ? "Yes" : "No") << "\n";
     
     // Mount the ISO using PowerShell and get drive letter
     std::string mountCmd = "powershell -Command \"$iso = Mount-DiskImage -ImagePath '" + isoPath + "' -PassThru; $volume = Get-DiskImage -ImagePath '" + isoPath + "' | Get-Volume; if ($volume) { $volume.DriveLetter } else { 'FAILED' }\"";
@@ -92,12 +93,16 @@ bool ISOCopyManager::extractISOContents(const std::string& isoPath, const std::s
     }
     logFile << "Is Windows ISO: " << (isWindowsISO ? "Yes" : "No") << "\n";
     
-    // Extract all ISO contents to data partition
-    logFile << "Extracting all ISO contents to data partition\n";
-    std::string fullCopyCmd = "robocopy " + sourcePath + " " + destPath + " /E /R:1 /W:1 /NFL /NDL /XD efi EFI";;  // Exclude EFI dirs
-    logFile << "Full copy command: " << fullCopyCmd << "\n";
-    std::string fullCopyResult = exec(fullCopyCmd.c_str());
-    logFile << "Full copy result: " << fullCopyResult << "\n";
+    if (extractContent) {
+        // Extract all ISO contents to data partition
+        logFile << "Extracting all ISO contents to data partition\n";
+        std::string fullCopyCmd = "robocopy " + sourcePath + " " + destPath + " /E /R:1 /W:1 /NFL /NDL /XD efi EFI";;  // Exclude EFI dirs
+        logFile << "Full copy command: " << fullCopyCmd << "\n";
+        std::string fullCopyResult = exec(fullCopyCmd.c_str());
+        logFile << "Full copy result: " << fullCopyResult << "\n";
+    } else {
+        logFile << "Skipping content extraction (RAMDISK mode)\n";
+    }
 
     // Extract EFI directory to ESP
     logFile << "Extracting EFI directory to ESP\n";
@@ -170,6 +175,9 @@ bool ISOCopyManager::extractISOContents(const std::string& isoPath, const std::s
     logFile << "Dismount result: " << dismountResult << "\n";
     
     logFile << "EFI extraction " << (bootFileExists ? "SUCCESS" : "FAILED") << "\n";
+    if (extractContent) {
+        logFile << "Content extraction completed.\n";
+    }
     logFile.close();
     
     return bootFileExists;
