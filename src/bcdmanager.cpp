@@ -6,6 +6,8 @@
 #include <vector>
 #include <sstream>
 #include <cstdio>
+#include <algorithm>
+#include <fstream>
 
 BCDManager::BCDManager()
 {
@@ -77,7 +79,7 @@ WORD BCDManager::GetMachineType(const std::string& filePath) {
     return machine;
 }
 
-std::string BCDManager::configureBCD(const std::string& driveLetter, const std::string& espDriveLetter)
+std::string BCDManager::configureBCD(const std::string& driveLetter, const std::string& espDriveLetter, const std::string& mode)
 {
     // Get volume GUID for data partition
     WCHAR dataVolumeName[MAX_PATH];
@@ -130,29 +132,29 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
 
     // Find the EFI boot file in ESP
     std::string efiBootFile;
-    std::string candidate1 = espDriveLetter + "\\EFI\\boot\\bootx64.efi";
-    if (GetFileAttributesA(candidate1.c_str()) != INVALID_FILE_ATTRIBUTES) {
-        efiBootFile = candidate1;
+    std::string candidate5 = espDriveLetter + "\\EFI\\microsoft\\boot\\bootmgfw.efi";
+    if (GetFileAttributesA(candidate5.c_str()) != INVALID_FILE_ATTRIBUTES) {
+        efiBootFile = candidate5;
     } else {
-        std::string candidate2 = espDriveLetter + "\\EFI\\boot\\bootia32.efi";
-        if (GetFileAttributesA(candidate2.c_str()) != INVALID_FILE_ATTRIBUTES) {
-            efiBootFile = candidate2;
+        std::string candidate6 = espDriveLetter + "\\EFI\\Microsoft\\Boot\\bootmgfw.efi";
+        if (GetFileAttributesA(candidate6.c_str()) != INVALID_FILE_ATTRIBUTES) {
+            efiBootFile = candidate6;
         } else {
             std::string candidate3 = espDriveLetter + "\\EFI\\boot\\BOOTX64.EFI";
             if (GetFileAttributesA(candidate3.c_str()) != INVALID_FILE_ATTRIBUTES) {
                 efiBootFile = candidate3;
             } else {
-                std::string candidate4 = espDriveLetter + "\\EFI\\boot\\BOOTIA32.EFI";
-                if (GetFileAttributesA(candidate4.c_str()) != INVALID_FILE_ATTRIBUTES) {
-                    efiBootFile = candidate4;
+                std::string candidate1 = espDriveLetter + "\\EFI\\boot\\bootx64.efi";
+                if (GetFileAttributesA(candidate1.c_str()) != INVALID_FILE_ATTRIBUTES) {
+                    efiBootFile = candidate1;
                 } else {
-                    std::string candidate5 = espDriveLetter + "\\EFI\\microsoft\\boot\\bootmgfw.efi";
-                    if (GetFileAttributesA(candidate5.c_str()) != INVALID_FILE_ATTRIBUTES) {
-                        efiBootFile = candidate5;
+                    std::string candidate4 = espDriveLetter + "\\EFI\\boot\\BOOTIA32.EFI";
+                    if (GetFileAttributesA(candidate4.c_str()) != INVALID_FILE_ATTRIBUTES) {
+                        efiBootFile = candidate4;
                     } else {
-                        std::string candidate6 = espDriveLetter + "\\EFI\\Microsoft\\Boot\\bootmgfw.efi";
-                        if (GetFileAttributesA(candidate6.c_str()) != INVALID_FILE_ATTRIBUTES) {
-                            efiBootFile = candidate6;
+                        std::string candidate2 = espDriveLetter + "\\EFI\\boot\\bootia32.efi";
+                        if (GetFileAttributesA(candidate2.c_str()) != INVALID_FILE_ATTRIBUTES) {
+                            efiBootFile = candidate2;
                         } else {
                             return "Archivo EFI boot no encontrado en ESP";
                         }
@@ -167,15 +169,39 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
         return "Arquitectura EFI no soportada";
     }
 
+    // Log selected file and mode
+    std::ofstream logFile("bcd_config_log.txt");
+    logFile << "Selected EFI boot file: " << efiBootFile << "\n";
+    logFile << "Selected mode: " << mode << "\n";
+
     // Compute the relative path for BCD
     std::string efiPath = efiBootFile.substr(espDriveLetter.length());
-    // Replace backslashes with forward slashes? No, BCD uses backslashes
-    // efiPath is like \efi\boot\bootx64.efi
+    // efiPath matches the case in the file system
 
-    // Configure for EFI booting
-    std::string cmd1 = "bcdedit /set " + guid + " device partition=" + espDevice;
-    std::string cmd2 = "bcdedit /set " + guid + " osdevice partition=" + dataDevice;
-    std::string cmd3 = "bcdedit /set " + guid + " path " + efiPath;
+    logFile << "EFI path: " << efiPath << "\n";
+
+    std::string cmd1, cmd2, cmd3;
+    if (mode == "RAMDISK") {
+        // For RAMDISK mode: configure device and osdevice as ramdisk pointing to the ISO file
+        std::string ramdiskPath = "[" + dataDevice + "]\\iso.iso";
+        cmd1 = "bcdedit /set " + guid + " device ramdisk=" + ramdiskPath;
+        cmd2 = "bcdedit /set " + guid + " osdevice ramdisk=" + ramdiskPath;
+        cmd3 = "bcdedit /set " + guid + " path " + efiPath;
+        logFile << "RAMDISK mode: device/osdevice set to ramdisk=" << ramdiskPath << "\n";
+
+        // Additional ramdisk options
+        std::string cmdRamdiskSdiDevice = "bcdedit /set " + guid + " ramdisksdidevice partition=" + dataDevice;
+        std::string cmdRamdiskSdiPath = "bcdedit /set " + guid + " ramdisksdipath \\iso.iso";
+        exec(cmdRamdiskSdiDevice.c_str());
+        exec(cmdRamdiskSdiPath.c_str());
+        logFile << "RAMDISK mode: ramdisksdidevice and ramdisksdipath configured.\n";
+    } else {
+        // For EXTRACTED mode: standard EFI booting
+        cmd1 = "bcdedit /set " + guid + " device partition=" + espDevice;
+        cmd2 = "bcdedit /set " + guid + " osdevice partition=" + dataDevice;
+        cmd3 = "bcdedit /set " + guid + " path " + efiPath;
+        logFile << "EXTRACTED mode: standard EFI configuration.\n";
+    }
 
     std::string result1 = exec(cmd1.c_str());
     if (result1.find("error") != std::string::npos) return "Error al configurar device: " + cmd1;
@@ -193,6 +219,8 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
     std::string cmd6 = "bcdedit /default " + guid;
     std::string result6 = exec(cmd6.c_str());
     if (result6.find("error") != std::string::npos) return "Error al configurar default: " + cmd6;
+
+    logFile.close();
 
     return "";
 }

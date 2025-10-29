@@ -8,7 +8,7 @@
 #include <cstring>
 
 MainWindow::MainWindow(HWND parent)
-    : hInst(GetModuleHandle(NULL)), selectedFormat("NTFS")
+    : hInst(GetModuleHandle(NULL)), selectedFormat("NTFS"), selectedBootMode("EXTRACTED")
 {
     partitionManager = new PartitionManager();
     isoCopyManager = new ISOCopyManager();
@@ -63,21 +63,30 @@ void MainWindow::SetupUI(HWND parent)
     SendMessage(ntfsRadio, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
     SendMessage(ntfsRadio, BM_SETCHECK, BST_CHECKED, 0); // NTFS selected by default
 
+    // Boot mode selection: RAMDISK or Extracted
+    bootModeLabel = CreateWindowW(L"STATIC", L"Modo de arranque:", WS_CHILD | WS_VISIBLE, 330, 135, 150, 20, parent, NULL, hInst, NULL);
+    SendMessage(bootModeLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
+
+    bootRamdiskRadio = CreateWindowW(L"BUTTON", L"RAMDISK (copiar ISO y configurar BCD con ramdisk)", WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON | WS_GROUP, 330, 155, 420, 20, parent, (HMENU)IDC_BOOTMODE_RAMDISK, hInst, NULL);
+    SendMessage(bootRamdiskRadio, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
+
+    bootExtractedRadio = CreateWindowW(L"BUTTON", L"Extraido (copiar contenido del ISO y configurar BCD sin ramdisk)", WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON, 330, 175, 420, 40, parent, (HMENU)IDC_BOOTMODE_EXTRACTED, hInst, NULL);
+    SendMessage(bootExtractedRadio, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
+    SendMessage(bootExtractedRadio, BM_SETCHECK, BST_CHECKED, 0); // default: Extracted
+
     diskSpaceLabel = CreateWindowW(L"STATIC", L"", WS_CHILD | WS_VISIBLE, 10, 220, 700, 20, parent, NULL, hInst, NULL);
     SendMessage(diskSpaceLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    createPartitionButton = CreateWindowW(L"BUTTON", L"Realizar proceso y Bootear ISO seleccionado", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 10, 250, 400, 40, parent, (HMENU)IDC_CREATE_PARTITION_BUTTON, hInst, NULL);
+    createPartitionButton = CreateWindowW(L"BUTTON", L"Realizar proceso y Bootear ISO seleccionado", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 10, 290, 400, 40, parent, (HMENU)IDC_CREATE_PARTITION_BUTTON, hInst, NULL);
     SendMessage(createPartitionButton, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
+    progressBar = CreateWindowW(PROGRESS_CLASSW, NULL, WS_CHILD | WS_VISIBLE, 10, 340, 760, 20, parent, NULL, hInst, NULL);
 
-    progressBar = CreateWindowW(PROGRESS_CLASSW, NULL, WS_CHILD | WS_VISIBLE, 10, 300, 760, 20, parent, NULL, hInst, NULL);
-
-    logTextEdit = CreateWindowW(L"EDIT", L"", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_MULTILINE | ES_AUTOVSCROLL, 10, 330, 760, 250, parent, NULL, hInst, NULL);
+    logTextEdit = CreateWindowW(L"EDIT", L"", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_MULTILINE | ES_AUTOVSCROLL, 10, 370, 760, 250, parent, NULL, hInst, NULL);
     SendMessage(logTextEdit, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    footerLabel = CreateWindowW(L"STATIC", L"Versión 1.0", WS_CHILD | WS_VISIBLE, 10, 590, 100, 20, parent, NULL, hInst, NULL);
+    footerLabel = CreateWindowW(L"STATIC", L"Versión 1.0", WS_CHILD | WS_VISIBLE, 10, 630, 100, 20, parent, NULL, hInst, NULL);
     SendMessage(footerLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
-
-    servicesButton = CreateWindowW(L"BUTTON", L"Servicios", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 650, 590, 100, 20, parent, (HMENU)IDC_SERVICES_BUTTON, hInst, NULL);
+    servicesButton = CreateWindowW(L"BUTTON", L"Servicios", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 650, 630, 100, 20, parent, (HMENU)IDC_SERVICES_BUTTON, hInst, NULL);
     SendMessage(servicesButton, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 }
 
@@ -112,6 +121,16 @@ void MainWindow::HandleCommand(WPARAM wParam, LPARAM lParam)
     case IDC_NTFS_RADIO:
         if (HIWORD(wParam) == BN_CLICKED) {
             selectedFormat = "NTFS";
+        }
+        break;
+    case IDC_BOOTMODE_RAMDISK:
+        if (HIWORD(wParam) == BN_CLICKED) {
+            selectedBootMode = "RAMDISK";
+        }
+        break;
+    case IDC_BOOTMODE_EXTRACTED:
+        if (HIWORD(wParam) == BN_CLICKED) {
+            selectedBootMode = "EXTRACTED";
         }
         break;
     }
@@ -251,15 +270,20 @@ bool MainWindow::OnCopyISO()
         MessageBoxW(NULL, L"Error al extraer archivos del ISO.", L"Error", MB_OK);
         return false;
     }
-
-    LogMessage("Copiando archivo ISO completo...\r\n");
-    if (isoCopyManager->copyISOFile(isoPathStr, dest)) {
-        LogMessage("Archivo ISO copiado exitosamente.\r\n");
-        SendMessage(progressBar, PBM_SETPOS, 70, 0);
+    // If RAMDISK mode is selected, copy the full ISO to the data partition so it can be used as a RAM disk image.
+    if (selectedBootMode == "RAMDISK") {
+        LogMessage("Modo RAMDISK seleccionado: copiando archivo ISO completo...\r\n");
+        if (isoCopyManager->copyISOFile(isoPathStr, dest)) {
+            LogMessage("Archivo ISO copiado exitosamente.\r\n");
+            SendMessage(progressBar, PBM_SETPOS, 70, 0);
+        } else {
+            LogMessage("Error al copiar el archivo ISO.\r\n");
+            MessageBoxW(NULL, L"Error al copiar el archivo ISO.", L"Error", MB_OK);
+            return false;
+        }
     } else {
-        LogMessage("Error al copiar el archivo ISO.\r\n");
-        MessageBoxW(NULL, L"Error al copiar el archivo ISO.", L"Error", MB_OK);
-        return false;
+        LogMessage("Modo Extraido seleccionado: se omitirá la copia completa del ISO (solo contenido extraído).\r\n");
+        SendMessage(progressBar, PBM_SETPOS, 70, 0);
     }
     return true;
 }
@@ -284,7 +308,7 @@ void MainWindow::OnConfigureBCD()
         return;
     }
     std::string espDriveLetter = espDrive.substr(0, 2);
-    std::string error = bcdManager->configureBCD(driveLetter, espDriveLetter);
+    std::string error = bcdManager->configureBCD(driveLetter, espDriveLetter, selectedBootMode);
     if (!error.empty()) {
         LogMessage("Error al configurar BCD: " + error + "\r\n");
         std::wstring werror(error.begin(), error.end());

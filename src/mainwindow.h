@@ -14,6 +14,9 @@
 #define IDC_FAT32_RADIO 1004
 #define IDC_EXFAT_RADIO 1005
 #define IDC_NTFS_RADIO 1006
+// Boot mode
+#define IDC_BOOTMODE_RAMDISK 1007
+#define IDC_BOOTMODE_EXTRACTED 1008
 
 class MainWindow
 {
@@ -41,6 +44,8 @@ private:
 
     // File system format selection
     std::string selectedFormat;
+    // Boot mode selection: "RAMDISK" or "EXTRACTED"
+    std::string selectedBootMode;
 
     // Controls
     HWND logoLabel;
@@ -54,6 +59,9 @@ private:
     HWND fat32Radio;
     HWND exfatRadio;
     HWND ntfsRadio;
+    HWND bootModeLabel;
+    HWND bootRamdiskRadio;
+    HWND bootExtractedRadio;
     HWND diskSpaceLabel;
     HWND createPartitionButton;
     HWND progressBar;
