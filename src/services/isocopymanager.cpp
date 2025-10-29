@@ -180,16 +180,8 @@ bool ISOCopyManager::copyDirectoryWithProgress(const std::string& source, const 
                     return false;
                 }
             } else {
-                // Log source file info before copying
-                DWORD srcAttrs = GetFileAttributesA(srcItem.c_str());
+                // Log source file info before copying only on error
                 long long fileSize = ((long long)findData.nFileSizeHigh << 32) | findData.nFileSizeLow;
-                std::ofstream errorLog(logDir + "\\" + COPY_ERROR_LOG_FILE, std::ios::app);
-                errorLog << getTimestamp() << "Attempting to copy file: " << srcItem << " to " << destItem << "\n";
-                errorLog << getTimestamp() << "Source attributes: " << srcAttrs << ", Size: " << fileSize << " bytes\n";
-                if (srcAttrs == INVALID_FILE_ATTRIBUTES) {
-                    errorLog << getTimestamp() << "Source file does not exist or cannot access attributes\n";
-                }
-                errorLog.close();
 
                 // Attempt to normalize source file attributes to avoid copy issues
                 SetFileAttributesA(srcItem.c_str(), FILE_ATTRIBUTE_NORMAL);
@@ -221,10 +213,6 @@ bool ISOCopyManager::copyDirectoryWithProgress(const std::string& source, const 
                     eventManager.notifyLogUpdate("Error: Failed to copy file " + srcItem + " to " + destItem + " (Error " + std::to_string(error) + ")\r\n");
                     FindClose(hFind);
                     return false;
-                } else {
-                    std::ofstream errorLog3(logDir + "\\" + COPY_ERROR_LOG_FILE, std::ios::app);
-                    errorLog3 << getTimestamp() << "Successfully copied file: " << srcItem << " to " << destItem << "\n";
-                    errorLog3.close();
                 }
                 copiedSoFar += fileSize;
                 eventManager.notifyDetailedProgress(copiedSoFar, totalSize, excludeDirs.empty() ? "Copiando EFI" : "Copiando contenido del ISO");
