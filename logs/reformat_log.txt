@@ -11,13 +11,15 @@ En el equipo: WINDOWS
   Volumen 1     E   HBCD_PE_x6  UDF    DVD-ROM     3139 MB  Correcto           
   Volumen 2     F   HBCD_PE_x6  UDF    DVD-ROM     3139 MB  Correcto           
   Volumen 3     G   HBCD_PE_x6  UDF    DVD-ROM     3139 MB  Correcto           
-  Volumen 4     C   Windows     NTFS   Partici¢n     39 GB  Correcto   Arranque
-  Volumen 5     Z   ISOBOOT     NTFS   Partici¢n      9 GB  Correcto           
-  Volumen 6         WINRE       NTFS   Partici¢n    300 MB  Correcto   Oculto  
-  Volumen 7         EFI         FAT32  Partici¢n    100 MB  Correcto   Sistema 
-  Volumen 8     Y   ISOEFI      FAT32  Partici¢n    500 MB  Correcto   Oculto  
+  Volumen 4     H   HBCD_PE_x6  UDF    DVD-ROM     3139 MB  Correcto           
+  Volumen 5     I   HBCD_PE_x6  UDF    DVD-ROM     3139 MB  Correcto           
+  Volumen 6     C   Windows     NTFS   Partici¢n     39 GB  Correcto   Arranque
+  Volumen 7     Z   ISOBOOT     NTFS   Partici¢n      9 GB  Correcto           
+  Volumen 8         WINRE       NTFS   Partici¢n    300 MB  Correcto   Oculto  
+  Volumen 9         EFI         FAT32  Partici¢n    100 MB  Correcto   Sistema 
+  Volumen 10    Y   ISOEFI      FAT32  Partici¢n    500 MB  Correcto   Oculto  
 
 Saliendo de DiskPart...
 
-Found volume number: 5
+Found volume number: 7
 Format command exit code: 0

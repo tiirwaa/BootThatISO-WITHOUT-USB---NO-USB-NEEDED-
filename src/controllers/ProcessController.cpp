@@ -20,7 +20,6 @@ ProcessController::~ProcessController()
 void ProcessController::startProcess(const std::string& isoPath, const std::string& selectedFormat, const std::string& selectedBootMode)
 {
     eventManager.notifyProgressUpdate(0);
-    eventManager.notifyLogUpdate("Iniciando proceso...\r\n");
 
     if (isoPath.empty()) {
         eventManager.notifyLogUpdate("Por favor, seleccione un archivo ISO primero.\r\n");
