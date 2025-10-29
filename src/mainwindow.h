@@ -29,7 +29,7 @@ private:
 
     void OnSelectISO();
     void OnCreatePartition();
-    void OnCopyISO();
+    bool OnCopyISO();
     void OnConfigureBCD();
     void OnOpenServicesPage();
 

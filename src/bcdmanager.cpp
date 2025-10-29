@@ -79,6 +79,19 @@ std::string BCDManager::configureBCD(const std::string& driveLetter)
     std::string result3 = exec(cmd3.c_str());
     if (result3.find("error") != std::string::npos) return "Error al configurar path: " + cmd3;
 
+    // Configure RAMDISK for ISO booting
+    std::string cmd4_ram = "bcdedit /set " + guid + " ramdisksdidevice partition=" + driveLetter;
+    std::string result4_ram = exec(cmd4_ram.c_str());
+    if (result4_ram.find("error") != std::string::npos) return "Error al configurar ramdisksdidevice: " + cmd4_ram;
+
+    std::string cmd5_ram = "bcdedit /set " + guid + " ramdisksdipath \\iso.iso";
+    std::string result5_ram = exec(cmd5_ram.c_str());
+    if (result5_ram.find("error") != std::string::npos) return "Error al configurar ramdisksdipath: " + cmd5_ram;
+
+    std::string cmd6_ram = "bcdedit /set " + guid + " ramdiskoptions {7619dcc8-fafe-11d9-b411-000476eba25f}";
+    std::string result6_ram = exec(cmd6_ram.c_str());
+    if (result6_ram.find("error") != std::string::npos) return "Error al configurar ramdiskoptions: " + cmd6_ram;
+
     // Remove systemroot for EFI booting
     std::string cmd4 = "bcdedit /deletevalue " + guid + " systemroot";
     exec(cmd4.c_str()); // Don't check error as it might not exist

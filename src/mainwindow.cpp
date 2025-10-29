@@ -182,13 +182,16 @@ void MainWindow::OnCreatePartition()
         LogMessage("Partición EASYISOBOOT encontrada en: " + partitionDrive + "\r\n");
     }
 
-    OnCopyISO();
-    OnConfigureBCD();
-    LogMessage("Proceso completado.\r\n");
-    SendMessage(progressBar, PBM_SETPOS, 100, 0);
+    if (OnCopyISO()) {
+        OnConfigureBCD();
+        LogMessage("Proceso completado.\r\n");
+        SendMessage(progressBar, PBM_SETPOS, 100, 0);
+    } else {
+        LogMessage("Proceso fallido debido a errores en la copia del ISO.\r\n");
+    }
 }
 
-void MainWindow::OnCopyISO()
+bool MainWindow::OnCopyISO()
 {
     LogMessage("Extrayendo archivos EFI del ISO...\r\n");
     SendMessage(progressBar, PBM_SETPOS, 40, 0);
@@ -205,16 +208,28 @@ void MainWindow::OnCopyISO()
     if (drive.empty()) {
         LogMessage("Partición 'EASYISOBOOT' no encontrada.\r\n");
         MessageBoxW(NULL, L"Partición 'EASYISOBOOT' no encontrada.", L"Error", MB_OK);
-        return;
+        return false;
     }
 
     std::string dest = drive;
     if (isoCopyManager->extractEFIFiles(isoPathStr, dest)) {
         LogMessage("Archivos EFI extraídos exitosamente.\r\n");
-        SendMessage(progressBar, PBM_SETPOS, 70, 0);
+        SendMessage(progressBar, PBM_SETPOS, 55, 0);
     } else {
         LogMessage("Error al extraer archivos EFI del ISO.\r\n");
         MessageBoxW(NULL, L"Error al extraer archivos EFI del ISO.", L"Error", MB_OK);
+        return false;
+    }
+
+    LogMessage("Copiando archivo ISO completo...\r\n");
+    if (isoCopyManager->copyISOFile(isoPathStr, dest)) {
+        LogMessage("Archivo ISO copiado exitosamente.\r\n");
+        SendMessage(progressBar, PBM_SETPOS, 70, 0);
+        return true;
+    } else {
+        LogMessage("Error al copiar el archivo ISO.\r\n");
+        MessageBoxW(NULL, L"Error al copiar el archivo ISO.", L"Error", MB_OK);
+        return false;
     }
 }
 
