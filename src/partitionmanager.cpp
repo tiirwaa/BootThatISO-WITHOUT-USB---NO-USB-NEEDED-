@@ -1,9 +1,9 @@
 #include "partitionmanager.h"
-#include <QStorageInfo>
-#include <QProcess>
-#include <QTemporaryFile>
-#include <QTextStream>
-#include <QFile>
+#include <windows.h>
+#include <string>
+#include <sstream>
+#include <fstream>
+#include <iostream>
 
 PartitionManager::PartitionManager()
 {
@@ -15,103 +15,109 @@ PartitionManager::~PartitionManager()
 
 SpaceValidationResult PartitionManager::validateAvailableSpace()
 {
-    qint64 availableGB = getAvailableSpaceGB();
+    long long availableGB = getAvailableSpaceGB();
     
     SpaceValidationResult result;
     result.availableGB = availableGB;
     result.isValid = availableGB >= 10;
     
     if (!result.isValid) {
-        result.errorMessage = QString("No hay suficiente espacio disponible. Se requieren al menos 10 GB, pero solo hay %1 GB disponibles.").arg(availableGB);
+        std::ostringstream oss;
+        oss << "No hay suficiente espacio disponible. Se requieren al menos 10 GB, pero solo hay " << availableGB << " GB disponibles.";
+        result.errorMessage = oss.str();
     }
     
     return result;
 }
 
-qint64 PartitionManager::getAvailableSpaceGB()
+long long PartitionManager::getAvailableSpaceGB()
 {
-    QStorageInfo storage("C:/");
-    return storage.bytesAvailable() / (1024 * 1024 * 1024);
+    ULARGE_INTEGER freeBytesAvailable, totalNumberOfBytes, totalNumberOfFreeBytes;
+    if (GetDiskFreeSpaceExA("C:\\", &freeBytesAvailable, &totalNumberOfBytes, &totalNumberOfFreeBytes)) {
+        return freeBytesAvailable.QuadPart / (1024LL * 1024 * 1024);
+    }
+    return 0;
 }
 
 bool PartitionManager::createPartition()
 {
     // Create a temporary script file for diskpart
-    QTemporaryFile scriptFile;
-    if (!scriptFile.open()) {
+    char tempPath[MAX_PATH];
+    GetTempPathA(MAX_PATH, tempPath);
+    char tempFile[MAX_PATH];
+    GetTempFileNameA(tempPath, "diskpart", 0, tempFile);
+
+    std::ofstream scriptFile(tempFile);
+    if (!scriptFile) {
         return false;
     }
 
-    QTextStream out(&scriptFile);
-    out << "select disk 0\n";
-    out << "select volume C\n";
-    out << "shrink desired=10240 minimum=10240\n";
-    out << "create partition primary size=10240\n";
-    out << "assign letter=Z\n";
-    out << "format fs=ntfs quick label=\"EasyISOBoot\"\n";
-    out << "exit\n";
+    scriptFile << "select disk 0\n";
+    scriptFile << "select volume C\n";
+    scriptFile << "shrink desired=10240 minimum=10240\n";
+    scriptFile << "create partition primary size=10240\n";
+    scriptFile << "assign letter=Z\n";
+    scriptFile << "format fs=ntfs quick label=\"EasyISOBoot\"\n";
+    scriptFile << "exit\n";
     scriptFile.close();
 
     // Execute diskpart with the script
-    QProcess process;
-    process.start("diskpart", QStringList() << "/s" << scriptFile.fileName());
-    if (!process.waitForFinished(300000)) { // 5 minutes timeout
-        // Log timeout
-        QFile logFile("log.txt");
-        if (logFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
-            QTextStream logOut(&logFile);
-            logOut << "Diskpart command timed out.\n";
-            logOut << "Script content:\n";
-            logOut << "select disk 0\n";
-            logOut << "select volume C\n";
-            logOut << "shrink desired=10240 minimum=10240\n";
-            logOut << "create partition primary size=10240\n";
-            logOut << "assign letter=Z\n";
-            logOut << "format fs=ntfs quick label=\"EasyISOBoot\"\n";
-            logOut << "exit\n";
-            logFile.close();
-        }
+    STARTUPINFOA si = { sizeof(si) };
+    PROCESS_INFORMATION pi;
+    std::string cmd = "diskpart /s " + std::string(tempFile);
+    if (!CreateProcessA(NULL, const_cast<char*>(cmd.c_str()), NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
+        DeleteFileA(tempFile);
         return false;
     }
 
-    // Read output and error
-    QByteArray outputStdout = process.readAllStandardOutput();
-    QByteArray outputStderr = process.readAllStandardError();
-    int exitCode = process.exitCode();
+    // Wait for the process to finish
+    WaitForSingleObject(pi.hProcess, 300000); // 5 minutes
+
+    DWORD exitCode;
+    GetExitCodeProcess(pi.hProcess, &exitCode);
+
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
 
     // Write to log.txt
-    QFile logFile("log.txt");
-    if (logFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
-        QTextStream logOut(&logFile);
-        logOut << "Diskpart script executed.\n";
-        logOut << "Script content:\n";
-        logOut << "select disk 0\n";
-        logOut << "select volume C\n";
-        logOut << "shrink desired=10240 minimum=10240\n";
-        logOut << "create partition primary size=10240\n";
-        logOut << "assign letter=Z\n";
-        logOut << "format fs=ntfs quick label=\"EasyISOBoot\"\n";
-        logOut << "exit\n";
-        logOut << "\nExit code: " << exitCode << "\n";
-        logOut << "Standard output:\n" << QString(outputStdout) << "\n";
-        logOut << "Standard error:\n" << QString(outputStderr) << "\n";
+    std::ofstream logFile("log.txt");
+    if (logFile) {
+        logFile << "Diskpart script executed.\n";
+        logFile << "Script content:\n";
+        logFile << "select disk 0\n";
+        logFile << "select volume C\n";
+        logFile << "shrink desired=10240 minimum=10240\n";
+        logFile << "create partition primary size=10240\n";
+        logFile << "assign letter=Z\n";
+        logFile << "format fs=ntfs quick label=\"EasyISOBoot\"\n";
+        logFile << "exit\n";
+        logFile << "\nExit code: " << exitCode << "\n";
         logFile.close();
     }
 
-    if (exitCode != 0) {
-        return false;
-    }
+    DeleteFileA(tempFile);
 
-    return true;
+    return exitCode == 0;
 }
 
 bool PartitionManager::partitionExists()
 {
-    QList<QStorageInfo> volumes = QStorageInfo::mountedVolumes();
-    for (const QStorageInfo &storage : volumes) {
-        if (storage.displayName() == "EasyISOBoot") {
-            return true;
+    char drives[256];
+    GetLogicalDriveStringsA(sizeof(drives), drives);
+
+    char* drive = drives;
+    while (*drive) {
+        if (GetDriveTypeA(drive) == DRIVE_FIXED) {
+            char volumeName[MAX_PATH];
+            char fileSystem[MAX_PATH];
+            DWORD serialNumber, maxComponentLen, fileSystemFlags;
+            if (GetVolumeInformationA(drive, volumeName, sizeof(volumeName), &serialNumber, &maxComponentLen, &fileSystemFlags, fileSystem, sizeof(fileSystem))) {
+                if (strcmp(volumeName, "EasyISOBoot") == 0) {
+                    return true;
+                }
+            }
         }
+        drive += strlen(drive) + 1;
     }
     return false;
 }

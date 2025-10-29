@@ -1,66 +1,56 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
-#include <QMainWindow>
-#include <QVBoxLayout>
-#include <QHBoxLayout>
-#include <QLabel>
-#include <QPushButton>
-#include <QLineEdit>
-#include <QTextEdit>
-#include <QFrame>
-#include <QFileDialog>
-#include <QMessageBox>
-#include <QStorageInfo>
+#include <windows.h>
+#include <string>
 #include "partitionmanager.h"
 #include "isocopymanager.h"
 #include "bcdmanager.h"
 
-class MainWindow : public QMainWindow
-{
-    Q_OBJECT
+#define IDC_BROWSE_BUTTON 1001
+#define IDC_CREATE_PARTITION_BUTTON 1002
+#define IDC_SERVICES_BUTTON 1003
 
+class MainWindow
+{
 public:
-    MainWindow(QWidget *parent = nullptr);
+    MainWindow(HWND parent);
     ~MainWindow();
 
-private slots:
-    void selectISO();
-    void createPartition();
-    void copyISO();
-    void configureBCD();
-    void openServicesPage();
+    void HandleCommand(WPARAM wParam, LPARAM lParam);
 
 private:
-    void setupUI();
-    void applyStyles();
-    void updateDiskSpaceInfo();
+    void SetupUI(HWND parent);
+    void ApplyStyles();
+    void UpdateDiskSpaceInfo();
+
+    void OnSelectISO();
+    void OnCreatePartition();
+    void OnCopyISO();
+    void OnConfigureBCD();
+    void OnOpenServicesPage();
 
     PartitionManager *partitionManager;
     ISOCopyManager *isoCopyManager;
     BCDManager *bcdManager;
 
-    // Header
-    QFrame *headerFrame;
-    QLabel *logoLabel;
-    QLabel *titleLabel;
-    QLabel *subtitleLabel;
-    QPushButton *saveButton;
+    // Controls
+    HWND logoLabel;
+    HWND titleLabel;
+    HWND subtitleLabel;
+    HWND saveButton;
 
-    // Central
-    QWidget *centralWidget;
-    QVBoxLayout *centralLayout;
-    QLabel *isoPathLabel;
-    QLineEdit *isoPathEdit;
-    QPushButton *browseButton;
-    QLabel *diskSpaceLabel;
-    QPushButton *createPartitionButton;
-    QTextEdit *logTextEdit;
+    HWND isoPathLabel;
+    HWND isoPathEdit;
+    HWND browseButton;
+    HWND diskSpaceLabel;
+    HWND createPartitionButton;
+    HWND logTextEdit;
 
-    // Footer
-    QFrame *footerFrame;
-    QLabel *footerLabel;
-    QPushButton *servicesButton;
+    HWND footerLabel;
+    HWND servicesButton;
+
+    HINSTANCE hInst;
 };
 
 #endif // MAINWINDOW_H

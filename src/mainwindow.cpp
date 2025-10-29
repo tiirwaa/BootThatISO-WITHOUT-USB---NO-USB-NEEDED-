@@ -1,21 +1,17 @@
 #include "mainwindow.h"
-#include <QApplication>
-#include <QDesktopServices>
-#include <QUrl>
-#include <QPixmap>
-#include <QIcon>
+#include <commdlg.h>
+#include <shellapi.h>
+#include <string>
+#include <sstream>
 
-MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent)
+MainWindow::MainWindow(HWND parent)
+    : hInst(GetModuleHandle(NULL))
 {
     partitionManager = new PartitionManager();
     isoCopyManager = new ISOCopyManager();
     bcdManager = new BCDManager();
-    setupUI();
-    applyStyles();
-    setWindowTitle("Easy ISOBoot - Configuración de Partición Bootable");
-    setFixedSize(800, 600);
-    setWindowIcon(QIcon(":/resources/logo.ico")); // Placeholder, necesitarás agregar recursos
+    SetupUI(parent);
+    UpdateDiskSpaceInfo();
 }
 
 MainWindow::~MainWindow()
@@ -25,204 +21,167 @@ MainWindow::~MainWindow()
     delete bcdManager;
 }
 
-void MainWindow::setupUI()
+void MainWindow::SetupUI(HWND parent)
 {
-    // Central widget
-    centralWidget = new QWidget;
-    setCentralWidget(centralWidget);
-    centralLayout = new QVBoxLayout(centralWidget);
+    // Create controls
+    logoLabel = CreateWindowW(L"STATIC", L"LOGO", WS_CHILD | WS_VISIBLE | SS_CENTER, 10, 10, 65, 65, parent, NULL, hInst, NULL);
+    SendMessage(logoLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    // Header Frame
-    headerFrame = new QFrame;
-    headerFrame->setFrameStyle(QFrame::Box);
-    QHBoxLayout *headerLayout = new QHBoxLayout(headerFrame);
+    titleLabel = CreateWindowW(L"STATIC", L"EASY ISOBOOT", WS_CHILD | WS_VISIBLE, 75, 10, 300, 30, parent, NULL, hInst, NULL);
+    SendMessage(titleLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    // Logo placeholder
-    logoLabel = new QLabel;
-    // logoLabel->setPixmap(QPixmap(":/resources/logo.png").scaled(55, 55)); // Placeholder
-    logoLabel->setText("LOGO"); // Placeholder
-    logoLabel->setFixedSize(55, 55);
-    logoLabel->setStyleSheet("background-color: #2A2A2A; color: white; font-weight: bold;");
-    headerLayout->addWidget(logoLabel);
+    subtitleLabel = CreateWindowW(L"STATIC", L"Configuración de Partición Bootable", WS_CHILD | WS_VISIBLE, 75, 40, 300, 20, parent, NULL, hInst, NULL);
+    SendMessage(subtitleLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    // Title and subtitle
-    QVBoxLayout *titleLayout = new QVBoxLayout;
-    titleLabel = new QLabel("EASY ISOBOOT");
-    titleLabel->setStyleSheet("font-size: 18pt; font-weight: bold; color: #42A5F5;");
-    subtitleLabel = new QLabel("Configuración de Partición Bootable");
-    subtitleLabel->setStyleSheet("font-size: 10pt; color: #B0B0B0;");
-    titleLayout->addWidget(titleLabel);
-    titleLayout->addWidget(subtitleLabel);
-    headerLayout->addLayout(titleLayout);
-    headerLayout->addStretch();
+    saveButton = CreateWindowW(L"BUTTON", L"Guardar Config", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 650, 10, 130, 30, parent, NULL, hInst, NULL);
+    SendMessage(saveButton, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    // Save button
-    saveButton = new QPushButton(" Guardar Config");
-    saveButton->setStyleSheet("background-color: #27AE60; color: white; padding: 8px 12px;");
-    headerLayout->addWidget(saveButton);
+    isoPathLabel = CreateWindowW(L"STATIC", L"Ruta del archivo ISO:", WS_CHILD | WS_VISIBLE, 10, 80, 200, 20, parent, NULL, hInst, NULL);
+    SendMessage(isoPathLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    centralLayout->addWidget(headerFrame);
+    isoPathEdit = CreateWindowW(L"EDIT", L"", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_READONLY, 10, 100, 600, 25, parent, NULL, hInst, NULL);
+    SendMessage(isoPathEdit, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    // Central content
-    isoPathLabel = new QLabel("Ruta del archivo ISO:");
-    centralLayout->addWidget(isoPathLabel);
+    browseButton = CreateWindowW(L"BUTTON", L"Buscar", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 620, 100, 80, 25, parent, (HMENU)IDC_BROWSE_BUTTON, hInst, NULL);
+    SendMessage(browseButton, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    QHBoxLayout *isoLayout = new QHBoxLayout;
-    isoPathEdit = new QLineEdit;
-    isoPathEdit->setReadOnly(true);
-    browseButton = new QPushButton("Buscar");
-    browseButton->setStyleSheet("background-color: #6200EE; color: white;");
-    connect(browseButton, &QPushButton::clicked, this, &MainWindow::selectISO);
-    isoLayout->addWidget(isoPathEdit);
-    isoLayout->addWidget(browseButton);
-    centralLayout->addLayout(isoLayout);
+    diskSpaceLabel = CreateWindowW(L"STATIC", L"", WS_CHILD | WS_VISIBLE, 10, 140, 400, 20, parent, NULL, hInst, NULL);
+    SendMessage(diskSpaceLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    // Disk space info
-    diskSpaceLabel = new QLabel;
-    updateDiskSpaceInfo();
-    centralLayout->addWidget(diskSpaceLabel);
+    createPartitionButton = CreateWindowW(L"BUTTON", L"Realizar proceso y Bootear ISO seleccionado", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 10, 170, 400, 40, parent, (HMENU)IDC_CREATE_PARTITION_BUTTON, hInst, NULL);
+    SendMessage(createPartitionButton, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    createPartitionButton = new QPushButton("Realizar proceso y Bootear ISO seleccionado");
-    createPartitionButton->setStyleSheet("background-color: blue; color: white; padding: 10px;");
-    connect(createPartitionButton, &QPushButton::clicked, this, &MainWindow::createPartition);
-    centralLayout->addWidget(createPartitionButton);
+    logTextEdit = CreateWindowW(L"EDIT", L"", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_MULTILINE | ES_AUTOVSCROLL, 10, 220, 760, 300, parent, NULL, hInst, NULL);
+    SendMessage(logTextEdit, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    logTextEdit = new QTextEdit;
-    logTextEdit->setPlaceholderText("Logs de operaciones...");
-    centralLayout->addWidget(logTextEdit);
+    footerLabel = CreateWindowW(L"STATIC", L"Versión 1.0", WS_CHILD | WS_VISIBLE, 10, 530, 100, 20, parent, NULL, hInst, NULL);
+    SendMessage(footerLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    // Footer Frame
-    footerFrame = new QFrame;
-    footerFrame->setFrameStyle(QFrame::Box);
-    QHBoxLayout *footerLayout = new QHBoxLayout(footerFrame);
-
-    footerLabel = new QLabel("Versión 1.0");
-    footerLabel->setStyleSheet("color: #808080;");
-    footerLayout->addWidget(footerLabel);
-    footerLayout->addStretch();
-
-    servicesButton = new QPushButton("Servicios");
-    servicesButton->setStyleSheet("color: #42A5F5; border: none;");
-    connect(servicesButton, &QPushButton::clicked, this, &MainWindow::openServicesPage);
-    footerLayout->addWidget(servicesButton);
-
-    centralLayout->addWidget(footerFrame);
+    servicesButton = CreateWindowW(L"BUTTON", L"Servicios", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 650, 530, 100, 20, parent, (HMENU)IDC_SERVICES_BUTTON, hInst, NULL);
+    SendMessage(servicesButton, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 }
 
-void MainWindow::applyStyles()
+void MainWindow::ApplyStyles()
 {
-    setStyleSheet(R"(
-        MainWindow {
-            background-color: #1E1E1E;
-            color: #EEE;
-        }
-        QLabel {
-            color: #EEE;
-        }
-        QLineEdit {
-            background-color: #2A2A2A;
-            color: #EEE;
-            border: 1px solid #555;
-            padding: 5px;
-        }
-        QPushButton {
-            border: none;
-            padding: 8px 16px;
-            font-weight: bold;
-        }
-        QPushButton:hover {
-            opacity: 0.8;
-        }
-        QTextEdit {
-            background-color: #2A2A2A;
-            color: #EEE;
-            border: 1px solid #555;
-        }
-        QFrame {
-            background-color: #1E1E1E;
-            border: 1px solid #42A5F5;
-        }
-    )");
+    // Default styles
 }
 
-void MainWindow::selectISO()
+void MainWindow::HandleCommand(WPARAM wParam, LPARAM lParam)
 {
-    QString fileName = QFileDialog::getOpenFileName(this, "Seleccionar archivo ISO", "", "Archivos ISO (*.iso)");
-    if (!fileName.isEmpty()) {
-        isoPathEdit->setText(fileName);
+    switch (LOWORD(wParam))
+    {
+    case IDC_BROWSE_BUTTON:
+        OnSelectISO();
+        break;
+    case IDC_CREATE_PARTITION_BUTTON:
+        OnCreatePartition();
+        break;
+    case IDC_SERVICES_BUTTON:
+        OnOpenServicesPage();
+        break;
     }
 }
 
-void MainWindow::createPartition()
+void MainWindow::OnSelectISO()
 {
-    QString isoPath = isoPathEdit->text();
-    if (isoPath.isEmpty()) {
-        QMessageBox::warning(this, "Archivo ISO", "Por favor, seleccione un archivo ISO primero.");
+    OPENFILENAMEW ofn;
+    WCHAR szFile[260] = {0};
+    ZeroMemory(&ofn, sizeof(ofn));
+    ofn.lStructSize = sizeof(ofn);
+    ofn.hwndOwner = NULL; // or parent
+    ofn.lpstrFile = szFile;
+    ofn.nMaxFile = sizeof(szFile) / sizeof(WCHAR);
+    ofn.lpstrFilter = L"Archivos ISO (*.iso)\0*.iso\0";
+    ofn.nFilterIndex = 1;
+    ofn.lpstrFileTitle = NULL;
+    ofn.nMaxFileTitle = 0;
+    ofn.lpstrInitialDir = NULL;
+    ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
+
+    if (GetOpenFileNameW(&ofn))
+    {
+        SetWindowTextW(isoPathEdit, szFile);
+    }
+}
+
+void MainWindow::OnCreatePartition()
+{
+    WCHAR isoPath[260];
+    GetWindowTextW(isoPathEdit, isoPath, sizeof(isoPath) / sizeof(WCHAR));
+    if (wcslen(isoPath) == 0)
+    {
+        MessageBoxW(NULL, L"Por favor, seleccione un archivo ISO primero.", L"Archivo ISO", MB_OK);
         return;
     }
 
-    if(!partitionManager->partitionExists()) {
-        // Validación de espacio disponible usando el partitionManager
+    if (!partitionManager->partitionExists())
+    {
         SpaceValidationResult validation = partitionManager->validateAvailableSpace();
-        if (!validation.isValid) {
-            QMessageBox::critical(this, "Espacio Insuficiente", validation.errorMessage);
+        if (!validation.isValid)
+        {
+            WCHAR errorMsg[256];
+            MultiByteToWideChar(CP_UTF8, 0, validation.errorMessage.c_str(), -1, errorMsg, 256);
+            MessageBoxW(NULL, errorMsg, L"Espacio Insuficiente", MB_OK);
             return;
         }
 
-        // Primera alerta de confirmación
-        QMessageBox::StandardButton reply1 = QMessageBox::question(this, "Confirmación de Operación",
-            "Esta operación modificará el disco del sistema, reduciendo su tamaño en 10 GB para crear una partición bootable. ¿Desea continuar?",
-            QMessageBox::Yes | QMessageBox::No);
-        if (reply1 != QMessageBox::Yes) {
+        if (MessageBoxW(NULL, L"Esta operación modificará el disco del sistema, reduciendo su tamaño en 10 GB para crear una partición bootable. ¿Desea continuar?", L"Confirmación de Operación", MB_YESNO) != IDYES)
+            return;
+
+        if (MessageBoxW(NULL, L"Esta es la segunda confirmación. La operación de modificación del disco es irreversible y puede causar pérdida de datos si no se realiza correctamente. ¿Está completamente seguro de que desea proceder?", L"Segunda Confirmación", MB_YESNO) != IDYES)
+            return;
+
+        if (!partitionManager->createPartition())
+        {
+            MessageBoxW(NULL, L"Error al crear la partición.", L"Error", MB_OK);
             return;
         }
-
-        // Segunda alerta de confirmación
-        QMessageBox::StandardButton reply2 = QMessageBox::question(this, "Segunda Confirmación",
-            "Esta es la segunda confirmación. La operación de modificación del disco es irreversible y puede causar pérdida de datos si no se realiza correctamente. ¿Está completamente seguro de que desea proceder?",
-            QMessageBox::Yes | QMessageBox::No);
-        if (reply2 != QMessageBox::Yes) {
-            return;
-        }
-
-        // Llamar al partitionManager para crear la partición
-        if (!partitionManager->createPartition()) {
-            QMessageBox::critical(this, "Error", "Error al crear la partición.");
-        } 
     }
 
-    // Proceder con la copia del ISO
-    copyISO();
-    // Luego configurar BCD
-    configureBCD();
+    OnCopyISO();
+    OnConfigureBCD();
 }
 
-void MainWindow::copyISO()
+void MainWindow::OnCopyISO()
 {
-    QString isoPath = isoPathEdit->text();
-    if (isoCopyManager->copyISO(isoPath)) {
-        QMessageBox::information(this, "Copiar ISO", "Función no implementada aún.");
-    } else {
-        QMessageBox::critical(this, "Error", "Error al copiar el ISO.");
+    WCHAR isoPath[260];
+    GetWindowTextW(isoPathEdit, isoPath, sizeof(isoPath) / sizeof(WCHAR));
+    int len = WideCharToMultiByte(CP_UTF8, 0, isoPath, -1, NULL, 0, NULL, NULL);
+    char* buffer = new char[len];
+    WideCharToMultiByte(CP_UTF8, 0, isoPath, -1, buffer, len, NULL, NULL);
+    std::string isoPathStr = buffer;
+    delete[] buffer;
+    if (isoCopyManager->copyISO(isoPathStr))
+    {
+        MessageBoxW(NULL, L"Función no implementada aún.", L"Copiar ISO", MB_OK);
+    }
+    else
+    {
+        MessageBoxW(NULL, L"Error al copiar el ISO.", L"Error", MB_OK);
     }
 }
 
-void MainWindow::configureBCD()
+void MainWindow::OnConfigureBCD()
 {
-    if (bcdManager->configureBCD()) {
-        QMessageBox::information(this, "Configurar BCD", "Función no implementada aún.");
-    } else {
-        QMessageBox::critical(this, "Error", "Error al configurar BCD.");
+    if (bcdManager->configureBCD())
+    {
+        MessageBoxW(NULL, L"Función no implementada aún.", L"Configurar BCD", MB_OK);
+    }
+    else
+    {
+        MessageBoxW(NULL, L"Error al configurar BCD.", L"Error", MB_OK);
     }
 }
 
-void MainWindow::openServicesPage()
+void MainWindow::OnOpenServicesPage()
 {
-    QDesktopServices::openUrl(QUrl("https://agsoft.co.cr/servicios/")); // Placeholder
+    ShellExecuteW(NULL, L"open", L"https://agsoft.co.cr/servicios/", NULL, NULL, SW_SHOWNORMAL);
 }
 
-void MainWindow::updateDiskSpaceInfo()
+void MainWindow::UpdateDiskSpaceInfo()
 {
-    qint64 availableGB = partitionManager->getAvailableSpaceGB();
-    diskSpaceLabel->setText(QString("Espacio disponible en C: %1 GB").arg(availableGB));
+    long long availableGB = partitionManager->getAvailableSpaceGB();
+    WCHAR text[100];
+    swprintf(text, 100, L"Espacio disponible en C: %lld GB", availableGB);
+    SetWindowTextW(diskSpaceLabel, text);
 }

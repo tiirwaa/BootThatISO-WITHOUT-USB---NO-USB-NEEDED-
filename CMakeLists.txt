@@ -4,13 +4,15 @@ project(EasyISOBoot)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-# Find Qt5
-find_package(Qt5 COMPONENTS Widgets REQUIRED)
+# Enable Unicode support
+add_definitions(-DUNICODE -D_UNICODE)
 
-# Enable Qt5 automoc
-set(CMAKE_AUTOMOC ON)
-set(CMAKE_AUTORCC ON)
-set(CMAKE_AUTOUIC ON)
+# Set UTF-8 source encoding for MSVC
+if(MSVC)
+    add_compile_options(/utf-8)
+    # Use static runtime library
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+endif()
 
 # Include directories
 include_directories(include)
@@ -21,5 +23,5 @@ file(GLOB SOURCES "src/*.cpp" "src/*.h")
 # Executable
 add_executable(EasyISOBoot WIN32 ${SOURCES})
 
-# Link Qt5 libraries
-target_link_libraries(EasyISOBoot Qt5::Widgets)
+# Link necessary libraries (MFC is included via CMAKE_MFC_FLAG)
+set(CMAKE_MFC_FLAG 1)

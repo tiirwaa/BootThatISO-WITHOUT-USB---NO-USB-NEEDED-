@@ -1,12 +1,12 @@
 #ifndef PARTITIONMANAGER_H
 #define PARTITIONMANAGER_H
 
-#include <QString>
+#include <string>
 
 struct SpaceValidationResult {
     bool isValid;
-    qint64 availableGB;
-    QString errorMessage;
+    long long availableGB;
+    std::string errorMessage;
 };
 
 class PartitionManager
@@ -16,7 +16,7 @@ public:
     ~PartitionManager();
 
     SpaceValidationResult validateAvailableSpace();
-    qint64 getAvailableSpaceGB();
+    long long getAvailableSpaceGB();
     bool createPartition();
     bool partitionExists();
 };

@@ -8,9 +8,9 @@ ISOCopyManager::~ISOCopyManager()
 {
 }
 
-bool ISOCopyManager::copyISO(const QString& isoPath)
+bool ISOCopyManager::copyISO(const std::string& isoPath)
 {
     // TODO: Implement ISO copying logic
-    Q_UNUSED(isoPath);
+    (void)isoPath;
     return true;
 }

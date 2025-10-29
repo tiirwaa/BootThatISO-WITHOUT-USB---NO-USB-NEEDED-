@@ -1,7 +1,7 @@
 #ifndef ISOCOPYMANAGER_H
 #define ISOCOPYMANAGER_H
 
-#include <QString>
+#include <string>
 
 class ISOCopyManager
 {
@@ -9,7 +9,7 @@ public:
     ISOCopyManager();
     ~ISOCopyManager();
 
-    bool copyISO(const QString& isoPath);
+    bool copyISO(const std::string& isoPath);
 };
 
 #endif // ISOCOPYMANAGER_H
