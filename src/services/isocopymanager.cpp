@@ -184,6 +184,9 @@ bool ISOCopyManager::copyDirectoryWithProgress(const std::string& source, const 
                 }
                 errorLog.close();
 
+                // Attempt to normalize source file attributes to avoid copy issues
+                SetFileAttributesA(srcItem.c_str(), FILE_ATTRIBUTE_NORMAL);
+
                 if (!CopyFileA(srcItem.c_str(), destItem.c_str(), FALSE)) {
                     DWORD error = GetLastError();
                     std::ofstream errorLog2(Utils::getExeDirectory() + "copy_error_log.log", std::ios::app);

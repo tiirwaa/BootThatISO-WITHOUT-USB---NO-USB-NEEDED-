@@ -73,7 +73,7 @@ bool PartitionManager::createPartition(const std::string& format)
     scriptFile << "select disk 0\n";
     scriptFile << "select volume C\n";
     scriptFile << "shrink desired=10500 minimum=10500\n";
-    scriptFile << "create partition efi size=500\n";
+    scriptFile << "create partition primary size=500\n";
     scriptFile << "format fs=fat32 quick label=\"" << EFI_VOLUME_LABEL << "\"\n";
     scriptFile << "create partition primary size=10000\n";
     scriptFile << "format fs=" << fsFormat << " quick label=\"" << VOLUME_LABEL << "\"\n";
@@ -436,6 +436,9 @@ std::string PartitionManager::getEfiPartitionDriveLetter()
                             std::string mountPoint = driveLetter + "\\";
                             if (SetVolumeMountPointA(mountPoint.c_str(), volumeNameWithSlash.c_str())) {
                                 debugLog << "  Successfully assigned drive letter " << driveLetter << "\n";
+                                // Grant full permissions to ensure writability
+                                std::string permCmd = "icacls \"" + driveLetter + "\" /grant Everyone:F /T /C";
+                                system(permCmd.c_str());
                                 FindVolumeClose(hVolume);
                                 debugLog.close();
                                 return driveLetter + "\\";
