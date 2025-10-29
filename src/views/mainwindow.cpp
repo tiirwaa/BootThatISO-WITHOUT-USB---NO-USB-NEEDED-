@@ -21,7 +21,7 @@ struct DetailedProgressData {
 };
 
 MainWindow::MainWindow(HWND parent)
-    : hInst(GetModuleHandle(NULL)), hWndParent(parent), selectedFormat("NTFS"), selectedBootMode("EXTRACTED"), workerThread(nullptr), isProcessing(false)
+    : hInst(GetModuleHandle(NULL)), hWndParent(parent), selectedFormat("NTFS"), selectedBootMode("Instalación Completa"), workerThread(nullptr), isProcessing(false)
 {
     partitionManager = &PartitionManager::getInstance();
     isoCopyManager = &ISOCopyManager::getInstance();
@@ -152,12 +152,12 @@ void MainWindow::HandleCommand(UINT msg, WPARAM wParam, LPARAM lParam)
             break;
         case IDC_BOOTMODE_RAMDISK:
             if (HIWORD(wParam) == BN_CLICKED) {
-                selectedBootMode = "RAMDISK";
+                selectedBootMode = "Boot desde Memoria";
             }
             break;
         case IDC_BOOTMODE_EXTRACTED:
             if (HIWORD(wParam) == BN_CLICKED) {
-                selectedBootMode = "EXTRACTED";
+                selectedBootMode = "Instalación Completa";
             }
             break;
         }

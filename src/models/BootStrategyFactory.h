@@ -10,9 +10,9 @@
 class BootStrategyFactory {
 public:
     static std::unique_ptr<BootStrategy> createStrategy(const std::string& mode) {
-        if (mode == "RAMDISK") {
+        if (mode == "Boot desde Memoria") {
             return std::make_unique<RamdiskBootStrategy>();
-        } else if (mode == "EXTRACTED") {
+        } else if (mode == "Instalación Completa") {
             return std::make_unique<ExtractedBootStrategy>();
         }
         return nullptr;
