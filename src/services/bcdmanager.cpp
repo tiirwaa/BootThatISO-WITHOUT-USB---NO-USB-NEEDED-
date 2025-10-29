@@ -125,35 +125,36 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
     if (end == std::string::npos) return "Error al extraer GUID de la nueva entrada";
     std::string guid = output.substr(pos, end - pos + 1);
 
-    // Find the EFI boot file in ESP - prioritize ISO files over system files
+    // Find the EFI boot file in ESP - prioritize standard EFI boot files
     std::string efiBootFile;
-    // First priority: ISO files
-    std::string candidate1 = espDriveLetter + "\\EFI\\Microsoft\\Boot\\bootmgr.efi";  // From ISO
+    // First priority: Standard EFI boot files
+    std::string candidate1 = espDriveLetter + "\\EFI\\boot\\BOOTX64.EFI";  // Standard EFI boot
     if (GetFileAttributesA(candidate1.c_str()) != INVALID_FILE_ATTRIBUTES) {
         efiBootFile = candidate1;
     } else {
-        std::string candidate2 = espDriveLetter + "\\EFI\\boot\\BOOTX64.EFI";  // From ISO
+        std::string candidate2 = espDriveLetter + "\\EFI\\boot\\bootx64.efi";  // Alternative case
         if (GetFileAttributesA(candidate2.c_str()) != INVALID_FILE_ATTRIBUTES) {
             efiBootFile = candidate2;
         } else {
-            std::string candidate3 = espDriveLetter + "\\EFI\\boot\\bootx64.efi";  // From ISO
+            std::string candidate3 = espDriveLetter + "\\EFI\\boot\\BOOTIA32.EFI";  // 32-bit
             if (GetFileAttributesA(candidate3.c_str()) != INVALID_FILE_ATTRIBUTES) {
                 efiBootFile = candidate3;
             } else {
-                std::string candidate4 = espDriveLetter + "\\EFI\\boot\\BOOTIA32.EFI";  // From ISO
+                std::string candidate4 = espDriveLetter + "\\EFI\\boot\\bootia32.efi";  // 32-bit alternative case
                 if (GetFileAttributesA(candidate4.c_str()) != INVALID_FILE_ATTRIBUTES) {
                     efiBootFile = candidate4;
                 } else {
-                    std::string candidate5 = espDriveLetter + "\\EFI\\boot\\bootia32.efi";  // From ISO
+                    // Fallback to Microsoft Boot files
+                    std::string candidate5 = espDriveLetter + "\\EFI\\Microsoft\\Boot\\bootmgr.efi";  // Windows bootmgr
                     if (GetFileAttributesA(candidate5.c_str()) != INVALID_FILE_ATTRIBUTES) {
                         efiBootFile = candidate5;
                     } else {
-                        // Last resort: system files
-                        std::string candidate6 = espDriveLetter + "\\EFI\\microsoft\\boot\\bootmgfw.efi";
+                        std::string candidate6 = espDriveLetter + "\\EFI\\Microsoft\\Boot\\bootmgfw.efi";  // Windows bootmgfw
                         if (GetFileAttributesA(candidate6.c_str()) != INVALID_FILE_ATTRIBUTES) {
                             efiBootFile = candidate6;
                         } else {
-                            std::string candidate7 = espDriveLetter + "\\EFI\\Microsoft\\Boot\\bootmgfw.efi";
+                            // Last resort: system files
+                            std::string candidate7 = espDriveLetter + "\\EFI\\microsoft\\boot\\bootmgfw.efi";
                             if (GetFileAttributesA(candidate7.c_str()) != INVALID_FILE_ATTRIBUTES) {
                                 efiBootFile = candidate7;
                             } else {
