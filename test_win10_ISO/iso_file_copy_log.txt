@@ -1,0 +1,3 @@
+Copying ISO file from: C:\Users\vboxuser\Desktop\Windows10_22H2_X64.iso
+To: Z:\iso.iso
+ISO file copied successfully.
