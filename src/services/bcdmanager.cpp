@@ -1,5 +1,6 @@
 #include "bcdmanager.h"
-#include "constants.h"
+#include "../utils/constants.h"
+#include "../utils/Utils.h"
 #include <windows.h>
 #include <winnt.h>
 #include <string>
@@ -9,47 +10,17 @@
 #include <algorithm>
 #include <fstream>
 
+BCDManager& BCDManager::getInstance() {
+    static BCDManager instance;
+    return instance;
+}
+
 BCDManager::BCDManager()
 {
 }
 
 BCDManager::~BCDManager()
 {
-}
-
-std::string exec(const char* cmd) {
-    HANDLE hRead, hWrite;
-    SECURITY_ATTRIBUTES sa = { sizeof(SECURITY_ATTRIBUTES), NULL, TRUE };
-    if (!CreatePipe(&hRead, &hWrite, &sa, 0)) return "";
-
-    STARTUPINFOA si = { sizeof(STARTUPINFOA) };
-    si.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
-    si.hStdOutput = hWrite;
-    si.hStdError = hWrite;
-    si.wShowWindow = SW_HIDE;
-
-    PROCESS_INFORMATION pi;
-    if (!CreateProcessA(NULL, (LPSTR)cmd, NULL, NULL, TRUE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) {
-        CloseHandle(hRead);
-        CloseHandle(hWrite);
-        return "";
-    }
-
-    CloseHandle(hWrite);
-
-    char buffer[128];
-    std::string result = "";
-    DWORD bytesRead;
-    while (ReadFile(hRead, buffer, sizeof(buffer) - 1, &bytesRead, NULL) && bytesRead > 0) {
-        buffer[bytesRead] = '\0';
-        result += buffer;
-    }
-
-    CloseHandle(hRead);
-    WaitForSingleObject(pi.hProcess, INFINITE);
-    CloseHandle(pi.hProcess);
-    CloseHandle(pi.hThread);
-    return result;
 }
 
 std::vector<std::string> split(const std::string& s, char delim) {
@@ -102,7 +73,7 @@ WORD BCDManager::GetMachineType(const std::string& filePath) {
     return machine;
 }
 
-std::string BCDManager::configureBCD(const std::string& driveLetter, const std::string& espDriveLetter, const std::string& mode)
+std::string BCDManager::configureBCD(const std::string& driveLetter, const std::string& espDriveLetter, BootStrategy& strategy)
 {
     // Get volume GUID for data partition
     WCHAR dataVolumeName[MAX_PATH];
@@ -125,10 +96,10 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
     std::string espDevice = narrowEspVolumeName;
 
     // Set default to current to avoid issues with deleting the default entry
-    exec("bcdedit /default {current}");
+    Utils::exec("bcdedit /default {current}");
 
     // Delete any existing ISOBOOT entries to avoid duplicates
-    std::string enumOutput = exec("bcdedit /enum");
+    std::string enumOutput = Utils::exec("bcdedit /enum");
     auto lines = split(enumOutput, '\n');
     for (size_t i = 0; i < lines.size(); ++i) {
         if (lines[i].find("description") != std::string::npos && lines[i].find("ISOBOOT") != std::string::npos) {
@@ -139,15 +110,15 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
                     if (end != std::string::npos) {
                         std::string guid = lines[i-1].substr(pos, end - pos + 1);
                         std::string deleteCmd = "bcdedit /delete " + guid;
-                        exec(deleteCmd.c_str());
+                        Utils::exec(deleteCmd.c_str());
                     }
                 }
             }
         }
     }
 
-    std::string bcdLabel = (mode == "RAMDISK") ? RAMDISK_BCD_LABEL : EXTRACTED_BCD_LABEL;
-    std::string output = exec(("bcdedit /copy {default} /d \"" + std::string(bcdLabel) + "\"").c_str());
+    std::string bcdLabel = strategy.getBCDLabel();
+    std::string output = Utils::exec(("bcdedit /copy {default} /d \"" + bcdLabel + "\"").c_str());
     if (output.find("error") != std::string::npos || output.find("{") == std::string::npos) return "Error al copiar entrada BCD";
     size_t pos = output.find("{");
     size_t end = output.find("}", pos);
@@ -196,7 +167,7 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
     // Log selected file and mode
     std::ofstream logFile("bcd_config_log.txt");
     logFile << "Selected EFI boot file: " << efiBootFile << "\n";
-    logFile << "Selected mode: " << mode << "\n";
+    logFile << "Selected mode: " << bcdLabel << "\n";
 
     // Compute the relative path for BCD
     std::string efiPath = efiBootFile.substr(espDriveLetter.length());
@@ -204,44 +175,14 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
 
     logFile << "EFI path: " << efiPath << "\n";
 
-    std::string cmd1, cmd2, cmd3;
-    if (mode == "RAMDISK") {
-        // For RAMDISK mode: configure device and osdevice as ramdisk pointing to the ISO file
-        std::string ramdiskPath = "[" + dataDevice + "]\\iso.iso";
-        cmd1 = "bcdedit /set " + guid + " device ramdisk=" + ramdiskPath;
-        cmd2 = "bcdedit /set " + guid + " osdevice ramdisk=" + ramdiskPath;
-        cmd3 = "bcdedit /set " + guid + " path " + efiPath;
-        logFile << "RAMDISK mode: device/osdevice set to ramdisk=" << ramdiskPath << "\n";
-
-        // Additional ramdisk options
-        std::string cmdRamdiskSdiDevice = "bcdedit /set " + guid + " ramdisksdidevice partition=" + dataDevice;
-        std::string cmdRamdiskSdiPath = "bcdedit /set " + guid + " ramdisksdipath \\iso.iso";
-        exec(cmdRamdiskSdiDevice.c_str());
-        exec(cmdRamdiskSdiPath.c_str());
-        logFile << "RAMDISK mode: ramdisksdidevice and ramdisksdipath configured.\n";
-    } else {
-        // For EXTRACTED mode: standard EFI booting
-        cmd1 = "bcdedit /set " + guid + " device partition=" + espDevice;
-        cmd2 = "bcdedit /set " + guid + " osdevice partition=" + dataDevice;
-        cmd3 = "bcdedit /set " + guid + " path " + efiPath;
-        logFile << "EXTRACTED mode: standard EFI configuration.\n";
-    }
-
-    std::string result1 = exec(cmd1.c_str());
-    if (result1.find("error") != std::string::npos) return "Error al configurar device: " + cmd1;
-
-    std::string result2 = exec(cmd2.c_str());
-    if (result2.find("error") != std::string::npos) return "Error al configurar osdevice: " + cmd2;
-
-    std::string result3 = exec(cmd3.c_str());
-    if (result3.find("error") != std::string::npos) return "Error al configurar path: " + cmd3;
+    strategy.configureBCD(guid, dataDevice, espDevice, efiPath);
 
     // Remove systemroot for EFI booting
     std::string cmd4 = "bcdedit /deletevalue " + guid + " systemroot";
-    exec(cmd4.c_str()); // Don't check error as it might not exist
+    Utils::exec(cmd4.c_str()); // Don't check error as it might not exist
 
     std::string cmd6 = "bcdedit /default " + guid;
-    std::string result6 = exec(cmd6.c_str());
+    std::string result6 = Utils::exec(cmd6.c_str());
     if (result6.find("error") != std::string::npos) return "Error al configurar default: " + cmd6;
 
     logFile.close();
@@ -251,7 +192,7 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
 
 bool BCDManager::restoreBCD()
 {
-    std::string output = exec("bcdedit /enum");
+    std::string output = Utils::exec("bcdedit /enum");
     auto lines = split(output, '\n');
     std::string guid;
     for (size_t i = 0; i < lines.size(); ++i) {
@@ -270,9 +211,9 @@ bool BCDManager::restoreBCD()
     }
     if (!guid.empty()) {
         std::string cmd1 = "bcdedit /delete " + guid;
-        exec(cmd1.c_str());
+        Utils::exec(cmd1.c_str());
         std::string cmd2 = "bcdedit /default {current}";
-        exec(cmd2.c_str());
+        Utils::exec(cmd2.c_str());
         return true;
     }
     return false;

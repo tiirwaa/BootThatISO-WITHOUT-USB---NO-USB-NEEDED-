@@ -5,9 +5,12 @@
 #include <string>
 #include <fstream>
 #include <thread>
-#include "partitionmanager.h"
-#include "isocopymanager.h"
-#include "bcdmanager.h"
+#include "../services/partitionmanager.h"
+#include "../services/isocopymanager.h"
+#include "../services/bcdmanager.h"
+#include "../models/EventObserver.h"
+#include "../models/EventManager.h"
+#include "../controllers/ProcessController.h"
 
 #define IDC_BROWSE_BUTTON 1001
 #define IDC_CREATE_PARTITION_BUTTON 1002
@@ -24,11 +27,16 @@
 #define WM_ENABLE_BUTTON (WM_USER + 3)
 #define WM_ASK_RESTART (WM_USER + 4)
 
-class MainWindow
+class MainWindow : public EventObserver
 {
 public:
     MainWindow(HWND parent);
     ~MainWindow();
+
+    void onProgressUpdate(int progress) override;
+    void onLogUpdate(const std::string& message) override;
+    void onButtonEnable() override;
+    void onAskRestart() override;
 
     void HandleCommand(UINT msg, WPARAM wParam, LPARAM lParam);
 
@@ -40,16 +48,15 @@ private:
 
     void OnSelectISO();
     void OnCreatePartition();
-    void ProcessInThread();
-    bool OnCopyISO();
-    void OnConfigureBCD();
     void OnOpenServicesPage();
 
     bool RestartSystem();
 
-    PartitionManager *partitionManager;
-    ISOCopyManager *isoCopyManager;
-    BCDManager *bcdManager;
+    PartitionManager* partitionManager;
+    ISOCopyManager* isoCopyManager;
+    BCDManager* bcdManager;
+    EventManager eventManager;
+    ProcessController* processController;
 
     // File system format selection
     std::string selectedFormat;

@@ -1,6 +1,6 @@
 #include <windows.h>
 #include <commctrl.h>
-#include "mainwindow.h"
+#include "views/mainwindow.h"
 
 BOOL IsRunAsAdmin()
 {

@@ -1,5 +1,6 @@
 #include "mainwindow.h"
-#include "constants.h"
+#include "../utils/constants.h"
+#include "../models/BootStrategyFactory.h"
 #include <commdlg.h>
 #include <commctrl.h>
 #include <shellapi.h>
@@ -10,9 +11,11 @@
 MainWindow::MainWindow(HWND parent)
     : hInst(GetModuleHandle(NULL)), hWndParent(parent), selectedFormat("NTFS"), selectedBootMode("EXTRACTED"), workerThread(nullptr), isProcessing(false)
 {
-    partitionManager = new PartitionManager();
-    isoCopyManager = new ISOCopyManager();
-    bcdManager = new BCDManager();
+    partitionManager = &PartitionManager::getInstance();
+    isoCopyManager = &ISOCopyManager::getInstance();
+    bcdManager = &BCDManager::getInstance();
+    eventManager.addObserver(this);
+    processController = new ProcessController(eventManager);
     generalLogFile.open("general_log.txt", std::ios::app);
     if (partitionManager->partitionExists()) {
         bcdManager->restoreBCD();
@@ -28,9 +31,7 @@ MainWindow::~MainWindow()
         workerThread->join();
         delete workerThread;
     }
-    delete partitionManager;
-    delete isoCopyManager;
-    delete bcdManager;
+    delete processController;
 }
 
 void MainWindow::SetupUI(HWND parent)
@@ -221,152 +222,11 @@ void MainWindow::OnCreatePartition()
             return;
     }
 
-    // Disable button and start thread
+    // Disable button and start process
     EnableWindow(createPartitionButton, FALSE);
     isProcessing = true;
-    workerThread = new std::thread(&MainWindow::ProcessInThread, this);
-}
-
-bool MainWindow::OnCopyISO()
-{
-    PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Extrayendo archivos EFI del ISO...\r\n"));
-    PostMessage(hWndParent, WM_UPDATE_PROGRESS, 40, 0);
-
-    WCHAR isoPath[260];
-    GetWindowTextW(isoPathEdit, isoPath, sizeof(isoPath) / sizeof(WCHAR));
-    int len = WideCharToMultiByte(CP_UTF8, 0, isoPath, -1, NULL, 0, NULL, NULL);
-    char* buffer = new char[len];
-    WideCharToMultiByte(CP_UTF8, 0, isoPath, -1, buffer, len, NULL, NULL);
-    std::string isoPathStr = buffer;
-    delete[] buffer;
-
-    std::string drive = partitionManager->getPartitionDriveLetter();
-    if (drive.empty()) {
-        PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Partición 'ISOBOOT' no encontrada.\r\n"));
-        return false;
-    }
-
-    std::string dest = drive;
-    std::string espDrive = partitionManager->getEfiPartitionDriveLetter();
-    if (espDrive.empty()) {
-        PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Partición 'ISOEFI' no encontrada.\r\n"));
-        return false;
-    }
-    if (selectedBootMode == "RAMDISK") {
-        // For RAMDISK: only copy EFI to ESP, do not extract content
-        PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Modo RAMDISK: copiando solo EFI, sin extraer contenido...\r\n"));
-        if (isoCopyManager->extractISOContents(isoPathStr, dest, espDrive, false)) {  // false = no extract content
-            PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("EFI copiado exitosamente.\r\n"));
-            PostMessage(hWndParent, WM_UPDATE_PROGRESS, 55, 0);
-        } else {
-            PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Error al copiar EFI.\r\n"));
-            return false;
-        }
-        // Then copy the full ISO
-        PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Copiando archivo ISO completo...\r\n"));
-        if (isoCopyManager->copyISOFile(isoPathStr, dest)) {
-            PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Archivo ISO copiado exitosamente.\r\n"));
-            PostMessage(hWndParent, WM_UPDATE_PROGRESS, 70, 0);
-        } else {
-            PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Error al copiar el archivo ISO.\r\n"));
-            return false;
-        }
-    } else {
-        // For EXTRACTED: extract content and EFI
-        PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Modo Extraido: extrayendo contenido y EFI...\r\n"));
-        if (isoCopyManager->extractISOContents(isoPathStr, dest, espDrive, true)) {  // true = extract content
-            PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Archivos extraídos exitosamente.\r\n"));
-            PostMessage(hWndParent, WM_UPDATE_PROGRESS, 70, 0);
-        } else {
-            PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Error al extraer archivos del ISO.\r\n"));
-            return false;
-        }
-    }
-    return true;
-}
-
-void MainWindow::OnConfigureBCD()
-{
-    PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Configurando BCD...\r\n"));
-    PostMessage(hWndParent, WM_UPDATE_PROGRESS, 80, 0);
-
-    std::string drive = partitionManager->getPartitionDriveLetter();
-    if (drive.empty()) {
-        PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Partición 'ISOBOOT' no encontrada.\r\n"));
-        return;
-    }
-
-    std::string driveLetter = drive.substr(0, 2);
-    std::string espDrive = partitionManager->getEfiPartitionDriveLetter();
-    if (espDrive.empty()) {
-        PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Partición 'ISOEFI' no encontrada.\r\n"));
-        return;
-    }
-    std::string espDriveLetter = espDrive.substr(0, 2);
-    std::string error = bcdManager->configureBCD(driveLetter, espDriveLetter, selectedBootMode);
-    if (!error.empty()) {
-        PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Error al configurar BCD: " + error + "\r\n"));
-    } else {
-        PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("BCD configurado exitosamente.\r\n"));
-        PostMessage(hWndParent, WM_UPDATE_PROGRESS, 100, 0);
-    }
-}
-
-void MainWindow::ProcessInThread()
-{
-    // Copied from OnCreatePartition after validations
-    bool partitionExists = partitionManager->partitionExists();
-    if (partitionExists) {
-        PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Las particiones existen. Reformateando...\r\n"));
-        PostMessage(hWndParent, WM_UPDATE_PROGRESS, 20, 0);
-        if (!partitionManager->reformatPartition(selectedFormat)) {
-            PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Error al reformatear la partición.\r\n"));
-            PostMessage(hWndParent, WM_ENABLE_BUTTON, 0, 0);
-            return;
-        }
-        PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Partición reformateada.\r\n"));
-        PostMessage(hWndParent, WM_UPDATE_PROGRESS, 30, 0);
-    } else {
-        PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Espacio validado.\r\n"));
-        PostMessage(hWndParent, WM_UPDATE_PROGRESS, 10, 0);
-
-        PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Confirmaciones completadas. Creando partición...\r\n"));
-        PostMessage(hWndParent, WM_UPDATE_PROGRESS, 20, 0);
-
-        if (!partitionManager->createPartition(selectedFormat)) {
-            PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Error al crear la partición.\r\n"));
-            PostMessage(hWndParent, WM_ENABLE_BUTTON, 0, 0);
-            return;
-        }
-        PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Partición creada.\r\n"));
-        PostMessage(hWndParent, WM_UPDATE_PROGRESS, 30, 0);
-    }
-
-    // Verificar que la partición ISOBOOT se puede encontrar
-    std::string partitionDrive = partitionManager->getPartitionDriveLetter();
-    if (partitionDrive.empty()) {
-        PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Error: No se puede acceder a la partición " + std::string(VOLUME_LABEL) + ".\r\n"));
-        PostMessage(hWndParent, WM_ENABLE_BUTTON, 0, 0);
-        return;
-    }
-    PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Partición ISOBOOT encontrada en: " + partitionDrive + "\r\n"));
-    std::string espDrive = partitionManager->getEfiPartitionDriveLetter();
-    if (espDrive.empty()) {
-        PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Error: No se puede acceder a la partición ISOEFI.\r\n"));
-        PostMessage(hWndParent, WM_ENABLE_BUTTON, 0, 0);
-        return;
-    }
-    PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Partición ISOEFI encontrada en: " + espDrive + "\r\n"));
-
-    if (OnCopyISO()) {
-        OnConfigureBCD();
-        PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Proceso completado.\r\n"));
-        PostMessage(hWndParent, WM_UPDATE_PROGRESS, 100, 0);
-    } else {
-        PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Proceso fallido debido a errores en la copia del ISO.\r\n"));
-    }
-    PostMessage(hWndParent, WM_ASK_RESTART, 0, 0);
-    PostMessage(hWndParent, WM_ENABLE_BUTTON, 0, 0);
+    std::string isoPathStr = std::string(isoPath, isoPath + wcslen(isoPath));
+    processController->startProcess(isoPathStr, selectedFormat, selectedBootMode);
 }
 
 void MainWindow::OnOpenServicesPage()
@@ -413,4 +273,32 @@ bool MainWindow::RestartSystem()
     if (!ExitWindowsEx(EWX_REBOOT, 0))
         return false;
     return true;
+}
+
+void MainWindow::onProgressUpdate(int progress) {
+    SendMessage(progressBar, PBM_SETPOS, progress, 0);
+}
+
+void MainWindow::onLogUpdate(const std::string& message) {
+    std::wstring wmsg(message.begin(), message.end());
+    int len = GetWindowTextLengthW(logTextEdit);
+    SendMessageW(logTextEdit, EM_SETSEL, len, len);
+    SendMessageW(logTextEdit, EM_REPLACESEL, FALSE, (LPARAM)wmsg.c_str());
+    if (generalLogFile.is_open()) {
+        generalLogFile << message;
+        generalLogFile.flush();
+    }
+}
+
+void MainWindow::onButtonEnable() {
+    EnableWindow(createPartitionButton, TRUE);
+    isProcessing = false;
+}
+
+void MainWindow::onAskRestart() {
+    if (MessageBoxW(hWndParent, L"Proceso terminado. ¿Desea reiniciar el sistema ahora?", L"Reiniciar", MB_YESNO) == IDYES) {
+        if (!RestartSystem()) {
+            MessageBoxW(hWndParent, L"Error al reiniciar el sistema.", L"Error", MB_OK);
+        }
+    }
 }

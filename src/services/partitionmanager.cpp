@@ -1,5 +1,5 @@
 #include "partitionmanager.h"
-#include "constants.h"
+#include "../utils/constants.h"
 #include <windows.h>
 #include <string>
 #include <sstream>
@@ -7,6 +7,11 @@
 #include <iostream>
 #include <cstring>
 #include <cstdlib>
+
+PartitionManager& PartitionManager::getInstance() {
+    static PartitionManager instance;
+    return instance;
+}
 
 PartitionManager::PartitionManager()
 {

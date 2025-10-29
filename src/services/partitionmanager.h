@@ -2,18 +2,18 @@
 #define PARTITIONMANAGER_H
 
 #include <string>
-
-struct SpaceValidationResult {
-    bool isValid;
-    long long availableGB;
-    std::string errorMessage;
-};
+#include "../models/SpaceValidationResult.h"
 
 class PartitionManager
 {
-public:
+private:
     PartitionManager();
     ~PartitionManager();
+    PartitionManager(const PartitionManager&) = delete;
+    PartitionManager& operator=(const PartitionManager&) = delete;
+
+public:
+    static PartitionManager& getInstance();
 
     SpaceValidationResult validateAvailableSpace();
     long long getAvailableSpaceGB();

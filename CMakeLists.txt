@@ -18,7 +18,7 @@ endif()
 include_directories(include)
 
 # Source files
-file(GLOB SOURCES "src/*.cpp")
+file(GLOB_RECURSE SOURCES "src/*.cpp")
 set(SOURCES ${SOURCES} src/EasyISOBoot.rc)
 
 # Executable

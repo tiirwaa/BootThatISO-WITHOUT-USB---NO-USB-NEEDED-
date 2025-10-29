@@ -6,6 +6,11 @@
 #include <fstream>
 #include <cctype>
 
+ISOCopyManager& ISOCopyManager::getInstance() {
+    static ISOCopyManager instance;
+    return instance;
+}
+
 ISOCopyManager::ISOCopyManager()
 {
     isWindowsISO = false;

@@ -5,9 +5,14 @@
 
 class ISOCopyManager
 {
-public:
+private:
     ISOCopyManager();
     ~ISOCopyManager();
+    ISOCopyManager(const ISOCopyManager&) = delete;
+    ISOCopyManager& operator=(const ISOCopyManager&) = delete;
+
+public:
+    static ISOCopyManager& getInstance();
 
     bool extractISOContents(const std::string& isoPath, const std::string& destPath, const std::string& espPath, bool extractContent = true);
     bool copyISOFile(const std::string& isoPath, const std::string& destPath);
