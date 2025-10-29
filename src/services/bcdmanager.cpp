@@ -99,19 +99,43 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
     Utils::exec("bcdedit /default {current}");
 
     // Delete any existing ISOBOOT entries to avoid duplicates
-    std::string enumOutput = Utils::exec("bcdedit /enum");
-    auto lines = split(enumOutput, '\n');
-    for (size_t i = 0; i < lines.size(); ++i) {
-        if (lines[i].find("description") != std::string::npos && lines[i].find("ISOBOOT") != std::string::npos) {
-            if (i > 0 && lines[i-1].find("identifier") != std::string::npos) {
-                size_t pos = lines[i-1].find("{");
-                if (pos != std::string::npos) {
-                    size_t end = lines[i-1].find("}", pos);
-                    if (end != std::string::npos) {
-                        std::string guid = lines[i-1].substr(pos, end - pos + 1);
-                        std::string deleteCmd = "bcdedit /delete " + guid;
-                        Utils::exec(deleteCmd.c_str());
-                    }
+    // Use block parsing and case-insensitive search to handle localized bcdedit output
+    std::string enumOutput = Utils::exec("bcdedit /enum all");
+    auto blocks = split(enumOutput, '\n');
+    // Parse into blocks separated by empty lines
+    std::vector<std::string> entryBlocks;
+    std::string currentBlock;
+    for (const auto& line : blocks) {
+        if (line.find_first_not_of(" \t\r\n") == std::string::npos) {
+            if (!currentBlock.empty()) {
+                entryBlocks.push_back(currentBlock);
+                currentBlock.clear();
+            }
+        } else {
+            currentBlock += line + "\n";
+        }
+    }
+    if (!currentBlock.empty()) entryBlocks.push_back(currentBlock);
+
+    auto icontains = [](const std::string& hay, const std::string& needle) {
+        std::string h = hay;
+        std::string n = needle;
+        std::transform(h.begin(), h.end(), h.begin(), ::tolower);
+        std::transform(n.begin(), n.end(), n.begin(), ::tolower);
+        return h.find(n) != std::string::npos;
+    };
+
+    std::string labelToFind = "ISOBOOT";
+    for (const auto& blk : entryBlocks) {
+        if (icontains(blk, labelToFind)) {
+            // find GUID in block
+            size_t pos = blk.find('{');
+            if (pos != std::string::npos) {
+                size_t end = blk.find('}', pos);
+                if (end != std::string::npos) {
+                    std::string guid = blk.substr(pos, end - pos + 1);
+                    std::string deleteCmd = "bcdedit /delete " + guid + " /f"; // force remove
+                    Utils::exec(deleteCmd.c_str());
                 }
             }
         }
@@ -185,7 +209,8 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
 
     logFile << "EFI path: " << efiPath << "\n";
 
-    strategy.configureBCD(guid, dataDevice, espDevice, efiPath);
+    // Pass simple drive letters (e.g., "Z:") to strategies so they can use partition= syntax
+    strategy.configureBCD(guid, driveLetter, espDriveLetter, efiPath);
 
     // Remove systemroot for EFI booting
     std::string cmd4 = "bcdedit /deletevalue " + guid + " systemroot";

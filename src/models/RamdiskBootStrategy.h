@@ -11,10 +11,11 @@ public:
     }
 
     void configureBCD(const std::string& guid, const std::string& dataDevice, const std::string& espDevice, const std::string& efiPath) override {
+        // dataDevice is expected as a drive letter like "Z:" where the ISO file lives
         std::string ramdiskPath = "[" + dataDevice + "]\\iso.iso";
         std::string cmd1 = "bcdedit /set " + guid + " device ramdisk=" + ramdiskPath;
         std::string cmd2 = "bcdedit /set " + guid + " osdevice ramdisk=" + ramdiskPath;
-        std::string cmd3 = "bcdedit /set " + guid + " path " + efiPath;
+        std::string cmd3 = "bcdedit /set " + guid + " path \"" + efiPath + "\"";
 
         Utils::exec(cmd1.c_str());
         Utils::exec(cmd2.c_str());

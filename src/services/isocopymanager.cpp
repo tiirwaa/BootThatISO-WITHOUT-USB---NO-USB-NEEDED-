@@ -508,21 +508,42 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
         } else {
             std::string systemBootmgr = "C:\\Windows\\Boot\\EFI\\bootmgfw.efi";
             std::string destBootx64 = bootDir + "\\BOOTX64.EFI";
-            if (CopyFileA(systemBootmgr.c_str(), destBootx64.c_str(), FALSE)) {
-                logFile << getTimestamp() << "Successfully copied bootmgfw.efi as BOOTX64.EFI" << std::endl;
-                bootFileExists = true;
-                bootFilePath = destBootx64;
-            } else {
-                logFile << getTimestamp() << "Failed to copy bootmgfw.efi, error: " << GetLastError() << std::endl;
-                // Try alternative path
-                std::string altSystemBoot = "C:\\Windows\\Boot\\EFI\\bootx64.efi";
-                if (CopyFileA(altSystemBoot.c_str(), destBootx64.c_str(), FALSE)) {
-                    logFile << getTimestamp() << "Successfully copied bootx64.efi as BOOTX64.EFI" << std::endl;
+            // Only copy system boot file if BOOTX64.EFI does not already exist to avoid overwriting
+            DWORD existingAttrs = GetFileAttributesA(destBootx64.c_str());
+            bool shouldCopy = (existingAttrs == INVALID_FILE_ATTRIBUTES);
+            if (!shouldCopy) {
+                // If exists, compare sizes to decide
+                WIN32_FILE_ATTRIBUTE_DATA srcData, dstData;
+                if (GetFileAttributesExA(systemBootmgr.c_str(), GetFileExInfoStandard, &srcData) && GetFileAttributesExA(destBootx64.c_str(), GetFileExInfoStandard, &dstData)) {
+                    ULONGLONG srcSize = ((ULONGLONG)srcData.nFileSizeHigh << 32) | srcData.nFileSizeLow;
+                    ULONGLONG dstSize = ((ULONGLONG)dstData.nFileSizeHigh << 32) | dstData.nFileSizeLow;
+                    if (srcSize != dstSize) shouldCopy = true;
+                } else {
+                    shouldCopy = true; // can't compare, try copying
+                }
+            }
+
+            if (shouldCopy) {
+                if (CopyFileA(systemBootmgr.c_str(), destBootx64.c_str(), FALSE)) {
+                    logFile << getTimestamp() << "Successfully copied bootmgfw.efi as BOOTX64.EFI" << std::endl;
                     bootFileExists = true;
                     bootFilePath = destBootx64;
                 } else {
-                    logFile << getTimestamp() << "Failed to copy bootx64.efi, error: " << GetLastError() << std::endl;
+                    logFile << getTimestamp() << "Failed to copy bootmgfw.efi, error: " << GetLastError() << std::endl;
+                    // Try alternative path
+                    std::string altSystemBoot = "C:\\Windows\\Boot\\EFI\\bootx64.efi";
+                    if (CopyFileA(altSystemBoot.c_str(), destBootx64.c_str(), FALSE)) {
+                        logFile << getTimestamp() << "Successfully copied bootx64.efi as BOOTX64.EFI" << std::endl;
+                        bootFileExists = true;
+                        bootFilePath = destBootx64;
+                    } else {
+                        logFile << getTimestamp() << "Failed to copy bootx64.efi, error: " << GetLastError() << std::endl;
+                    }
                 }
+            } else {
+                logFile << getTimestamp() << "BOOTX64.EFI already exists on ESP, skipping system copy\n";
+                bootFileExists = true;
+                bootFilePath = destBootx64;
             }
         }
     }

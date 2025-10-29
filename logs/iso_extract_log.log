@@ -1,0 +1,17 @@
+[2025-10-29 16:26:10] Starting ISO extraction from: C:\Users\vboxuser\Desktop\HBCD_PE_x64.iso
+[2025-10-29 16:26:10] Destination (data): Z:\
+[2025-10-29 16:26:10] ESP path: Y:\
+[2025-10-29 16:26:10] Extract content: Yes
+[2025-10-29 16:26:10] Mount command: powershell -Command "$iso = Mount-DiskImage -ImagePath 'C:\Users\vboxuser\Desktop\HBCD_PE_x64.iso' -PassThru; $volume = Get-DiskImage -ImagePath 'C:\Users\vboxuser\Desktop\HBCD_PE_x64.iso' | Get-Volume; if ($volume) { $volume.DriveLetter } else { 'FAILED' }"
+[2025-10-29 16:26:17] Mount successful
+[2025-10-29 16:26:17] Source path: E:\
+[2025-10-29 16:26:17] Waiting 5 seconds for drive to be ready
+[2025-10-29 16:26:25] Drive ready, proceeding with analysis
+[2025-10-29 16:26:29] Is Windows ISO: No
+[2025-10-29 16:27:09] Extracting EFI directory to ESP
+[2025-10-29 16:27:10] Copied bootmgr.efi to ESP
+[2025-10-29 16:27:10] Boot file check: Y:\EFI\boot\bootx64.efi - EXISTS
+[2025-10-29 16:27:10] Dismount command: powershell -Command "Dismount-DiskImage -ImagePath 'C:\Users\vboxuser\Desktop\HBCD_PE_x64.iso'"
+[2025-10-29 16:27:14] Dismount ISO completed
+[2025-10-29 16:27:14] EFI extraction SUCCESS
+[2025-10-29 16:27:14] Content extraction completed.
