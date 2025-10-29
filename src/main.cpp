@@ -109,6 +109,13 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             mainWindow->HandleCommand(msg, wParam, lParam);
         }
         break;
+    case WM_CLOSE:
+        if (mainWindow && mainWindow->IsProcessing())
+        {
+            MessageBoxW(hwnd, L"El proceso está en ejecución. Por favor espere a que termine antes de cerrar la aplicación.", L"Proceso en ejecución", MB_OK);
+            return 0;
+        }
+        break;
     case WM_UPDATE_PROGRESS:
     case WM_UPDATE_LOG:
     case WM_ENABLE_BUTTON:
