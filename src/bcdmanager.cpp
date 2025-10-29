@@ -77,7 +77,7 @@ WORD BCDManager::GetMachineType(const std::string& filePath) {
     return machine;
 }
 
-std::string BCDManager::configureBCD(const std::string& driveLetter)
+std::string BCDManager::configureBCD(const std::string& driveLetter, const std::string& espDriveLetter, const std::string& bootPath)
 {
     // Get volume GUID for BCD
     WCHAR volumeName[MAX_PATH];
@@ -118,25 +118,25 @@ std::string BCDManager::configureBCD(const std::string& driveLetter)
     if (end == std::string::npos) return "Error al extraer GUID de la nueva entrada";
     std::string guid = output.substr(pos, end - pos + 1);
 
-    // Find the EFI boot file
+    // Find the EFI boot file in ESP
     std::string efiBootFile;
-    std::string candidate1 = driveLetter + "\\efi\\boot\\bootx64.efi";
+    std::string candidate1 = espDriveLetter + "\\efi\\boot\\bootx64.efi";
     if (GetFileAttributesA(candidate1.c_str()) != INVALID_FILE_ATTRIBUTES) {
         efiBootFile = candidate1;
     } else {
-        std::string candidate2 = driveLetter + "\\efi\\boot\\bootia32.efi";
+        std::string candidate2 = espDriveLetter + "\\efi\\boot\\bootia32.efi";
         if (GetFileAttributesA(candidate2.c_str()) != INVALID_FILE_ATTRIBUTES) {
             efiBootFile = candidate2;
         } else {
-            std::string candidate3 = driveLetter + "\\efi\\boot\\BOOTX64.EFI";
+            std::string candidate3 = espDriveLetter + "\\efi\\boot\\BOOTX64.EFI";
             if (GetFileAttributesA(candidate3.c_str()) != INVALID_FILE_ATTRIBUTES) {
                 efiBootFile = candidate3;
             } else {
-                std::string candidate4 = driveLetter + "\\efi\\boot\\BOOTIA32.EFI";
+                std::string candidate4 = espDriveLetter + "\\efi\\boot\\BOOTIA32.EFI";
                 if (GetFileAttributesA(candidate4.c_str()) != INVALID_FILE_ATTRIBUTES) {
                     efiBootFile = candidate4;
                 } else {
-                    return "Archivo EFI boot no encontrado";
+                    return "Archivo EFI boot no encontrado en ESP";
                 }
             }
         }
@@ -147,12 +147,10 @@ std::string BCDManager::configureBCD(const std::string& driveLetter)
         return "Arquitectura EFI no soportada";
     }
 
-    std::string efiBootPath = efiBootFile.substr(driveLetter.length());
-
-    // Configure for EFI booting with RAMDISK
+    // Configure for direct booting from data partition
     std::string cmd1 = "bcdedit /set " + guid + " device partition=" + device;
     std::string cmd2 = "bcdedit /set " + guid + " osdevice partition=" + device;
-    std::string cmd3 = "bcdedit /set " + guid + " path " + efiBootPath;
+    std::string cmd3 = "bcdedit /set " + guid + " path " + bootPath;
 
     std::string result1 = exec(cmd1.c_str());
     if (result1.find("error") != std::string::npos) return "Error al configurar device: " + cmd1;
@@ -162,19 +160,6 @@ std::string BCDManager::configureBCD(const std::string& driveLetter)
 
     std::string result3 = exec(cmd3.c_str());
     if (result3.find("error") != std::string::npos) return "Error al configurar path: " + cmd3;
-
-    // Configure RAMDISK
-    std::string cmd4_ram = "bcdedit /set " + guid + " ramdisksdidevice partition=" + device;
-    std::string result4_ram = exec(cmd4_ram.c_str());
-    if (result4_ram.find("error") != std::string::npos) return "Error al configurar ramdisksdidevice: " + cmd4_ram;
-
-    std::string cmd5_ram = "bcdedit /set " + guid + " ramdisksdipath \\iso.iso";
-    std::string result5_ram = exec(cmd5_ram.c_str());
-    if (result5_ram.find("error") != std::string::npos) return "Error al configurar ramdisksdipath: " + cmd5_ram;
-
-    std::string cmd6_ram = "bcdedit /set " + guid + " ramdiskoptions {5189B25C-5558-4BF2-BCA4-289B11BD29E2}";
-    std::string result6_ram = exec(cmd6_ram.c_str());
-    if (result6_ram.find("error") != std::string::npos) return "Error al configurar ramdiskoptions: " + cmd6_ram;
 
     // Remove systemroot for EFI booting
     std::string cmd4 = "bcdedit /deletevalue " + guid + " systemroot";

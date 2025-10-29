@@ -27,12 +27,13 @@ std::string ISOCopyManager::exec(const char* cmd) {
     return result;
 }
 
-bool ISOCopyManager::extractISOContents(const std::string& isoPath, const std::string& destPath)
+bool ISOCopyManager::extractISOContents(const std::string& isoPath, const std::string& destPath, const std::string& espPath)
 {
     // Create log file for debugging
     std::ofstream logFile("iso_extract_log.txt");
-    logFile << "Starting EFI extraction from: " << isoPath << "\n";
-    logFile << "Destination: " << destPath << "\n";
+    logFile << "Starting ISO extraction from: " << isoPath << "\n";
+    logFile << "Destination (data): " << destPath << "\n";
+    logFile << "ESP path: " << espPath << "\n";
     
     // Mount the ISO using PowerShell and get drive letter
     std::string mountCmd = "powershell -Command \"$iso = Mount-DiskImage -ImagePath '" + isoPath + "' -PassThru; $volume = Get-DiskImage -ImagePath '" + isoPath + "' | Get-Volume; if ($volume) { $volume.DriveLetter } else { 'FAILED' }\"";
@@ -91,8 +92,15 @@ bool ISOCopyManager::extractISOContents(const std::string& isoPath, const std::s
     }
     logFile << "Is Windows ISO: " << (isWindowsISO ? "Yes" : "No") << "\n";
     
-    // Always extract EFI directory
-    logFile << "Extracting EFI directory\n";
+    // Extract all ISO contents to data partition
+    logFile << "Extracting all ISO contents to data partition\n";
+    std::string fullCopyCmd = "robocopy " + sourcePath + " " + destPath + " /E /R:1 /W:1 /NFL /NDL /XD efi EFI";;  // Exclude EFI dirs
+    logFile << "Full copy command: " << fullCopyCmd << "\n";
+    std::string fullCopyResult = exec(fullCopyCmd.c_str());
+    logFile << "Full copy result: " << fullCopyResult << "\n";
+
+    // Extract EFI directory to ESP
+    logFile << "Extracting EFI directory to ESP\n";
     // Check if source EFI directory exists
     std::string efiSourcePath = sourcePath + "efi";
     DWORD efiAttrs = GetFileAttributesA(efiSourcePath.c_str());
@@ -111,8 +119,8 @@ bool ISOCopyManager::extractISOContents(const std::string& isoPath, const std::s
         }
     }
     
-    // Create destination EFI directory
-    std::string efiDestPath = destPath + "efi";
+    // Create destination EFI directory on ESP
+    std::string efiDestPath = espPath + "efi";
     if (!CreateDirectoryA(efiDestPath.c_str(), NULL) && GetLastError() != ERROR_ALREADY_EXISTS) {
         logFile << "Failed to create destination EFI directory: " << efiDestPath << "\n";
         logFile.close();
@@ -120,12 +128,12 @@ bool ISOCopyManager::extractISOContents(const std::string& isoPath, const std::s
     }
     
     // Copy EFI files using robocopy
-    std::string copyCmd = "robocopy \"" + efiSourcePath + "\" \"" + efiDestPath + "\" /E /R:1 /W:1 /NFL /NDL";
+    std::string copyCmd = "robocopy " + efiSourcePath + " " + efiDestPath + " /E /R:1 /W:1 /NFL /NDL";
     logFile << "EFI copy command: " << copyCmd << "\n";
     std::string copyResult = exec(copyCmd.c_str());
     logFile << "EFI copy result: " << copyResult << "\n";
     
-    // Check if bootx64.efi or bootia32.efi was copied
+    // Check if bootx64.efi or bootia32.efi was copied to ESP
     std::string bootFilePath = efiDestPath + "\\boot\\bootx64.efi";
     DWORD bootAttrs = GetFileAttributesA(bootFilePath.c_str());
     bool bootFileExists = (bootAttrs != INVALID_FILE_ATTRIBUTES && !(bootAttrs & FILE_ATTRIBUTE_DIRECTORY));

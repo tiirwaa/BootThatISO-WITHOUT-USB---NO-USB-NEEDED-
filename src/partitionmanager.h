@@ -20,6 +20,7 @@ public:
     bool createPartition(const std::string& format = "FAT32");
     bool partitionExists();
     std::string getPartitionDriveLetter();
+    std::string getEfiPartitionDriveLetter();
     std::string getPartitionFileSystem();
     bool reformatPartition(const std::string& format);
 };

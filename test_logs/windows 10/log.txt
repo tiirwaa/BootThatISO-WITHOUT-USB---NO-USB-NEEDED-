@@ -2,9 +2,11 @@ Diskpart script executed.
 Script content:
 select disk 0
 select volume C
-shrink desired=10240 minimum=10240
-create partition primary size=10240
-format fs=exfat quick label="EASYISOBOOT"
+shrink desired=10500 minimum=10500
+create partition efi size=500
+format fs=fat32 quick label="ISOEFI"
+create partition primary size=10000
+format fs=ntfs quick label="ISOBOOT"
 exit
 
 Exit code: 0
@@ -21,6 +23,12 @@ El disco 0 es ahora el disco seleccionado.
 El volumen 1 es el volumen seleccionado.
 
 DiskPart redujo correctamente el volumen en:   10 GB
+
+DiskPart ha creado satisfactoriamente la partici¢n especificada.
+
+    0 por ciento completado  100 por ciento completado
+
+DiskPart formate¢ el volumen correctamente.
 
 DiskPart ha creado satisfactoriamente la partici¢n especificada.
 

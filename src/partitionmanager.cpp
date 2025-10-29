@@ -55,12 +55,21 @@ bool PartitionManager::createPartition(const std::string& format)
         return false;
     }
 
-    std::string fsFormat = (format == "EXFAT") ? "exfat" : "fat32";
+    std::string fsFormat;
+    if (format == "EXFAT") {
+        fsFormat = "exfat";
+    } else if (format == "NTFS") {
+        fsFormat = "ntfs";
+    } else {
+        fsFormat = "fat32";
+    }
 
     scriptFile << "select disk 0\n";
     scriptFile << "select volume C\n";
-    scriptFile << "shrink desired=10240 minimum=10240\n";
-    scriptFile << "create partition primary size=10240\n";
+    scriptFile << "shrink desired=10500 minimum=10500\n";
+    scriptFile << "create partition efi size=500\n";
+    scriptFile << "format fs=fat32 quick label=\"" << EFI_VOLUME_LABEL << "\"\n";
+    scriptFile << "create partition primary size=10000\n";
     scriptFile << "format fs=" << fsFormat << " quick label=\"" << VOLUME_LABEL << "\"\n";
     scriptFile << "exit\n";
     scriptFile.close();
@@ -152,8 +161,10 @@ bool PartitionManager::createPartition(const std::string& format)
         logFile << "Script content:\n";
         logFile << "select disk 0\n";
         logFile << "select volume C\n";
-        logFile << "shrink desired=10240 minimum=10240\n";
-        logFile << "create partition primary size=10240\n";
+        logFile << "shrink desired=10500 minimum=10500\n";
+        logFile << "create partition efi size=500\n";
+        logFile << "format fs=fat32 quick label=\"" << EFI_VOLUME_LABEL << "\"\n";
+        logFile << "create partition primary size=10000\n";
         logFile << "format fs=" << fsFormat << " quick label=\"" << VOLUME_LABEL << "\"\n";
         logFile << "exit\n";
         logFile << "\nExit code: " << exitCode << "\n";
@@ -344,9 +355,119 @@ std::string PartitionManager::getPartitionDriveLetter()
     return "";
 }
 
+std::string PartitionManager::getEfiPartitionDriveLetter()
+{
+    // Similar to getPartitionDriveLetter but for EFI_VOLUME_LABEL
+    char drives[256];
+    GetLogicalDriveStringsA(sizeof(drives), drives);
+
+    std::ofstream debugLog("debug_drives_efi.txt");
+    debugLog << "Searching for " << EFI_VOLUME_LABEL << " partition...\n";
+
+    char* drive = drives;
+    while (*drive) {
+        UINT driveType = GetDriveTypeA(drive);
+        debugLog << "Checking drive: " << drive << " (type: " << driveType << ")\n";
+        if (driveType == DRIVE_FIXED) {
+            char volumeName[MAX_PATH] = {0};
+            char fileSystem[MAX_PATH] = {0};
+            DWORD serialNumber, maxComponentLen, fileSystemFlags;
+            if (GetVolumeInformationA(drive, volumeName, sizeof(volumeName), &serialNumber, &maxComponentLen, &fileSystemFlags, fileSystem, sizeof(fileSystem))) {
+                debugLog << "  Volume name: '" << volumeName << "', File system: '" << fileSystem << "'\n";
+                if (_stricmp(volumeName, EFI_VOLUME_LABEL) == 0) {
+                    debugLog << "  Found " << EFI_VOLUME_LABEL << " partition at: " << drive << "\n";
+                    debugLog.close();
+                    return std::string(drive);
+                }
+            } else {
+                debugLog << "  GetVolumeInformation failed for drive: " << drive << ", error: " << GetLastError() << "\n";
+            }
+        } else {
+            debugLog << "  Drive type " << driveType << " (not DRIVE_FIXED)\n";
+        }
+        drive += strlen(drive) + 1;
+    }
+
+    // If not found, try to find unassigned volumes and assign a drive letter
+    debugLog << "Partition not found with drive letter, searching for unassigned volumes...\n";
+    
+    char volumeName[MAX_PATH];
+    HANDLE hVolume = FindFirstVolumeA(volumeName, sizeof(volumeName));
+    if (hVolume != INVALID_HANDLE_VALUE) {
+        do {
+            debugLog << "Checking volume: " << volumeName << "\n";
+            
+            // Store volume name with trailing backslash for SetVolumeMountPointA
+            std::string volumeNameWithSlash = volumeName;
+            
+            // Remove trailing backslash for GetVolumeInformationA
+            size_t len = strlen(volumeName);
+            if (len > 0 && volumeName[len - 1] == '\\') {
+                volumeName[len - 1] = '\0';
+            }
+            
+            // Get volume information
+            char volName[MAX_PATH] = {0};
+            char fsName[MAX_PATH] = {0};
+            DWORD serial, maxComp, flags;
+            std::string volPath = std::string(volumeName) + "\\";
+            if (GetVolumeInformationA(volPath.c_str(), volName, sizeof(volName), &serial, &maxComp, &flags, fsName, sizeof(fsName))) {
+                debugLog << "  Volume label: '" << volName << "', FS: '" << fsName << "'\n";
+                if (_stricmp(volName, EFI_VOLUME_LABEL) == 0) {
+                    debugLog << "  Found " << EFI_VOLUME_LABEL << " volume: " << volumeName << "\n";
+                    
+                    // Try to assign a drive letter to this volume
+                    for (char letter = 'Z'; letter >= 'D'; letter--) {
+                        std::string driveLetter = std::string(1, letter) + ":";
+                        
+                        // Check if drive letter is available
+                        UINT driveType = GetDriveTypeA(driveLetter.c_str());
+                        debugLog << "  Checking drive letter " << driveLetter << ", type: " << driveType << "\n";
+                        
+                        if (driveType == DRIVE_NO_ROOT_DIR) {
+                            debugLog << "  Trying to assign drive letter " << driveLetter << "\n";
+                            
+                            std::string mountPoint = driveLetter + "\\";
+                            if (SetVolumeMountPointA(mountPoint.c_str(), volumeNameWithSlash.c_str())) {
+                                debugLog << "  Successfully assigned drive letter " << driveLetter << "\n";
+                                FindVolumeClose(hVolume);
+                                debugLog.close();
+                                return driveLetter + "\\";
+                            } else {
+                                DWORD error = GetLastError();
+                                debugLog << "  Failed to assign drive letter " << driveLetter << ", error: " << error << "\n";
+                                
+                                if (error != ERROR_DIR_NOT_EMPTY) {
+                                    debugLog << "  Non-recoverable error, stopping drive letter assignment\n";
+                                    break;
+                                }
+                            }
+                        } else {
+                            debugLog << "  Drive letter " << driveLetter << " not available (type: " << driveType << ")\n";
+                        }
+                    }
+                    
+                    debugLog << "  Could not assign any drive letter\n";
+                    FindVolumeClose(hVolume);
+                    debugLog.close();
+                    return "";
+                }
+            } else {
+                debugLog << "  GetVolumeInformation failed for volume " << volumeName << ", error: " << GetLastError() << "\n";
+            }
+        } while (FindNextVolumeA(hVolume, volumeName, sizeof(volumeName)));
+        FindVolumeClose(hVolume);
+    } else {
+        debugLog << "FindFirstVolumeA failed, error: " << GetLastError() << "\n";
+    }
+    
+    debugLog << EFI_VOLUME_LABEL << " partition not found.\n";
+    debugLog.close();
+    return "";
+}
+
 std::string PartitionManager::getPartitionFileSystem()
 {
-    // First check drives with assigned letters
     char drives[256];
     GetLogicalDriveStringsA(sizeof(drives), drives);
 
@@ -396,7 +517,14 @@ std::string PartitionManager::getPartitionFileSystem()
 
 bool PartitionManager::reformatPartition(const std::string& format)
 {
-    std::string fsFormat = (format == "EXFAT") ? "exfat" : "fat32";
+    std::string fsFormat;
+    if (format == "EXFAT") {
+        fsFormat = "exfat";
+    } else if (format == "NTFS") {
+        fsFormat = "ntfs";
+    } else {
+        fsFormat = "fat32";
+    }
 
     // First, find the volume number by running diskpart list volume
     char tempPath[MAX_PATH];

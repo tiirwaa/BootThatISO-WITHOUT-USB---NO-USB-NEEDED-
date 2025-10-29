@@ -10,7 +10,7 @@ public:
     BCDManager();
     ~BCDManager();
 
-    std::string configureBCD(const std::string& driveLetter);
+    std::string configureBCD(const std::string& driveLetter, const std::string& espDriveLetter, const std::string& bootPath);
     bool restoreBCD();
 
 private:

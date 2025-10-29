@@ -3,6 +3,7 @@
 
 #include <windows.h>
 #include <string>
+#include <fstream>
 #include "partitionmanager.h"
 #include "isocopymanager.h"
 #include "bcdmanager.h"
@@ -12,6 +13,7 @@
 #define IDC_SERVICES_BUTTON 1003
 #define IDC_FAT32_RADIO 1004
 #define IDC_EXFAT_RADIO 1005
+#define IDC_NTFS_RADIO 1006
 
 class MainWindow
 {
@@ -51,6 +53,7 @@ private:
     HWND formatLabel;
     HWND fat32Radio;
     HWND exfatRadio;
+    HWND ntfsRadio;
     HWND diskSpaceLabel;
     HWND createPartitionButton;
     HWND progressBar;
@@ -60,6 +63,9 @@ private:
     HWND servicesButton;
 
     HINSTANCE hInst;
+
+    // Log file
+    std::ofstream generalLogFile;
 };
 
 #endif // MAINWINDOW_H
