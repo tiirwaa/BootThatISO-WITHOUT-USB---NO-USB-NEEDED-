@@ -353,6 +353,107 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
         return false;
     }
     
+    // If boot.wim exists, extract additional boot files from it (common for modern ISOs)
+    std::string bootWimPath = sourcePath + "sources\\boot.wim";
+    if (GetFileAttributesA(bootWimPath.c_str()) != INVALID_FILE_ATTRIBUTES) {
+        logFile << getTimestamp() << "Extracting additional boot files from boot.wim\n";
+            // Create temp dir for mounting
+            char tempPath[MAX_PATH];
+            GetTempPathA(MAX_PATH, tempPath);
+            std::string tempDir = std::string(tempPath) + "EasyISOBoot_WimMount\\";
+            if (!CreateDirectoryA(tempDir.c_str(), NULL) && GetLastError() != ERROR_ALREADY_EXISTS) {
+                logFile << getTimestamp() << "Failed to create temp dir for WIM mount\n";
+            } else {
+                // Mount boot.wim index 1
+                std::string mountCmd = "dism /Mount-Wim /WimFile:\"" + bootWimPath + "\" /index:1 /MountDir:\"" + tempDir + "\"";
+                logFile << getTimestamp() << "Mount command: " << mountCmd << "\n";
+                std::string mountResult = exec(mountCmd.c_str());
+                logFile << getTimestamp() << "Mount result: " << mountResult << "\n";
+                
+                if (mountResult.find("The operation completed successfully") != std::string::npos) {
+                    // Extract EFI files to ESP
+                    std::vector<std::pair<std::string, std::string>> efiFiles = {
+                        {"Windows\\Boot\\EFI\\bootx64.efi", espPath + "EFI\\BOOT\\BOOTX64.EFI"},
+                        {"Windows\\Boot\\EFI\\bootmgfw.efi", espPath + "EFI\\Microsoft\\Boot\\bootmgfw.efi"},
+                        {"Windows\\Boot\\EFI\\bootmgr.efi", espPath + "EFI\\Microsoft\\Boot\\bootmgr.efi"},
+                        {"Windows\\Boot\\BCD", espPath + "EFI\\Microsoft\\Boot\\BCD"},
+                        {"Windows\\System32\\memtest.efi", espPath + "EFI\\Microsoft\\Boot\\memtest.efi"}
+                    };
+                    
+                    for (auto& filePair : efiFiles) {
+                        std::string src = tempDir + filePair.first;
+                        std::string dst = filePair.second;
+                        // Ensure destination directory exists
+                        size_t lastSlash = dst.find_last_of("\\");
+                        if (lastSlash != std::string::npos) {
+                            std::string dstDir = dst.substr(0, lastSlash);
+                            CreateDirectoryA(dstDir.c_str(), NULL); // Ignore error if exists
+                        }
+                        if (CopyFileA(src.c_str(), dst.c_str(), FALSE)) {
+                            logFile << getTimestamp() << "Extracted: " << filePair.first << " to " << dst << "\n";
+                        } else {
+                            logFile << getTimestamp() << "Failed to extract: " << filePair.first << " error: " << GetLastError() << "\n";
+                        }
+                    }
+                    
+                    // Extract data files if extracting content
+                    if (extractContent) {
+                        std::vector<std::pair<std::string, std::string>> dataFiles = {
+                            {"Boot\\BCD", destPath + "boot\\bcd"},
+                            {"Boot\\boot.sdi", destPath + "boot\\boot.sdi"},
+                            {"Windows\\Boot\\EFI\\bootmgr.efi", destPath + "bootmgr.efi"}
+                        };
+                        
+                        for (auto& filePair : dataFiles) {
+                            std::string src = tempDir + filePair.first;
+                            std::string dst = filePair.second;
+                            size_t lastSlash = dst.find_last_of("\\");
+                            if (lastSlash != std::string::npos) {
+                                std::string dstDir = dst.substr(0, lastSlash);
+                                CreateDirectoryA(dstDir.c_str(), NULL);
+                            }
+                            if (CopyFileA(src.c_str(), dst.c_str(), FALSE)) {
+                                logFile << getTimestamp() << "Extracted: " << filePair.first << " to " << dst << "\n";
+                            } else {
+                                logFile << getTimestamp() << "Failed to extract: " << filePair.first << " error: " << GetLastError() << "\n";
+                            }
+                        }
+                        
+                        // Copy fonts and resources directories
+                        std::string fontsSrc = tempDir + "Windows\\Boot\\Fonts";
+                        std::string fontsDst = destPath + "boot\\fonts";
+                        if (GetFileAttributesA(fontsSrc.c_str()) != INVALID_FILE_ATTRIBUTES) {
+                            copyDirectoryWithProgress(fontsSrc, fontsDst, eventManager, isoSize, copiedSoFar, noExclude);
+                        }
+                        
+                        std::string resourcesSrc = tempDir + "Windows\\Boot\\Resources";
+                        std::string resourcesDst = destPath + "boot\\resources";
+                        if (GetFileAttributesA(resourcesSrc.c_str()) != INVALID_FILE_ATTRIBUTES) {
+                            copyDirectoryWithProgress(resourcesSrc, resourcesDst, eventManager, isoSize, copiedSoFar, noExclude);
+                        }
+                        
+                        // Copy setup.exe from ISO
+                        std::string setupSrc = sourcePath + "sources\\setup.exe";
+                        std::string setupDst = destPath + "setup.exe";
+                        if (CopyFileA(setupSrc.c_str(), setupDst.c_str(), FALSE)) {
+                            logFile << getTimestamp() << "Copied setup.exe\n";
+                        }
+                    }
+                    
+                    // Unmount WIM
+                    std::string unmountCmd = "dism /Unmount-Wim /MountDir:\"" + tempDir + "\" /discard";
+                    logFile << getTimestamp() << "Unmount command: " << unmountCmd << "\n";
+                    std::string unmountResult = exec(unmountCmd.c_str());
+                    logFile << getTimestamp() << "Unmount result: " << unmountResult << "\n";
+                    
+                    // Remove temp dir
+                    RemoveDirectoryA(tempDir.c_str());
+                } else {
+                    logFile << getTimestamp() << "Failed to mount boot.wim\n";
+                }
+            }
+        }
+    
     // Check if bootx64.efi or bootia32.efi was copied to ESP
     std::string bootFilePath = efiDestPath + "\\boot\\bootx64.efi";
     DWORD bootAttrs = GetFileAttributesA(bootFilePath.c_str());
@@ -382,6 +483,26 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
     }
     
     logFile << getTimestamp() << "Boot file check: " << bootFilePath << " - " << (bootFileExists ? "EXISTS" : "NOT FOUND") << "\n";
+    
+    // If BOOTX64.EFI is missing (common in modern Windows ISOs), add it from system bootmgr.efi
+    if (!bootFileExists) {
+        logFile << getTimestamp() << "BOOTX64.EFI not found, adding from system bootmgr.efi\n";
+        // Create EFI\BOOT directory
+        std::string bootDir = efiDestPath + "\\BOOT";
+        if (!CreateDirectoryA(bootDir.c_str(), NULL) && GetLastError() != ERROR_ALREADY_EXISTS) {
+            logFile << getTimestamp() << "Failed to create BOOT directory\n";
+        } else {
+            std::string systemBootmgr = "C:\\Windows\\Boot\\EFI\\bootmgr.efi";
+            std::string destBootx64 = bootDir + "\\BOOTX64.EFI";
+            if (CopyFileA(systemBootmgr.c_str(), destBootx64.c_str(), FALSE)) {
+                logFile << getTimestamp() << "Successfully copied bootmgr.efi as BOOTX64.EFI\n";
+                bootFileExists = true;
+                bootFilePath = destBootx64;
+            } else {
+                logFile << getTimestamp() << "Failed to copy bootmgr.efi, error: " << GetLastError() << "\n";
+            }
+        }
+    }
     
     // Dismount the ISO
     eventManager.notifyDetailedProgress(isoSize * 9 / 10, isoSize, "Desmontando ISO");

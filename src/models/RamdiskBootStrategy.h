@@ -14,7 +14,7 @@ public:
         std::string ramdiskPath = "[" + dataDevice + "]\\iso.iso";
         std::string cmd1 = "bcdedit /set " + guid + " device ramdisk=" + ramdiskPath;
         std::string cmd2 = "bcdedit /set " + guid + " osdevice ramdisk=" + ramdiskPath;
-        std::string cmd3 = "bcdedit /set " + guid + " path " + efiPath;
+        std::string cmd3 = "bcdedit /set " + guid + " path \\EFI\\Microsoft\\Boot\\bootmgfw.efi";
 
         Utils::exec(cmd1.c_str());
         Utils::exec(cmd2.c_str());
