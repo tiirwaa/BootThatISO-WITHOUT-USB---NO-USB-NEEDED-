@@ -1,5 +1,8 @@
 #include "partitionmanager.h"
 #include <QStorageInfo>
+#include <QProcess>
+#include <QTemporaryFile>
+#include <QTextStream>
 
 PartitionManager::PartitionManager()
 {
@@ -32,6 +35,31 @@ qint64 PartitionManager::getAvailableSpaceGB()
 
 bool PartitionManager::createPartition()
 {
-    // TODO: Implement actual partition creation logic
+    // Create a temporary script file for diskpart
+    QTemporaryFile scriptFile;
+    if (!scriptFile.open()) {
+        return false;
+    }
+
+    QTextStream out(&scriptFile);
+    out << "select disk 0\n";
+    out << "shrink desired=10240 minimum=10240\n";
+    out << "create partition primary size=10240\n";
+    out << "assign letter=Z\n";
+    out << "format fs=ntfs quick label=\"EasyISOBoot\"\n";
+    out << "exit\n";
+    scriptFile.close();
+
+    // Execute diskpart with the script
+    QProcess process;
+    process.start("diskpart", QStringList() << "/s" << scriptFile.fileName());
+    if (!process.waitForFinished(300000)) { // 5 minutes timeout
+        return false;
+    }
+
+    if (process.exitCode() != 0) {
+        return false;
+    }
+
     return true;
 }

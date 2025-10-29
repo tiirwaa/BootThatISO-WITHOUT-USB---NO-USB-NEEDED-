@@ -81,20 +81,10 @@ void MainWindow::setupUI()
     updateDiskSpaceInfo();
     centralLayout->addWidget(diskSpaceLabel);
 
-    createPartitionButton = new QPushButton("Crear Partición");
+    createPartitionButton = new QPushButton("Realizar proceso y Bootear ISO seleccionado");
     createPartitionButton->setStyleSheet("background-color: blue; color: white; padding: 10px;");
     connect(createPartitionButton, &QPushButton::clicked, this, &MainWindow::createPartition);
     centralLayout->addWidget(createPartitionButton);
-
-    copyISOButton = new QPushButton("Copiar ISO");
-    copyISOButton->setStyleSheet("background-color: purple; color: white; padding: 10px;");
-    connect(copyISOButton, &QPushButton::clicked, this, &MainWindow::copyISO);
-    centralLayout->addWidget(copyISOButton);
-
-    configureBCDButton = new QPushButton("Configurar BCD");
-    configureBCDButton->setStyleSheet("background-color: green; color: white; padding: 10px;");
-    connect(configureBCDButton, &QPushButton::clicked, this, &MainWindow::configureBCD);
-    centralLayout->addWidget(configureBCDButton);
 
     logTextEdit = new QTextEdit;
     logTextEdit->setPlaceholderText("Logs de operaciones...");
@@ -189,7 +179,10 @@ void MainWindow::createPartition()
 
     // Llamar al partitionManager para crear la partición
     if (partitionManager->createPartition()) {
-        QMessageBox::information(this, "No Implementado", "No implementado aún, para luego proseguir con los demás tareas");
+        // Proceder con la copia del ISO
+        copyISO();
+        // Luego configurar BCD
+        configureBCD();
     } else {
         QMessageBox::critical(this, "Error", "Error al crear la partición.");
     }

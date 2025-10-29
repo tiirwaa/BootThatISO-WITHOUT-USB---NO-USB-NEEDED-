@@ -55,8 +55,6 @@ private:
     QPushButton *browseButton;
     QLabel *diskSpaceLabel;
     QPushButton *createPartitionButton;
-    QPushButton *copyISOButton;
-    QPushButton *configureBCDButton;
     QTextEdit *logTextEdit;
 
     // Footer
