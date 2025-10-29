@@ -112,6 +112,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
     case WM_UPDATE_PROGRESS:
     case WM_UPDATE_LOG:
     case WM_ENABLE_BUTTON:
+    case WM_UPDATE_DETAILED_PROGRESS:
         if (mainWindow)
         {
             mainWindow->HandleCommand(msg, wParam, lParam);

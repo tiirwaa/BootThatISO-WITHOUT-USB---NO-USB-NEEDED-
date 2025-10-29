@@ -2,6 +2,7 @@
 #define ISOCOPYMANAGER_H
 
 #include <string>
+#include "../models/EventManager.h"
 
 class ISOCopyManager
 {
@@ -14,8 +15,8 @@ private:
 public:
     static ISOCopyManager& getInstance();
 
-    bool extractISOContents(const std::string& isoPath, const std::string& destPath, const std::string& espPath, bool extractContent = true);
-    bool copyISOFile(const std::string& isoPath, const std::string& destPath);
+    bool extractISOContents(EventManager& eventManager, const std::string& isoPath, const std::string& destPath, const std::string& espPath, bool extractContent = true);
+    bool copyISOFile(EventManager& eventManager, const std::string& isoPath, const std::string& destPath);
 
     bool isWindowsISO;
 

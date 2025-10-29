@@ -110,7 +110,7 @@ bool ProcessController::copyISO(const std::string& isoPath, const std::string& d
 
     if (mode == "RAMDISK") {
         eventManager.notifyLogUpdate("Modo RAMDISK: copiando solo EFI, sin extraer contenido...\r\n");
-        if (isoCopyManager->extractISOContents(isoPath, drive, espDrive, false)) {
+        if (isoCopyManager->extractISOContents(eventManager, isoPath, drive, espDrive, false)) {
             eventManager.notifyLogUpdate("EFI copiado exitosamente.\r\n");
             eventManager.notifyProgressUpdate(55);
         } else {
@@ -118,7 +118,7 @@ bool ProcessController::copyISO(const std::string& isoPath, const std::string& d
             return false;
         }
         eventManager.notifyLogUpdate("Copiando archivo ISO completo...\r\n");
-        if (isoCopyManager->copyISOFile(isoPath, drive)) {
+        if (isoCopyManager->copyISOFile(eventManager, isoPath, drive)) {
             eventManager.notifyLogUpdate("Archivo ISO copiado exitosamente.\r\n");
             eventManager.notifyProgressUpdate(70);
         } else {
@@ -127,7 +127,7 @@ bool ProcessController::copyISO(const std::string& isoPath, const std::string& d
         }
     } else {
         eventManager.notifyLogUpdate("Modo Extraido: extrayendo contenido y EFI...\r\n");
-        if (isoCopyManager->extractISOContents(isoPath, drive, espDrive, true)) {
+        if (isoCopyManager->extractISOContents(eventManager, isoPath, drive, espDrive, true)) {
             eventManager.notifyLogUpdate("Archivos extraídos exitosamente.\r\n");
             eventManager.notifyProgressUpdate(70);
         } else {

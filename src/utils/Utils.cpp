@@ -35,3 +35,17 @@ std::string Utils::exec(const char* cmd) {
     CloseHandle(pi.hThread);
     return result;
 }
+
+long long Utils::getFileSize(const std::string& filePath) {
+    HANDLE hFile = CreateFileA(filePath.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (hFile == INVALID_HANDLE_VALUE) {
+        return -1;
+    }
+    LARGE_INTEGER size;
+    if (!GetFileSizeEx(hFile, &size)) {
+        CloseHandle(hFile);
+        return -1;
+    }
+    CloseHandle(hFile);
+    return size.QuadPart;
+}

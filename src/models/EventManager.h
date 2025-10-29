@@ -41,6 +41,12 @@ public:
             observer->onAskRestart();
         }
     }
+
+    void notifyDetailedProgress(long long copied, long long total, const std::string& operation) {
+        for (auto observer : observers) {
+            observer->onDetailedProgress(copied, total, operation);
+        }
+    }
 };
 
 #endif // EVENTMANAGER_H

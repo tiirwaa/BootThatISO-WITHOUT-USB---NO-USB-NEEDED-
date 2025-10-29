@@ -5,6 +5,7 @@
 
 namespace Utils {
     std::string exec(const char* cmd);
+    long long getFileSize(const std::string& filePath);
 }
 
 #endif // UTILS_H

@@ -26,6 +26,7 @@
 #define WM_UPDATE_LOG (WM_USER + 2)
 #define WM_ENABLE_BUTTON (WM_USER + 3)
 #define WM_ASK_RESTART (WM_USER + 4)
+#define WM_UPDATE_DETAILED_PROGRESS (WM_USER + 5)
 
 class MainWindow : public EventObserver
 {
@@ -37,6 +38,7 @@ public:
     void onLogUpdate(const std::string& message) override;
     void onButtonEnable() override;
     void onAskRestart() override;
+    void onDetailedProgress(long long copied, long long total, const std::string& operation) override;
 
     void HandleCommand(UINT msg, WPARAM wParam, LPARAM lParam);
 
@@ -45,6 +47,7 @@ private:
     void ApplyStyles();
     void UpdateDiskSpaceInfo();
     void LogMessage(const std::string& msg);
+    void UpdateDetailedProgressLabel(long long copied, long long total, const std::string& operation);
 
     void OnSelectISO();
     void OnCreatePartition();
@@ -85,6 +88,8 @@ private:
 
     HWND footerLabel;
     HWND servicesButton;
+    HWND detailedProgressLabel;
+    HWND detailedProgressBar;
 
     HINSTANCE hInst;
     HWND hWndParent;

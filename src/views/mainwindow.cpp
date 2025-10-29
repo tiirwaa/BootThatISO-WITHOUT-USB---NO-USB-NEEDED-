@@ -7,6 +7,15 @@
 #include <string>
 #include <sstream>
 #include <cstring>
+#include <iomanip>
+
+#define WM_UPDATE_DETAILED_PROGRESS (WM_USER + 5)
+
+struct DetailedProgressData {
+    long long copied;
+    long long total;
+    std::string operation;
+};
 
 MainWindow::MainWindow(HWND parent)
     : hInst(GetModuleHandle(NULL)), hWndParent(parent), selectedFormat("NTFS"), selectedBootMode("EXTRACTED"), workerThread(nullptr), isProcessing(false)
@@ -82,7 +91,12 @@ void MainWindow::SetupUI(HWND parent)
     diskSpaceLabel = CreateWindowW(L"STATIC", L"", WS_CHILD | WS_VISIBLE, 10, 220, 700, 20, parent, NULL, hInst, NULL);
     SendMessage(diskSpaceLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    createPartitionButton = CreateWindowW(L"BUTTON", L"Realizar proceso y Bootear ISO seleccionado", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 10, 290, 400, 40, parent, (HMENU)IDC_CREATE_PARTITION_BUTTON, hInst, NULL);
+    detailedProgressLabel = CreateWindowW(L"STATIC", L"", WS_CHILD | WS_VISIBLE, 10, 245, 700, 20, parent, NULL, hInst, NULL);
+    SendMessage(detailedProgressLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
+
+    detailedProgressBar = CreateWindowW(PROGRESS_CLASSW, NULL, WS_CHILD | WS_VISIBLE, 10, 270, 760, 20, parent, NULL, hInst, NULL);
+
+    createPartitionButton = CreateWindowW(L"BUTTON", L"Realizar proceso y Bootear ISO seleccionado", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 10, 300, 400, 40, parent, (HMENU)IDC_CREATE_PARTITION_BUTTON, hInst, NULL);
     SendMessage(createPartitionButton, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
     progressBar = CreateWindowW(PROGRESS_CLASSW, NULL, WS_CHILD | WS_VISIBLE, 10, 340, 760, 20, parent, NULL, hInst, NULL);
 
@@ -159,11 +173,11 @@ void MainWindow::HandleCommand(UINT msg, WPARAM wParam, LPARAM lParam)
         EnableWindow(createPartitionButton, TRUE);
         isProcessing = false;
         break;
-    case WM_ASK_RESTART:
-        if (MessageBoxW(hWndParent, L"Proceso terminado. ¿Desea reiniciar el sistema ahora?", L"Reiniciar", MB_YESNO) == IDYES) {
-            if (!RestartSystem()) {
-                MessageBoxW(hWndParent, L"Error al reiniciar el sistema.", L"Error", MB_OK);
-            }
+    case WM_UPDATE_DETAILED_PROGRESS:
+        {
+            DetailedProgressData* data = reinterpret_cast<DetailedProgressData*>(lParam);
+            UpdateDetailedProgressLabel(data->copied, data->total, data->operation);
+            delete data;
         }
         break;
     }
@@ -195,6 +209,8 @@ void MainWindow::OnCreatePartition()
 {
     SendMessage(progressBar, PBM_SETRANGE, 0, MAKELPARAM(0, 100));
     SendMessage(progressBar, PBM_SETPOS, 0, 0);
+    SendMessage(detailedProgressBar, PBM_SETRANGE, 0, MAKELPARAM(0, 100));
+    SendMessage(detailedProgressBar, PBM_SETPOS, 0, 0);
     LogMessage("Iniciando proceso...\r\n");
 
     WCHAR isoPath[260];
@@ -293,6 +309,32 @@ void MainWindow::onLogUpdate(const std::string& message) {
 void MainWindow::onButtonEnable() {
     EnableWindow(createPartitionButton, TRUE);
     isProcessing = false;
+}
+
+void MainWindow::onDetailedProgress(long long copied, long long total, const std::string& operation) {
+    DetailedProgressData* data = new DetailedProgressData{copied, total, operation};
+    PostMessage(hWndParent, WM_UPDATE_DETAILED_PROGRESS, 0, (LPARAM)data);
+}
+
+void MainWindow::UpdateDetailedProgressLabel(long long copied, long long total, const std::string& operation) {
+    if (total == 0) {
+        SetWindowTextW(detailedProgressLabel, L"");
+        SendMessage(detailedProgressBar, PBM_SETPOS, 0, 0);
+        return;
+    }
+    int percent = static_cast<int>((copied * 100) / total);
+    double copiedMB = copied / (1024.0 * 1024.0);
+    double totalMB = total / (1024.0 * 1024.0);
+    std::string unit = "MB";
+    if (totalMB >= 1024) {
+        copiedMB /= 1024;
+        totalMB /= 1024;
+        unit = "GB";
+    }
+    std::wstringstream ss;
+    ss << operation.c_str() << L": " << percent << L"% (" << std::fixed << std::setprecision(1) << copiedMB << L" " << unit.c_str() << L" / " << totalMB << L" " << unit.c_str() << L")";
+    SetWindowTextW(detailedProgressLabel, ss.str().c_str());
+    SendMessage(detailedProgressBar, PBM_SETPOS, percent, 0);
 }
 
 void MainWindow::onAskRestart() {
