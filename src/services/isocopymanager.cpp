@@ -246,15 +246,7 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
     logFile << getTimestamp() << "Mount command: " << mountCmd << "\n";
     
     std::string mountResult = exec(mountCmd.c_str());
-    logFile << getTimestamp() << "Mount result: '" << mountResult << "'\n";
-    
-    if (mountResult.empty() || mountResult.find("FAILED") != std::string::npos || mountResult.find("error") != std::string::npos) {
-        logFile << getTimestamp() << "Failed to mount ISO\n";
-        logFile.close();
-        return false;
-    }
-    
-    // Extract drive letter (remove whitespace and newlines)
+    // Check if mount was successful by looking for a drive letter in the result
     std::string driveLetterStr;
     for (char c : mountResult) {
         if (isalpha(c)) {
@@ -262,9 +254,11 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
             break;
         }
     }
+    bool mountSuccess = !driveLetterStr.empty();
+    logFile << getTimestamp() << "Mount " << (mountSuccess ? "successful" : "failed") << "\n";
     
-    if (driveLetterStr.empty()) {
-        logFile << getTimestamp() << "Could not extract drive letter from mount result\n";
+    if (!mountSuccess) {
+        logFile << getTimestamp() << "Failed to mount ISO\n";
         logFile.close();
         return false;
     }
@@ -365,12 +359,13 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
                 logFile << getTimestamp() << "Failed to create temp dir for WIM mount\n";
             } else {
                 // Mount boot.wim index 1
-                std::string mountCmd = "dism /Mount-Wim /WimFile:\"" + bootWimPath + "\" /index:1 /MountDir:\"" + tempDir + "\"";
+                std::string mountCmd = "dism /Mount-Wim /WimFile:\"" + bootWimPath + "\" /index:1 /MountDir:\"" + tempDir + "\" /ReadOnly";
                 logFile << getTimestamp() << "Mount command: " << mountCmd << "\n";
                 std::string mountResult = exec(mountCmd.c_str());
-                logFile << getTimestamp() << "Mount result: " << mountResult << "\n";
+                bool mountSuccessWim = mountResult.find("The operation completed successfully") != std::string::npos;
+                logFile << getTimestamp() << "Mount WIM " << (mountSuccessWim ? "successful" : "failed") << "\n";
                 
-                if (mountResult.find("The operation completed successfully") != std::string::npos) {
+                if (mountSuccessWim) {
                     // Extract EFI files to ESP
                     std::vector<std::pair<std::string, std::string>> efiFiles = {
                         {"Windows\\Boot\\EFI\\bootx64.efi", espPath + "EFI\\BOOT\\BOOTX64.EFI"},
@@ -444,7 +439,8 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
                     std::string unmountCmd = "dism /Unmount-Wim /MountDir:\"" + tempDir + "\" /discard";
                     logFile << getTimestamp() << "Unmount command: " << unmountCmd << "\n";
                     std::string unmountResult = exec(unmountCmd.c_str());
-                    logFile << getTimestamp() << "Unmount result: " << unmountResult << "\n";
+                    bool unmountSuccess = unmountResult.find("The operation completed successfully") != std::string::npos;
+                    logFile << getTimestamp() << "Unmount WIM " << (unmountSuccess ? "successful" : "failed") << "\n";
                     
                     // Remove temp dir
                     RemoveDirectoryA(tempDir.c_str());
@@ -509,7 +505,7 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
     std::string dismountCmd = "powershell -Command \"Dismount-DiskImage -ImagePath '" + isoPath + "'\"";
     logFile << getTimestamp() << "Dismount command: " << dismountCmd << "\n";
     std::string dismountResult = exec(dismountCmd.c_str());
-    logFile << getTimestamp() << "Dismount result: " << dismountResult << "\n";
+    logFile << getTimestamp() << "Dismount ISO completed\n";
     
     logFile << getTimestamp() << "EFI extraction " << (bootFileExists ? "SUCCESS" : "FAILED") << "\n";
     if (extractContent) {

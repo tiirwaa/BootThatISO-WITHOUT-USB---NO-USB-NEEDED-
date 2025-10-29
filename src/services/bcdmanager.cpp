@@ -165,7 +165,7 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
     }
 
     // Log selected file and mode
-    std::ofstream logFile("bcd_config_log.txt");
+    std::ofstream logFile((Utils::getExeDirectory() + "logs\\bcd_config_log.log").c_str());
     logFile << "Selected EFI boot file: " << efiBootFile << "\n";
     logFile << "Selected mode: " << bcdLabel << "\n";
 

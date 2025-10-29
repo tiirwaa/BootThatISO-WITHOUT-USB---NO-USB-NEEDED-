@@ -1,0 +1,7 @@
+[2025-10-29 14:05:31] Starting ISO extraction from: C:\Users\vboxuser\Desktop\HBCD_PE_x64.iso
+[2025-10-29 14:05:31] Destination (data): Z:\
+[2025-10-29 14:05:31] ESP path: Y:\
+[2025-10-29 14:05:31] Extract content: Yes
+[2025-10-29 14:05:31] Mount command: powershell -Command "$iso = Mount-DiskImage -ImagePath 'C:\Users\vboxuser\Desktop\HBCD_PE_x64.iso' -PassThru; $volume = Get-DiskImage -ImagePath 'C:\Users\vboxuser\Desktop\HBCD_PE_x64.iso' | Get-Volume; if ($volume) { $volume.DriveLetter } else { 'FAILED' }"
+[2025-10-29 14:05:35] Mount failed
+[2025-10-29 14:05:35] Failed to mount ISO

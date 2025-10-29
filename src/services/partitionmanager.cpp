@@ -598,7 +598,7 @@ bool PartitionManager::reformatPartition(const std::string& format)
     DeleteFileA(tempFile);
 
     if (exitCode != 0) {
-        std::ofstream logFile((Utils::getExeDirectory() + "reformat_log.log").c_str());
+        std::ofstream logFile((Utils::getExeDirectory() + "logs\\reformat_log.log").c_str());
         if (logFile) {
             logFile << "Diskpart list volume failed with exit code: " << exitCode << "\n";
             logFile << "Output:\n" << output << "\n";
@@ -642,7 +642,7 @@ bool PartitionManager::reformatPartition(const std::string& format)
         }
     }
 
-    std::ofstream logFile((Utils::getExeDirectory() + "reformat_log.log").c_str());
+    std::ofstream logFile((Utils::getExeDirectory() + "logs\\reformat_log.log").c_str());
     if (logFile) {
         logFile << "Diskpart list volume output:\n" << output << "\n";
         if (volumeNumber == -1) {
@@ -690,7 +690,7 @@ bool PartitionManager::reformatPartition(const std::string& format)
     // Refresh volume information
     system("mountvol /r >nul 2>&1");
 
-    std::ofstream logFile2((Utils::getExeDirectory() + "reformat_log.txt").c_str(), std::ios::app);
+    std::ofstream logFile2((Utils::getExeDirectory() + "logs\\reformat_exit_log.log").c_str(), std::ios::app);
     if (logFile2) {
         logFile2 << "Format command exit code: " << exitCode << "\n";
         logFile2.close();
