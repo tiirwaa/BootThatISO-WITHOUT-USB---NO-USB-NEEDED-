@@ -1,4 +1,5 @@
 #include "bcdmanager.h"
+#include "constants.h"
 #include <windows.h>
 #include <winnt.h>
 #include <string>
@@ -91,11 +92,11 @@ std::string BCDManager::configureBCD(const std::string& driveLetter)
     // Set default to current to avoid issues with deleting the default entry
     exec("bcdedit /default {current}");
 
-    // Delete any existing EASYISOBOOT entries to avoid duplicates
+    // Delete any existing ISOBOOT entries to avoid duplicates
     std::string enumOutput = exec("bcdedit /enum");
     auto lines = split(enumOutput, '\n');
     for (size_t i = 0; i < lines.size(); ++i) {
-        if (lines[i].find("description") != std::string::npos && lines[i].find("EASYISOBOOT") != std::string::npos) {
+        if (lines[i].find("description") != std::string::npos && lines[i].find(VOLUME_LABEL) != std::string::npos) {
             if (i > 0 && lines[i-1].find("identifier") != std::string::npos) {
                 size_t pos = lines[i-1].find("{");
                 if (pos != std::string::npos) {
@@ -110,7 +111,7 @@ std::string BCDManager::configureBCD(const std::string& driveLetter)
         }
     }
 
-    std::string output = exec("bcdedit /copy {default} /d \"EASYISOBOOT\"");
+    std::string output = exec(("bcdedit /copy {default} /d \"" + std::string(VOLUME_LABEL) + "\"").c_str());
     if (output.find("error") != std::string::npos || output.find("{") == std::string::npos) return "Error al copiar entrada BCD";
     size_t pos = output.find("{");
     size_t end = output.find("}", pos);
@@ -192,7 +193,7 @@ bool BCDManager::restoreBCD()
     auto lines = split(output, '\n');
     std::string guid;
     for (size_t i = 0; i < lines.size(); ++i) {
-        if (lines[i].find("description") != std::string::npos && lines[i].find("EASYISOBOOT") != std::string::npos) {
+        if (lines[i].find("description") != std::string::npos && lines[i].find(VOLUME_LABEL) != std::string::npos) {
             if (i > 0 && lines[i-1].find("identifier") != std::string::npos) {
                 size_t pos = lines[i-1].find("{");
                 if (pos != std::string::npos) {

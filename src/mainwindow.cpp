@@ -1,9 +1,11 @@
 #include "mainwindow.h"
+#include "constants.h"
 #include <commdlg.h>
 #include <commctrl.h>
 #include <shellapi.h>
 #include <string>
 #include <sstream>
+#include <cstring>
 
 MainWindow::MainWindow(HWND parent)
     : hInst(GetModuleHandle(NULL)), selectedFormat("FAT32")
@@ -141,11 +143,25 @@ void MainWindow::OnCreatePartition()
         return;
     }
 
-    if (!partitionManager->partitionExists())
-    {
+    bool partitionExists = partitionManager->partitionExists();
+    if (partitionExists) {
+        std::string currentFS = partitionManager->getPartitionFileSystem();
+        std::string targetFS = (selectedFormat == "EXFAT") ? "exFAT" : "FAT32";
+        if (_stricmp(currentFS.c_str(), targetFS.c_str()) != 0) {
+            // reformat
+            LogMessage("La partición existe con formato diferente. Reformateando...\r\n");
+            SendMessage(progressBar, PBM_SETPOS, 20, 0);
+            if (!partitionManager->reformatPartition(selectedFormat)) {
+                LogMessage("Error al reformatear la partición.\r\n");
+                MessageBoxW(NULL, L"Error al reformatear la partición.", L"Error", MB_OK);
+                return;
+            }
+            LogMessage("Partición reformateada.\r\n");
+            SendMessage(progressBar, PBM_SETPOS, 30, 0);
+        }
+    } else {
         SpaceValidationResult validation = partitionManager->validateAvailableSpace();
-        if (!validation.isValid)
-        {
+        if (!validation.isValid) {
             WCHAR errorMsg[256];
             MultiByteToWideChar(CP_UTF8, 0, validation.errorMessage.c_str(), -1, errorMsg, 256);
             MessageBoxW(NULL, errorMsg, L"Espacio Insuficiente", MB_OK);
@@ -163,24 +179,23 @@ void MainWindow::OnCreatePartition()
         LogMessage("Confirmaciones completadas. Creando partición...\r\n");
         SendMessage(progressBar, PBM_SETPOS, 20, 0);
 
-        if (!partitionManager->createPartition(selectedFormat))
-        {
+        if (!partitionManager->createPartition(selectedFormat)) {
             LogMessage("Error al crear la partición.\r\n");
             MessageBoxW(NULL, L"Error al crear la partición.", L"Error", MB_OK);
             return;
         }
         LogMessage("Partición creada.\r\n");
         SendMessage(progressBar, PBM_SETPOS, 30, 0);
-
-        // Verificar que la partición EASYISOBOOT se puede encontrar
-        std::string partitionDrive = partitionManager->getPartitionDriveLetter();
-        if (partitionDrive.empty()) {
-            LogMessage("Error: No se puede acceder a la partición EASYISOBOOT después de crearla.\r\n");
-            MessageBoxW(NULL, L"No se puede acceder a la partición EASYISOBOOT después de crearla. Verifique el log para más detalles.", L"Error", MB_OK);
-            return;
-        }
-        LogMessage("Partición EASYISOBOOT encontrada en: " + partitionDrive + "\r\n");
     }
+
+    // Verificar que la partición ISOBOOT se puede encontrar
+    std::string partitionDrive = partitionManager->getPartitionDriveLetter();
+    if (partitionDrive.empty()) {
+        LogMessage("Error: No se puede acceder a la partición " + std::string(VOLUME_LABEL) + ".\r\n");
+        MessageBoxW(NULL, L"No se puede acceder a la partición ISOBOOT. Verifique el log para más detalles.", L"Error", MB_OK);
+        return;
+    }
+    LogMessage("Partición ISOBOOT encontrada en: " + partitionDrive + "\r\n");
 
     if (OnCopyISO()) {
         OnConfigureBCD();
@@ -206,8 +221,8 @@ bool MainWindow::OnCopyISO()
 
     std::string drive = partitionManager->getPartitionDriveLetter();
     if (drive.empty()) {
-        LogMessage("Partición 'EASYISOBOOT' no encontrada.\r\n");
-        MessageBoxW(NULL, L"Partición 'EASYISOBOOT' no encontrada.", L"Error", MB_OK);
+        LogMessage("Partición 'ISOBOOT' no encontrada.\r\n");
+        MessageBoxW(NULL, L"Partición 'ISOBOOT' no encontrada.", L"Error", MB_OK);
         return false;
     }
 
@@ -240,8 +255,8 @@ void MainWindow::OnConfigureBCD()
 
     std::string drive = partitionManager->getPartitionDriveLetter();
     if (drive.empty()) {
-        LogMessage("Partición 'EASYISOBOOT' no encontrada.\r\n");
-        MessageBoxW(NULL, L"Partición 'EASYISOBOOT' no encontrada.", L"Error", MB_OK);
+        LogMessage("Partición 'ISOBOOT' no encontrada.\r\n");
+        MessageBoxW(NULL, L"Partición 'ISOBOOT' no encontrada.", L"Error", MB_OK);
         return;
     }
 
@@ -268,7 +283,7 @@ void MainWindow::UpdateDiskSpaceInfo()
     bool partitionExists = partitionManager->partitionExists();
     const WCHAR* existsStr = partitionExists ? L"Si" : L"No";
     WCHAR text[200];
-    swprintf(text, 200, L"Espacio disponible en C: %lld GB | Particion 'EASYISOBOOT' encontrada: %s", availableGB, existsStr);
+    swprintf(text, 200, L"Espacio disponible en C: %lld GB | Particion 'ISOBOOT' encontrada: %s", availableGB, existsStr);
     SetWindowTextW(diskSpaceLabel, text);
 }
 
