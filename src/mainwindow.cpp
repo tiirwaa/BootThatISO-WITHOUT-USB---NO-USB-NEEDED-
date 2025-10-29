@@ -159,7 +159,7 @@ void MainWindow::HandleCommand(UINT msg, WPARAM wParam, LPARAM lParam)
         isProcessing = false;
         break;
     case WM_ASK_RESTART:
-        if (MessageBoxW(hWndParent, L"Proceso completado. ¿Desea reiniciar el sistema ahora?", L"Reiniciar", MB_YESNO) == IDYES) {
+        if (MessageBoxW(hWndParent, L"Proceso terminado. ¿Desea reiniciar el sistema ahora?", L"Reiniciar", MB_YESNO) == IDYES) {
             if (!RestartSystem()) {
                 MessageBoxW(hWndParent, L"Error al reiniciar el sistema.", L"Error", MB_OK);
             }
@@ -362,10 +362,10 @@ void MainWindow::ProcessInThread()
         OnConfigureBCD();
         PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Proceso completado.\r\n"));
         PostMessage(hWndParent, WM_UPDATE_PROGRESS, 100, 0);
-        PostMessage(hWndParent, WM_ASK_RESTART, 0, 0);
     } else {
         PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Proceso fallido debido a errores en la copia del ISO.\r\n"));
     }
+    PostMessage(hWndParent, WM_ASK_RESTART, 0, 0);
     PostMessage(hWndParent, WM_ENABLE_BUTTON, 0, 0);
 }
 
