@@ -27,6 +27,7 @@
 #define WM_ENABLE_BUTTON (WM_USER + 3)
 #define WM_ASK_RESTART (WM_USER + 4)
 #define WM_UPDATE_DETAILED_PROGRESS (WM_USER + 5)
+#define WM_UPDATE_ERROR (WM_USER + 6)
 
 class MainWindow : public EventObserver
 {
@@ -38,6 +39,7 @@ public:
     void onLogUpdate(const std::string& message) override;
     void onButtonEnable() override;
     void onAskRestart() override;
+    void onError(const std::string& message) override;
     void onDetailedProgress(long long copied, long long total, const std::string& operation) override;
 
     void HandleCommand(UINT msg, WPARAM wParam, LPARAM lParam);

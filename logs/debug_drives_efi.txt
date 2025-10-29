@@ -1,0 +1,14 @@
+Searching for ISOEFI partition...
+Checking drive: C:\ (type: 3)
+  Volume name: 'Windows', File system: 'NTFS'
+Checking drive: D:\ (type: 5)
+  Drive type 5 (not DRIVE_FIXED)
+Checking drive: E:\ (type: 5)
+  Drive type 5 (not DRIVE_FIXED)
+Checking drive: F:\ (type: 5)
+  Drive type 5 (not DRIVE_FIXED)
+Checking drive: G:\ (type: 5)
+  Drive type 5 (not DRIVE_FIXED)
+Checking drive: Y:\ (type: 3)
+  Volume name: 'ISOEFI', File system: 'FAT32'
+  Found ISOEFI partition at: Y:\

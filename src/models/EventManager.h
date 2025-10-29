@@ -42,6 +42,12 @@ public:
         }
     }
 
+    void notifyError(const std::string& message) {
+        for (auto observer : observers) {
+            observer->onError(message);
+        }
+    }
+
     void notifyDetailedProgress(long long copied, long long total, const std::string& operation) {
         for (auto observer : observers) {
             observer->onDetailedProgress(copied, total, operation);

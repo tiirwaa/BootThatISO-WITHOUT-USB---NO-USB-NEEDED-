@@ -50,6 +50,7 @@ void ProcessController::processInThread(const std::string& isoPath, const std::s
         eventManager.notifyProgressUpdate(20);
         if (!partitionManager->reformatPartition(selectedFormat)) {
             eventManager.notifyLogUpdate("Error al reformatear la partición.\r\n");
+            eventManager.notifyError("Error al reformatear la partición.");
             eventManager.notifyButtonEnable();
             return;
         }
@@ -64,6 +65,7 @@ void ProcessController::processInThread(const std::string& isoPath, const std::s
 
         if (!partitionManager->createPartition(selectedFormat)) {
             eventManager.notifyLogUpdate("Error al crear la partición.\r\n");
+            eventManager.notifyError("Error al crear la partición.");
             eventManager.notifyButtonEnable();
             return;
         }
@@ -75,6 +77,7 @@ void ProcessController::processInThread(const std::string& isoPath, const std::s
     std::string partitionDrive = partitionManager->getPartitionDriveLetter();
     if (partitionDrive.empty()) {
         eventManager.notifyLogUpdate("Error: No se puede acceder a la partición ISOBOOT.\r\n");
+        eventManager.notifyError("Error: No se puede acceder a la partición ISOBOOT.");
         eventManager.notifyButtonEnable();
         return;
     }
@@ -83,6 +86,7 @@ void ProcessController::processInThread(const std::string& isoPath, const std::s
     std::string espDrive = partitionManager->getEfiPartitionDriveLetter();
     if (espDrive.empty()) {
         eventManager.notifyLogUpdate("Error: No se puede acceder a la partición ISOEFI.\r\n");
+        eventManager.notifyError("Error: No se puede acceder a la partición ISOEFI.");
         eventManager.notifyButtonEnable();
         return;
     }
@@ -96,6 +100,7 @@ void ProcessController::processInThread(const std::string& isoPath, const std::s
         eventManager.notifyAskRestart();
     } else {
         eventManager.notifyLogUpdate("Proceso fallido debido a errores en la copia del ISO.\r\n");
+        eventManager.notifyError("Proceso fallido debido a errores en la copia del ISO.");
     }
     eventManager.notifyButtonEnable();
 }
@@ -152,6 +157,7 @@ void ProcessController::configureBCD(const std::string& driveLetter, const std::
     std::string error = bcdManager->configureBCD(driveLetter.substr(0, 2), espDriveLetter.substr(0, 2), *strategy);
     if (!error.empty()) {
         eventManager.notifyLogUpdate("Error al configurar BCD: " + error + "\r\n");
+        eventManager.notifyError("Error al configurar BCD: " + error);
     } else {
         eventManager.notifyLogUpdate("BCD configurado exitosamente.\r\n");
         eventManager.notifyProgressUpdate(100);

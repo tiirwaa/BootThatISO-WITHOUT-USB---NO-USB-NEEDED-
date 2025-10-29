@@ -11,6 +11,7 @@
 #include <iomanip>
 
 #define WM_UPDATE_DETAILED_PROGRESS (WM_USER + 5)
+#define WM_UPDATE_ERROR (WM_USER + 6)
 
 struct DetailedProgressData {
     long long copied;
@@ -181,6 +182,14 @@ void MainWindow::HandleCommand(UINT msg, WPARAM wParam, LPARAM lParam)
             delete data;
         }
         break;
+    case WM_UPDATE_ERROR:
+        {
+            std::string* errorMsg = reinterpret_cast<std::string*>(lParam);
+            std::wstring wmsg(errorMsg->begin(), errorMsg->end());
+            MessageBoxW(hWndParent, wmsg.c_str(), L"Error", MB_OK | MB_ICONERROR);
+            delete errorMsg;
+        }
+        break;
     }
 }
 
@@ -344,4 +353,9 @@ void MainWindow::onAskRestart() {
             MessageBoxW(hWndParent, L"Error al reiniciar el sistema.", L"Error", MB_OK);
         }
     }
+}
+
+void MainWindow::onError(const std::string& message) {
+    std::string* msg = new std::string(message);
+    PostMessage(hWndParent, WM_UPDATE_ERROR, 0, (LPARAM)msg);
 }
