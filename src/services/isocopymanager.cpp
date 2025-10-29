@@ -112,23 +112,27 @@ static DWORD CALLBACK CopyFileProgressRoutine(
     return PROGRESS_CONTINUE;
 }
 
-long long ISOCopyManager::getDirectorySize(const std::string& path) {
-    long long size = 0;
+void ISOCopyManager::listDirectoryRecursive(std::ofstream& log, const std::string& path, int depth, int maxDepth) {
+    if (depth >= maxDepth) return;
+    
     WIN32_FIND_DATAA findData;
-    HANDLE hFind = FindFirstFileA((path + "\\*").c_str(), &findData);
-    if (hFind == INVALID_HANDLE_VALUE) return 0;
+    HANDLE hFind = FindFirstFileA((path + "*").c_str(), &findData);
+    if (hFind == INVALID_HANDLE_VALUE) return;
+    
     do {
-        std::string name = findData.cFileName;
-        if (name != "." && name != "..") {
+        std::string fileName = findData.cFileName;
+        if (fileName != "." && fileName != "..") {
+            std::string indent(depth * 2, ' ');
+            log << indent << fileName;
             if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-                size += getDirectorySize(path + "\\" + name);
+                log << "/" << std::endl;
+                listDirectoryRecursive(log, path + fileName + "\\", depth + 1, maxDepth);
             } else {
-                size += ((long long)findData.nFileSizeHigh << 32) | findData.nFileSizeLow;
+                log << std::endl;
             }
         }
     } while (FindNextFileA(hFind, &findData));
     FindClose(hFind);
-    return size;
 }
 
 bool ISOCopyManager::copyDirectoryWithProgress(const std::string& source, const std::string& dest, EventManager& eventManager, long long totalSize, long long& copiedSoFar, const std::set<std::string>& excludeDirs) {
@@ -273,19 +277,9 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
     
     eventManager.notifyDetailedProgress(isoSize / 10, isoSize, "Analizando contenido ISO");
     
-    // List all files in the root of the ISO
+    // List all files and directories recursively in the ISO (up to 10 levels deep)
     std::ofstream contentLog(Utils::getExeDirectory() + "iso_content.log");
-    WIN32_FIND_DATAA findData;
-    HANDLE hFind = FindFirstFileA((sourcePath + "*").c_str(), &findData);
-    if (hFind != INVALID_HANDLE_VALUE) {
-        do {
-            std::string fileName = findData.cFileName;
-            if (fileName != "." && fileName != "..") {
-                contentLog << fileName << "\n";
-            }
-        } while (FindNextFileA(hFind, &findData));
-        FindClose(hFind);
-    }
+    listDirectoryRecursive(contentLog, sourcePath, 0, 10);
     contentLog.close();
     
     // Check if it's Windows ISO

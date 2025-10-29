@@ -26,6 +26,7 @@ private:
     std::string getTimestamp();
     long long getDirectorySize(const std::string& path);
     bool copyDirectoryWithProgress(const std::string& source, const std::string& dest, EventManager& eventManager, long long totalSize, long long& copiedSoFar, const std::set<std::string>& excludeDirs = {});
+    void listDirectoryRecursive(std::ofstream& log, const std::string& path, int depth, int maxDepth);
 };
 
 #endif // ISOCOPYMANAGER_H
