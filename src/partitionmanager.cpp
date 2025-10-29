@@ -104,3 +104,14 @@ bool PartitionManager::createPartition()
 
     return true;
 }
+
+bool PartitionManager::partitionExists()
+{
+    QList<QStorageInfo> volumes = QStorageInfo::mountedVolumes();
+    for (const QStorageInfo &storage : volumes) {
+        if (storage.displayName() == "EasyISOBoot") {
+            return true;
+        }
+    }
+    return false;
+}

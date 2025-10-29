@@ -69,6 +69,7 @@ void MainWindow::setupUI()
 
     QHBoxLayout *isoLayout = new QHBoxLayout;
     isoPathEdit = new QLineEdit;
+    isoPathEdit->setReadOnly(true);
     browseButton = new QPushButton("Buscar");
     browseButton->setStyleSheet("background-color: #6200EE; color: white;");
     connect(browseButton, &QPushButton::clicked, this, &MainWindow::selectISO);
@@ -159,38 +160,41 @@ void MainWindow::createPartition()
         QMessageBox::warning(this, "Archivo ISO", "Por favor, seleccione un archivo ISO primero.");
         return;
     }
-    // Validación de espacio disponible usando el partitionManager
-    SpaceValidationResult validation = partitionManager->validateAvailableSpace();
-    if (!validation.isValid) {
-        QMessageBox::critical(this, "Espacio Insuficiente", validation.errorMessage);
-        return;
+
+    if(!partitionManager->partitionExists()) {
+        // Validación de espacio disponible usando el partitionManager
+        SpaceValidationResult validation = partitionManager->validateAvailableSpace();
+        if (!validation.isValid) {
+            QMessageBox::critical(this, "Espacio Insuficiente", validation.errorMessage);
+            return;
+        }
+
+        // Primera alerta de confirmación
+        QMessageBox::StandardButton reply1 = QMessageBox::question(this, "Confirmación de Operación",
+            "Esta operación modificará el disco del sistema, reduciendo su tamaño en 10 GB para crear una partición bootable. ¿Desea continuar?",
+            QMessageBox::Yes | QMessageBox::No);
+        if (reply1 != QMessageBox::Yes) {
+            return;
+        }
+
+        // Segunda alerta de confirmación
+        QMessageBox::StandardButton reply2 = QMessageBox::question(this, "Segunda Confirmación",
+            "Esta es la segunda confirmación. La operación de modificación del disco es irreversible y puede causar pérdida de datos si no se realiza correctamente. ¿Está completamente seguro de que desea proceder?",
+            QMessageBox::Yes | QMessageBox::No);
+        if (reply2 != QMessageBox::Yes) {
+            return;
+        }
+
+        // Llamar al partitionManager para crear la partición
+        if (!partitionManager->createPartition()) {
+            QMessageBox::critical(this, "Error", "Error al crear la partición.");
+        } 
     }
 
-    // Primera alerta de confirmación
-    QMessageBox::StandardButton reply1 = QMessageBox::question(this, "Confirmación de Operación",
-        "Esta operación modificará el disco del sistema, reduciendo su tamaño en 10 GB para crear una partición bootable. ¿Desea continuar?",
-        QMessageBox::Yes | QMessageBox::No);
-    if (reply1 != QMessageBox::Yes) {
-        return;
-    }
-
-    // Segunda alerta de confirmación
-    QMessageBox::StandardButton reply2 = QMessageBox::question(this, "Segunda Confirmación",
-        "Esta es la segunda confirmación. La operación de modificación del disco es irreversible y puede causar pérdida de datos si no se realiza correctamente. ¿Está completamente seguro de que desea proceder?",
-        QMessageBox::Yes | QMessageBox::No);
-    if (reply2 != QMessageBox::Yes) {
-        return;
-    }
-
-    // Llamar al partitionManager para crear la partición
-    if (partitionManager->createPartition()) {
-        // Proceder con la copia del ISO
-        copyISO();
-        // Luego configurar BCD
-        configureBCD();
-    } else {
-        QMessageBox::critical(this, "Error", "Error al crear la partición.");
-    }
+    // Proceder con la copia del ISO
+    copyISO();
+    // Luego configurar BCD
+    configureBCD();
 }
 
 void MainWindow::copyISO()

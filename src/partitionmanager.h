@@ -18,6 +18,7 @@ public:
     SpaceValidationResult validateAvailableSpace();
     qint64 getAvailableSpaceGB();
     bool createPartition();
+    bool partitionExists();
 };
 
 #endif // PARTITIONMANAGER_H
