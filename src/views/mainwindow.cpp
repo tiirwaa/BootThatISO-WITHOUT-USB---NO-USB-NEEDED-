@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include "../utils/constants.h"
+#include "../utils/Utils.h"
 #include "../models/BootStrategyFactory.h"
 #include <commdlg.h>
 #include <commctrl.h>
@@ -25,7 +26,7 @@ MainWindow::MainWindow(HWND parent)
     bcdManager = &BCDManager::getInstance();
     eventManager.addObserver(this);
     processController = new ProcessController(eventManager);
-    generalLogFile.open("general_log.txt", std::ios::app);
+    generalLogFile.open(Utils::getExeDirectory() + "general_log.txt", std::ios::app);
     if (partitionManager->partitionExists()) {
         bcdManager->restoreBCD();
     }

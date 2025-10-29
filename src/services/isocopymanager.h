@@ -2,6 +2,7 @@
 #define ISOCOPYMANAGER_H
 
 #include <string>
+#include <set>
 #include "../models/EventManager.h"
 
 class ISOCopyManager
@@ -22,6 +23,8 @@ public:
 
 private:
     std::string exec(const char* cmd);
+    long long getDirectorySize(const std::string& path);
+    bool copyDirectoryWithProgress(const std::string& source, const std::string& dest, EventManager& eventManager, long long totalSize, long long& copiedSoFar, const std::set<std::string>& excludeDirs = {});
 };
 
 #endif // ISOCOPYMANAGER_H

@@ -93,10 +93,10 @@ void ProcessController::processInThread(const std::string& isoPath, const std::s
         configureBCD(partitionDrive, espDrive, selectedBootMode);
         eventManager.notifyLogUpdate("Proceso completado.\r\n");
         eventManager.notifyProgressUpdate(100);
+        eventManager.notifyAskRestart();
     } else {
         eventManager.notifyLogUpdate("Proceso fallido debido a errores en la copia del ISO.\r\n");
     }
-    eventManager.notifyAskRestart();
     eventManager.notifyButtonEnable();
 }
 

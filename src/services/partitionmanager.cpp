@@ -1,5 +1,6 @@
 #include "partitionmanager.h"
 #include "../utils/constants.h"
+#include "../utils/Utils.h"
 #include <windows.h>
 #include <string>
 #include <sstream>
@@ -239,7 +240,7 @@ std::string PartitionManager::getPartitionDriveLetter()
     char drives[256];
     GetLogicalDriveStringsA(sizeof(drives), drives);
 
-    std::ofstream debugLog("debug_drives.txt");
+    std::ofstream debugLog((Utils::getExeDirectory() + "debug_drives.txt").c_str());
     debugLog << "Searching for EASYISOBOOT partition...\n";
 
     char* drive = drives;
@@ -366,7 +367,7 @@ std::string PartitionManager::getEfiPartitionDriveLetter()
     char drives[256];
     GetLogicalDriveStringsA(sizeof(drives), drives);
 
-    std::ofstream debugLog("debug_drives_efi.txt");
+    std::ofstream debugLog((Utils::getExeDirectory() + "debug_drives_efi.txt").c_str());
     debugLog << "Searching for " << EFI_VOLUME_LABEL << " partition...\n";
 
     char* drive = drives;
@@ -594,7 +595,7 @@ bool PartitionManager::reformatPartition(const std::string& format)
     DeleteFileA(tempFile);
 
     if (exitCode != 0) {
-        std::ofstream logFile("reformat_log.txt");
+        std::ofstream logFile((Utils::getExeDirectory() + "reformat_log.txt").c_str());
         if (logFile) {
             logFile << "Diskpart list volume failed with exit code: " << exitCode << "\n";
             logFile << "Output:\n" << output << "\n";
@@ -638,7 +639,7 @@ bool PartitionManager::reformatPartition(const std::string& format)
         }
     }
 
-    std::ofstream logFile("reformat_log.txt");
+    std::ofstream logFile((Utils::getExeDirectory() + "reformat_log.txt").c_str());
     if (logFile) {
         logFile << "Diskpart list volume output:\n" << output << "\n";
         if (volumeNumber == -1) {
@@ -686,7 +687,7 @@ bool PartitionManager::reformatPartition(const std::string& format)
     // Refresh volume information
     system("mountvol /r >nul 2>&1");
 
-    std::ofstream logFile2("reformat_log.txt", std::ios::app);
+    std::ofstream logFile2((Utils::getExeDirectory() + "reformat_log.txt").c_str(), std::ios::app);
     if (logFile2) {
         logFile2 << "Format command exit code: " << exitCode << "\n";
         logFile2.close();
