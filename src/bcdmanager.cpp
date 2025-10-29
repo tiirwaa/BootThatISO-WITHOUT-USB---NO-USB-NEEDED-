@@ -77,17 +77,27 @@ WORD BCDManager::GetMachineType(const std::string& filePath) {
     return machine;
 }
 
-std::string BCDManager::configureBCD(const std::string& driveLetter, const std::string& espDriveLetter, const std::string& bootPath)
+std::string BCDManager::configureBCD(const std::string& driveLetter, const std::string& espDriveLetter)
 {
-    // Get volume GUID for BCD
-    WCHAR volumeName[MAX_PATH];
+    // Get volume GUID for data partition
+    WCHAR dataVolumeName[MAX_PATH];
     std::wstring wDriveLetter = std::wstring(driveLetter.begin(), driveLetter.end()) + L"\\";
-    if (!GetVolumeNameForVolumeMountPointW(wDriveLetter.c_str(), volumeName, MAX_PATH)) {
-        return "Error al obtener el nombre del volumen";
+    if (!GetVolumeNameForVolumeMountPointW(wDriveLetter.c_str(), dataVolumeName, MAX_PATH)) {
+        return "Error al obtener el nombre del volumen de datos";
     }
-    char narrowVolumeName[MAX_PATH * 2];
-    WideCharToMultiByte(CP_UTF8, 0, volumeName, -1, narrowVolumeName, sizeof(narrowVolumeName), NULL, NULL);
-    std::string device = narrowVolumeName;
+    char narrowDataVolumeName[MAX_PATH * 2];
+    WideCharToMultiByte(CP_UTF8, 0, dataVolumeName, -1, narrowDataVolumeName, sizeof(narrowDataVolumeName), NULL, NULL);
+    std::string dataDevice = narrowDataVolumeName;
+
+    // Get volume GUID for ESP
+    WCHAR espVolumeName[MAX_PATH];
+    std::wstring wEspDriveLetter = std::wstring(espDriveLetter.begin(), espDriveLetter.end()) + L"\\";
+    if (!GetVolumeNameForVolumeMountPointW(wEspDriveLetter.c_str(), espVolumeName, MAX_PATH)) {
+        return "Error al obtener el nombre del volumen ESP";
+    }
+    char narrowEspVolumeName[MAX_PATH * 2];
+    WideCharToMultiByte(CP_UTF8, 0, espVolumeName, -1, narrowEspVolumeName, sizeof(narrowEspVolumeName), NULL, NULL);
+    std::string espDevice = narrowEspVolumeName;
 
     // Set default to current to avoid issues with deleting the default entry
     exec("bcdedit /default {current}");
@@ -120,23 +130,33 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
 
     // Find the EFI boot file in ESP
     std::string efiBootFile;
-    std::string candidate1 = espDriveLetter + "\\efi\\boot\\bootx64.efi";
+    std::string candidate1 = espDriveLetter + "\\EFI\\boot\\bootx64.efi";
     if (GetFileAttributesA(candidate1.c_str()) != INVALID_FILE_ATTRIBUTES) {
         efiBootFile = candidate1;
     } else {
-        std::string candidate2 = espDriveLetter + "\\efi\\boot\\bootia32.efi";
+        std::string candidate2 = espDriveLetter + "\\EFI\\boot\\bootia32.efi";
         if (GetFileAttributesA(candidate2.c_str()) != INVALID_FILE_ATTRIBUTES) {
             efiBootFile = candidate2;
         } else {
-            std::string candidate3 = espDriveLetter + "\\efi\\boot\\BOOTX64.EFI";
+            std::string candidate3 = espDriveLetter + "\\EFI\\boot\\BOOTX64.EFI";
             if (GetFileAttributesA(candidate3.c_str()) != INVALID_FILE_ATTRIBUTES) {
                 efiBootFile = candidate3;
             } else {
-                std::string candidate4 = espDriveLetter + "\\efi\\boot\\BOOTIA32.EFI";
+                std::string candidate4 = espDriveLetter + "\\EFI\\boot\\BOOTIA32.EFI";
                 if (GetFileAttributesA(candidate4.c_str()) != INVALID_FILE_ATTRIBUTES) {
                     efiBootFile = candidate4;
                 } else {
-                    return "Archivo EFI boot no encontrado en ESP";
+                    std::string candidate5 = espDriveLetter + "\\EFI\\microsoft\\boot\\bootmgfw.efi";
+                    if (GetFileAttributesA(candidate5.c_str()) != INVALID_FILE_ATTRIBUTES) {
+                        efiBootFile = candidate5;
+                    } else {
+                        std::string candidate6 = espDriveLetter + "\\EFI\\Microsoft\\Boot\\bootmgfw.efi";
+                        if (GetFileAttributesA(candidate6.c_str()) != INVALID_FILE_ATTRIBUTES) {
+                            efiBootFile = candidate6;
+                        } else {
+                            return "Archivo EFI boot no encontrado en ESP";
+                        }
+                    }
                 }
             }
         }
@@ -147,10 +167,15 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
         return "Arquitectura EFI no soportada";
     }
 
-    // Configure for direct booting from data partition
-    std::string cmd1 = "bcdedit /set " + guid + " device partition=" + device;
-    std::string cmd2 = "bcdedit /set " + guid + " osdevice partition=" + device;
-    std::string cmd3 = "bcdedit /set " + guid + " path " + bootPath;
+    // Compute the relative path for BCD
+    std::string efiPath = efiBootFile.substr(espDriveLetter.length());
+    // Replace backslashes with forward slashes? No, BCD uses backslashes
+    // efiPath is like \efi\boot\bootx64.efi
+
+    // Configure for EFI booting
+    std::string cmd1 = "bcdedit /set " + guid + " device partition=" + espDevice;
+    std::string cmd2 = "bcdedit /set " + guid + " osdevice partition=" + dataDevice;
+    std::string cmd3 = "bcdedit /set " + guid + " path " + efiPath;
 
     std::string result1 = exec(cmd1.c_str());
     if (result1.find("error") != std::string::npos) return "Error al configurar device: " + cmd1;

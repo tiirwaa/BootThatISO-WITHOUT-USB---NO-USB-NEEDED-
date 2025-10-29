@@ -1,7 +1,0 @@
-hirens ISO
-file: \sources\boot.wim
-status: 0xc000000f
-
-
-
-

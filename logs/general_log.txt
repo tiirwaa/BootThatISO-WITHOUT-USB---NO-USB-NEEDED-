@@ -1,0 +1,20 @@
+Iniciando proceso...
+
+Partición ISOBOOT encontrada en: Z:\
+
+Partición ISOEFI encontrada en: Y:\
+
+Extrayendo archivos EFI del ISO...
+
+Archivos extraídos exitosamente.
+
+Copiando archivo ISO completo...
+
+Archivo ISO copiado exitosamente.
+
+Configurando BCD...
+
+BCD configurado exitosamente.
+
+Proceso completado.
+

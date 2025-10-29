@@ -120,7 +120,7 @@ bool ISOCopyManager::extractISOContents(const std::string& isoPath, const std::s
     }
     
     // Create destination EFI directory on ESP
-    std::string efiDestPath = espPath + "efi";
+    std::string efiDestPath = espPath + "EFI";
     if (!CreateDirectoryA(efiDestPath.c_str(), NULL) && GetLastError() != ERROR_ALREADY_EXISTS) {
         logFile << "Failed to create destination EFI directory: " << efiDestPath << "\n";
         logFile.close();

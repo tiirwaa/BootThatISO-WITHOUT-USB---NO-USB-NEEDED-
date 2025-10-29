@@ -296,8 +296,7 @@ void MainWindow::OnConfigureBCD()
         return;
     }
     std::string espDriveLetter = espDrive.substr(0, 2);
-    std::string bootPath = isoCopyManager->isWindowsISO ? "\\sources\\boot.wim" : "\\bootmgr.efi";
-    std::string error = bcdManager->configureBCD(driveLetter, espDriveLetter, bootPath);
+    std::string error = bcdManager->configureBCD(driveLetter, espDriveLetter);
     if (!error.empty()) {
         LogMessage("Error al configurar BCD: " + error + "\r\n");
         std::wstring werror(error.begin(), error.end());

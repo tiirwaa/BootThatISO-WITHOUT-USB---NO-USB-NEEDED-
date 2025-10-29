@@ -1,3 +1,0 @@
-Copying ISO file from: C:\Users\vboxuser\Desktop\HBCD_PE_x64.iso
-To: Z:\iso.iso
-ISO file copied successfully.
