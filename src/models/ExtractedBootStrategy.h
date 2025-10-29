@@ -11,7 +11,7 @@ public:
     }
 
     void configureBCD(const std::string& guid, const std::string& dataDevice, const std::string& espDevice, const std::string& efiPath) override {
-        std::string cmd1 = "bcdedit /set " + guid + " device partition=" + dataDevice;
+        std::string cmd1 = "bcdedit /set " + guid + " device partition=" + espDevice;
         std::string cmd2 = "bcdedit /set " + guid + " osdevice partition=" + dataDevice;
         std::string cmd3 = "bcdedit /set " + guid + " path " + efiPath;
 
