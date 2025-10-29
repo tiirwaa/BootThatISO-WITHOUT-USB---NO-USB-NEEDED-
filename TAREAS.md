@@ -9,10 +9,10 @@ Basado en el análisis del proyecto en `README_RECOMENDACION.md`, a continuació
   - [x] Revisar y comprender los requisitos del proyecto descritos en README.md
   - [x] Identificar herramientas y bibliotecas necesarias para manipulación de discos y particiones (ej. diskpart, bcdedit, o bibliotecas en el lenguaje elegido)
 
-- [ ] **Implementación de Creación de Partición**
-  - [ ] Implementar reducción del disco del sistema en 10GB para crear una partición bootable
-  - [ ] Agregar validación de espacio disponible (fallar si no hay suficiente espacio)
-  - [ ] Implementar dos alertas de confirmación antes de iniciar la operación de modificación del disco
+- [x] **Implementación de Creación de Partición**
+  - [x] Implementar reducción del disco del sistema en 10GB para crear una partición bootable
+  - [x] Agregar validación de espacio disponible (fallar si no hay suficiente espacio)
+  - [x] Implementar dos alertas de confirmación antes de iniciar la operación de modificación del disco
 
 - [ ] **Implementación de Copia del ISO**
   - [ ] Elegir método para copiar el ISO (herramientas de consola como Ventoy, Rufus, dd, o implementación directa en código)

@@ -11,6 +11,7 @@
 #include <QFrame>
 #include <QFileDialog>
 #include <QMessageBox>
+#include <QStorageInfo>
 
 class MainWindow : public QMainWindow
 {

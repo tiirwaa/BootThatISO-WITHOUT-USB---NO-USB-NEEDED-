@@ -153,7 +153,33 @@ void MainWindow::selectISO()
 
 void MainWindow::createPartition()
 {
-    QMessageBox::information(this, "Crear Partición", "Función no implementada aún.");
+    // Validación de espacio disponible
+    QStorageInfo storage("C:/");
+    qint64 availableGB = storage.bytesAvailable() / (1024 * 1024 * 1024);
+    if (availableGB < 10) {
+        QMessageBox::critical(this, "Espacio Insuficiente", 
+            QString("No hay suficiente espacio disponible. Se requieren al menos 10 GB, pero solo hay %1 GB disponibles.").arg(availableGB));
+        return;
+    }
+
+    // Primera alerta de confirmación
+    QMessageBox::StandardButton reply1 = QMessageBox::question(this, "Confirmación de Operación",
+        "Esta operación modificará el disco del sistema, reduciendo su tamaño en 10 GB para crear una partición bootable. ¿Desea continuar?",
+        QMessageBox::Yes | QMessageBox::No);
+    if (reply1 != QMessageBox::Yes) {
+        return;
+    }
+
+    // Segunda alerta de confirmación
+    QMessageBox::StandardButton reply2 = QMessageBox::question(this, "Segunda Confirmación",
+        "Esta es la segunda confirmación. La operación de modificación del disco es irreversible y puede causar pérdida de datos si no se realiza correctamente. ¿Está completamente seguro de que desea proceder?",
+        QMessageBox::Yes | QMessageBox::No);
+    if (reply2 != QMessageBox::Yes) {
+        return;
+    }
+
+    // Mensaje de no implementado aún
+    QMessageBox::information(this, "No Implementado", "No implementado aún, para luego proseguir con los demás tareas");
 }
 
 void MainWindow::copyISO()
