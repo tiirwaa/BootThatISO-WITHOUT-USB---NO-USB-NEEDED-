@@ -22,6 +22,7 @@
 #define WM_UPDATE_PROGRESS (WM_USER + 1)
 #define WM_UPDATE_LOG (WM_USER + 2)
 #define WM_ENABLE_BUTTON (WM_USER + 3)
+#define WM_ASK_RESTART (WM_USER + 4)
 
 class MainWindow
 {
@@ -43,6 +44,8 @@ private:
     bool OnCopyISO();
     void OnConfigureBCD();
     void OnOpenServicesPage();
+
+    bool RestartSystem();
 
     PartitionManager *partitionManager;
     ISOCopyManager *isoCopyManager;

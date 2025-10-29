@@ -158,6 +158,13 @@ void MainWindow::HandleCommand(UINT msg, WPARAM wParam, LPARAM lParam)
         EnableWindow(createPartitionButton, TRUE);
         isProcessing = false;
         break;
+    case WM_ASK_RESTART:
+        if (MessageBoxW(hWndParent, L"Proceso completado. ¿Desea reiniciar el sistema ahora?", L"Reiniciar", MB_YESNO) == IDYES) {
+            if (!RestartSystem()) {
+                MessageBoxW(hWndParent, L"Error al reiniciar el sistema.", L"Error", MB_OK);
+            }
+        }
+        break;
     }
 }
 
@@ -355,6 +362,7 @@ void MainWindow::ProcessInThread()
         OnConfigureBCD();
         PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Proceso completado.\r\n"));
         PostMessage(hWndParent, WM_UPDATE_PROGRESS, 100, 0);
+        PostMessage(hWndParent, WM_ASK_RESTART, 0, 0);
     } else {
         PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Proceso fallido debido a errores en la copia del ISO.\r\n"));
     }
@@ -388,4 +396,21 @@ void MainWindow::LogMessage(const std::string& msg)
     int len = GetWindowTextLengthW(logTextEdit);
     SendMessageW(logTextEdit, EM_SETSEL, len, len);
     SendMessageW(logTextEdit, EM_REPLACESEL, FALSE, (LPARAM)wmsg.c_str());
+}
+
+bool MainWindow::RestartSystem()
+{
+    HANDLE hToken;
+    TOKEN_PRIVILEGES tkp;
+    if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken))
+        return false;
+    LookupPrivilegeValue(NULL, SE_SHUTDOWN_NAME, &tkp.Privileges[0].Luid);
+    tkp.PrivilegeCount = 1;
+    tkp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+    AdjustTokenPrivileges(hToken, FALSE, &tkp, 0, (PTOKEN_PRIVILEGES)NULL, 0);
+    if (GetLastError() != ERROR_SUCCESS)
+        return false;
+    if (!ExitWindowsEx(EWX_REBOOT, 0))
+        return false;
+    return true;
 }

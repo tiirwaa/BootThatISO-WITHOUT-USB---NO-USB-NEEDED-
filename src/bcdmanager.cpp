@@ -146,7 +146,7 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
         }
     }
 
-    std::string bcdLabel = (mode == "RAMDISK") ? RAMDISK_VOLUME_LABEL : VOLUME_LABEL;
+    std::string bcdLabel = (mode == "RAMDISK") ? RAMDISK_BCD_LABEL : EXTRACTED_BCD_LABEL;
     std::string output = exec(("bcdedit /copy {default} /d \"" + std::string(bcdLabel) + "\"").c_str());
     if (output.find("error") != std::string::npos || output.find("{") == std::string::npos) return "Error al copiar entrada BCD";
     size_t pos = output.find("{");
