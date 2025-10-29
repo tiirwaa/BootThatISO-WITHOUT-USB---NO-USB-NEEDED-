@@ -17,7 +17,7 @@ public:
 
     SpaceValidationResult validateAvailableSpace();
     long long getAvailableSpaceGB();
-    bool createPartition();
+    bool createPartition(const std::string& format = "FAT32");
     bool partitionExists();
     std::string getPartitionDriveLetter();
 };

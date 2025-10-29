@@ -62,7 +62,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
         L"EasyISOBootClass",
         L"Easy ISOBoot - Configuración de Partición Bootable",
         WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
-        CW_USEDEFAULT, CW_USEDEFAULT, 800, 600,
+        CW_USEDEFAULT, CW_USEDEFAULT, 800, 650,
         NULL, NULL, hInstance, NULL);
 
     if (hwnd == NULL)

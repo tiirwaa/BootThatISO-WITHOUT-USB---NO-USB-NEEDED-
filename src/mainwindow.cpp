@@ -6,7 +6,7 @@
 #include <sstream>
 
 MainWindow::MainWindow(HWND parent)
-    : hInst(GetModuleHandle(NULL))
+    : hInst(GetModuleHandle(NULL)), selectedFormat("FAT32")
 {
     partitionManager = new PartitionManager();
     isoCopyManager = new ISOCopyManager();
@@ -46,21 +46,31 @@ void MainWindow::SetupUI(HWND parent)
     browseButton = CreateWindowW(L"BUTTON", L"Buscar", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 620, 100, 80, 25, parent, (HMENU)IDC_BROWSE_BUTTON, hInst, NULL);
     SendMessage(browseButton, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    diskSpaceLabel = CreateWindowW(L"STATIC", L"", WS_CHILD | WS_VISIBLE, 10, 140, 700, 20, parent, NULL, hInst, NULL);
+    formatLabel = CreateWindowW(L"STATIC", L"Formato del sistema de archivos:", WS_CHILD | WS_VISIBLE, 10, 135, 200, 20, parent, NULL, hInst, NULL);
+    SendMessage(formatLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
+
+    fat32Radio = CreateWindowW(L"BUTTON", L"FAT32 (Recomendado - Máxima compatibilidad EFI)", WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON | WS_GROUP, 10, 155, 350, 20, parent, (HMENU)IDC_FAT32_RADIO, hInst, NULL);
+    SendMessage(fat32Radio, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
+    SendMessage(fat32Radio, BM_SETCHECK, BST_CHECKED, 0); // FAT32 selected by default
+
+    exfatRadio = CreateWindowW(L"BUTTON", L"exFAT (Sin límite de 4GB por archivo)", WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON, 10, 175, 300, 20, parent, (HMENU)IDC_EXFAT_RADIO, hInst, NULL);
+    SendMessage(exfatRadio, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
+
+    diskSpaceLabel = CreateWindowW(L"STATIC", L"", WS_CHILD | WS_VISIBLE, 10, 200, 700, 20, parent, NULL, hInst, NULL);
     SendMessage(diskSpaceLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    createPartitionButton = CreateWindowW(L"BUTTON", L"Realizar proceso y Bootear ISO seleccionado", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 10, 170, 400, 40, parent, (HMENU)IDC_CREATE_PARTITION_BUTTON, hInst, NULL);
+    createPartitionButton = CreateWindowW(L"BUTTON", L"Realizar proceso y Bootear ISO seleccionado", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 10, 230, 400, 40, parent, (HMENU)IDC_CREATE_PARTITION_BUTTON, hInst, NULL);
     SendMessage(createPartitionButton, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    progressBar = CreateWindowW(PROGRESS_CLASSW, NULL, WS_CHILD | WS_VISIBLE, 10, 220, 760, 20, parent, NULL, hInst, NULL);
+    progressBar = CreateWindowW(PROGRESS_CLASSW, NULL, WS_CHILD | WS_VISIBLE, 10, 280, 760, 20, parent, NULL, hInst, NULL);
 
-    logTextEdit = CreateWindowW(L"EDIT", L"", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_MULTILINE | ES_AUTOVSCROLL, 10, 250, 760, 250, parent, NULL, hInst, NULL);
+    logTextEdit = CreateWindowW(L"EDIT", L"", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_MULTILINE | ES_AUTOVSCROLL, 10, 310, 760, 250, parent, NULL, hInst, NULL);
     SendMessage(logTextEdit, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    footerLabel = CreateWindowW(L"STATIC", L"Versión 1.0", WS_CHILD | WS_VISIBLE, 10, 510, 100, 20, parent, NULL, hInst, NULL);
+    footerLabel = CreateWindowW(L"STATIC", L"Versión 1.0", WS_CHILD | WS_VISIBLE, 10, 570, 100, 20, parent, NULL, hInst, NULL);
     SendMessage(footerLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    servicesButton = CreateWindowW(L"BUTTON", L"Servicios", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 650, 510, 100, 20, parent, (HMENU)IDC_SERVICES_BUTTON, hInst, NULL);
+    servicesButton = CreateWindowW(L"BUTTON", L"Servicios", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 650, 570, 100, 20, parent, (HMENU)IDC_SERVICES_BUTTON, hInst, NULL);
     SendMessage(servicesButton, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 }
 
@@ -81,6 +91,16 @@ void MainWindow::HandleCommand(WPARAM wParam, LPARAM lParam)
         break;
     case IDC_SERVICES_BUTTON:
         OnOpenServicesPage();
+        break;
+    case IDC_FAT32_RADIO:
+        if (HIWORD(wParam) == BN_CLICKED) {
+            selectedFormat = "FAT32";
+        }
+        break;
+    case IDC_EXFAT_RADIO:
+        if (HIWORD(wParam) == BN_CLICKED) {
+            selectedFormat = "EXFAT";
+        }
         break;
     }
 }
@@ -143,7 +163,7 @@ void MainWindow::OnCreatePartition()
         LogMessage("Confirmaciones completadas. Creando partición...\r\n");
         SendMessage(progressBar, PBM_SETPOS, 20, 0);
 
-        if (!partitionManager->createPartition())
+        if (!partitionManager->createPartition(selectedFormat))
         {
             LogMessage("Error al crear la partición.\r\n");
             MessageBoxW(NULL, L"Error al crear la partición.", L"Error", MB_OK);
@@ -151,6 +171,15 @@ void MainWindow::OnCreatePartition()
         }
         LogMessage("Partición creada.\r\n");
         SendMessage(progressBar, PBM_SETPOS, 30, 0);
+
+        // Verificar que la partición EASYISOBOOT se puede encontrar
+        std::string partitionDrive = partitionManager->getPartitionDriveLetter();
+        if (partitionDrive.empty()) {
+            LogMessage("Error: No se puede acceder a la partición EASYISOBOOT después de crearla.\r\n");
+            MessageBoxW(NULL, L"No se puede acceder a la partición EASYISOBOOT después de crearla. Verifique el log para más detalles.", L"Error", MB_OK);
+            return;
+        }
+        LogMessage("Partición EASYISOBOOT encontrada en: " + partitionDrive + "\r\n");
     }
 
     OnCopyISO();
@@ -161,7 +190,7 @@ void MainWindow::OnCreatePartition()
 
 void MainWindow::OnCopyISO()
 {
-    LogMessage("Copiando ISO...\r\n");
+    LogMessage("Extrayendo archivos EFI del ISO...\r\n");
     SendMessage(progressBar, PBM_SETPOS, 40, 0);
 
     WCHAR isoPath[260];
@@ -174,18 +203,18 @@ void MainWindow::OnCopyISO()
 
     std::string drive = partitionManager->getPartitionDriveLetter();
     if (drive.empty()) {
-        LogMessage("Partición 'EasyISOBoot' no encontrada.\r\n");
-        MessageBoxW(NULL, L"Partición 'EasyISOBoot' no encontrada.", L"Error", MB_OK);
+        LogMessage("Partición 'EASYISOBOOT' no encontrada.\r\n");
+        MessageBoxW(NULL, L"Partición 'EASYISOBOOT' no encontrada.", L"Error", MB_OK);
         return;
     }
 
-    std::string dest = drive + "boot.iso";
-    if (isoCopyManager->copyISO(isoPathStr, dest)) {
-        LogMessage("ISO copiado exitosamente.\r\n");
+    std::string dest = drive;
+    if (isoCopyManager->extractEFIFiles(isoPathStr, dest)) {
+        LogMessage("Archivos EFI extraídos exitosamente.\r\n");
         SendMessage(progressBar, PBM_SETPOS, 70, 0);
     } else {
-        LogMessage("Error al copiar el ISO.\r\n");
-        MessageBoxW(NULL, L"Error al copiar el ISO.", L"Error", MB_OK);
+        LogMessage("Error al extraer archivos EFI del ISO.\r\n");
+        MessageBoxW(NULL, L"Error al extraer archivos EFI del ISO.", L"Error", MB_OK);
     }
 }
 
@@ -196,8 +225,8 @@ void MainWindow::OnConfigureBCD()
 
     std::string drive = partitionManager->getPartitionDriveLetter();
     if (drive.empty()) {
-        LogMessage("Partición 'EasyISOBoot' no encontrada.\r\n");
-        MessageBoxW(NULL, L"Partición 'EasyISOBoot' no encontrada.", L"Error", MB_OK);
+        LogMessage("Partición 'EASYISOBOOT' no encontrada.\r\n");
+        MessageBoxW(NULL, L"Partición 'EASYISOBOOT' no encontrada.", L"Error", MB_OK);
         return;
     }
 
@@ -224,7 +253,7 @@ void MainWindow::UpdateDiskSpaceInfo()
     bool partitionExists = partitionManager->partitionExists();
     const WCHAR* existsStr = partitionExists ? L"Si" : L"No";
     WCHAR text[200];
-    swprintf(text, 200, L"Espacio disponible en C: %lld GB | Particion 'EasyISOBoot' encontrada: %s", availableGB, existsStr);
+    swprintf(text, 200, L"Espacio disponible en C: %lld GB | Particion 'EASYISOBOOT' encontrada: %s", availableGB, existsStr);
     SetWindowTextW(diskSpaceLabel, text);
 }
 

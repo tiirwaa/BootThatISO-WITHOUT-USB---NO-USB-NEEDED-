@@ -10,6 +10,8 @@
 #define IDC_BROWSE_BUTTON 1001
 #define IDC_CREATE_PARTITION_BUTTON 1002
 #define IDC_SERVICES_BUTTON 1003
+#define IDC_FAT32_RADIO 1004
+#define IDC_EXFAT_RADIO 1005
 
 class MainWindow
 {
@@ -35,6 +37,9 @@ private:
     ISOCopyManager *isoCopyManager;
     BCDManager *bcdManager;
 
+    // File system format selection
+    std::string selectedFormat;
+
     // Controls
     HWND logoLabel;
     HWND titleLabel;
@@ -43,6 +48,9 @@ private:
     HWND isoPathLabel;
     HWND isoPathEdit;
     HWND browseButton;
+    HWND formatLabel;
+    HWND fat32Radio;
+    HWND exfatRadio;
     HWND diskSpaceLabel;
     HWND createPartitionButton;
     HWND progressBar;

@@ -40,11 +40,11 @@ std::string BCDManager::configureBCD(const std::string& driveLetter)
     // Set default to current to avoid issues with deleting the default entry
     exec("bcdedit /default {current}");
 
-    // Delete any existing EasyISOBoot entries to avoid duplicates
+    // Delete any existing EASYISOBOOT entries to avoid duplicates
     std::string enumOutput = exec("bcdedit /enum");
     auto lines = split(enumOutput, '\n');
     for (size_t i = 0; i < lines.size(); ++i) {
-        if (lines[i].find("description") != std::string::npos && lines[i].find("EasyISOBoot") != std::string::npos) {
+        if (lines[i].find("description") != std::string::npos && lines[i].find("EASYISOBOOT") != std::string::npos) {
             if (i > 0 && lines[i-1].find("identifier") != std::string::npos) {
                 size_t pos = lines[i-1].find("{");
                 if (pos != std::string::npos) {
@@ -59,19 +59,19 @@ std::string BCDManager::configureBCD(const std::string& driveLetter)
         }
     }
 
-    std::string output = exec("bcdedit /copy {default} /d \"EasyISOBoot\"");
+    std::string output = exec("bcdedit /copy {default} /d \"EASYISOBOOT\"");
     if (output.find("error") != std::string::npos || output.find("{") == std::string::npos) return "Error al copiar entrada BCD";
     size_t pos = output.find("{");
     size_t end = output.find("}", pos);
     if (end == std::string::npos) return "Error al extraer GUID de la nueva entrada";
     std::string guid = output.substr(pos, end - pos + 1);
 
-    std::string ramdiskGuid = "{7619dcc8-fafe-11d9-b411-000476eba25f}";
-    std::string cmd1 = "bcdedit /set " + guid + " device ramdisk=[" + driveLetter + "]\\boot.iso," + ramdiskGuid;
+    // Configure for EFI booting from partition
+    std::string cmd1 = "bcdedit /set " + guid + " device partition=" + driveLetter;
     std::string result1 = exec(cmd1.c_str());
     if (result1.find("error") != std::string::npos) return "Error al configurar device: " + cmd1;
 
-    std::string cmd2 = "bcdedit /set " + guid + " osdevice ramdisk=[" + driveLetter + "]\\boot.iso," + ramdiskGuid;
+    std::string cmd2 = "bcdedit /set " + guid + " osdevice partition=" + driveLetter;
     std::string result2 = exec(cmd2.c_str());
     if (result2.find("error") != std::string::npos) return "Error al configurar osdevice: " + cmd2;
 
@@ -79,9 +79,9 @@ std::string BCDManager::configureBCD(const std::string& driveLetter)
     std::string result3 = exec(cmd3.c_str());
     if (result3.find("error") != std::string::npos) return "Error al configurar path: " + cmd3;
 
-    std::string cmd4 = "bcdedit /set " + guid + " systemroot \\windows";
-    std::string result4 = exec(cmd4.c_str());
-    if (result4.find("error") != std::string::npos) return "Error al configurar systemroot: " + cmd4;
+    // Remove systemroot for EFI booting
+    std::string cmd4 = "bcdedit /deletevalue " + guid + " systemroot";
+    exec(cmd4.c_str()); // Don't check error as it might not exist
 
     std::string cmd6 = "bcdedit /default " + guid;
     std::string result6 = exec(cmd6.c_str());
@@ -96,7 +96,7 @@ bool BCDManager::restoreBCD()
     auto lines = split(output, '\n');
     std::string guid;
     for (size_t i = 0; i < lines.size(); ++i) {
-        if (lines[i].find("description") != std::string::npos && lines[i].find("EasyISOBoot") != std::string::npos) {
+        if (lines[i].find("description") != std::string::npos && lines[i].find("EASYISOBOOT") != std::string::npos) {
             if (i > 0 && lines[i-1].find("identifier") != std::string::npos) {
                 size_t pos = lines[i-1].find("{");
                 if (pos != std::string::npos) {

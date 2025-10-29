@@ -9,7 +9,9 @@ public:
     ISOCopyManager();
     ~ISOCopyManager();
 
-    bool copyISO(const std::string& isoPath, const std::string& destPath);
+    bool extractEFIFiles(const std::string& isoPath, const std::string& destPath);
+private:
+    std::string exec(const char* cmd);
 };
 
 #endif // ISOCOPYMANAGER_H
