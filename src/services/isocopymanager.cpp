@@ -436,9 +436,9 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
         }
     }
     
-    // If boot.wim exists, extract additional boot files from it (common for modern ISOs)
+    // If boot.wim exists and this is a Windows ISO, extract additional boot files from it
     std::string bootWimPath = sourcePath + "sources\\boot.wim";
-    if (GetFileAttributesA(bootWimPath.c_str()) != INVALID_FILE_ATTRIBUTES) {
+    if (isWindowsISO && GetFileAttributesA(bootWimPath.c_str()) != INVALID_FILE_ATTRIBUTES) {
         logFile << getTimestamp() << "Extracting additional boot files from boot.wim" << std::endl;
             // Create temp dir for mounting
             char tempPath[MAX_PATH];
@@ -569,8 +569,8 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
     
     logFile << getTimestamp() << "Boot file check: " << bootFilePath << " - " << (bootFileExists ? "EXISTS" : "NOT FOUND") << std::endl;
     
-    // For non-Windows ISOs or if BOOTX64.EFI is missing, copy from system to ensure compatibility
-    if (!isWindowsISO || !bootFileExists) {
+    // If BOOTX64.EFI is missing, copy from system to ensure compatibility
+    if (!bootFileExists) {
         logFile << getTimestamp() << "Copying BOOTX64.EFI from system for compatibility" << std::endl;
         // Create EFI\BOOT directory
         std::string bootDir = efiDestPath + "\\BOOT";
