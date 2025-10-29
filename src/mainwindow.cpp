@@ -33,9 +33,6 @@ void MainWindow::SetupUI(HWND parent)
     subtitleLabel = CreateWindowW(L"STATIC", L"Configuración de Partición Bootable", WS_CHILD | WS_VISIBLE, 75, 40, 300, 20, parent, NULL, hInst, NULL);
     SendMessage(subtitleLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    saveButton = CreateWindowW(L"BUTTON", L"Guardar Config", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 650, 10, 130, 30, parent, NULL, hInst, NULL);
-    SendMessage(saveButton, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
-
     isoPathLabel = CreateWindowW(L"STATIC", L"Ruta del archivo ISO:", WS_CHILD | WS_VISIBLE, 10, 80, 200, 20, parent, NULL, hInst, NULL);
     SendMessage(isoPathLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
@@ -45,7 +42,7 @@ void MainWindow::SetupUI(HWND parent)
     browseButton = CreateWindowW(L"BUTTON", L"Buscar", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 620, 100, 80, 25, parent, (HMENU)IDC_BROWSE_BUTTON, hInst, NULL);
     SendMessage(browseButton, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    diskSpaceLabel = CreateWindowW(L"STATIC", L"", WS_CHILD | WS_VISIBLE, 10, 140, 400, 20, parent, NULL, hInst, NULL);
+    diskSpaceLabel = CreateWindowW(L"STATIC", L"", WS_CHILD | WS_VISIBLE, 10, 140, 700, 20, parent, NULL, hInst, NULL);
     SendMessage(diskSpaceLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
     createPartitionButton = CreateWindowW(L"BUTTON", L"Realizar proceso y Bootear ISO seleccionado", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 10, 170, 400, 40, parent, (HMENU)IDC_CREATE_PARTITION_BUTTON, hInst, NULL);
@@ -181,7 +178,9 @@ void MainWindow::OnOpenServicesPage()
 void MainWindow::UpdateDiskSpaceInfo()
 {
     long long availableGB = partitionManager->getAvailableSpaceGB();
-    WCHAR text[100];
-    swprintf(text, 100, L"Espacio disponible en C: %lld GB", availableGB);
+    bool partitionExists = partitionManager->partitionExists();
+    const WCHAR* existsStr = partitionExists ? L"Si" : L"No";
+    WCHAR text[200];
+    swprintf(text, 200, L"Espacio disponible en C: %lld GB | Particion 'EasyISOBoot' encontrada: %s", availableGB, existsStr);
     SetWindowTextW(diskSpaceLabel, text);
 }

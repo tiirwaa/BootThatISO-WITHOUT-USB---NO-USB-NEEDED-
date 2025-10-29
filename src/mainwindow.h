@@ -38,7 +38,6 @@ private:
     HWND logoLabel;
     HWND titleLabel;
     HWND subtitleLabel;
-    HWND saveButton;
 
     HWND isoPathLabel;
     HWND isoPathEdit;

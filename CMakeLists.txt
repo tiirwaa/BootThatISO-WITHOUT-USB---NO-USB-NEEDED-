@@ -18,10 +18,11 @@ endif()
 include_directories(include)
 
 # Source files
-file(GLOB SOURCES "src/*.cpp" "src/*.h")
+file(GLOB SOURCES "src/*.cpp")
+set(SOURCES ${SOURCES} src/EasyISOBoot.rc)
 
 # Executable
-add_executable(EasyISOBoot WIN32 ${SOURCES})
+add_executable(EasyISOBoot WIN32 ${SOURCES} src/EasyISOBoot.rc)
 
 # Link necessary libraries (MFC is included via CMAKE_MFC_FLAG)
 set(CMAKE_MFC_FLAG 1)
