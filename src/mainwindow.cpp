@@ -168,5 +168,5 @@ void MainWindow::configureBCD()
 
 void MainWindow::openServicesPage()
 {
-    QDesktopServices::openUrl(QUrl("https://example.com/servicios/")); // Placeholder
+    QDesktopServices::openUrl(QUrl("https://agsoft.co.cr/servicios/")); // Placeholder
 }

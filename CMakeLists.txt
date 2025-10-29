@@ -19,7 +19,7 @@ include_directories(include)
 file(GLOB SOURCES "src/*.cpp" "src/*.h")
 
 # Executable
-add_executable(EasyISOBoot ${SOURCES})
+add_executable(EasyISOBoot WIN32 ${SOURCES})
 
 # Link Qt5 libraries
 target_link_libraries(EasyISOBoot Qt5::Widgets)
