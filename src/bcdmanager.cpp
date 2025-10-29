@@ -76,8 +76,18 @@ WORD BCDManager::GetMachineType(const std::string& filePath) {
     return machine;
 }
 
-std::string BCDManager::configureBCD(const std::string& driveLetter, bool isWindowsISO)
+std::string BCDManager::configureBCD(const std::string& driveLetter)
 {
+    // Get volume GUID for BCD
+    WCHAR volumeName[MAX_PATH];
+    std::wstring wDriveLetter = std::wstring(driveLetter.begin(), driveLetter.end()) + L"\\";
+    if (!GetVolumeNameForVolumeMountPointW(wDriveLetter.c_str(), volumeName, MAX_PATH)) {
+        return "Error al obtener el nombre del volumen";
+    }
+    char narrowVolumeName[MAX_PATH * 2];
+    WideCharToMultiByte(CP_UTF8, 0, volumeName, -1, narrowVolumeName, sizeof(narrowVolumeName), NULL, NULL);
+    std::string device = narrowVolumeName;
+
     // Set default to current to avoid issues with deleting the default entry
     exec("bcdedit /default {current}");
 
@@ -138,19 +148,10 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, bool isWind
 
     std::string efiBootPath = efiBootFile.substr(driveLetter.length());
 
-    // Configure for EFI booting
-    std::string cmd1, cmd2, cmd3;
-    if (isWindowsISO) {
-        // For Windows ISOs, device partition, path to winload.efi
-        cmd1 = "bcdedit /set " + guid + " device partition=" + driveLetter;
-        cmd2 = "bcdedit /set " + guid + " osdevice partition=" + driveLetter;
-        cmd3 = "bcdedit /set " + guid + " path \\windows\\system32\\winload.efi";
-    } else {
-        // For other ISOs, device partition, path to EFI boot file
-        cmd1 = "bcdedit /set " + guid + " device partition=" + driveLetter;
-        cmd2 = "bcdedit /set " + guid + " osdevice partition=" + driveLetter;
-        cmd3 = "bcdedit /set " + guid + " path " + efiBootPath;
-    }
+    // Configure for EFI booting with RAMDISK
+    std::string cmd1 = "bcdedit /set " + guid + " device partition=" + device;
+    std::string cmd2 = "bcdedit /set " + guid + " osdevice partition=" + device;
+    std::string cmd3 = "bcdedit /set " + guid + " path " + efiBootPath;
 
     std::string result1 = exec(cmd1.c_str());
     if (result1.find("error") != std::string::npos) return "Error al configurar device: " + cmd1;
@@ -161,20 +162,18 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, bool isWind
     std::string result3 = exec(cmd3.c_str());
     if (result3.find("error") != std::string::npos) return "Error al configurar path: " + cmd3;
 
-    if (!isWindowsISO) {
-        // Configure RAMDISK for non-Windows ISOs
-        std::string cmd4_ram = "bcdedit /set " + guid + " ramdisksdidevice partition=" + driveLetter;
-        std::string result4_ram = exec(cmd4_ram.c_str());
-        if (result4_ram.find("error") != std::string::npos) return "Error al configurar ramdisksdidevice: " + cmd4_ram;
+    // Configure RAMDISK
+    std::string cmd4_ram = "bcdedit /set " + guid + " ramdisksdidevice partition=" + device;
+    std::string result4_ram = exec(cmd4_ram.c_str());
+    if (result4_ram.find("error") != std::string::npos) return "Error al configurar ramdisksdidevice: " + cmd4_ram;
 
-        std::string cmd5_ram = "bcdedit /set " + guid + " ramdisksdipath \\iso.iso";
-        std::string result5_ram = exec(cmd5_ram.c_str());
-        if (result5_ram.find("error") != std::string::npos) return "Error al configurar ramdisksdipath: " + cmd5_ram;
+    std::string cmd5_ram = "bcdedit /set " + guid + " ramdisksdipath \\iso.iso";
+    std::string result5_ram = exec(cmd5_ram.c_str());
+    if (result5_ram.find("error") != std::string::npos) return "Error al configurar ramdisksdipath: " + cmd5_ram;
 
-        std::string cmd6_ram = "bcdedit /set " + guid + " ramdiskoptions {5189B25C-5558-4BF2-BCA4-289B11BD29E2}";
-        std::string result6_ram = exec(cmd6_ram.c_str());
-        if (result6_ram.find("error") != std::string::npos) return "Error al configurar ramdiskoptions: " + cmd6_ram;
-    }
+    std::string cmd6_ram = "bcdedit /set " + guid + " ramdiskoptions {5189B25C-5558-4BF2-BCA4-289B11BD29E2}";
+    std::string result6_ram = exec(cmd6_ram.c_str());
+    if (result6_ram.find("error") != std::string::npos) return "Error al configurar ramdiskoptions: " + cmd6_ram;
 
     // Remove systemroot for EFI booting
     std::string cmd4 = "bcdedit /deletevalue " + guid + " systemroot";

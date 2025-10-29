@@ -221,18 +221,14 @@ bool MainWindow::OnCopyISO()
         return false;
     }
 
-    if (!isoCopyManager->isWindowsISO) {
-        LogMessage("Copiando archivo ISO completo...\r\n");
-        if (isoCopyManager->copyISOFile(isoPathStr, dest)) {
-            LogMessage("Archivo ISO copiado exitosamente.\r\n");
-            SendMessage(progressBar, PBM_SETPOS, 70, 0);
-        } else {
-            LogMessage("Error al copiar el archivo ISO.\r\n");
-            MessageBoxW(NULL, L"Error al copiar el archivo ISO.", L"Error", MB_OK);
-            return false;
-        }
-    } else {
+    LogMessage("Copiando archivo ISO completo...\r\n");
+    if (isoCopyManager->copyISOFile(isoPathStr, dest)) {
+        LogMessage("Archivo ISO copiado exitosamente.\r\n");
         SendMessage(progressBar, PBM_SETPOS, 70, 0);
+    } else {
+        LogMessage("Error al copiar el archivo ISO.\r\n");
+        MessageBoxW(NULL, L"Error al copiar el archivo ISO.", L"Error", MB_OK);
+        return false;
     }
     return true;
 }
@@ -250,7 +246,7 @@ void MainWindow::OnConfigureBCD()
     }
 
     std::string driveLetter = drive.substr(0, 2);
-    std::string error = bcdManager->configureBCD(driveLetter, isoCopyManager->isWindowsISO);
+    std::string error = bcdManager->configureBCD(driveLetter);
     if (!error.empty()) {
         LogMessage("Error al configurar BCD: " + error + "\r\n");
         std::wstring werror(error.begin(), error.end());

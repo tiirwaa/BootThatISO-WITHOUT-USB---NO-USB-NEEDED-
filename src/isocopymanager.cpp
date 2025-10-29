@@ -65,111 +65,106 @@ bool ISOCopyManager::extractISOContents(const std::string& isoPath, const std::s
     std::string sourcePath = driveLetterStr + ":\\";
     logFile << "Source path: " << sourcePath << "\n";
     
+    // List all files in the root of the ISO
+    std::ofstream contentLog("iso_content.log");
+    WIN32_FIND_DATAA findData;
+    HANDLE hFind = FindFirstFileA((sourcePath + "*").c_str(), &findData);
+    if (hFind != INVALID_HANDLE_VALUE) {
+        do {
+            std::string fileName = findData.cFileName;
+            if (fileName != "." && fileName != "..") {
+                contentLog << fileName << "\n";
+            }
+        } while (FindNextFileA(hFind, &findData));
+        FindClose(hFind);
+    }
+    contentLog.close();
+    
     // Check if it's Windows ISO
-    DWORD windowsAttrs = GetFileAttributesA((sourcePath + "windows").c_str());
-    isWindowsISO = (windowsAttrs != INVALID_FILE_ATTRIBUTES && (windowsAttrs & FILE_ATTRIBUTE_DIRECTORY));
+    DWORD sourcesAttrs = GetFileAttributesA((sourcePath + "sources").c_str());
+    bool hasSources = (sourcesAttrs != INVALID_FILE_ATTRIBUTES && (sourcesAttrs & FILE_ATTRIBUTE_DIRECTORY));
+    bool isWindowsISO = false;
+    if (hasSources) {
+        DWORD installWimAttrs = GetFileAttributesA((sourcePath + "sources\\install.wim").c_str());
+        DWORD installEsdAttrs = GetFileAttributesA((sourcePath + "sources\\install.esd").c_str());
+        isWindowsISO = (installWimAttrs != INVALID_FILE_ATTRIBUTES) || (installEsdAttrs != INVALID_FILE_ATTRIBUTES);
+    }
     logFile << "Is Windows ISO: " << (isWindowsISO ? "Yes" : "No") << "\n";
     
-    if (isWindowsISO) {
-        // Extract entire ISO contents for Windows ISOs
-        logFile << "Extracting entire ISO contents for Windows ISO\n";
-        std::string copyCmd = "robocopy \"" + sourcePath + "\" \"" + destPath + "\" /E /R:1 /W:1 /NFL /NDL";
-        logFile << "Full extract command: " << copyCmd << "\n";
-        std::string copyResult = exec(copyCmd.c_str());
-        logFile << "Full extract result: " << copyResult << "\n";
-        
-        // Check if windows directory was copied
-        std::string windowsDestPath = destPath + "windows";
-        DWORD winDestAttrs = GetFileAttributesA(windowsDestPath.c_str());
-        bool windowsExtracted = (winDestAttrs != INVALID_FILE_ATTRIBUTES && (winDestAttrs & FILE_ATTRIBUTE_DIRECTORY));
-        logFile << "Windows directory extracted: " << (windowsExtracted ? "Yes" : "No") << "\n";
-        
-        // Dismount the ISO
-        std::string dismountCmd = "powershell -Command \"Dismount-DiskImage -ImagePath '" + isoPath + "'\"";
-        logFile << "Dismount command: " << dismountCmd << "\n";
-        std::string dismountResult = exec(dismountCmd.c_str());
-        logFile << "Dismount result: " << dismountResult << "\n";
-        
-        logFile << "ISO contents extraction " << (windowsExtracted ? "SUCCESS" : "FAILED") << "\n";
-        logFile.close();
-        
-        return windowsExtracted;
-    } else {
-        // For non-Windows ISOs, extract only EFI directory
-        logFile << "Extracting EFI directory for non-Windows ISO\n";
-        // Check if source EFI directory exists
-        std::string efiSourcePath = sourcePath + "efi";
-        DWORD efiAttrs = GetFileAttributesA(efiSourcePath.c_str());
-        if (efiAttrs == INVALID_FILE_ATTRIBUTES || !(efiAttrs & FILE_ATTRIBUTE_DIRECTORY)) {
-            logFile << "EFI directory not found at: " << efiSourcePath << "\n";
-            // Try alternative paths
-            std::string altEfiPath = sourcePath + "EFI";
-            DWORD altAttrs = GetFileAttributesA(altEfiPath.c_str());
-            if (altAttrs != INVALID_FILE_ATTRIBUTES && (altAttrs & FILE_ATTRIBUTE_DIRECTORY)) {
-                efiSourcePath = altEfiPath;
-                logFile << "Found EFI directory at alternative path: " << efiSourcePath << "\n";
-            } else {
-                logFile << "EFI directory not found at alternative path either\n";
-                logFile.close();
-                return false;
-            }
-        }
-        
-        // Create destination EFI directory
-        std::string efiDestPath = destPath + "efi";
-        if (!CreateDirectoryA(efiDestPath.c_str(), NULL) && GetLastError() != ERROR_ALREADY_EXISTS) {
-            logFile << "Failed to create destination EFI directory: " << efiDestPath << "\n";
+    // Always extract EFI directory
+    logFile << "Extracting EFI directory\n";
+    // Check if source EFI directory exists
+    std::string efiSourcePath = sourcePath + "efi";
+    DWORD efiAttrs = GetFileAttributesA(efiSourcePath.c_str());
+    if (efiAttrs == INVALID_FILE_ATTRIBUTES || !(efiAttrs & FILE_ATTRIBUTE_DIRECTORY)) {
+        logFile << "EFI directory not found at: " << efiSourcePath << "\n";
+        // Try alternative paths
+        std::string altEfiPath = sourcePath + "EFI";
+        DWORD altAttrs = GetFileAttributesA(altEfiPath.c_str());
+        if (altAttrs != INVALID_FILE_ATTRIBUTES && (altAttrs & FILE_ATTRIBUTE_DIRECTORY)) {
+            efiSourcePath = altEfiPath;
+            logFile << "Found EFI directory at alternative path: " << efiSourcePath << "\n";
+        } else {
+            logFile << "EFI directory not found at alternative path either\n";
             logFile.close();
             return false;
         }
-        
-        // Copy EFI files using robocopy
-        std::string copyCmd = "robocopy \"" + efiSourcePath + "\" \"" + efiDestPath + "\" /E /R:1 /W:1 /NFL /NDL";
-        logFile << "EFI copy command: " << copyCmd << "\n";
-        std::string copyResult = exec(copyCmd.c_str());
-        logFile << "EFI copy result: " << copyResult << "\n";
-        
-        // Check if bootx64.efi or bootia32.efi was copied
-        std::string bootFilePath = efiDestPath + "\\boot\\bootx64.efi";
-        DWORD bootAttrs = GetFileAttributesA(bootFilePath.c_str());
-        bool bootFileExists = (bootAttrs != INVALID_FILE_ATTRIBUTES && !(bootAttrs & FILE_ATTRIBUTE_DIRECTORY));
+    }
+    
+    // Create destination EFI directory
+    std::string efiDestPath = destPath + "efi";
+    if (!CreateDirectoryA(efiDestPath.c_str(), NULL) && GetLastError() != ERROR_ALREADY_EXISTS) {
+        logFile << "Failed to create destination EFI directory: " << efiDestPath << "\n";
+        logFile.close();
+        return false;
+    }
+    
+    // Copy EFI files using robocopy
+    std::string copyCmd = "robocopy \"" + efiSourcePath + "\" \"" + efiDestPath + "\" /E /R:1 /W:1 /NFL /NDL";
+    logFile << "EFI copy command: " << copyCmd << "\n";
+    std::string copyResult = exec(copyCmd.c_str());
+    logFile << "EFI copy result: " << copyResult << "\n";
+    
+    // Check if bootx64.efi or bootia32.efi was copied
+    std::string bootFilePath = efiDestPath + "\\boot\\bootx64.efi";
+    DWORD bootAttrs = GetFileAttributesA(bootFilePath.c_str());
+    bool bootFileExists = (bootAttrs != INVALID_FILE_ATTRIBUTES && !(bootAttrs & FILE_ATTRIBUTE_DIRECTORY));
 
-        if (!bootFileExists) {
-            bootFilePath = efiDestPath + "\\boot\\bootia32.efi";
-            bootAttrs = GetFileAttributesA(bootFilePath.c_str());
-            bootFileExists = (bootAttrs != INVALID_FILE_ATTRIBUTES && !(bootAttrs & FILE_ATTRIBUTE_DIRECTORY));
-        }
+    if (!bootFileExists) {
+        bootFilePath = efiDestPath + "\\boot\\bootia32.efi";
+        bootAttrs = GetFileAttributesA(bootFilePath.c_str());
+        bootFileExists = (bootAttrs != INVALID_FILE_ATTRIBUTES && !(bootAttrs & FILE_ATTRIBUTE_DIRECTORY));
+    }
 
-        // Also check for alternative boot file names
-        if (!bootFileExists) {
-            std::string altBootPath = efiDestPath + "\\BOOT\\BOOTX64.EFI";
-            DWORD altAttrs = GetFileAttributesA(altBootPath.c_str());
+    // Also check for alternative boot file names
+    if (!bootFileExists) {
+        std::string altBootPath = efiDestPath + "\\BOOT\\BOOTX64.EFI";
+        DWORD altAttrs = GetFileAttributesA(altBootPath.c_str());
+        bootFileExists = (altAttrs != INVALID_FILE_ATTRIBUTES && !(altAttrs & FILE_ATTRIBUTE_DIRECTORY));
+        if (bootFileExists) {
+            bootFilePath = altBootPath;
+        } else {
+            altBootPath = efiDestPath + "\\BOOT\\BOOTIA32.EFI";
+            altAttrs = GetFileAttributesA(altBootPath.c_str());
             bootFileExists = (altAttrs != INVALID_FILE_ATTRIBUTES && !(altAttrs & FILE_ATTRIBUTE_DIRECTORY));
             if (bootFileExists) {
                 bootFilePath = altBootPath;
-            } else {
-                altBootPath = efiDestPath + "\\BOOT\\BOOTIA32.EFI";
-                altAttrs = GetFileAttributesA(altBootPath.c_str());
-                bootFileExists = (altAttrs != INVALID_FILE_ATTRIBUTES && !(altAttrs & FILE_ATTRIBUTE_DIRECTORY));
-                if (bootFileExists) {
-                    bootFilePath = altBootPath;
-                }
             }
         }
-        
-        logFile << "Boot file check: " << bootFilePath << " - " << (bootFileExists ? "EXISTS" : "NOT FOUND") << "\n";
-        
-        // Dismount the ISO
-        std::string dismountCmd = "powershell -Command \"Dismount-DiskImage -ImagePath '" + isoPath + "'\"";
-        logFile << "Dismount command: " << dismountCmd << "\n";
-        std::string dismountResult = exec(dismountCmd.c_str());
-        logFile << "Dismount result: " << dismountResult << "\n";
-        
-        logFile << "EFI extraction " << (bootFileExists ? "SUCCESS" : "FAILED") << "\n";
-        logFile.close();
-        
-        return bootFileExists;
     }
+    
+    logFile << "Boot file check: " << bootFilePath << " - " << (bootFileExists ? "EXISTS" : "NOT FOUND") << "\n";
+    
+    // Dismount the ISO
+    std::string dismountCmd = "powershell -Command \"Dismount-DiskImage -ImagePath '" + isoPath + "'\"";
+    logFile << "Dismount command: " << dismountCmd << "\n";
+    std::string dismountResult = exec(dismountCmd.c_str());
+    logFile << "Dismount result: " << dismountResult << "\n";
+    
+    logFile << "EFI extraction " << (bootFileExists ? "SUCCESS" : "FAILED") << "\n";
+    logFile.close();
+    
+    return bootFileExists;
 }
 
 bool ISOCopyManager::copyISOFile(const std::string& isoPath, const std::string& destPath)

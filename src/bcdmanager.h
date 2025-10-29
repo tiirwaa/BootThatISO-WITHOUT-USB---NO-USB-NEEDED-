@@ -10,7 +10,7 @@ public:
     BCDManager();
     ~BCDManager();
 
-    std::string configureBCD(const std::string& driveLetter, bool isWindowsISO);
+    std::string configureBCD(const std::string& driveLetter);
     bool restoreBCD();
 
 private:

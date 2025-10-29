@@ -1,0 +1,3 @@
+Windows 10
+file: \efi\boot\bootx64.efi
+status: 0xc000000f
