@@ -16,7 +16,7 @@ set(CMAKE_AUTOUIC ON)
 include_directories(include)
 
 # Source files
-file(GLOB SOURCES "src/*.cpp")
+file(GLOB SOURCES "src/*.cpp" "src/*.h")
 
 # Executable
 add_executable(EasyISOBoot ${SOURCES})
