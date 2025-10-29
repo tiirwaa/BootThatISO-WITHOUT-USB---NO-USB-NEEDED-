@@ -3,6 +3,7 @@
 #include <QProcess>
 #include <QTemporaryFile>
 #include <QTextStream>
+#include <QFile>
 
 PartitionManager::PartitionManager()
 {
@@ -43,6 +44,7 @@ bool PartitionManager::createPartition()
 
     QTextStream out(&scriptFile);
     out << "select disk 0\n";
+    out << "select volume C\n";
     out << "shrink desired=10240 minimum=10240\n";
     out << "create partition primary size=10240\n";
     out << "assign letter=Z\n";
@@ -54,10 +56,49 @@ bool PartitionManager::createPartition()
     QProcess process;
     process.start("diskpart", QStringList() << "/s" << scriptFile.fileName());
     if (!process.waitForFinished(300000)) { // 5 minutes timeout
+        // Log timeout
+        QFile logFile("log.txt");
+        if (logFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
+            QTextStream logOut(&logFile);
+            logOut << "Diskpart command timed out.\n";
+            logOut << "Script content:\n";
+            logOut << "select disk 0\n";
+            logOut << "select volume C\n";
+            logOut << "shrink desired=10240 minimum=10240\n";
+            logOut << "create partition primary size=10240\n";
+            logOut << "assign letter=Z\n";
+            logOut << "format fs=ntfs quick label=\"EasyISOBoot\"\n";
+            logOut << "exit\n";
+            logFile.close();
+        }
         return false;
     }
 
-    if (process.exitCode() != 0) {
+    // Read output and error
+    QByteArray outputStdout = process.readAllStandardOutput();
+    QByteArray outputStderr = process.readAllStandardError();
+    int exitCode = process.exitCode();
+
+    // Write to log.txt
+    QFile logFile("log.txt");
+    if (logFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        QTextStream logOut(&logFile);
+        logOut << "Diskpart script executed.\n";
+        logOut << "Script content:\n";
+        logOut << "select disk 0\n";
+        logOut << "select volume C\n";
+        logOut << "shrink desired=10240 minimum=10240\n";
+        logOut << "create partition primary size=10240\n";
+        logOut << "assign letter=Z\n";
+        logOut << "format fs=ntfs quick label=\"EasyISOBoot\"\n";
+        logOut << "exit\n";
+        logOut << "\nExit code: " << exitCode << "\n";
+        logOut << "Standard output:\n" << QString(outputStdout) << "\n";
+        logOut << "Standard error:\n" << QString(outputStderr) << "\n";
+        logFile.close();
+    }
+
+    if (exitCode != 0) {
         return false;
     }
 
