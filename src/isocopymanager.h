@@ -9,7 +9,7 @@ public:
     ISOCopyManager();
     ~ISOCopyManager();
 
-    bool copyISO(const std::string& isoPath);
+    bool copyISO(const std::string& isoPath, const std::string& destPath);
 };
 
 #endif // ISOCOPYMANAGER_H

@@ -10,6 +10,9 @@ MainWindow::MainWindow(HWND parent)
     partitionManager = new PartitionManager();
     isoCopyManager = new ISOCopyManager();
     bcdManager = new BCDManager();
+    if (partitionManager->partitionExists()) {
+        bcdManager->restoreBCD();
+    }
     SetupUI(parent);
     UpdateDiskSpaceInfo();
 }
@@ -148,24 +151,33 @@ void MainWindow::OnCopyISO()
     WideCharToMultiByte(CP_UTF8, 0, isoPath, -1, buffer, len, NULL, NULL);
     std::string isoPathStr = buffer;
     delete[] buffer;
-    if (isoCopyManager->copyISO(isoPathStr))
-    {
-        MessageBoxW(NULL, L"Función no implementada aún.", L"Copiar ISO", MB_OK);
+
+    std::string drive = partitionManager->getPartitionDriveLetter();
+    if (drive.empty()) {
+        MessageBoxW(NULL, L"Partición 'EasyISOBoot' no encontrada.", L"Error", MB_OK);
+        return;
     }
-    else
-    {
+
+    std::string dest = drive + "boot.iso";
+    if (isoCopyManager->copyISO(isoPathStr, dest)) {
+        MessageBoxW(NULL, L"ISO copiado exitosamente.", L"Éxito", MB_OK);
+    } else {
         MessageBoxW(NULL, L"Error al copiar el ISO.", L"Error", MB_OK);
     }
 }
 
 void MainWindow::OnConfigureBCD()
 {
-    if (bcdManager->configureBCD())
-    {
-        MessageBoxW(NULL, L"Función no implementada aún.", L"Configurar BCD", MB_OK);
+    std::string drive = partitionManager->getPartitionDriveLetter();
+    if (drive.empty()) {
+        MessageBoxW(NULL, L"Partición 'EasyISOBoot' no encontrada.", L"Error", MB_OK);
+        return;
     }
-    else
-    {
+
+    std::string driveLetter = drive.substr(0, 2);
+    if (bcdManager->configureBCD(driveLetter)) {
+        MessageBoxW(NULL, L"BCD configurado exitosamente.", L"Éxito", MB_OK);
+    } else {
         MessageBoxW(NULL, L"Error al configurar BCD.", L"Error", MB_OK);
     }
 }

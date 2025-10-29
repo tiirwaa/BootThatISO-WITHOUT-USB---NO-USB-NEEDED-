@@ -19,6 +19,7 @@ public:
     long long getAvailableSpaceGB();
     bool createPartition();
     bool partitionExists();
+    std::string getPartitionDriveLetter();
 };
 
 #endif // PARTITIONMANAGER_H

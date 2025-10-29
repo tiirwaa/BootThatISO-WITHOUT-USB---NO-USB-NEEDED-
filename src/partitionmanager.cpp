@@ -121,3 +121,25 @@ bool PartitionManager::partitionExists()
     }
     return false;
 }
+
+std::string PartitionManager::getPartitionDriveLetter()
+{
+    char drives[256];
+    GetLogicalDriveStringsA(sizeof(drives), drives);
+
+    char* drive = drives;
+    while (*drive) {
+        if (GetDriveTypeA(drive) == DRIVE_FIXED) {
+            char volumeName[MAX_PATH];
+            char fileSystem[MAX_PATH];
+            DWORD serialNumber, maxComponentLen, fileSystemFlags;
+            if (GetVolumeInformationA(drive, volumeName, sizeof(volumeName), &serialNumber, &maxComponentLen, &fileSystemFlags, fileSystem, sizeof(fileSystem))) {
+                if (strcmp(volumeName, "EasyISOBoot") == 0) {
+                    return std::string(drive);
+                }
+            }
+        }
+        drive += strlen(drive) + 1;
+    }
+    return "";
+}
