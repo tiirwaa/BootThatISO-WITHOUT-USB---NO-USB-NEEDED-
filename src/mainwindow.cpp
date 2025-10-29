@@ -155,27 +155,15 @@ void MainWindow::OnCreatePartition()
 
     bool partitionExists = partitionManager->partitionExists();
     if (partitionExists) {
-        std::string currentFS = partitionManager->getPartitionFileSystem();
-        std::string targetFS;
-        if (selectedFormat == "EXFAT") {
-            targetFS = "exFAT";
-        } else if (selectedFormat == "NTFS") {
-            targetFS = "NTFS";
-        } else {
-            targetFS = "FAT32";
+        LogMessage("Las particiones existen. Reformateando...\r\n");
+        SendMessage(progressBar, PBM_SETPOS, 20, 0);
+        if (!partitionManager->reformatPartition(selectedFormat)) {
+            LogMessage("Error al reformatear la partición.\r\n");
+            MessageBoxW(NULL, L"Error al reformatear la partición.", L"Error", MB_OK);
+            return;
         }
-        if (_stricmp(currentFS.c_str(), targetFS.c_str()) != 0) {
-            // reformat
-            LogMessage("La partición existe con formato diferente. Reformateando...\r\n");
-            SendMessage(progressBar, PBM_SETPOS, 20, 0);
-            if (!partitionManager->reformatPartition(selectedFormat)) {
-                LogMessage("Error al reformatear la partición.\r\n");
-                MessageBoxW(NULL, L"Error al reformatear la partición.", L"Error", MB_OK);
-                return;
-            }
-            LogMessage("Partición reformateada.\r\n");
-            SendMessage(progressBar, PBM_SETPOS, 30, 0);
-        }
+        LogMessage("Partición reformateada.\r\n");
+        SendMessage(progressBar, PBM_SETPOS, 30, 0);
     } else {
         SpaceValidationResult validation = partitionManager->validateAvailableSpace();
         if (!validation.isValid) {
