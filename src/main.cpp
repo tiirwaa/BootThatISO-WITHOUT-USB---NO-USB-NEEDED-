@@ -1,4 +1,5 @@
 #include <windows.h>
+#include <commctrl.h>
 #include "mainwindow.h"
 
 BOOL IsRunAsAdmin()
@@ -30,6 +31,11 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
         MessageBoxW(NULL, L"Este programa requiere privilegios de administrador.", L"Error", MB_ICONERROR | MB_OK);
         return 1;
     }
+
+    INITCOMMONCONTROLSEX icex;
+    icex.dwSize = sizeof(INITCOMMONCONTROLSEX);
+    icex.dwICC = ICC_PROGRESS_CLASS;
+    InitCommonControlsEx(&icex);
 
     WNDCLASSEX wc;
     wc.cbSize = sizeof(WNDCLASSEX);

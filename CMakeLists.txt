@@ -25,4 +25,5 @@ set(SOURCES ${SOURCES} src/EasyISOBoot.rc)
 add_executable(EasyISOBoot WIN32 ${SOURCES} src/EasyISOBoot.rc)
 
 # Link necessary libraries (MFC is included via CMAKE_MFC_FLAG)
+target_link_libraries(EasyISOBoot comctl32)
 set(CMAKE_MFC_FLAG 1)

@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include <commdlg.h>
+#include <commctrl.h>
 #include <shellapi.h>
 #include <string>
 #include <sstream>
@@ -51,13 +52,15 @@ void MainWindow::SetupUI(HWND parent)
     createPartitionButton = CreateWindowW(L"BUTTON", L"Realizar proceso y Bootear ISO seleccionado", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 10, 170, 400, 40, parent, (HMENU)IDC_CREATE_PARTITION_BUTTON, hInst, NULL);
     SendMessage(createPartitionButton, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    logTextEdit = CreateWindowW(L"EDIT", L"", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_MULTILINE | ES_AUTOVSCROLL, 10, 220, 760, 300, parent, NULL, hInst, NULL);
+    progressBar = CreateWindowW(PROGRESS_CLASSW, NULL, WS_CHILD | WS_VISIBLE, 10, 220, 760, 20, parent, NULL, hInst, NULL);
+
+    logTextEdit = CreateWindowW(L"EDIT", L"", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_MULTILINE | ES_AUTOVSCROLL, 10, 250, 760, 250, parent, NULL, hInst, NULL);
     SendMessage(logTextEdit, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    footerLabel = CreateWindowW(L"STATIC", L"Versión 1.0", WS_CHILD | WS_VISIBLE, 10, 530, 100, 20, parent, NULL, hInst, NULL);
+    footerLabel = CreateWindowW(L"STATIC", L"Versión 1.0", WS_CHILD | WS_VISIBLE, 10, 510, 100, 20, parent, NULL, hInst, NULL);
     SendMessage(footerLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    servicesButton = CreateWindowW(L"BUTTON", L"Servicios", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 650, 530, 100, 20, parent, (HMENU)IDC_SERVICES_BUTTON, hInst, NULL);
+    servicesButton = CreateWindowW(L"BUTTON", L"Servicios", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 650, 510, 100, 20, parent, (HMENU)IDC_SERVICES_BUTTON, hInst, NULL);
     SendMessage(servicesButton, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 }
 
@@ -106,6 +109,10 @@ void MainWindow::OnSelectISO()
 
 void MainWindow::OnCreatePartition()
 {
+    SendMessage(progressBar, PBM_SETRANGE, 0, MAKELPARAM(0, 100));
+    SendMessage(progressBar, PBM_SETPOS, 0, 0);
+    LogMessage("Iniciando proceso...\r\n");
+
     WCHAR isoPath[260];
     GetWindowTextW(isoPathEdit, isoPath, sizeof(isoPath) / sizeof(WCHAR));
     if (wcslen(isoPath) == 0)
@@ -124,6 +131,8 @@ void MainWindow::OnCreatePartition()
             MessageBoxW(NULL, errorMsg, L"Espacio Insuficiente", MB_OK);
             return;
         }
+        LogMessage("Espacio validado.\r\n");
+        SendMessage(progressBar, PBM_SETPOS, 10, 0);
 
         if (MessageBoxW(NULL, L"Esta operación modificará el disco del sistema, reduciendo su tamaño en 10 GB para crear una partición bootable. ¿Desea continuar?", L"Confirmación de Operación", MB_YESNO) != IDYES)
             return;
@@ -131,19 +140,30 @@ void MainWindow::OnCreatePartition()
         if (MessageBoxW(NULL, L"Esta es la segunda confirmación. La operación de modificación del disco es irreversible y puede causar pérdida de datos si no se realiza correctamente. ¿Está completamente seguro de que desea proceder?", L"Segunda Confirmación", MB_YESNO) != IDYES)
             return;
 
+        LogMessage("Confirmaciones completadas. Creando partición...\r\n");
+        SendMessage(progressBar, PBM_SETPOS, 20, 0);
+
         if (!partitionManager->createPartition())
         {
+            LogMessage("Error al crear la partición.\r\n");
             MessageBoxW(NULL, L"Error al crear la partición.", L"Error", MB_OK);
             return;
         }
+        LogMessage("Partición creada.\r\n");
+        SendMessage(progressBar, PBM_SETPOS, 30, 0);
     }
 
     OnCopyISO();
     OnConfigureBCD();
+    LogMessage("Proceso completado.\r\n");
+    SendMessage(progressBar, PBM_SETPOS, 100, 0);
 }
 
 void MainWindow::OnCopyISO()
 {
+    LogMessage("Copiando ISO...\r\n");
+    SendMessage(progressBar, PBM_SETPOS, 40, 0);
+
     WCHAR isoPath[260];
     GetWindowTextW(isoPathEdit, isoPath, sizeof(isoPath) / sizeof(WCHAR));
     int len = WideCharToMultiByte(CP_UTF8, 0, isoPath, -1, NULL, 0, NULL, NULL);
@@ -154,30 +174,39 @@ void MainWindow::OnCopyISO()
 
     std::string drive = partitionManager->getPartitionDriveLetter();
     if (drive.empty()) {
+        LogMessage("Partición 'EasyISOBoot' no encontrada.\r\n");
         MessageBoxW(NULL, L"Partición 'EasyISOBoot' no encontrada.", L"Error", MB_OK);
         return;
     }
 
     std::string dest = drive + "boot.iso";
     if (isoCopyManager->copyISO(isoPathStr, dest)) {
-        MessageBoxW(NULL, L"ISO copiado exitosamente.", L"Éxito", MB_OK);
+        LogMessage("ISO copiado exitosamente.\r\n");
+        SendMessage(progressBar, PBM_SETPOS, 70, 0);
     } else {
+        LogMessage("Error al copiar el ISO.\r\n");
         MessageBoxW(NULL, L"Error al copiar el ISO.", L"Error", MB_OK);
     }
 }
 
 void MainWindow::OnConfigureBCD()
 {
+    LogMessage("Configurando BCD...\r\n");
+    SendMessage(progressBar, PBM_SETPOS, 80, 0);
+
     std::string drive = partitionManager->getPartitionDriveLetter();
     if (drive.empty()) {
+        LogMessage("Partición 'EasyISOBoot' no encontrada.\r\n");
         MessageBoxW(NULL, L"Partición 'EasyISOBoot' no encontrada.", L"Error", MB_OK);
         return;
     }
 
     std::string driveLetter = drive.substr(0, 2);
     if (bcdManager->configureBCD(driveLetter)) {
-        MessageBoxW(NULL, L"BCD configurado exitosamente.", L"Éxito", MB_OK);
+        LogMessage("BCD configurado exitosamente.\r\n");
+        SendMessage(progressBar, PBM_SETPOS, 100, 0);
     } else {
+        LogMessage("Error al configurar BCD.\r\n");
         MessageBoxW(NULL, L"Error al configurar BCD.", L"Error", MB_OK);
     }
 }
@@ -195,4 +224,12 @@ void MainWindow::UpdateDiskSpaceInfo()
     WCHAR text[200];
     swprintf(text, 200, L"Espacio disponible en C: %lld GB | Particion 'EasyISOBoot' encontrada: %s", availableGB, existsStr);
     SetWindowTextW(diskSpaceLabel, text);
+}
+
+void MainWindow::LogMessage(const std::string& msg)
+{
+    std::wstring wmsg(msg.begin(), msg.end());
+    int len = GetWindowTextLengthW(logTextEdit);
+    SendMessageW(logTextEdit, EM_SETSEL, len, len);
+    SendMessageW(logTextEdit, EM_REPLACESEL, FALSE, (LPARAM)wmsg.c_str());
 }

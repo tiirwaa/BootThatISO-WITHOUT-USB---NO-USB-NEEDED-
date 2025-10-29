@@ -23,6 +23,7 @@ private:
     void SetupUI(HWND parent);
     void ApplyStyles();
     void UpdateDiskSpaceInfo();
+    void LogMessage(const std::string& msg);
 
     void OnSelectISO();
     void OnCreatePartition();
@@ -44,6 +45,7 @@ private:
     HWND browseButton;
     HWND diskSpaceLabel;
     HWND createPartitionButton;
+    HWND progressBar;
     HWND logTextEdit;
 
     HWND footerLabel;
