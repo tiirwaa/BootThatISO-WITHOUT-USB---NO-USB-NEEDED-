@@ -12,6 +12,9 @@
 #include <QFileDialog>
 #include <QMessageBox>
 #include <QStorageInfo>
+#include "partitionmanager.h"
+#include "isocopymanager.h"
+#include "bcdmanager.h"
 
 class MainWindow : public QMainWindow
 {
@@ -31,6 +34,11 @@ private slots:
 private:
     void setupUI();
     void applyStyles();
+    void updateDiskSpaceInfo();
+
+    PartitionManager *partitionManager;
+    ISOCopyManager *isoCopyManager;
+    BCDManager *bcdManager;
 
     // Header
     QFrame *headerFrame;
@@ -45,6 +53,7 @@ private:
     QLabel *isoPathLabel;
     QLineEdit *isoPathEdit;
     QPushButton *browseButton;
+    QLabel *diskSpaceLabel;
     QPushButton *createPartitionButton;
     QPushButton *copyISOButton;
     QPushButton *configureBCDButton;

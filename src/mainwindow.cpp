@@ -8,6 +8,9 @@
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
+    partitionManager = new PartitionManager();
+    isoCopyManager = new ISOCopyManager();
+    bcdManager = new BCDManager();
     setupUI();
     applyStyles();
     setWindowTitle("Easy ISOBoot - Configuración de Partición Bootable");
@@ -17,6 +20,9 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow()
 {
+    delete partitionManager;
+    delete isoCopyManager;
+    delete bcdManager;
 }
 
 void MainWindow::setupUI()
@@ -69,6 +75,11 @@ void MainWindow::setupUI()
     isoLayout->addWidget(isoPathEdit);
     isoLayout->addWidget(browseButton);
     centralLayout->addLayout(isoLayout);
+
+    // Disk space info
+    diskSpaceLabel = new QLabel;
+    updateDiskSpaceInfo();
+    centralLayout->addWidget(diskSpaceLabel);
 
     createPartitionButton = new QPushButton("Crear Partición");
     createPartitionButton->setStyleSheet("background-color: blue; color: white; padding: 10px;");
@@ -153,12 +164,10 @@ void MainWindow::selectISO()
 
 void MainWindow::createPartition()
 {
-    // Validación de espacio disponible
-    QStorageInfo storage("C:/");
-    qint64 availableGB = storage.bytesAvailable() / (1024 * 1024 * 1024);
-    if (availableGB < 10) {
-        QMessageBox::critical(this, "Espacio Insuficiente", 
-            QString("No hay suficiente espacio disponible. Se requieren al menos 10 GB, pero solo hay %1 GB disponibles.").arg(availableGB));
+    // Validación de espacio disponible usando el partitionManager
+    SpaceValidationResult validation = partitionManager->validateAvailableSpace();
+    if (!validation.isValid) {
+        QMessageBox::critical(this, "Espacio Insuficiente", validation.errorMessage);
         return;
     }
 
@@ -178,21 +187,45 @@ void MainWindow::createPartition()
         return;
     }
 
-    // Mensaje de no implementado aún
-    QMessageBox::information(this, "No Implementado", "No implementado aún, para luego proseguir con los demás tareas");
+    // Llamar al partitionManager para crear la partición
+    if (partitionManager->createPartition()) {
+        QMessageBox::information(this, "No Implementado", "No implementado aún, para luego proseguir con los demás tareas");
+    } else {
+        QMessageBox::critical(this, "Error", "Error al crear la partición.");
+    }
 }
 
 void MainWindow::copyISO()
 {
-    QMessageBox::information(this, "Copiar ISO", "Función no implementada aún.");
+    QString isoPath = isoPathEdit->text();
+    if (isoPath.isEmpty()) {
+        QMessageBox::warning(this, "Archivo ISO", "Por favor, seleccione un archivo ISO primero.");
+        return;
+    }
+
+    if (isoCopyManager->copyISO(isoPath)) {
+        QMessageBox::information(this, "Copiar ISO", "Función no implementada aún.");
+    } else {
+        QMessageBox::critical(this, "Error", "Error al copiar el ISO.");
+    }
 }
 
 void MainWindow::configureBCD()
 {
-    QMessageBox::information(this, "Configurar BCD", "Función no implementada aún.");
+    if (bcdManager->configureBCD()) {
+        QMessageBox::information(this, "Configurar BCD", "Función no implementada aún.");
+    } else {
+        QMessageBox::critical(this, "Error", "Error al configurar BCD.");
+    }
 }
 
 void MainWindow::openServicesPage()
 {
     QDesktopServices::openUrl(QUrl("https://agsoft.co.cr/servicios/")); // Placeholder
+}
+
+void MainWindow::updateDiskSpaceInfo()
+{
+    qint64 availableGB = partitionManager->getAvailableSpaceGB();
+    diskSpaceLabel->setText(QString("Espacio disponible en C: %1 GB").arg(availableGB));
 }
