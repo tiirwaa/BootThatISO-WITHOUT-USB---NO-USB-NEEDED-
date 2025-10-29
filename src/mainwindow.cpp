@@ -8,7 +8,7 @@
 #include <cstring>
 
 MainWindow::MainWindow(HWND parent)
-    : hInst(GetModuleHandle(NULL)), selectedFormat("NTFS"), selectedBootMode("EXTRACTED")
+    : hInst(GetModuleHandle(NULL)), hWndParent(parent), selectedFormat("NTFS"), selectedBootMode("EXTRACTED"), workerThread(nullptr), isProcessing(false)
 {
     partitionManager = new PartitionManager();
     isoCopyManager = new ISOCopyManager();
@@ -24,6 +24,10 @@ MainWindow::MainWindow(HWND parent)
 MainWindow::~MainWindow()
 {
     generalLogFile.close();
+    if (workerThread && workerThread->joinable()) {
+        workerThread->join();
+        delete workerThread;
+    }
     delete partitionManager;
     delete isoCopyManager;
     delete bcdManager;
@@ -95,43 +99,64 @@ void MainWindow::ApplyStyles()
     // Default styles
 }
 
-void MainWindow::HandleCommand(WPARAM wParam, LPARAM lParam)
+void MainWindow::HandleCommand(UINT msg, WPARAM wParam, LPARAM lParam)
 {
-    switch (LOWORD(wParam))
+    switch (msg)
     {
-    case IDC_BROWSE_BUTTON:
-        OnSelectISO();
-        break;
-    case IDC_CREATE_PARTITION_BUTTON:
-        OnCreatePartition();
-        break;
-    case IDC_SERVICES_BUTTON:
-        OnOpenServicesPage();
-        break;
-    case IDC_FAT32_RADIO:
-        if (HIWORD(wParam) == BN_CLICKED) {
-            selectedFormat = "FAT32";
+    case WM_COMMAND:
+        switch (LOWORD(wParam))
+        {
+        case IDC_BROWSE_BUTTON:
+            OnSelectISO();
+            break;
+        case IDC_CREATE_PARTITION_BUTTON:
+            if (!isProcessing) {
+                OnCreatePartition();
+            }
+            break;
+        case IDC_SERVICES_BUTTON:
+            OnOpenServicesPage();
+            break;
+        case IDC_FAT32_RADIO:
+            if (HIWORD(wParam) == BN_CLICKED) {
+                selectedFormat = "FAT32";
+            }
+            break;
+        case IDC_EXFAT_RADIO:
+            if (HIWORD(wParam) == BN_CLICKED) {
+                selectedFormat = "EXFAT";
+            }
+            break;
+        case IDC_NTFS_RADIO:
+            if (HIWORD(wParam) == BN_CLICKED) {
+                selectedFormat = "NTFS";
+            }
+            break;
+        case IDC_BOOTMODE_RAMDISK:
+            if (HIWORD(wParam) == BN_CLICKED) {
+                selectedBootMode = "RAMDISK";
+            }
+            break;
+        case IDC_BOOTMODE_EXTRACTED:
+            if (HIWORD(wParam) == BN_CLICKED) {
+                selectedBootMode = "EXTRACTED";
+            }
+            break;
         }
         break;
-    case IDC_EXFAT_RADIO:
-        if (HIWORD(wParam) == BN_CLICKED) {
-            selectedFormat = "EXFAT";
+    case WM_UPDATE_PROGRESS:
+        SendMessage(progressBar, PBM_SETPOS, wParam, 0);
+        break;
+    case WM_UPDATE_LOG:
+        {
+            std::string* logMsg = reinterpret_cast<std::string*>(lParam);
+            LogMessage(*logMsg);
+            delete logMsg;
         }
         break;
-    case IDC_NTFS_RADIO:
-        if (HIWORD(wParam) == BN_CLICKED) {
-            selectedFormat = "NTFS";
-        }
-        break;
-    case IDC_BOOTMODE_RAMDISK:
-        if (HIWORD(wParam) == BN_CLICKED) {
-            selectedBootMode = "RAMDISK";
-        }
-        break;
-    case IDC_BOOTMODE_EXTRACTED:
-        if (HIWORD(wParam) == BN_CLICKED) {
-            selectedBootMode = "EXTRACTED";
-        }
+    case WM_ENABLE_BUTTON:
+        EnableWindow(createPartitionButton, TRUE);
+        isProcessing = false;
         break;
     }
 }
@@ -173,17 +198,7 @@ void MainWindow::OnCreatePartition()
     }
 
     bool partitionExists = partitionManager->partitionExists();
-    if (partitionExists) {
-        LogMessage("Las particiones existen. Reformateando...\r\n");
-        SendMessage(progressBar, PBM_SETPOS, 20, 0);
-        if (!partitionManager->reformatPartition(selectedFormat)) {
-            LogMessage("Error al reformatear la partición.\r\n");
-            MessageBoxW(NULL, L"Error al reformatear la partición.", L"Error", MB_OK);
-            return;
-        }
-        LogMessage("Partición reformateada.\r\n");
-        SendMessage(progressBar, PBM_SETPOS, 30, 0);
-    } else {
+    if (!partitionExists) {
         SpaceValidationResult validation = partitionManager->validateAvailableSpace();
         if (!validation.isValid) {
             WCHAR errorMsg[256];
@@ -191,54 +206,24 @@ void MainWindow::OnCreatePartition()
             MessageBoxW(NULL, errorMsg, L"Espacio Insuficiente", MB_OK);
             return;
         }
-        LogMessage("Espacio validado.\r\n");
-        SendMessage(progressBar, PBM_SETPOS, 10, 0);
 
         if (MessageBoxW(NULL, L"Esta operación modificará el disco del sistema, reduciendo su tamaño en 10.5 GB para crear dos particiones bootables: una ESP FAT32 de 500MB (ISOEFI) y una partición de datos de 10GB (ISOBOOT). ¿Desea continuar?", L"Confirmación de Operación", MB_YESNO) != IDYES)
             return;
 
         if (MessageBoxW(NULL, L"Esta es la segunda confirmación. La operación de modificación del disco es irreversible y puede causar pérdida de datos si no se realiza correctamente. ¿Está completamente seguro de que desea proceder?", L"Segunda Confirmación", MB_YESNO) != IDYES)
             return;
-
-        LogMessage("Confirmaciones completadas. Creando partición...\r\n");
-        SendMessage(progressBar, PBM_SETPOS, 20, 0);
-
-        if (!partitionManager->createPartition(selectedFormat)) {
-            LogMessage("Error al crear la partición.\r\n");
-            MessageBoxW(NULL, L"Error al crear la partición.", L"Error", MB_OK);
-            return;
-        }
-        LogMessage("Partición creada.\r\n");
-        SendMessage(progressBar, PBM_SETPOS, 30, 0);
     }
 
-    // Verificar que la partición ISOBOOT se puede encontrar
-    std::string partitionDrive = partitionManager->getPartitionDriveLetter();
-    if (partitionDrive.empty()) {
-        LogMessage("Error: No se puede acceder a la partición " + std::string(VOLUME_LABEL) + ".\r\n");
-        MessageBoxW(NULL, L"No se puede acceder a la partición ISOBOOT. Verifique el log para más detalles.", L"Error", MB_OK);
-        return;
-    }
-        LogMessage("Partición ISOBOOT encontrada en: " + partitionDrive + "\r\n");
-        std::string espDrive = partitionManager->getEfiPartitionDriveLetter();
-        if (espDrive.empty()) {
-            LogMessage("Error: No se puede acceder a la partición ISOEFI.\r\n");
-            MessageBoxW(NULL, L"No se puede acceder a la partición ISOEFI. Verifique el log para más detalles.", L"Error", MB_OK);
-            return;
-        }
-        LogMessage("Partición ISOEFI encontrada en: " + espDrive + "\r\n");    if (OnCopyISO()) {
-        OnConfigureBCD();
-        LogMessage("Proceso completado.\r\n");
-        SendMessage(progressBar, PBM_SETPOS, 100, 0);
-    } else {
-        LogMessage("Proceso fallido debido a errores en la copia del ISO.\r\n");
-    }
+    // Disable button and start thread
+    EnableWindow(createPartitionButton, FALSE);
+    isProcessing = true;
+    workerThread = new std::thread(&MainWindow::ProcessInThread, this);
 }
 
 bool MainWindow::OnCopyISO()
 {
-    LogMessage("Extrayendo archivos EFI del ISO...\r\n");
-    SendMessage(progressBar, PBM_SETPOS, 40, 0);
+    PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Extrayendo archivos EFI del ISO...\r\n"));
+    PostMessage(hWndParent, WM_UPDATE_PROGRESS, 40, 0);
 
     WCHAR isoPath[260];
     GetWindowTextW(isoPathEdit, isoPath, sizeof(isoPath) / sizeof(WCHAR));
@@ -250,48 +235,43 @@ bool MainWindow::OnCopyISO()
 
     std::string drive = partitionManager->getPartitionDriveLetter();
     if (drive.empty()) {
-        LogMessage("Partición 'ISOBOOT' no encontrada.\r\n");
-        MessageBoxW(NULL, L"Partición 'ISOBOOT' no encontrada.", L"Error", MB_OK);
+        PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Partición 'ISOBOOT' no encontrada.\r\n"));
         return false;
     }
 
     std::string dest = drive;
     std::string espDrive = partitionManager->getEfiPartitionDriveLetter();
     if (espDrive.empty()) {
-        LogMessage("Partición 'ISOEFI' no encontrada.\r\n");
-        MessageBoxW(NULL, L"Partición 'ISOEFI' no encontrada.", L"Error", MB_OK);
+        PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Partición 'ISOEFI' no encontrada.\r\n"));
         return false;
     }
     if (selectedBootMode == "RAMDISK") {
         // For RAMDISK: only copy EFI to ESP, do not extract content
-        LogMessage("Modo RAMDISK: copiando solo EFI, sin extraer contenido...\r\n");
+        PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Modo RAMDISK: copiando solo EFI, sin extraer contenido...\r\n"));
         if (isoCopyManager->extractISOContents(isoPathStr, dest, espDrive, false)) {  // false = no extract content
-            LogMessage("EFI copiado exitosamente.\r\n");
-            SendMessage(progressBar, PBM_SETPOS, 55, 0);
+            PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("EFI copiado exitosamente.\r\n"));
+            PostMessage(hWndParent, WM_UPDATE_PROGRESS, 55, 0);
         } else {
-            LogMessage("Error al copiar EFI.\r\n");
-            MessageBoxW(NULL, L"Error al copiar EFI.", L"Error", MB_OK);
+            PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Error al copiar EFI.\r\n"));
             return false;
         }
         // Then copy the full ISO
-        LogMessage("Copiando archivo ISO completo...\r\n");
+        PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Copiando archivo ISO completo...\r\n"));
         if (isoCopyManager->copyISOFile(isoPathStr, dest)) {
-            LogMessage("Archivo ISO copiado exitosamente.\r\n");
-            SendMessage(progressBar, PBM_SETPOS, 70, 0);
+            PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Archivo ISO copiado exitosamente.\r\n"));
+            PostMessage(hWndParent, WM_UPDATE_PROGRESS, 70, 0);
         } else {
-            LogMessage("Error al copiar el archivo ISO.\r\n");
-            MessageBoxW(NULL, L"Error al copiar el archivo ISO.", L"Error", MB_OK);
+            PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Error al copiar el archivo ISO.\r\n"));
             return false;
         }
     } else {
         // For EXTRACTED: extract content and EFI
-        LogMessage("Modo Extraido: extrayendo contenido y EFI...\r\n");
+        PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Modo Extraido: extrayendo contenido y EFI...\r\n"));
         if (isoCopyManager->extractISOContents(isoPathStr, dest, espDrive, true)) {  // true = extract content
-            LogMessage("Archivos extraídos exitosamente.\r\n");
-            SendMessage(progressBar, PBM_SETPOS, 70, 0);
+            PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Archivos extraídos exitosamente.\r\n"));
+            PostMessage(hWndParent, WM_UPDATE_PROGRESS, 70, 0);
         } else {
-            LogMessage("Error al extraer archivos del ISO.\r\n");
-            MessageBoxW(NULL, L"Error al extraer archivos del ISO.", L"Error", MB_OK);
+            PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Error al extraer archivos del ISO.\r\n"));
             return false;
         }
     }
@@ -300,33 +280,85 @@ bool MainWindow::OnCopyISO()
 
 void MainWindow::OnConfigureBCD()
 {
-    LogMessage("Configurando BCD...\r\n");
-    SendMessage(progressBar, PBM_SETPOS, 80, 0);
+    PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Configurando BCD...\r\n"));
+    PostMessage(hWndParent, WM_UPDATE_PROGRESS, 80, 0);
 
     std::string drive = partitionManager->getPartitionDriveLetter();
     if (drive.empty()) {
-        LogMessage("Partición 'ISOBOOT' no encontrada.\r\n");
-        MessageBoxW(NULL, L"Partición 'ISOBOOT' no encontrada.", L"Error", MB_OK);
+        PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Partición 'ISOBOOT' no encontrada.\r\n"));
         return;
     }
 
     std::string driveLetter = drive.substr(0, 2);
     std::string espDrive = partitionManager->getEfiPartitionDriveLetter();
     if (espDrive.empty()) {
-        LogMessage("Partición 'ISOEFI' no encontrada.\r\n");
-        MessageBoxW(NULL, L"Partición 'ISOEFI' no encontrada.", L"Error", MB_OK);
+        PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Partición 'ISOEFI' no encontrada.\r\n"));
         return;
     }
     std::string espDriveLetter = espDrive.substr(0, 2);
     std::string error = bcdManager->configureBCD(driveLetter, espDriveLetter, selectedBootMode);
     if (!error.empty()) {
-        LogMessage("Error al configurar BCD: " + error + "\r\n");
-        std::wstring werror(error.begin(), error.end());
-        MessageBoxW(NULL, werror.c_str(), L"Error", MB_OK);
+        PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Error al configurar BCD: " + error + "\r\n"));
     } else {
-        LogMessage("BCD configurado exitosamente.\r\n");
-        SendMessage(progressBar, PBM_SETPOS, 100, 0);
+        PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("BCD configurado exitosamente.\r\n"));
+        PostMessage(hWndParent, WM_UPDATE_PROGRESS, 100, 0);
     }
+}
+
+void MainWindow::ProcessInThread()
+{
+    // Copied from OnCreatePartition after validations
+    bool partitionExists = partitionManager->partitionExists();
+    if (partitionExists) {
+        PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Las particiones existen. Reformateando...\r\n"));
+        PostMessage(hWndParent, WM_UPDATE_PROGRESS, 20, 0);
+        if (!partitionManager->reformatPartition(selectedFormat)) {
+            PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Error al reformatear la partición.\r\n"));
+            PostMessage(hWndParent, WM_ENABLE_BUTTON, 0, 0);
+            return;
+        }
+        PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Partición reformateada.\r\n"));
+        PostMessage(hWndParent, WM_UPDATE_PROGRESS, 30, 0);
+    } else {
+        PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Espacio validado.\r\n"));
+        PostMessage(hWndParent, WM_UPDATE_PROGRESS, 10, 0);
+
+        PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Confirmaciones completadas. Creando partición...\r\n"));
+        PostMessage(hWndParent, WM_UPDATE_PROGRESS, 20, 0);
+
+        if (!partitionManager->createPartition(selectedFormat)) {
+            PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Error al crear la partición.\r\n"));
+            PostMessage(hWndParent, WM_ENABLE_BUTTON, 0, 0);
+            return;
+        }
+        PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Partición creada.\r\n"));
+        PostMessage(hWndParent, WM_UPDATE_PROGRESS, 30, 0);
+    }
+
+    // Verificar que la partición ISOBOOT se puede encontrar
+    std::string partitionDrive = partitionManager->getPartitionDriveLetter();
+    if (partitionDrive.empty()) {
+        PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Error: No se puede acceder a la partición " + std::string(VOLUME_LABEL) + ".\r\n"));
+        PostMessage(hWndParent, WM_ENABLE_BUTTON, 0, 0);
+        return;
+    }
+    PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Partición ISOBOOT encontrada en: " + partitionDrive + "\r\n"));
+    std::string espDrive = partitionManager->getEfiPartitionDriveLetter();
+    if (espDrive.empty()) {
+        PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Error: No se puede acceder a la partición ISOEFI.\r\n"));
+        PostMessage(hWndParent, WM_ENABLE_BUTTON, 0, 0);
+        return;
+    }
+    PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Partición ISOEFI encontrada en: " + espDrive + "\r\n"));
+
+    if (OnCopyISO()) {
+        OnConfigureBCD();
+        PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Proceso completado.\r\n"));
+        PostMessage(hWndParent, WM_UPDATE_PROGRESS, 100, 0);
+    } else {
+        PostMessage(hWndParent, WM_UPDATE_LOG, 0, (LPARAM)new std::string("Proceso fallido debido a errores en la copia del ISO.\r\n"));
+    }
+    PostMessage(hWndParent, WM_ENABLE_BUTTON, 0, 0);
 }
 
 void MainWindow::OnOpenServicesPage()

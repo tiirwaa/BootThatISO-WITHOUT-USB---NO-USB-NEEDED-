@@ -106,7 +106,15 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
     case WM_COMMAND:
         if (mainWindow)
         {
-            mainWindow->HandleCommand(wParam, lParam);
+            mainWindow->HandleCommand(msg, wParam, lParam);
+        }
+        break;
+    case WM_UPDATE_PROGRESS:
+    case WM_UPDATE_LOG:
+    case WM_ENABLE_BUTTON:
+        if (mainWindow)
+        {
+            mainWindow->HandleCommand(msg, wParam, lParam);
         }
         break;
     case WM_DESTROY:

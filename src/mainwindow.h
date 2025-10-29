@@ -4,6 +4,7 @@
 #include <windows.h>
 #include <string>
 #include <fstream>
+#include <thread>
 #include "partitionmanager.h"
 #include "isocopymanager.h"
 #include "bcdmanager.h"
@@ -18,13 +19,17 @@
 #define IDC_BOOTMODE_RAMDISK 1007
 #define IDC_BOOTMODE_EXTRACTED 1008
 
+#define WM_UPDATE_PROGRESS (WM_USER + 1)
+#define WM_UPDATE_LOG (WM_USER + 2)
+#define WM_ENABLE_BUTTON (WM_USER + 3)
+
 class MainWindow
 {
 public:
     MainWindow(HWND parent);
     ~MainWindow();
 
-    void HandleCommand(WPARAM wParam, LPARAM lParam);
+    void HandleCommand(UINT msg, WPARAM wParam, LPARAM lParam);
 
 private:
     void SetupUI(HWND parent);
@@ -34,6 +39,7 @@ private:
 
     void OnSelectISO();
     void OnCreatePartition();
+    void ProcessInThread();
     bool OnCopyISO();
     void OnConfigureBCD();
     void OnOpenServicesPage();
@@ -71,6 +77,11 @@ private:
     HWND servicesButton;
 
     HINSTANCE hInst;
+    HWND hWndParent;
+
+    // Thread management
+    std::thread* workerThread;
+    bool isProcessing;
 
     // Log file
     std::ofstream generalLogFile;
