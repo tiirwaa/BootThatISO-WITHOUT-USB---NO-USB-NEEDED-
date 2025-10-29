@@ -9,6 +9,7 @@
 #include <sstream>
 #include <cstring>
 #include <iomanip>
+#include <ctime>
 
 #define WM_UPDATE_DETAILED_PROGRESS (WM_USER + 5)
 #define WM_UPDATE_ERROR (WM_USER + 6)
@@ -27,7 +28,7 @@ MainWindow::MainWindow(HWND parent)
     bcdManager = &BCDManager::getInstance();
     eventManager.addObserver(this);
     processController = new ProcessController(eventManager);
-    generalLogFile.open(Utils::getExeDirectory() + "general_log.txt", std::ios::app);
+    generalLogFile.open(Utils::getExeDirectory() + "general_log.log", std::ios::app);
     if (partitionManager->partitionExists()) {
         bcdManager->restoreBCD();
     }
@@ -274,11 +275,19 @@ void MainWindow::UpdateDiskSpaceInfo()
 
 void MainWindow::LogMessage(const std::string& msg)
 {
+    // Get current time
+    std::time_t now = std::time(nullptr);
+    std::tm localTime;
+    localtime_s(&localTime, &now);
+    std::stringstream timeStream;
+    timeStream << std::put_time(&localTime, "[%Y-%m-%d %H:%M:%S] ");
+    std::string timestampedMsg = timeStream.str() + msg;
+
     if (generalLogFile.is_open()) {
-        generalLogFile << msg;
+        generalLogFile << timestampedMsg;
         generalLogFile.flush();
     }
-    std::wstring wmsg(msg.begin(), msg.end());
+    std::wstring wmsg(timestampedMsg.begin(), timestampedMsg.end());
     int len = GetWindowTextLengthW(logTextEdit);
     SendMessageW(logTextEdit, EM_SETSEL, len, len);
     SendMessageW(logTextEdit, EM_REPLACESEL, FALSE, (LPARAM)wmsg.c_str());
@@ -306,12 +315,19 @@ void MainWindow::onProgressUpdate(int progress) {
 }
 
 void MainWindow::onLogUpdate(const std::string& message) {
-    std::wstring wmsg(message.begin(), message.end());
+    // Get current time
+    std::time_t now = std::time(nullptr);
+    std::tm* localTime = std::localtime(&now);
+    std::stringstream timeStream;
+    timeStream << std::put_time(localTime, "[%Y-%m-%d %H:%M:%S] ");
+    std::string timestampedMsg = timeStream.str() + message;
+
+    std::wstring wmsg(timestampedMsg.begin(), timestampedMsg.end());
     int len = GetWindowTextLengthW(logTextEdit);
     SendMessageW(logTextEdit, EM_SETSEL, len, len);
     SendMessageW(logTextEdit, EM_REPLACESEL, FALSE, (LPARAM)wmsg.c_str());
     if (generalLogFile.is_open()) {
-        generalLogFile << message;
+        generalLogFile << timestampedMsg;
         generalLogFile.flush();
     }
 }

@@ -23,6 +23,7 @@ public:
 
 private:
     std::string exec(const char* cmd);
+    std::string getTimestamp();
     long long getDirectorySize(const std::string& path);
     bool copyDirectoryWithProgress(const std::string& source, const std::string& dest, EventManager& eventManager, long long totalSize, long long& copiedSoFar, const std::set<std::string>& excludeDirs = {});
 };

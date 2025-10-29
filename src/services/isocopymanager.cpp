@@ -6,6 +6,8 @@
 #include <fstream>
 #include <cctype>
 #include <set>
+#include <ctime>
+#include <iomanip>
 #include "../utils/Utils.h"
 
 ISOCopyManager& ISOCopyManager::getInstance() {
@@ -20,6 +22,15 @@ ISOCopyManager::ISOCopyManager()
 
 ISOCopyManager::~ISOCopyManager()
 {
+}
+
+std::string ISOCopyManager::getTimestamp() {
+    std::time_t now = std::time(nullptr);
+    std::tm localTime;
+    localtime_s(&localTime, &now);
+    std::stringstream timeStream;
+    timeStream << std::put_time(&localTime, "[%Y-%m-%d %H:%M:%S] ");
+    return timeStream.str();
 }
 
 std::string ISOCopyManager::exec(const char* cmd) {
@@ -128,11 +139,20 @@ bool ISOCopyManager::copyDirectoryWithProgress(const std::string& source, const 
         if (!result) {
             DWORD error = GetLastError();
             if (error != ERROR_ALREADY_EXISTS) {
-                std::ofstream errorLog(Utils::getExeDirectory() + "copy_error_log.txt", std::ios::app);
-                errorLog << "Failed to create directory: " << dest << " Error code: " << error << "\n";
+                std::ofstream errorLog(Utils::getExeDirectory() + "copy_error_log.log", std::ios::app);
+                errorLog << getTimestamp() << "Failed to create directory: " << dest << " Error code: " << error << "\n";
                 errorLog.close();
+                eventManager.notifyLogUpdate("Error: Failed to create directory " + dest + " (Error " + std::to_string(error) + ")\r\n");
                 return false;
+            } else {
+                std::ofstream errorLog(Utils::getExeDirectory() + "copy_error_log.log", std::ios::app);
+                errorLog << getTimestamp() << "Directory already exists: " << dest << "\n";
+                errorLog.close();
             }
+        } else {
+            std::ofstream errorLog(Utils::getExeDirectory() + "copy_error_log.log", std::ios::app);
+            errorLog << getTimestamp() << "Created directory: " << dest << "\n";
+            errorLog.close();
         }
     }
     WIN32_FIND_DATAA findData;
@@ -145,24 +165,53 @@ bool ISOCopyManager::copyDirectoryWithProgress(const std::string& source, const 
             std::string destItem = dest + "\\" + name;
             if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
                 if (!copyDirectoryWithProgress(srcItem, destItem, eventManager, totalSize, copiedSoFar, excludeDirs)) {
-                    std::ofstream errorLog(Utils::getExeDirectory() + "copy_error_log.txt", std::ios::app);
-                    errorLog << "Failed to copy directory: " << srcItem << " to " << destItem << "\n";
+                    std::ofstream errorLog(Utils::getExeDirectory() + "copy_error_log.log", std::ios::app);
+                    errorLog << getTimestamp() << "Failed to copy directory: " << srcItem << " to " << destItem << "\n";
                     errorLog.close();
+                    eventManager.notifyLogUpdate("Error: Failed to copy directory " + srcItem + " to " + destItem + "\r\n");
                     FindClose(hFind);
                     return false;
                 }
             } else {
-                CopyProgressContext ctx = { &eventManager, totalSize, copiedSoFar, excludeDirs.empty() ? "Copiando EFI" : "Copiando contenido del ISO" };
-                if (!CopyFileExA(srcItem.c_str(), destItem.c_str(), CopyFileProgressRoutine, &ctx, NULL, 0)) {
-                    // Log the error
-                    std::ofstream errorLog(Utils::getExeDirectory() + "copy_error_log.txt", std::ios::app);
-                    errorLog << "Failed to copy file: " << srcItem << " to " << destItem << " Error code: " << GetLastError() << "\n";
-                    errorLog.close();
+                // Log source file info before copying
+                DWORD srcAttrs = GetFileAttributesA(srcItem.c_str());
+                long long fileSize = ((long long)findData.nFileSizeHigh << 32) | findData.nFileSizeLow;
+                std::ofstream errorLog(Utils::getExeDirectory() + "copy_error_log.log", std::ios::app);
+                errorLog << getTimestamp() << "Attempting to copy file: " << srcItem << " to " << destItem << "\n";
+                errorLog << getTimestamp() << "Source attributes: " << srcAttrs << ", Size: " << fileSize << " bytes\n";
+                if (srcAttrs == INVALID_FILE_ATTRIBUTES) {
+                    errorLog << getTimestamp() << "Source file does not exist or cannot access attributes\n";
+                }
+                errorLog.close();
+
+                if (!CopyFileA(srcItem.c_str(), destItem.c_str(), FALSE)) {
+                    DWORD error = GetLastError();
+                    std::ofstream errorLog2(Utils::getExeDirectory() + "copy_error_log.log", std::ios::app);
+                    errorLog2 << getTimestamp() << "Failed to copy file: " << srcItem << " to " << destItem << " Error code: " << error << "\n";
+                    // Additional error details
+                    errorLog2 << getTimestamp() << "Error description: ";
+                    switch (error) {
+                        case ERROR_ACCESS_DENIED: errorLog2 << "Access denied. Check permissions.\n"; break;
+                        case ERROR_FILE_NOT_FOUND: errorLog2 << "Source file not found.\n"; break;
+                        case ERROR_PATH_NOT_FOUND: errorLog2 << "Path not found.\n"; break;
+                        case ERROR_INVALID_DRIVE: errorLog2 << "Invalid drive.\n"; break;
+                        case ERROR_SHARING_VIOLATION: errorLog2 << "Sharing violation.\n"; break;
+                        default: errorLog2 << "Unknown error.\n"; break;
+                    }
+                    // Check destination attributes
+                    DWORD destAttrs = GetFileAttributesA(destItem.c_str());
+                    errorLog2 << getTimestamp() << "Destination attributes after failure: " << destAttrs << "\n";
+                    errorLog2.close();
+                    eventManager.notifyLogUpdate("Error: Failed to copy file " + srcItem + " to " + destItem + " (Error " + std::to_string(error) + ")\r\n");
                     FindClose(hFind);
                     return false;
+                } else {
+                    std::ofstream errorLog3(Utils::getExeDirectory() + "copy_error_log.log", std::ios::app);
+                    errorLog3 << getTimestamp() << "Successfully copied file: " << srcItem << " to " << destItem << "\n";
+                    errorLog3.close();
                 }
-                long long fileSize = ((long long)findData.nFileSizeHigh << 32) | findData.nFileSizeLow;
                 copiedSoFar += fileSize;
+                eventManager.notifyDetailedProgress(copiedSoFar, totalSize, excludeDirs.empty() ? "Copiando EFI" : "Copiando contenido del ISO");
             }
         }
     } while (FindNextFileA(hFind, &findData));
@@ -173,11 +222,11 @@ bool ISOCopyManager::copyDirectoryWithProgress(const std::string& source, const 
 bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::string& isoPath, const std::string& destPath, const std::string& espPath, bool extractContent)
 {
     // Create log file for debugging
-    std::ofstream logFile(Utils::getExeDirectory() + "iso_extract_log.txt");
-    logFile << "Starting ISO extraction from: " << isoPath << "\n";
-    logFile << "Destination (data): " << destPath << "\n";
-    logFile << "ESP path: " << espPath << "\n";
-    logFile << "Extract content: " << (extractContent ? "Yes" : "No") << "\n";
+    std::ofstream logFile(Utils::getExeDirectory() + "iso_extract_log.log");
+    logFile << getTimestamp() << "Starting ISO extraction from: " << isoPath << "\n";
+    logFile << getTimestamp() << "Destination (data): " << destPath << "\n";
+    logFile << getTimestamp() << "ESP path: " << espPath << "\n";
+    logFile << getTimestamp() << "Extract content: " << (extractContent ? "Yes" : "No") << "\n";
     
     long long isoSize = Utils::getFileSize(isoPath);
     long long copiedSoFar = 0;
@@ -185,13 +234,13 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
     
     // Mount the ISO using PowerShell and get drive letter
     std::string mountCmd = "powershell -Command \"$iso = Mount-DiskImage -ImagePath '" + isoPath + "' -PassThru; $volume = Get-DiskImage -ImagePath '" + isoPath + "' | Get-Volume; if ($volume) { $volume.DriveLetter } else { 'FAILED' }\"";
-    logFile << "Mount command: " << mountCmd << "\n";
+    logFile << getTimestamp() << "Mount command: " << mountCmd << "\n";
     
     std::string mountResult = exec(mountCmd.c_str());
-    logFile << "Mount result: '" << mountResult << "'\n";
+    logFile << getTimestamp() << "Mount result: '" << mountResult << "'\n";
     
     if (mountResult.empty() || mountResult.find("FAILED") != std::string::npos || mountResult.find("error") != std::string::npos) {
-        logFile << "Failed to mount ISO\n";
+        logFile << getTimestamp() << "Failed to mount ISO\n";
         logFile.close();
         return false;
     }
@@ -206,13 +255,18 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
     }
     
     if (driveLetterStr.empty()) {
-        logFile << "Could not extract drive letter from mount result\n";
+        logFile << getTimestamp() << "Could not extract drive letter from mount result\n";
         logFile.close();
         return false;
     }
     
     std::string sourcePath = driveLetterStr + ":\\";
-    logFile << "Source path: " << sourcePath << "\n";
+    logFile << getTimestamp() << "Source path: " << sourcePath << "\n";
+    
+    // Add delay to allow the drive to be ready
+    logFile << getTimestamp() << "Waiting 5 seconds for drive to be ready\n";
+    Sleep(5000);
+    logFile << getTimestamp() << "Drive ready, proceeding with analysis\n";
     
     eventManager.notifyDetailedProgress(isoSize / 10, isoSize, "Analizando contenido ISO");
     
@@ -240,35 +294,35 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
         DWORD installEsdAttrs = GetFileAttributesA((sourcePath + "sources\\install.esd").c_str());
         isWindowsISO = (installWimAttrs != INVALID_FILE_ATTRIBUTES) || (installEsdAttrs != INVALID_FILE_ATTRIBUTES);
     }
-    logFile << "Is Windows ISO: " << (isWindowsISO ? "Yes" : "No") << "\n";
+    logFile << getTimestamp() << "Is Windows ISO: " << (isWindowsISO ? "Yes" : "No") << "\n";
     
     if (extractContent) {
         // Extract all ISO contents to data partition, excluding EFI
         std::set<std::string> excludeDirs = {"efi", "EFI"};
         if (!copyDirectoryWithProgress(sourcePath, destPath, eventManager, isoSize, copiedSoFar, excludeDirs)) {
-            logFile << "Failed to copy content\n";
+            logFile << getTimestamp() << "Failed to copy content\n";
             logFile.close();
             return false;
         }
     } else {
-        logFile << "Skipping content extraction (RAMDISK mode)\n";
+        logFile << getTimestamp() << "Skipping content extraction (RAMDISK mode)\n";
     }
 
     // Extract EFI directory to ESP
-    logFile << "Extracting EFI directory to ESP\n";
+    logFile << getTimestamp() << "Extracting EFI directory to ESP\n";
     // Check if source EFI directory exists
     std::string efiSourcePath = sourcePath + "efi";
     DWORD efiAttrs = GetFileAttributesA(efiSourcePath.c_str());
     if (efiAttrs == INVALID_FILE_ATTRIBUTES || !(efiAttrs & FILE_ATTRIBUTE_DIRECTORY)) {
-        logFile << "EFI directory not found at: " << efiSourcePath << "\n";
+        logFile << getTimestamp() << "EFI directory not found at: " << efiSourcePath << "\n";
         // Try alternative paths
         std::string altEfiPath = sourcePath + "EFI";
         DWORD altAttrs = GetFileAttributesA(altEfiPath.c_str());
         if (altAttrs != INVALID_FILE_ATTRIBUTES && (altAttrs & FILE_ATTRIBUTE_DIRECTORY)) {
             efiSourcePath = altEfiPath;
-            logFile << "Found EFI directory at alternative path: " << efiSourcePath << "\n";
+            logFile << getTimestamp() << "Found EFI directory at alternative path: " << efiSourcePath << "\n";
         } else {
-            logFile << "EFI directory not found at alternative path either\n";
+            logFile << getTimestamp() << "EFI directory not found at alternative path either\n";
             logFile.close();
             return false;
         }
@@ -277,7 +331,7 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
     // Create destination EFI directory on ESP
     std::string efiDestPath = espPath + "EFI";
     if (!CreateDirectoryA(efiDestPath.c_str(), NULL) && GetLastError() != ERROR_ALREADY_EXISTS) {
-        logFile << "Failed to create destination EFI directory: " << efiDestPath << "\n";
+        logFile << getTimestamp() << "Failed to create destination EFI directory: " << efiDestPath << "\n";
         logFile.close();
         return false;
     }
@@ -285,7 +339,7 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
     // Copy EFI files with progress
     std::set<std::string> noExclude;
     if (!copyDirectoryWithProgress(efiSourcePath, efiDestPath, eventManager, isoSize, copiedSoFar, noExclude)) {
-        logFile << "Failed to copy EFI\n";
+        logFile << getTimestamp() << "Failed to copy EFI\n";
         logFile.close();
         return false;
     }
@@ -318,18 +372,18 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
         }
     }
     
-    logFile << "Boot file check: " << bootFilePath << " - " << (bootFileExists ? "EXISTS" : "NOT FOUND") << "\n";
+    logFile << getTimestamp() << "Boot file check: " << bootFilePath << " - " << (bootFileExists ? "EXISTS" : "NOT FOUND") << "\n";
     
     // Dismount the ISO
     eventManager.notifyDetailedProgress(isoSize * 9 / 10, isoSize, "Desmontando ISO");
     std::string dismountCmd = "powershell -Command \"Dismount-DiskImage -ImagePath '" + isoPath + "'\"";
-    logFile << "Dismount command: " << dismountCmd << "\n";
+    logFile << getTimestamp() << "Dismount command: " << dismountCmd << "\n";
     std::string dismountResult = exec(dismountCmd.c_str());
-    logFile << "Dismount result: " << dismountResult << "\n";
+    logFile << getTimestamp() << "Dismount result: " << dismountResult << "\n";
     
-    logFile << "EFI extraction " << (bootFileExists ? "SUCCESS" : "FAILED") << "\n";
+    logFile << getTimestamp() << "EFI extraction " << (bootFileExists ? "SUCCESS" : "FAILED") << "\n";
     if (extractContent) {
-        logFile << "Content extraction completed.\n";
+        logFile << getTimestamp() << "Content extraction completed.\n";
     }
     logFile.close();
     
@@ -342,16 +396,16 @@ bool ISOCopyManager::copyISOFile(EventManager& eventManager, const std::string& 
     std::string destFile = destPath + "iso.iso";
     
     // Create log file for debugging
-    std::ofstream logFile(Utils::getExeDirectory() + "iso_file_copy_log.txt");
-    logFile << "Copying ISO file from: " << isoPath << "\n";
-    logFile << "To: " << destFile << "\n";
+    std::ofstream logFile(Utils::getExeDirectory() + "iso_file_copy_log.log");
+    logFile << getTimestamp() << "Copying ISO file from: " << isoPath << "\n";
+    logFile << getTimestamp() << "To: " << destFile << "\n";
     
     BOOL result = CopyFileExA(isoPath.c_str(), destFile.c_str(), CopyProgressRoutine, &eventManager, NULL, 0);
     if (result) {
-        logFile << "ISO file copied successfully.\n";
+        logFile << getTimestamp() << "ISO file copied successfully.\n";
         eventManager.notifyDetailedProgress(0, 0, ""); // Clear
     } else {
-        logFile << "Failed to copy ISO file. Error: " << GetLastError() << "\n";
+        logFile << getTimestamp() << "Failed to copy ISO file. Error: " << GetLastError() << "\n";
     }
     logFile.close();
     
