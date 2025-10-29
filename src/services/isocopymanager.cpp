@@ -302,7 +302,7 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
             return false;
         }
     } else {
-        logFile << getTimestamp() << "Skipping content extraction (RAMDISK mode)\n";
+        logFile << getTimestamp() << "Skipping content extraction (Boot desde Memoria mode)\n";
     }
 
     // Extract EFI directory to ESP
@@ -379,7 +379,7 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
                             CreateDirectoryA(dstDir.c_str(), NULL); // Ignore error if exists
                         }
                         if (CopyFileA(src.c_str(), dst.c_str(), FALSE)) {
-                            logFile << getTimestamp() << "Extracted: " << filePair.first << " to " << dst << "\n";
+                            logFile << getTimestamp() << "Instalado: " << filePair.first << " to " << dst << "\n";
                         } else {
                             logFile << getTimestamp() << "Failed to extract: " << filePair.first << " error: " << GetLastError() << "\n";
                         }
@@ -402,7 +402,7 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
                                 CreateDirectoryA(dstDir.c_str(), NULL);
                             }
                             if (CopyFileA(src.c_str(), dst.c_str(), FALSE)) {
-                                logFile << getTimestamp() << "Extracted: " << filePair.first << " to " << dst << "\n";
+                                logFile << getTimestamp() << "Instalado: " << filePair.first << " to " << dst << "\n";
                             } else {
                                 logFile << getTimestamp() << "Failed to extract: " << filePair.first << " error: " << GetLastError() << "\n";
                             }
