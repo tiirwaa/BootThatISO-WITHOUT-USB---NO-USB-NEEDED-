@@ -4,10 +4,12 @@
 #include "EventObserver.h"
 #include <vector>
 #include <memory>
+#include <atomic>
 
 class EventManager {
 private:
     std::vector<EventObserver*> observers;
+    std::atomic<bool> cancelRequested{false};
 
 public:
     void addObserver(EventObserver* observer) {
@@ -53,6 +55,11 @@ public:
             observer->onDetailedProgress(copied, total, operation);
         }
     }
+
+    // Cancellation control (thread-safe)
+    void requestCancel() { cancelRequested.store(true); }
+    void clearCancel() { cancelRequested.store(false); }
+    bool isCancelRequested() const { return cancelRequested.load(); }
 };
 
 #endif // EVENTMANAGER_H

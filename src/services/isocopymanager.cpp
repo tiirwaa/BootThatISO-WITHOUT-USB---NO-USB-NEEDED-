@@ -81,8 +81,13 @@ DWORD CALLBACK CopyProgressRoutine(
     LPVOID lpData
 ) {
     EventManager* eventManager = static_cast<EventManager*>(lpData);
-    if (eventManager && TotalFileSize.QuadPart > 0) {
-        eventManager->notifyDetailedProgress(TotalBytesTransferred.QuadPart, TotalFileSize.QuadPart, "Copiando ISO");
+    if (eventManager) {
+        if (eventManager->isCancelRequested()) {
+            return PROGRESS_CANCEL;
+        }
+        if (TotalFileSize.QuadPart > 0) {
+            eventManager->notifyDetailedProgress(TotalBytesTransferred.QuadPart, TotalFileSize.QuadPart, "Copiando ISO");
+        }
     }
     return PROGRESS_CONTINUE;
 }
@@ -167,11 +172,20 @@ bool ISOCopyManager::copyDirectoryWithProgress(const std::string& source, const 
     if (hFind == INVALID_HANDLE_VALUE) return true;
     do {
         std::string name = findData.cFileName;
+        if (eventManager.isCancelRequested()) {
+            FindClose(hFind);
+            return false;
+        }
+
         if (name != "." && name != ".." && excludeDirs.find(name) == excludeDirs.end()) {
             std::string srcItem = source + "\\" + name;
             std::string destItem = dest + "\\" + name;
             if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
                 if (!copyDirectoryWithProgress(srcItem, destItem, eventManager, totalSize, copiedSoFar, excludeDirs)) {
+                    if (eventManager.isCancelRequested()) {
+                        FindClose(hFind);
+                        return false;
+                    }
                     std::ofstream errorLog(logDir + "\\" + COPY_ERROR_LOG_FILE, std::ios::app);
                     errorLog << getTimestamp() << "Failed to copy directory: " << srcItem << " to " << destItem << "\n";
                     errorLog.close();
@@ -190,6 +204,11 @@ bool ISOCopyManager::copyDirectoryWithProgress(const std::string& source, const 
                 DWORD destAttrs = GetFileAttributesA(destItem.c_str());
                 if (destAttrs != INVALID_FILE_ATTRIBUTES) {
                     SetFileAttributesA(destItem.c_str(), FILE_ATTRIBUTE_NORMAL);
+                }
+
+                if (eventManager.isCancelRequested()) {
+                    FindClose(hFind);
+                    return false;
                 }
 
                 if (!CopyFileA(srcItem.c_str(), destItem.c_str(), FALSE)) {
@@ -267,6 +286,16 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
     logFile << getTimestamp() << "Waiting 5 seconds for drive to be ready" << std::endl;
     Sleep(5000);
     logFile << getTimestamp() << "Drive ready, proceeding with analysis" << std::endl;
+
+    // Prepare dismount command so we can ensure unmount on early exit
+    std::string dismountCmd = "powershell -Command \"Dismount-DiskImage -ImagePath '" + isoPath + "'\"";
+
+    if (eventManager.isCancelRequested()) {
+        logFile << getTimestamp() << "Operation cancelled after mount preparation\n";
+        exec(dismountCmd.c_str());
+        logFile.close();
+        return false;
+    }
     
     eventManager.notifyDetailedProgress(isoSize / 10, isoSize, "Analizando contenido ISO");
     
@@ -290,7 +319,9 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
         // Extract all ISO contents to data partition, excluding EFI
         std::set<std::string> excludeDirs = {"efi", "EFI"};
         if (!copyDirectoryWithProgress(sourcePath, destPath, eventManager, isoSize, copiedSoFar, excludeDirs)) {
-            logFile << getTimestamp() << "Failed to copy content" << std::endl;
+            logFile << getTimestamp() << "Failed to copy content or cancelled" << std::endl;
+            // Ensure ISO is dismounted
+            exec(dismountCmd.c_str());
             logFile.close();
             return false;
         }
@@ -329,7 +360,8 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
     // Copy EFI files with progress
     std::set<std::string> noExclude;
     if (!copyDirectoryWithProgress(efiSourcePath, efiDestPath, eventManager, isoSize, copiedSoFar, noExclude)) {
-        logFile << getTimestamp() << "Failed to copy EFI" << std::endl;
+        logFile << getTimestamp() << "Failed to copy EFI or cancelled" << std::endl;
+        exec(dismountCmd.c_str());
         logFile.close();
         return false;
     }
@@ -550,7 +582,6 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
     
     // Dismount the ISO
     eventManager.notifyDetailedProgress(isoSize * 9 / 10, isoSize, "Desmontando ISO");
-    std::string dismountCmd = "powershell -Command \"Dismount-DiskImage -ImagePath '" + isoPath + "'\"";
     logFile << getTimestamp() << "Dismount command: " << dismountCmd << std::endl;
     std::string dismountResult = exec(dismountCmd.c_str());
     logFile << getTimestamp() << "Dismount ISO completed" << std::endl;

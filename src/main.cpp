@@ -112,7 +112,25 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
     case WM_CLOSE:
         if (mainWindow && mainWindow->IsProcessing())
         {
-            MessageBoxW(hwnd, L"El proceso está en ejecución. Por favor espere a que termine antes de cerrar la aplicación.", L"Proceso en ejecución", MB_OK);
+            // Ask user if they want to cancel the running operation
+            int res = MessageBoxW(hwnd, L"Un proceso está en ejecución. ¿Desea cancelar la operación y cerrar la aplicación?", L"Proceso en ejecución", MB_YESNO | MB_ICONQUESTION);
+            if (res == IDYES) {
+                // Request cancellation and wait for cleanup
+                mainWindow->requestCancel();
+                // Proceed to close
+                if (mainWindow) {
+                    delete mainWindow;
+                    mainWindow = nullptr;
+                }
+                PostQuitMessage(0);
+                return 0;
+            } else {
+                // User chose not to cancel; keep running
+                return 0;
+            }
+        } else {
+            // No processing running, destroy window to trigger cleanup
+            DestroyWindow(hwnd);
             return 0;
         }
         break;

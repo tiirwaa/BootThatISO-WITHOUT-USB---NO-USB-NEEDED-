@@ -3,6 +3,8 @@
 
 #include "BootStrategy.h"
 #include "../utils/Utils.h"
+#include "../utils/constants.h"
+#include <fstream>
 
 class ExtractedBootStrategy : public BootStrategy {
 public:
@@ -16,6 +18,18 @@ public:
         std::string cmd2 = "bcdedit /set " + guid + " osdevice partition=" + dataDevice;
         // Quote the path to handle spaces or special characters
         std::string cmd3 = "bcdedit /set " + guid + " path \"" + efiPath + "\"";
+
+        // Log commands for debugging
+        std::string logDir = Utils::getExeDirectory() + "logs";
+        CreateDirectoryA(logDir.c_str(), NULL);
+        std::string logFilePath = logDir + "\\" + BCD_CONFIG_LOG_FILE;
+        std::ofstream logFile(logFilePath.c_str(), std::ios::app);
+        if (logFile) {
+            logFile << "Executing: " << cmd1 << std::endl;
+            logFile << "Executing: " << cmd2 << std::endl;
+            logFile << "Executing: " << cmd3 << std::endl;
+            logFile.close();
+        }
 
         Utils::exec(cmd1.c_str());
         Utils::exec(cmd2.c_str());

@@ -17,6 +17,17 @@ ProcessController::~ProcessController()
     }
 }
 
+void ProcessController::requestCancel()
+{
+    eventManager.requestCancel();
+    // If a worker thread exists, wait for it to finish cleaning up
+    if (workerThread && workerThread->joinable()) {
+        workerThread->join();
+        delete workerThread;
+        workerThread = nullptr;
+    }
+}
+
 void ProcessController::startProcess(const std::string& isoPath, const std::string& selectedFormat, const std::string& selectedBootMode)
 {
     eventManager.notifyProgressUpdate(0);

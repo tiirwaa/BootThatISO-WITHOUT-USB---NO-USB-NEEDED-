@@ -48,6 +48,17 @@ MainWindow::~MainWindow()
     delete processController;
 }
 
+void MainWindow::requestCancel()
+{
+    // Ask controller to cancel and wait for cleanup
+    if (processController) {
+        LogMessage("Solicitud de cancelación enviada. Esperando limpieza...\r\n");
+        processController->requestCancel();
+        LogMessage("Operación cancelada y limpiada.\r\n");
+        onButtonEnable();
+    }
+}
+
 void MainWindow::SetupUI(HWND parent)
 {
     // Create controls

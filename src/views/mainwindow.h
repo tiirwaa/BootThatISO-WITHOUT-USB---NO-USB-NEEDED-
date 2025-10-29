@@ -42,6 +42,9 @@ public:
     void onError(const std::string& message) override;
     void onDetailedProgress(long long copied, long long total, const std::string& operation) override;
 
+    // Request cancellation of running process
+    void requestCancel();
+
     bool IsProcessing() const { return isProcessing; }
 
     void HandleCommand(UINT msg, WPARAM wParam, LPARAM lParam);
