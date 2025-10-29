@@ -154,6 +154,11 @@ void MainWindow::selectISO()
 
 void MainWindow::createPartition()
 {
+    QString isoPath = isoPathEdit->text();
+    if (isoPath.isEmpty()) {
+        QMessageBox::warning(this, "Archivo ISO", "Por favor, seleccione un archivo ISO primero.");
+        return;
+    }
     // Validación de espacio disponible usando el partitionManager
     SpaceValidationResult validation = partitionManager->validateAvailableSpace();
     if (!validation.isValid) {
@@ -191,11 +196,6 @@ void MainWindow::createPartition()
 void MainWindow::copyISO()
 {
     QString isoPath = isoPathEdit->text();
-    if (isoPath.isEmpty()) {
-        QMessageBox::warning(this, "Archivo ISO", "Por favor, seleccione un archivo ISO primero.");
-        return;
-    }
-
     if (isoCopyManager->copyISO(isoPath)) {
         QMessageBox::information(this, "Copiar ISO", "Función no implementada aún.");
     } else {
