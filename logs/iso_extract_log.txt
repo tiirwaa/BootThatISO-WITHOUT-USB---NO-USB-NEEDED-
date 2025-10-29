@@ -7,4 +7,5 @@ Mount result: 'E
 '
 Source path: E:\
 Is Windows ISO: No
-Failed to copy content
+Extracting EFI directory to ESP
+Failed to copy EFI

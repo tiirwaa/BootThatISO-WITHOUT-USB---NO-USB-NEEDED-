@@ -13,6 +13,8 @@ Checking drive: H:\ (type: 5)
   Drive type 5 (not DRIVE_FIXED)
 Checking drive: I:\ (type: 5)
   Drive type 5 (not DRIVE_FIXED)
+Checking drive: J:\ (type: 5)
+  Drive type 5 (not DRIVE_FIXED)
 Checking drive: Y:\ (type: 3)
   Volume name: 'ISOEFI', File system: 'FAT32'
   Found ISOEFI partition at: Y:\

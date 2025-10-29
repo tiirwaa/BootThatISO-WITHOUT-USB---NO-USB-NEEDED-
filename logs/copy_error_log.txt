@@ -1,1 +1,2 @@
-Failed to create directory: Z:\ Error code: 5
+Failed to copy file: E:\efi\boot\bootx64.efi to Y:\EFI\boot\bootx64.efi Error code: 0
+Failed to copy directory: E:\efi\boot to Y:\EFI\boot

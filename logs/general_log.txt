@@ -1,18 +1,9 @@
-Iniciando proceso...
-
-Las particiones existen. Reformateando...
-
-Partición reformateada.
-
-Partición ISOBOOT encontrada en: Z:\
-
-Partición ISOEFI encontrada en: Y:\
-
-Extrayendo archivos EFI del ISO...
-
-Modo Extraido: extrayendo contenido y EFI...
-
-Error al extraer archivos del ISO.
-
-Proceso fallido debido a errores en la copia del ISO.
-
+Iniciando proceso...
+Las particiones existen. Reformateando...
+Partición reformateada.
+Partición ISOBOOT encontrada en: Z:\
+Partición ISOEFI encontrada en: Y:\
+Extrayendo archivos EFI del ISO...
+Modo Extraido: extrayendo contenido y EFI...
+Error al extraer archivos del ISO.
+Proceso fallido debido a errores en la copia del ISO.

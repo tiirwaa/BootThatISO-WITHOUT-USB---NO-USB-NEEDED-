@@ -121,14 +121,18 @@ long long ISOCopyManager::getDirectorySize(const std::string& path) {
 }
 
 bool ISOCopyManager::copyDirectoryWithProgress(const std::string& source, const std::string& dest, EventManager& eventManager, long long totalSize, long long& copiedSoFar, const std::set<std::string>& excludeDirs) {
-    BOOL result = CreateDirectoryA(dest.c_str(), NULL);
-    if (!result) {
-        DWORD error = GetLastError();
-        if (error != ERROR_ALREADY_EXISTS) {
-            std::ofstream errorLog(Utils::getExeDirectory() + "copy_error_log.txt", std::ios::app);
-            errorLog << "Failed to create directory: " << dest << " Error code: " << error << "\n";
-            errorLog.close();
-            return false;
+    // Skip creating directory if it's a drive root (e.g., "Z:\")
+    bool isDriveRoot = (dest.length() == 3 && dest[1] == ':' && dest[2] == '\\');
+    if (!isDriveRoot) {
+        BOOL result = CreateDirectoryA(dest.c_str(), NULL);
+        if (!result) {
+            DWORD error = GetLastError();
+            if (error != ERROR_ALREADY_EXISTS) {
+                std::ofstream errorLog(Utils::getExeDirectory() + "copy_error_log.txt", std::ios::app);
+                errorLog << "Failed to create directory: " << dest << " Error code: " << error << "\n";
+                errorLog.close();
+                return false;
+            }
         }
     }
     WIN32_FIND_DATAA findData;
