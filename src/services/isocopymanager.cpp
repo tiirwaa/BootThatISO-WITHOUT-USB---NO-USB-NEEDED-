@@ -374,71 +374,7 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
             }
         }
         
-        // Also copy to EFI\BOOT\BOOTX64.EFI for direct EFI firmware loading
-        std::string bootx64Dest = espPath + "EFI\\BOOT\\BOOTX64.EFI";
-        std::string bootx64Dir = espPath + "EFI\\BOOT";
-        CreateDirectoryA(bootx64Dir.c_str(), NULL); // Ignore error if exists
-        // Set attributes to normal for the destination file if it exists
-        DWORD destAttrs2 = GetFileAttributesA(bootx64Dest.c_str());
-        if (destAttrs2 != INVALID_FILE_ATTRIBUTES) {
-            SetFileAttributesA(bootx64Dest.c_str(), FILE_ATTRIBUTE_NORMAL);
-        }
-        if (CopyFileA(bootmgrSource.c_str(), bootx64Dest.c_str(), FALSE)) {
-            logFile << getTimestamp() << "Copied bootmgr.efi as BOOTX64.EFI for direct EFI boot" << std::endl;
-        } else {
-            logFile << getTimestamp() << "Failed to copy bootmgr.efi as BOOTX64.EFI, error: " << GetLastError() << std::endl;
-            // Fallback: use cmd copy
-            std::string cmdCopy = "cmd /c copy \"" + bootmgrSource + "\" \"" + bootx64Dest + "\" >nul 2>&1";
-            std::string copyResult = exec(cmdCopy.c_str());
-            if (GetFileAttributesA(bootx64Dest.c_str()) != INVALID_FILE_ATTRIBUTES) {
-                logFile << getTimestamp() << "Copied bootmgr.efi as BOOTX64.EFI using cmd" << std::endl;
-            } else {
-                logFile << getTimestamp() << "Failed to copy using cmd" << std::endl;
-                // Fallback: copy the existing bootx64.efi from ESP to BOOTX64.EFI
-                std::string existingBootx64 = espPath + "EFI\\boot\\bootx64.efi";
-                if (GetFileAttributesA(existingBootx64.c_str()) != INVALID_FILE_ATTRIBUTES) {
-                    std::string cmdCopy2 = "cmd /c copy \"" + existingBootx64 + "\" \"" + bootx64Dest + "\" >nul 2>&1";
-                    std::string copyResult2 = exec(cmdCopy2.c_str());
-                    if (GetFileAttributesA(bootx64Dest.c_str()) != INVALID_FILE_ATTRIBUTES) {
-                        logFile << getTimestamp() << "Copied existing bootx64.efi as BOOTX64.EFI using cmd" << std::endl;
-                    } else {
-                        logFile << getTimestamp() << "Failed to copy existing bootx64.efi using cmd" << std::endl;
-                        // Last fallback: copy bootmgfw.efi from system
-                        std::string systemBootmgfw = "C:\\Windows\\Boot\\EFI\\bootmgfw.efi";
-                        if (GetFileAttributesA(systemBootmgfw.c_str()) != INVALID_FILE_ATTRIBUTES) {
-                            // Set attributes to normal for the destination
-                            SetFileAttributesA(bootx64Dest.c_str(), FILE_ATTRIBUTE_NORMAL);
-                            std::string cmdCopy3 = "cmd /c copy \"" + systemBootmgfw + "\" \"" + bootx64Dest + "\" >nul 2>&1";
-                            std::string copyResult3 = exec(cmdCopy3.c_str());
-                            if (GetFileAttributesA(bootx64Dest.c_str()) != INVALID_FILE_ATTRIBUTES) {
-                                logFile << getTimestamp() << "Copied bootmgfw.efi from system as BOOTX64.EFI using cmd" << std::endl;
-                            } else {
-                                logFile << getTimestamp() << "Failed to copy bootmgfw.efi from system using cmd" << std::endl;
-                            }
-                        } else {
-                            logFile << getTimestamp() << "bootmgfw.efi not found in system" << std::endl;
-                        }
-                    }
-                } else {
-                    logFile << getTimestamp() << "No existing bootx64.efi to copy" << std::endl;
-                    // Fallback: copy bootmgfw.efi from system
-                    std::string systemBootmgfw = "C:\\Windows\\Boot\\EFI\\bootmgfw.efi";
-                    if (GetFileAttributesA(systemBootmgfw.c_str()) != INVALID_FILE_ATTRIBUTES) {
-                        // Set attributes to normal for the destination
-                        SetFileAttributesA(bootx64Dest.c_str(), FILE_ATTRIBUTE_NORMAL);
-                        std::string cmdCopy3 = "cmd /c copy \"" + systemBootmgfw + "\" \"" + bootx64Dest + "\" >nul 2>&1";
-                        std::string copyResult3 = exec(cmdCopy3.c_str());
-                        if (GetFileAttributesA(bootx64Dest.c_str()) != INVALID_FILE_ATTRIBUTES) {
-                            logFile << getTimestamp() << "Copied bootmgfw.efi from system as BOOTX64.EFI using cmd" << std::endl;
-                        } else {
-                            logFile << getTimestamp() << "Failed to copy bootmgfw.efi from system using cmd" << std::endl;
-                        }
-                    } else {
-                        logFile << getTimestamp() << "bootmgfw.efi not found in system" << std::endl;
-                    }
-                }
-            }
-        }
+        // For non-Windows ISOs, do not copy bootmgr.efi to BOOTX64.EFI as it may overwrite the correct EFI boot file from the ISO
     }
     
     // If boot.wim exists and this is a Windows ISO, extract additional boot files from it
