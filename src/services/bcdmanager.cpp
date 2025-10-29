@@ -174,7 +174,7 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
     // Log selected file and mode
     std::string logDir = Utils::getExeDirectory() + "logs";
     CreateDirectoryA(logDir.c_str(), NULL); // Create logs directory if it doesn't exist
-    std::ofstream logFile((logDir + "\\bcd_config_log.log").c_str());
+    std::ofstream logFile((logDir + "\\" + BCD_CONFIG_LOG_FILE).c_str());
     logFile << "Selected EFI boot file: " << efiBootFile << std::endl;
     logFile << "Selected mode: " << bcdLabel << std::endl;
 

@@ -28,7 +28,9 @@ MainWindow::MainWindow(HWND parent)
     bcdManager = &BCDManager::getInstance();
     eventManager.addObserver(this);
     processController = new ProcessController(eventManager);
-    generalLogFile.open(Utils::getExeDirectory() + "general_log.log", std::ios::app);
+    std::string logDir = Utils::getExeDirectory() + "logs";
+    CreateDirectoryA(logDir.c_str(), NULL);
+    generalLogFile.open(logDir + "\\" + GENERAL_LOG_FILE, std::ios::app);
     if (partitionManager->partitionExists()) {
         bcdManager->restoreBCD();
     }

@@ -1,4 +1,5 @@
 #include "isocopymanager.h"
+#include "../utils/constants.h"
 #include <windows.h>
 #include <string>
 #include <sstream>
@@ -136,6 +137,8 @@ void ISOCopyManager::listDirectoryRecursive(std::ofstream& log, const std::strin
 }
 
 bool ISOCopyManager::copyDirectoryWithProgress(const std::string& source, const std::string& dest, EventManager& eventManager, long long totalSize, long long& copiedSoFar, const std::set<std::string>& excludeDirs) {
+    std::string logDir = Utils::getExeDirectory() + "logs";
+    CreateDirectoryA(logDir.c_str(), NULL);
     // Skip creating directory if it's a drive root (e.g., "Z:\")
     bool isDriveRoot = (dest.length() == 3 && dest[1] == ':' && dest[2] == '\\');
     if (!isDriveRoot) {
@@ -143,18 +146,18 @@ bool ISOCopyManager::copyDirectoryWithProgress(const std::string& source, const 
         if (!result) {
             DWORD error = GetLastError();
             if (error != ERROR_ALREADY_EXISTS) {
-                std::ofstream errorLog(Utils::getExeDirectory() + "copy_error_log.log", std::ios::app);
+                std::ofstream errorLog(logDir + "\\" + COPY_ERROR_LOG_FILE, std::ios::app);
                 errorLog << getTimestamp() << "Failed to create directory: " << dest << " Error code: " << error << "\n";
                 errorLog.close();
                 eventManager.notifyLogUpdate("Error: Failed to create directory " + dest + " (Error " + std::to_string(error) + ")\r\n");
                 return false;
             } else {
-                std::ofstream errorLog(Utils::getExeDirectory() + "copy_error_log.log", std::ios::app);
+                std::ofstream errorLog(logDir + "\\" + COPY_ERROR_LOG_FILE, std::ios::app);
                 errorLog << getTimestamp() << "Directory already exists: " << dest << "\n";
                 errorLog.close();
             }
         } else {
-            std::ofstream errorLog(Utils::getExeDirectory() + "copy_error_log.log", std::ios::app);
+            std::ofstream errorLog(logDir + "\\" + COPY_ERROR_LOG_FILE, std::ios::app);
             errorLog << getTimestamp() << "Created directory: " << dest << "\n";
             errorLog.close();
         }
@@ -169,7 +172,7 @@ bool ISOCopyManager::copyDirectoryWithProgress(const std::string& source, const 
             std::string destItem = dest + "\\" + name;
             if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
                 if (!copyDirectoryWithProgress(srcItem, destItem, eventManager, totalSize, copiedSoFar, excludeDirs)) {
-                    std::ofstream errorLog(Utils::getExeDirectory() + "copy_error_log.log", std::ios::app);
+                    std::ofstream errorLog(logDir + "\\" + COPY_ERROR_LOG_FILE, std::ios::app);
                     errorLog << getTimestamp() << "Failed to copy directory: " << srcItem << " to " << destItem << "\n";
                     errorLog.close();
                     eventManager.notifyLogUpdate("Error: Failed to copy directory " + srcItem + " to " + destItem + "\r\n");
@@ -180,7 +183,7 @@ bool ISOCopyManager::copyDirectoryWithProgress(const std::string& source, const 
                 // Log source file info before copying
                 DWORD srcAttrs = GetFileAttributesA(srcItem.c_str());
                 long long fileSize = ((long long)findData.nFileSizeHigh << 32) | findData.nFileSizeLow;
-                std::ofstream errorLog(Utils::getExeDirectory() + "copy_error_log.log", std::ios::app);
+                std::ofstream errorLog(logDir + "\\" + COPY_ERROR_LOG_FILE, std::ios::app);
                 errorLog << getTimestamp() << "Attempting to copy file: " << srcItem << " to " << destItem << "\n";
                 errorLog << getTimestamp() << "Source attributes: " << srcAttrs << ", Size: " << fileSize << " bytes\n";
                 if (srcAttrs == INVALID_FILE_ATTRIBUTES) {
@@ -199,7 +202,7 @@ bool ISOCopyManager::copyDirectoryWithProgress(const std::string& source, const 
 
                 if (!CopyFileA(srcItem.c_str(), destItem.c_str(), FALSE)) {
                     DWORD error = GetLastError();
-                    std::ofstream errorLog2(Utils::getExeDirectory() + "copy_error_log.log", std::ios::app);
+                    std::ofstream errorLog2(logDir + "\\" + COPY_ERROR_LOG_FILE, std::ios::app);
                     errorLog2 << getTimestamp() << "Failed to copy file: " << srcItem << " to " << destItem << " Error code: " << error << "\n";
                     // Additional error details
                     errorLog2 << getTimestamp() << "Error description: ";
@@ -219,7 +222,7 @@ bool ISOCopyManager::copyDirectoryWithProgress(const std::string& source, const 
                     FindClose(hFind);
                     return false;
                 } else {
-                    std::ofstream errorLog3(Utils::getExeDirectory() + "copy_error_log.log", std::ios::app);
+                    std::ofstream errorLog3(logDir + "\\" + COPY_ERROR_LOG_FILE, std::ios::app);
                     errorLog3 << getTimestamp() << "Successfully copied file: " << srcItem << " to " << destItem << "\n";
                     errorLog3.close();
                 }
@@ -234,8 +237,10 @@ bool ISOCopyManager::copyDirectoryWithProgress(const std::string& source, const 
 
 bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::string& isoPath, const std::string& destPath, const std::string& espPath, bool extractContent)
 {
+    std::string logDir = Utils::getExeDirectory() + "logs";
+    CreateDirectoryA(logDir.c_str(), NULL);
     // Create log file for debugging
-    std::ofstream logFile(Utils::getExeDirectory() + "iso_extract_log.log");
+    std::ofstream logFile(logDir + "\\" + ISO_EXTRACT_LOG_FILE);
     logFile << getTimestamp() << "Starting ISO extraction from: " << isoPath << std::endl;
     logFile << getTimestamp() << "Destination (data): " << destPath << std::endl;
     logFile << getTimestamp() << "ESP path: " << espPath << std::endl;
@@ -278,7 +283,7 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
     eventManager.notifyDetailedProgress(isoSize / 10, isoSize, "Analizando contenido ISO");
     
     // List all files and directories recursively in the ISO (up to 10 levels deep)
-    std::ofstream contentLog(Utils::getExeDirectory() + "iso_content.log");
+    std::ofstream contentLog(logDir + "\\" + ISO_CONTENT_LOG_FILE);
     listDirectoryRecursive(contentLog, sourcePath, 0, 10);
     contentLog.close();
     
@@ -617,10 +622,12 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
 
 bool ISOCopyManager::copyISOFile(EventManager& eventManager, const std::string& isoPath, const std::string& destPath)
 {
+    std::string logDir = Utils::getExeDirectory() + "logs";
+    CreateDirectoryA(logDir.c_str(), NULL);
     std::string destFile = destPath + "iso.iso";
     
     // Create log file for debugging
-    std::ofstream logFile(Utils::getExeDirectory() + "iso_file_copy_log.log");
+    std::ofstream logFile(logDir + "\\" + ISO_FILE_COPY_LOG_FILE);
     logFile << getTimestamp() << "Copying ISO file from: " << isoPath << std::endl;
     logFile << getTimestamp() << "To: " << destFile << std::endl;
     
