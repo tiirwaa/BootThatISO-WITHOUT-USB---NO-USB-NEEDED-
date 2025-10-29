@@ -9,7 +9,7 @@ public:
     BCDManager();
     ~BCDManager();
 
-    bool configureBCD(const std::string& driveLetter);
+    std::string configureBCD(const std::string& driveLetter);
     bool restoreBCD();
 };
 

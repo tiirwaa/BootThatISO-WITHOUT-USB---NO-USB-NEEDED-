@@ -202,12 +202,14 @@ void MainWindow::OnConfigureBCD()
     }
 
     std::string driveLetter = drive.substr(0, 2);
-    if (bcdManager->configureBCD(driveLetter)) {
+    std::string error = bcdManager->configureBCD(driveLetter);
+    if (!error.empty()) {
+        LogMessage("Error al configurar BCD: " + error + "\r\n");
+        std::wstring werror(error.begin(), error.end());
+        MessageBoxW(NULL, werror.c_str(), L"Error", MB_OK);
+    } else {
         LogMessage("BCD configurado exitosamente.\r\n");
         SendMessage(progressBar, PBM_SETPOS, 100, 0);
-    } else {
-        LogMessage("Error al configurar BCD.\r\n");
-        MessageBoxW(NULL, L"Error al configurar BCD.", L"Error", MB_OK);
     }
 }
 
