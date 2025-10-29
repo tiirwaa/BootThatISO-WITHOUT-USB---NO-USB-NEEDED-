@@ -13,5 +13,10 @@ const char* const BCD_CONFIG_LOG_FILE = "bcd_config_log.log";
 const char* const ISO_CONTENT_LOG_FILE = "iso_content.log";
 const char* const ISO_FILE_COPY_LOG_FILE = "iso_file_copy_log.log";
 const char* const ISO_EXTRACT_LOG_FILE = "iso_extract_log.log";
+const char* const DEBUG_DRIVES_EFI_LOG_FILE = "debug_drives_efi.log";
+const char* const DEBUG_DRIVES_LOG_FILE = "debug_drives.log";
+const char* const DISKPART_LOG_FILE = "diskpart_log.log";
+const char* const REFORMAT_LOG_FILE = "reformat_log.log";
+const char* const REFORMAT_EXIT_LOG_FILE = "reformat_exit_log.log";
 
 #endif // CONSTANTS_H

@@ -161,7 +161,9 @@ bool PartitionManager::createPartition(const std::string& format)
     }
 
     // Write to log.txt
-    std::ofstream logFile("log.txt");
+    std::string logDir = Utils::getExeDirectory() + "logs";
+    CreateDirectoryA(logDir.c_str(), NULL);
+    std::ofstream logFile((logDir + "\\" + DISKPART_LOG_FILE).c_str());
     if (logFile) {
         logFile << "Diskpart script executed.\n";
         logFile << "Script content:\n";
@@ -240,7 +242,9 @@ std::string PartitionManager::getPartitionDriveLetter()
     char drives[256];
     GetLogicalDriveStringsA(sizeof(drives), drives);
 
-    std::ofstream debugLog((Utils::getExeDirectory() + "debug_drives.log").c_str());
+    std::string logDir = Utils::getExeDirectory() + "logs";
+    CreateDirectoryA(logDir.c_str(), NULL);
+    std::ofstream debugLog((logDir + "\\" + DEBUG_DRIVES_LOG_FILE).c_str());
     debugLog << "Searching for EASYISOBOOT partition...\n";
 
     char* drive = drives;
@@ -367,7 +371,9 @@ std::string PartitionManager::getEfiPartitionDriveLetter()
     char drives[256];
     GetLogicalDriveStringsA(sizeof(drives), drives);
 
-    std::ofstream debugLog((Utils::getExeDirectory() + "debug_drives_efi.log").c_str());
+    std::string logDir = Utils::getExeDirectory() + "logs";
+    CreateDirectoryA(logDir.c_str(), NULL);
+    std::ofstream debugLog((logDir + "\\" + DEBUG_DRIVES_EFI_LOG_FILE).c_str());
     debugLog << "Searching for " << EFI_VOLUME_LABEL << " partition...\n";
 
     char* drive = drives;
@@ -598,7 +604,9 @@ bool PartitionManager::reformatPartition(const std::string& format)
     DeleteFileA(tempFile);
 
     if (exitCode != 0) {
-        std::ofstream logFile((Utils::getExeDirectory() + "logs\\reformat_log.log").c_str());
+        std::string logDir = Utils::getExeDirectory() + "logs";
+        CreateDirectoryA(logDir.c_str(), NULL);
+        std::ofstream logFile((logDir + "\\" + REFORMAT_LOG_FILE).c_str());
         if (logFile) {
             logFile << "Diskpart list volume failed with exit code: " << exitCode << "\n";
             logFile << "Output:\n" << output << "\n";
@@ -642,7 +650,9 @@ bool PartitionManager::reformatPartition(const std::string& format)
         }
     }
 
-    std::ofstream logFile((Utils::getExeDirectory() + "logs\\reformat_log.log").c_str());
+    std::string logDir = Utils::getExeDirectory() + "logs";
+    CreateDirectoryA(logDir.c_str(), NULL);
+    std::ofstream logFile((logDir + "\\" + REFORMAT_LOG_FILE).c_str());
     if (logFile) {
         logFile << "Diskpart list volume output:\n" << output << "\n";
         if (volumeNumber == -1) {
@@ -690,7 +700,7 @@ bool PartitionManager::reformatPartition(const std::string& format)
     // Refresh volume information
     system("mountvol /r >nul 2>&1");
 
-    std::ofstream logFile2((Utils::getExeDirectory() + "logs\\reformat_exit_log.log").c_str(), std::ios::app);
+    std::ofstream logFile2((logDir + "\\" + REFORMAT_EXIT_LOG_FILE).c_str(), std::ios::app);
     if (logFile2) {
         logFile2 << "Format command exit code: " << exitCode << "\n";
         logFile2.close();
