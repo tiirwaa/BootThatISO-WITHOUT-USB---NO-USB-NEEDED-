@@ -125,33 +125,40 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
     if (end == std::string::npos) return "Error al extraer GUID de la nueva entrada";
     std::string guid = output.substr(pos, end - pos + 1);
 
-    // Find the EFI boot file in ESP
+    // Find the EFI boot file in ESP - prioritize ISO files over system files
     std::string efiBootFile;
-    std::string candidate5 = espDriveLetter + "\\EFI\\microsoft\\boot\\bootmgfw.efi";
-    if (GetFileAttributesA(candidate5.c_str()) != INVALID_FILE_ATTRIBUTES) {
-        efiBootFile = candidate5;
+    // First priority: ISO files
+    std::string candidate1 = espDriveLetter + "\\EFI\\Microsoft\\Boot\\bootmgr.efi";  // From ISO
+    if (GetFileAttributesA(candidate1.c_str()) != INVALID_FILE_ATTRIBUTES) {
+        efiBootFile = candidate1;
     } else {
-        std::string candidate6 = espDriveLetter + "\\EFI\\Microsoft\\Boot\\bootmgfw.efi";
-        if (GetFileAttributesA(candidate6.c_str()) != INVALID_FILE_ATTRIBUTES) {
-            efiBootFile = candidate6;
+        std::string candidate2 = espDriveLetter + "\\EFI\\boot\\BOOTX64.EFI";  // From ISO
+        if (GetFileAttributesA(candidate2.c_str()) != INVALID_FILE_ATTRIBUTES) {
+            efiBootFile = candidate2;
         } else {
-            std::string candidate3 = espDriveLetter + "\\EFI\\boot\\BOOTX64.EFI";
+            std::string candidate3 = espDriveLetter + "\\EFI\\boot\\bootx64.efi";  // From ISO
             if (GetFileAttributesA(candidate3.c_str()) != INVALID_FILE_ATTRIBUTES) {
                 efiBootFile = candidate3;
             } else {
-                std::string candidate1 = espDriveLetter + "\\EFI\\boot\\bootx64.efi";
-                if (GetFileAttributesA(candidate1.c_str()) != INVALID_FILE_ATTRIBUTES) {
-                    efiBootFile = candidate1;
+                std::string candidate4 = espDriveLetter + "\\EFI\\boot\\BOOTIA32.EFI";  // From ISO
+                if (GetFileAttributesA(candidate4.c_str()) != INVALID_FILE_ATTRIBUTES) {
+                    efiBootFile = candidate4;
                 } else {
-                    std::string candidate4 = espDriveLetter + "\\EFI\\boot\\BOOTIA32.EFI";
-                    if (GetFileAttributesA(candidate4.c_str()) != INVALID_FILE_ATTRIBUTES) {
-                        efiBootFile = candidate4;
+                    std::string candidate5 = espDriveLetter + "\\EFI\\boot\\bootia32.efi";  // From ISO
+                    if (GetFileAttributesA(candidate5.c_str()) != INVALID_FILE_ATTRIBUTES) {
+                        efiBootFile = candidate5;
                     } else {
-                        std::string candidate2 = espDriveLetter + "\\EFI\\boot\\bootia32.efi";
-                        if (GetFileAttributesA(candidate2.c_str()) != INVALID_FILE_ATTRIBUTES) {
-                            efiBootFile = candidate2;
+                        // Last resort: system files
+                        std::string candidate6 = espDriveLetter + "\\EFI\\microsoft\\boot\\bootmgfw.efi";
+                        if (GetFileAttributesA(candidate6.c_str()) != INVALID_FILE_ATTRIBUTES) {
+                            efiBootFile = candidate6;
                         } else {
-                            return "Archivo EFI boot no encontrado en ESP";
+                            std::string candidate7 = espDriveLetter + "\\EFI\\Microsoft\\Boot\\bootmgfw.efi";
+                            if (GetFileAttributesA(candidate7.c_str()) != INVALID_FILE_ATTRIBUTES) {
+                                efiBootFile = candidate7;
+                            } else {
+                                return "Archivo EFI boot no encontrado en ESP";
+                            }
                         }
                     }
                 }
@@ -165,9 +172,11 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
     }
 
     // Log selected file and mode
-    std::ofstream logFile((Utils::getExeDirectory() + "logs\\bcd_config_log.log").c_str());
-    logFile << "Selected EFI boot file: " << efiBootFile << "\n";
-    logFile << "Selected mode: " << bcdLabel << "\n";
+    std::string logDir = Utils::getExeDirectory() + "logs";
+    CreateDirectoryA(logDir.c_str(), NULL); // Create logs directory if it doesn't exist
+    std::ofstream logFile((logDir + "\\bcd_config_log.log").c_str());
+    logFile << "Selected EFI boot file: " << efiBootFile << std::endl;
+    logFile << "Selected mode: " << bcdLabel << std::endl;
 
     // Compute the relative path for BCD
     std::string efiPath = efiBootFile.substr(espDriveLetter.length());
