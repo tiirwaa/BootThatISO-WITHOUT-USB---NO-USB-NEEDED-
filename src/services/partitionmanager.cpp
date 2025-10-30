@@ -935,3 +935,162 @@ bool PartitionManager::reformatEfiPartition()
         return false;
     }
 }
+
+bool PartitionManager::recoverSpace()
+{
+    if (eventManager) eventManager->notifyLogUpdate("Iniciando recuperación de espacio...\r\n");
+
+    // First, find volumes with VOLUME_LABEL and EFI_VOLUME_LABEL
+    char tempPath[MAX_PATH];
+    GetTempPathA(MAX_PATH, tempPath);
+    char tempFile[MAX_PATH];
+    GetTempFileNameA(tempPath, "recover", 0, tempFile);
+
+    std::ofstream scriptFile(tempFile);
+    if (!scriptFile) {
+        return false;
+    }
+    scriptFile << "list volume\n";
+    scriptFile << "exit\n";
+    scriptFile.close();
+
+    STARTUPINFOA si = { sizeof(si) };
+    PROCESS_INFORMATION pi;
+    SECURITY_ATTRIBUTES sa;
+    sa.nLength = sizeof(sa);
+    sa.lpSecurityDescriptor = NULL;
+    sa.bInheritHandle = TRUE;
+
+    HANDLE hRead, hWrite;
+    if (!CreatePipe(&hRead, &hWrite, &sa, 0)) {
+        DeleteFileA(tempFile);
+        return false;
+    }
+
+    si.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
+    si.hStdOutput = hWrite;
+    si.hStdError = hWrite;
+    si.wShowWindow = SW_HIDE;
+
+    std::string cmd = "diskpart /s " + std::string(tempFile);
+    if (!CreateProcessA(NULL, const_cast<char*>(cmd.c_str()), NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi)) {
+        CloseHandle(hRead);
+        CloseHandle(hWrite);
+        DeleteFileA(tempFile);
+        return false;
+    }
+
+    CloseHandle(hWrite);
+
+    std::string output;
+    char buffer[1024];
+    DWORD bytesRead;
+    while (ReadFile(hRead, buffer, sizeof(buffer) - 1, &bytesRead, NULL) && bytesRead > 0) {
+        buffer[bytesRead] = '\0';
+        output += buffer;
+    }
+
+    CloseHandle(hRead);
+
+    WaitForSingleObject(pi.hProcess, 30000);
+
+    DWORD exitCode;
+    GetExitCodeProcess(pi.hProcess, &exitCode);
+
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
+
+    DeleteFileA(tempFile);
+
+    if (exitCode != 0) {
+        if (eventManager) eventManager->notifyLogUpdate("Error: Falló list volume para recuperación.\r\n");
+        return false;
+    }
+
+    // Parse to find volume numbers for VOLUME_LABEL and EFI_VOLUME_LABEL
+    std::istringstream iss(output);
+    std::string line;
+    int dataVol = -1, efiVol = -1;
+    while (std::getline(iss, line)) {
+        size_t volPos = line.find("Volumen");
+        if (volPos == std::string::npos) {
+            volPos = line.find("Volume");
+        }
+        if (volPos != std::string::npos) {
+            std::string numStr = line.substr(volPos + 8, 3);
+            size_t spacePos = numStr.find(' ');
+            if (spacePos != std::string::npos) {
+                numStr = numStr.substr(0, spacePos);
+            }
+            int volNum = std::atoi(numStr.c_str());
+            
+            std::string label = line.substr(volPos + 15, 13);
+            size_t start = label.find_first_not_of(" \t");
+            size_t end = label.find_last_not_of(" \t");
+            if (start != std::string::npos && end != std::string::npos) {
+                label = label.substr(start, end - start + 1);
+            } else {
+                label = "";
+            }
+            
+            if (label == VOLUME_LABEL) {
+                dataVol = volNum;
+            } else if (label == EFI_VOLUME_LABEL) {
+                efiVol = volNum;
+            }
+        }
+    }
+
+    if (dataVol == -1 && efiVol == -1) {
+        if (eventManager) eventManager->notifyLogUpdate("No se encontraron particiones creadas por el programa.\r\n");
+        return true; // Nothing to do
+    }
+
+    // Create script to delete volumes and extend C:
+    GetTempFileNameA(tempPath, "recover_script", 0, tempFile);
+    scriptFile.open(tempFile);
+    scriptFile << "select disk 0\n";
+    if (dataVol != -1) {
+        scriptFile << "select volume " << dataVol << "\n";
+        scriptFile << "delete volume\n";
+    }
+    if (efiVol != -1) {
+        scriptFile << "select volume " << efiVol << "\n";
+        scriptFile << "delete volume\n";
+    }
+    scriptFile << "select partition 1\n"; // Assume C: is partition 1
+    scriptFile << "extend\n";
+    scriptFile << "exit\n";
+    scriptFile.close();
+
+    si.dwFlags = STARTF_USESHOWWINDOW;
+    si.wShowWindow = SW_HIDE;
+    si.hStdOutput = NULL;
+    si.hStdError = NULL;
+
+    cmd = "diskpart /s " + std::string(tempFile);
+    if (!CreateProcessA(NULL, const_cast<char*>(cmd.c_str()), NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
+        DeleteFileA(tempFile);
+        if (eventManager) eventManager->notifyLogUpdate("Error: No se pudo ejecutar diskpart para recuperación.\r\n");
+        return false;
+    }
+
+    if (eventManager) eventManager->notifyLogUpdate("Ejecutando recuperación de espacio...\r\n");
+
+    WaitForSingleObject(pi.hProcess, 300000); // 5 minutes
+
+    GetExitCodeProcess(pi.hProcess, &exitCode);
+
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
+
+    DeleteFileA(tempFile);
+
+    if (exitCode == 0) {
+        if (eventManager) eventManager->notifyLogUpdate("Espacio recuperado exitosamente.\r\n");
+        return true;
+    } else {
+        if (eventManager) eventManager->notifyLogUpdate("Error: Falló la recuperación de espacio (código " + std::to_string(exitCode) + ").\r\n");
+        return false;
+    }
+}

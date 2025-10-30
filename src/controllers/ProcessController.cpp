@@ -99,17 +99,22 @@ void ProcessController::processInThread(const std::string& isoPath, const std::s
         }
     }
 
-    if (partitionExists && !skipReformat) {
-        eventManager.notifyLogUpdate("Particiones existentes detectadas. Iniciando reformateo...\r\n");
-        eventManager.notifyProgressUpdate(20);
-        if (!partitionManager->reformatPartition(selectedFormat)) {
-            eventManager.notifyLogUpdate("Error: Falló el reformateo de la partición.\r\n");
-            eventManager.notifyError("Error al reformatear la partición.");
-            eventManager.notifyButtonEnable();
-            return;
+    if (partitionExists) {
+        if (!skipReformat) {
+            eventManager.notifyLogUpdate("Particiones existentes detectadas. Iniciando reformateo...\r\n");
+            eventManager.notifyProgressUpdate(20);
+            if (!partitionManager->reformatPartition(selectedFormat)) {
+                eventManager.notifyLogUpdate("Error: Falló el reformateo de la partición.\r\n");
+                eventManager.notifyError("Error al reformatear la partición.");
+                eventManager.notifyButtonEnable();
+                return;
+            }
+            eventManager.notifyLogUpdate("Partición reformateada exitosamente.\r\n");
+            eventManager.notifyProgressUpdate(30);
+        } else {
+            eventManager.notifyLogUpdate("Particiones existentes detectadas, omitiendo reformateo.\r\n");
+            eventManager.notifyProgressUpdate(30);
         }
-        eventManager.notifyLogUpdate("Partición reformateada exitosamente.\r\n");
-        eventManager.notifyProgressUpdate(30);
     } else {
         eventManager.notifyLogUpdate("Validando espacio disponible en disco...\r\n");
         eventManager.notifyProgressUpdate(10);
@@ -174,6 +179,16 @@ void ProcessController::processInThread(const std::string& isoPath, const std::s
         eventManager.notifyError("Proceso fallido debido a errores en la copia del ISO.");
     }
     eventManager.notifyButtonEnable();
+}
+
+void ProcessController::recoverSpace()
+{
+    eventManager.notifyLogUpdate("Iniciando recuperación de espacio...\r\n");
+    if (partitionManager->recoverSpace()) {
+        eventManager.notifyLogUpdate("Recuperación completada.\r\n");
+    } else {
+        eventManager.notifyLogUpdate("Error en recuperación.\r\n");
+    }
 }
 
 bool ProcessController::copyISO(const std::string& isoPath, const std::string& destPath, const std::string& espPath, const std::string& mode, bool skipCopyISO)

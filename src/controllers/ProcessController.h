@@ -17,6 +17,7 @@ public:
     void startProcess(const std::string& isoPath, const std::string& selectedFormat, const std::string& selectedBootMode);
     // Request cancellation of the running process and wait for cleanup
     void requestCancel();
+    void recoverSpace();
 
 private:
     void processInThread(const std::string& isoPath, const std::string& selectedFormat, const std::string& selectedBootMode);

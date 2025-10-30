@@ -29,6 +29,7 @@ public:
     std::string getPartitionFileSystem();
     bool reformatPartition(const std::string& format);
     bool reformatEfiPartition();
+    bool recoverSpace();
 };
 
 #endif // PARTITIONMANAGER_H

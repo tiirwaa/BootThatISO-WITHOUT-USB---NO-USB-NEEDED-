@@ -123,6 +123,8 @@ void MainWindow::SetupUI(HWND parent)
     SendMessage(footerLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
     servicesButton = CreateWindowW(L"BUTTON", L"Servicios", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 650, 630, 100, 20, parent, (HMENU)IDC_SERVICES_BUTTON, hInst, NULL);
     SendMessage(servicesButton, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
+    recoverButton = CreateWindowW(L"BUTTON", L"Recuperar mi espacio", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 500, 630, 140, 20, parent, (HMENU)IDC_RECOVER_BUTTON, hInst, NULL);
+    SendMessage(recoverButton, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 }
 
 void MainWindow::ApplyStyles()
@@ -147,6 +149,9 @@ void MainWindow::HandleCommand(UINT msg, WPARAM wParam, LPARAM lParam)
             break;
         case IDC_SERVICES_BUTTON:
             OnOpenServicesPage();
+            break;
+        case IDC_RECOVER_BUTTON:
+            processController->recoverSpace();
             break;
         case IDC_FAT32_RADIO:
             if (HIWORD(wParam) == BN_CLICKED) {
