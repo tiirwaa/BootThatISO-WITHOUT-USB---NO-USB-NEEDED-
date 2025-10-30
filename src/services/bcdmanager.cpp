@@ -253,109 +253,91 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
     // Find the EFI boot file in ESP - prioritize based on boot mode
     std::string efiBootFile;
 
+    // Build candidate lists per mode and choose the best candidate by validating architecture
+    std::vector<std::string> candidates;
     if (bcdLabel == "ISOBOOT") {
-        // Extracted Boot Mode - prefer bootmgfw.efi for EFI boot
-        std::string candidate1 = espDriveLetter + "\\EFI\\Microsoft\\Boot\\bootmgfw.efi";
-        if (GetFileAttributesA(candidate1.c_str()) != INVALID_FILE_ATTRIBUTES) {
-            efiBootFile = candidate1;
-        } else {
-            std::string candidate2 = espDriveLetter + "\\EFI\\microsoft\\boot\\bootmgfw.efi";
-            if (GetFileAttributesA(candidate2.c_str()) != INVALID_FILE_ATTRIBUTES) {
-                efiBootFile = candidate2;
-            } else {
-                // Fallback to standard EFI boot files
-                std::string candidate3 = espDriveLetter + "\\EFI\\BOOT\\BOOTX64.EFI";
-                if (GetFileAttributesA(candidate3.c_str()) != INVALID_FILE_ATTRIBUTES) {
-                    efiBootFile = candidate3;
-                } else {
-                    std::string candidate4 = espDriveLetter + "\\EFI\\boot\\BOOTX64.EFI";
-                    if (GetFileAttributesA(candidate4.c_str()) != INVALID_FILE_ATTRIBUTES) {
-                        efiBootFile = candidate4;
-                    } else {
-                        std::string candidate5 = espDriveLetter + "\\EFI\\boot\\bootx64.efi";
-                        if (GetFileAttributesA(candidate5.c_str()) != INVALID_FILE_ATTRIBUTES) {
-                            efiBootFile = candidate5;
-                        } else {
-                            return "Archivo EFI boot no encontrado en ESP para modo Instalación Completa";
-                        }
-                    }
-                }
-            }
-        }
+        // Installation mode: prefer BOOTX64 files, then Microsoft bootmgfw
+        candidates = {
+            espDriveLetter + "\\EFI\\BOOT\\BOOTX64.EFI",
+            espDriveLetter + "\\EFI\\boot\\BOOTX64.EFI",
+            espDriveLetter + "\\EFI\\boot\\bootx64.efi",
+            espDriveLetter + "\\EFI\\Microsoft\\Boot\\bootmgfw.efi",
+            espDriveLetter + "\\EFI\\microsoft\\boot\\bootmgfw.efi"
+        };
     } else if (bcdLabel == "ISOBOOT_RAM") {
-        // Ramdisk Boot Mode - prefer BOOTX64.EFI which is designed for installation media
-        std::string candidate1 = espDriveLetter + "\\EFI\\BOOT\\BOOTX64.EFI";
-        if (GetFileAttributesA(candidate1.c_str()) != INVALID_FILE_ATTRIBUTES) {
-            efiBootFile = candidate1;
-        } else {
-            std::string candidate2 = espDriveLetter + "\\EFI\\boot\\BOOTX64.EFI";
-            if (GetFileAttributesA(candidate2.c_str()) != INVALID_FILE_ATTRIBUTES) {
-                efiBootFile = candidate2;
-            } else {
-                std::string candidate3 = espDriveLetter + "\\EFI\\boot\\bootx64.efi";
-                if (GetFileAttributesA(candidate3.c_str()) != INVALID_FILE_ATTRIBUTES) {
-                    efiBootFile = candidate3;
-                } else {
-                    // Fallback to bootmgfw.efi
-                    std::string candidate4 = espDriveLetter + "\\EFI\\Microsoft\\Boot\\bootmgfw.efi";
-                    if (GetFileAttributesA(candidate4.c_str()) != INVALID_FILE_ATTRIBUTES) {
-                        efiBootFile = candidate4;
-                    } else {
-                        std::string candidate5 = espDriveLetter + "\\EFI\\microsoft\\boot\\bootmgfw.efi";
-                        if (GetFileAttributesA(candidate5.c_str()) != INVALID_FILE_ATTRIBUTES) {
-                            efiBootFile = candidate5;
-                        } else {
-                            return "Archivo EFI boot no encontrado en ESP para modo Boot desde Memoria";
-                        }
-                    }
-                }
-            }
-        }
+        // Ramdisk mode: prefer BOOTX64 as well, then Microsoft bootmgfw
+        candidates = {
+            espDriveLetter + "\\EFI\\BOOT\\BOOTX64.EFI",
+            espDriveLetter + "\\EFI\\boot\\BOOTX64.EFI",
+            espDriveLetter + "\\EFI\\boot\\bootx64.efi",
+            espDriveLetter + "\\EFI\\Microsoft\\Boot\\bootmgfw.efi",
+            espDriveLetter + "\\EFI\\microsoft\\boot\\bootmgfw.efi"
+        };
     } else {
-        // Fallback to original logic for unknown modes
-        std::string candidate1 = espDriveLetter + "\\EFI\\BOOT\\BOOTX64.EFI";  // Standard EFI boot uppercase
-        if (GetFileAttributesA(candidate1.c_str()) != INVALID_FILE_ATTRIBUTES) {
-            efiBootFile = candidate1;
-        } else {
-            std::string candidate2 = espDriveLetter + "\\EFI\\boot\\BOOTX64.EFI";  // lowercase dir
-            if (GetFileAttributesA(candidate2.c_str()) != INVALID_FILE_ATTRIBUTES) {
-                efiBootFile = candidate2;
-            } else {
-                std::string candidate3 = espDriveLetter + "\\EFI\\boot\\bootx64.efi";  // Alternative case
-                if (GetFileAttributesA(candidate3.c_str()) != INVALID_FILE_ATTRIBUTES) {
-                    efiBootFile = candidate3;
-                } else {
-                    std::string candidate4 = espDriveLetter + "\\EFI\\boot\\BOOTIA32.EFI";  // 32-bit
-                    if (GetFileAttributesA(candidate4.c_str()) != INVALID_FILE_ATTRIBUTES) {
-                        efiBootFile = candidate4;
-                    } else {
-                        std::string candidate5 = espDriveLetter + "\\EFI\\boot\\bootia32.efi";  // 32-bit alternative case
-                        if (GetFileAttributesA(candidate5.c_str()) != INVALID_FILE_ATTRIBUTES) {
-                            efiBootFile = candidate5;
-                        } else {
-                            // Fallback to Microsoft Boot files
-                            std::string candidate6 = espDriveLetter + "\\EFI\\Microsoft\\Boot\\bootmgr.efi";  // Windows bootmgr
-                            if (GetFileAttributesA(candidate6.c_str()) != INVALID_FILE_ATTRIBUTES) {
-                                efiBootFile = candidate6;
-                            } else {
-                                std::string candidate7 = espDriveLetter + "\\EFI\\Microsoft\\Boot\\bootmgfw.efi";  // Windows bootmgfw
-                                if (GetFileAttributesA(candidate7.c_str()) != INVALID_FILE_ATTRIBUTES) {
-                                    efiBootFile = candidate7;
-                                } else {
-                                    // Last resort: system files
-                                    std::string candidate8 = espDriveLetter + "\\EFI\\microsoft\\boot\\bootmgfw.efi";
-                                    if (GetFileAttributesA(candidate8.c_str()) != INVALID_FILE_ATTRIBUTES) {
-                                        efiBootFile = candidate8;
-                                    } else {
-                                        return "Archivo EFI boot no encontrado en ESP";
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+        candidates = {
+            espDriveLetter + "\\EFI\\BOOT\\BOOTX64.EFI",
+            espDriveLetter + "\\EFI\\boot\\BOOTX64.EFI",
+            espDriveLetter + "\\EFI\\boot\\bootx64.efi",
+            espDriveLetter + "\\EFI\\boot\\BOOTIA32.EFI",
+            espDriveLetter + "\\EFI\\boot\\bootia32.efi",
+            espDriveLetter + "\\EFI\\Microsoft\\Boot\\bootmgr.efi",
+            espDriveLetter + "\\EFI\\Microsoft\\Boot\\bootmgfw.efi",
+            espDriveLetter + "\\EFI\\microsoft\\boot\\bootmgfw.efi"
+        };
+    }
+
+    // Evaluate candidates: collect existing candidates and their architectures
+    int bestIndex = -1;
+    int bestScore = -1; // 2 = amd64, 1 = i386, 0 = exists
+    int firstAmd64Index = -1;
+    int firstI386Index = -1;
+    std::vector<int> existingIndices;
+    for (size_t i = 0; i < candidates.size(); ++i) {
+        const std::string& c = candidates[i];
+        if (GetFileAttributesA(c.c_str()) == INVALID_FILE_ATTRIBUTES) continue;
+        existingIndices.push_back((int)i);
+        WORD m = GetMachineType(c);
+        int score = 0;
+        if (m == IMAGE_FILE_MACHINE_AMD64) score = 2;
+        else if (m == IMAGE_FILE_MACHINE_I386) score = 1;
+        else score = 0;
+        if (firstAmd64Index == -1 && m == IMAGE_FILE_MACHINE_AMD64) firstAmd64Index = (int)i;
+        if (firstI386Index == -1 && m == IMAGE_FILE_MACHINE_I386) firstI386Index = (int)i;
+        if (eventManager) {
+            std::ostringstream oss;
+            oss << std::hex << std::uppercase << m;
+            eventManager->notifyLogUpdate("Candidate EFI: " + c + ", machine=0x" + oss.str() + " score=" + std::to_string(score) + "\r\n");
         }
+        if (score > bestScore) {
+            bestScore = score;
+            bestIndex = (int)i;
+            if (bestScore == 2) break; // best possible
+        }
+    }
+
+    // If we found both architectures available, ask the user which one to use
+    if (firstAmd64Index != -1 && firstI386Index != -1) {
+        std::string amdPath = candidates[firstAmd64Index];
+        std::string i386Path = candidates[firstI386Index];
+        std::wstring wmsg = L"Se encontraron EFI de ambas arquitecturas en la ESP:\n\n";
+        wmsg += Utils::utf8_to_wstring(std::string("x64: ") + amdPath) + L"\n";
+        wmsg += Utils::utf8_to_wstring(std::string("x86: ") + i386Path) + L"\n\n";
+        wmsg += L"¿Cuál desea usar? Seleccione Sí para x64, No para x86.";
+        int res = MessageBoxW(NULL, wmsg.c_str(), L"Seleccionar arquitectura EFI", MB_YESNO | MB_ICONQUESTION);
+        if (res == IDYES) {
+            bestIndex = firstAmd64Index;
+        } else {
+            bestIndex = firstI386Index;
+        }
+    }
+
+    if (bestIndex != -1) {
+        efiBootFile = candidates[bestIndex];
+    } else if (!existingIndices.empty()) {
+        // fallback: pick the first existing candidate
+        efiBootFile = candidates[existingIndices[0]];
+    } else {
+        return "Archivo EFI boot no encontrado en ESP";
     }
 
     WORD machine = GetMachineType(efiBootFile);

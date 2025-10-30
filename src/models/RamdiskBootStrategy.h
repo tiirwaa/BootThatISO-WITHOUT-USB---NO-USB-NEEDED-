@@ -14,14 +14,16 @@ public:
 
     void configureBCD(const std::string& guid, const std::string& dataDevice, const std::string& espDevice, const std::string& efiPath) override {
         // dataDevice is expected as a drive letter like "Z:" where the ISO file lives
-        std::string ramdiskPath = "[" + dataDevice + "]\\iso.iso";
-        std::string cmd1 = "bcdedit /set " + guid + " device ramdisk=" + ramdiskPath;
-        std::string cmd2 = "bcdedit /set " + guid + " osdevice ramdisk=" + ramdiskPath;
-        std::string cmd3 = "bcdedit /set " + guid + " path \"" + efiPath + "\"";
+    // ramdiskPath: use the copied ISO file on the data partition
+    std::string ramdiskPath = "[" + dataDevice + "]\\iso.iso";
+    std::string cmd1 = "bcdedit /set " + guid + " device ramdisk=" + ramdiskPath;
+    std::string cmd2 = "bcdedit /set " + guid + " osdevice ramdisk=" + ramdiskPath;
+    std::string cmd3 = "bcdedit /set " + guid + " path \"" + efiPath + "\"";
 
-        // Additional ramdisk options
-        std::string cmdRamdiskSdiDevice = "bcdedit /set " + guid + " ramdisksdidevice partition=" + dataDevice;
-        std::string cmdRamdiskSdiPath = "bcdedit /set " + guid + " ramdisksdipath \\iso.iso";
+    // Additional ramdisk options: point ramdisksdidevice to the data partition and ramdisksdipath to the standard boot SDI inside the ISO
+    // For Windows install ISOs, the SDI is typically at \boot\boot.sdi
+    std::string cmdRamdiskSdiDevice = "bcdedit /set " + guid + " ramdisksdidevice partition=" + dataDevice;
+    std::string cmdRamdiskSdiPath = "bcdedit /set " + guid + " ramdisksdipath \\boot\\boot.sdi";
 
         // Log commands for debugging
         std::string logDir = Utils::getExeDirectory() + "logs";
