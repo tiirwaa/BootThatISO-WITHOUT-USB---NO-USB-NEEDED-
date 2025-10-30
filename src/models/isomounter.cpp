@@ -28,12 +28,21 @@ bool ISOMounter::mountISO(const std::string& isoPath, std::string& driveLetter)
     std::ofstream logFile("logs\\iso_mount.log", std::ios::app);
     logFile << getTimestamp() << "Mounting ISO: " << isoPath << std::endl;
     
-    // Trim the isoPath to remove leading/trailing whitespace
+    // Trim the isoPath to remove leading/trailing whitespace, quotes and common invisible characters
     std::string trimmedIsoPath = isoPath;
-    trimmedIsoPath.erase(trimmedIsoPath.begin(), std::find_if(trimmedIsoPath.begin(), trimmedIsoPath.end(), [](unsigned char ch) { return !std::isspace(ch); }));
-    trimmedIsoPath.erase(std::find_if(trimmedIsoPath.rbegin(), trimmedIsoPath.rend(), [](unsigned char ch) { return !std::isspace(ch); }).base(), trimmedIsoPath.end());
+    auto isTrimChar = [](char c)->bool {
+        unsigned char uc = static_cast<unsigned char>(c);
+        // treat control chars (<= 32), NBSP (0xA0), and quotes as trim characters
+        return std::isspace(uc) || uc <= 32 || uc == 0xA0 || c == '"' || c == '\'' || c == '\0';
+    };
+    // Trim start
+    while (!trimmedIsoPath.empty() && isTrimChar(trimmedIsoPath.front())) trimmedIsoPath.erase(trimmedIsoPath.begin());
+    // Trim end
+    while (!trimmedIsoPath.empty() && isTrimChar(trimmedIsoPath.back())) trimmedIsoPath.pop_back();
+
+    logFile << getTimestamp() << "Trimmed ISO path: '" << trimmedIsoPath << "'" << std::endl;
     
-    std::string mountCmd = "powershell -Command \"$iso = Mount-DiskImage -ImagePath '" + trimmedIsoPath + "' -PassThru; $volume = Get-DiskImage -ImagePath '" + trimmedIsoPath + "' | Get-Volume; if ($volume) { $volume.DriveLetter } else { 'FAILED' }\"";
+    std::string mountCmd = "powershell -Command \"$iso = Mount-DiskImage -ImagePath \\\"" + trimmedIsoPath + "\\\" -PassThru; $volume = Get-DiskImage -ImagePath \\\"" + trimmedIsoPath + "\\\" | Get-Volume; if ($volume) { $volume.DriveLetter } else { 'FAILED' }\"";
     logFile << getTimestamp() << "Mount command: " << mountCmd << std::endl;
     
     std::string mountResult = exec(mountCmd.c_str());
@@ -56,12 +65,16 @@ bool ISOMounter::mountISO(const std::string& isoPath, std::string& driveLetter)
 
 bool ISOMounter::unmountISO(const std::string& isoPath)
 {
-    // Trim the isoPath to remove leading/trailing whitespace
+    // Trim the isoPath to remove leading/trailing whitespace, quotes and common invisible characters
     std::string trimmedIsoPath = isoPath;
-    trimmedIsoPath.erase(trimmedIsoPath.begin(), std::find_if(trimmedIsoPath.begin(), trimmedIsoPath.end(), [](unsigned char ch) { return !std::isspace(ch); }));
-    trimmedIsoPath.erase(std::find_if(trimmedIsoPath.rbegin(), trimmedIsoPath.rend(), [](unsigned char ch) { return !std::isspace(ch); }).base(), trimmedIsoPath.end());
-    
-    std::string dismountCmd = "powershell -Command \"Dismount-DiskImage -ImagePath '" + trimmedIsoPath + "'\"";
+    auto isTrimChar2 = [](char c)->bool {
+        unsigned char uc = static_cast<unsigned char>(c);
+        return std::isspace(uc) || uc <= 32 || uc == 0xA0 || c == '"' || c == '\'' || c == '\0';
+    };
+    while (!trimmedIsoPath.empty() && isTrimChar2(trimmedIsoPath.front())) trimmedIsoPath.erase(trimmedIsoPath.begin());
+    while (!trimmedIsoPath.empty() && isTrimChar2(trimmedIsoPath.back())) trimmedIsoPath.pop_back();
+
+    std::string dismountCmd = "powershell -Command \"Dismount-DiskImage -ImagePath \\\"" + trimmedIsoPath + "\\\"\"";
     std::string result = exec(dismountCmd.c_str());
     // Check for success
     return result.find("successfully") != std::string::npos || result.empty(); // empty might mean no error

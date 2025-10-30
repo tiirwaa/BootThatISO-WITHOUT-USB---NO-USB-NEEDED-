@@ -34,12 +34,23 @@ void ProcessController::startProcess(const std::string& isoPath, const std::stri
 {
     eventManager.notifyProgressUpdate(0);
 
-    if (isoPath.empty()) {
+    // Trim the isoPath to remove leading/trailing whitespace, quotes and common invisible characters
+    std::string trimmedIsoPath = isoPath;
+    auto isTrimChar = [](char c)->bool {
+        unsigned char uc = static_cast<unsigned char>(c);
+        return std::isspace(uc) || uc <= 32 || uc == 0xA0 || c == '"' || c == '\'' || c == '\0';
+    };
+    while (!trimmedIsoPath.empty() && isTrimChar(trimmedIsoPath.front())) trimmedIsoPath.erase(trimmedIsoPath.begin());
+    while (!trimmedIsoPath.empty() && isTrimChar(trimmedIsoPath.back())) trimmedIsoPath.pop_back();
+
+    eventManager.notifyLogUpdate("ISO path after trimming: '" + trimmedIsoPath + "'\r\n");
+
+    if (trimmedIsoPath.empty()) {
         eventManager.notifyLogUpdate("Error: No se ha seleccionado un archivo ISO.\r\n");
         return;
     }
 
-    eventManager.notifyLogUpdate("Iniciando proceso con ISO: " + isoPath + ", formato: " + selectedFormat + ", modo: " + selectedBootMode + "\r\n");
+    eventManager.notifyLogUpdate("Iniciando proceso con ISO: " + trimmedIsoPath + ", formato: " + selectedFormat + ", modo: " + selectedBootMode + "\r\n");
 
     bool partitionExists = partitionManager->partitionExists();
     if (!partitionExists) {
@@ -53,7 +64,7 @@ void ProcessController::startProcess(const std::string& isoPath, const std::stri
     }
 
     // Iniciar hilo
-    workerThread = new std::thread(&ProcessController::processInThread, this, isoPath, selectedFormat, selectedBootMode);
+    workerThread = new std::thread(&ProcessController::processInThread, this, trimmedIsoPath, selectedFormat, selectedBootMode);
 }
 
 void ProcessController::processInThread(const std::string& isoPath, const std::string& selectedFormat, const std::string& selectedBootMode)
