@@ -9,7 +9,12 @@
 #include <set>
 #include <ctime>
 #include <iomanip>
+#include <memory>
 #include "../utils/Utils.h"
+#include "isotypedetector.h"
+#include "../models/efimanager.h"
+#include "../models/isomounter.h"
+#include "../models/filecopymanager.h"
 
 // Forward declarations for helper functions defined later in this file
 static bool isValidPE(const std::string& path);
@@ -22,131 +27,31 @@ ISOCopyManager& ISOCopyManager::getInstance() {
 }
 
 ISOCopyManager::ISOCopyManager()
+    : typeDetector(std::make_unique<ISOTypeDetector>()),
+      efiManager(nullptr),
+      isoMounter(std::make_unique<ISOMounter>()),
+      fileCopyManager(nullptr),
+      isWindowsISODetected(false)
 {
-    isWindowsISO = false;
 }
 
 ISOCopyManager::~ISOCopyManager()
 {
 }
 
-// Helper function to ensure temp directory is completely clean
-void ISOCopyManager::ensureTempDirectoryClean(const std::string& tempDir, std::ofstream& logFile) {
-    // First try to unmount any existing WIM mount
-    std::string mountDir = tempDir.substr(0, tempDir.size() - 1); // Remove trailing backslash
-    std::string unmountCmd = "cmd /c dism /Unmount-Wim /MountDir:\"" + mountDir + "\" /discard 2>nul";
-    exec(unmountCmd.c_str());
-    
-    // Wait a moment for unmount to complete
-    Sleep(1000);
-    
-    // Try multiple approaches to remove the directory
-    bool removed = false;
-    
-    // Approach 1: Use rd command
-    std::string rdCmd = "cmd /c rd /s /q \"" + mountDir + "\" 2>nul";
-    exec(rdCmd.c_str());
-    if (GetFileAttributesA(tempDir.c_str()) == INVALID_FILE_ATTRIBUTES) {
-        removed = true;
-    }
-    
-    // Approach 2: If still exists, try rmdir
-    if (!removed) {
-        std::string rmdirCmd = "cmd /c rmdir /s /q \"" + mountDir + "\" 2>nul";
-        exec(rmdirCmd.c_str());
-        if (GetFileAttributesA(tempDir.c_str()) == INVALID_FILE_ATTRIBUTES) {
-            removed = true;
-        }
-    }
-    
-    // Approach 3: If still exists, try PowerShell
-    if (!removed) {
-        std::string psCmd = "powershell -Command \"if (Test-Path '" + mountDir + "') { Remove-Item -Path '" + mountDir + "' -Recurse -Force -ErrorAction SilentlyContinue }\"";
-        exec(psCmd.c_str());
-        if (GetFileAttributesA(tempDir.c_str()) == INVALID_FILE_ATTRIBUTES) {
-            removed = true;
-        }
-    }
-    
-    if (!removed && GetFileAttributesA(tempDir.c_str()) != INVALID_FILE_ATTRIBUTES) {
-        logFile << getTimestamp() << "Warning: Could not completely clean temp directory: " << tempDir << std::endl;
-    } else {
-        logFile << getTimestamp() << "Temp directory cleaned successfully" << std::endl;
-    }
+bool ISOCopyManager::getIsWindowsISO() const {
+    return isWindowsISODetected;
 }
 
-// Helper function to check if directory is empty
-bool ISOCopyManager::isDirectoryEmpty(const std::string& dirPath) {
-    WIN32_FIND_DATAA findData;
-    HANDLE hFind = FindFirstFileA((dirPath + "*").c_str(), &findData);
-    if (hFind == INVALID_HANDLE_VALUE) {
-        return true; // Directory doesn't exist or can't be accessed
-    }
-    
-    bool isEmpty = true;
-    do {
-        std::string name = findData.cFileName;
-        if (name != "." && name != "..") {
-            isEmpty = false;
-            break;
-        }
-    } while (FindNextFileA(hFind, &findData));
-    
-    FindClose(hFind);
-    return isEmpty;
-}
 
-void ISOCopyManager::validateAndFixEFIFiles(const std::string& efiDestPath, std::ofstream& logFile) {
-    // Check common EFI boot files
-    std::vector<std::string> efiFiles = {
-        efiDestPath + "\\boot\\bootx64.efi",
-        efiDestPath + "\\boot\\bootia32.efi", 
-        efiDestPath + "\\BOOT\\BOOTX64.EFI",
-        efiDestPath + "\\BOOT\\BOOTIA32.EFI"
-    };
-    
-    for (const auto& efiFile : efiFiles) {
-        DWORD attrs = GetFileAttributesA(efiFile.c_str());
-        if (attrs != INVALID_FILE_ATTRIBUTES && !(attrs & FILE_ATTRIBUTE_DIRECTORY)) {
-            if (!isValidPE(efiFile)) {
-                logFile << this->getTimestamp() << "EFI file is invalid (not PE): " << efiFile << std::endl;
-                // Try to replace with system EFI file
-                std::string systemEFI = "C:\\Windows\\Boot\\EFI\\bootmgfw.efi";
-                DWORD sysAttrs = GetFileAttributesA(systemEFI.c_str());
-                if (sysAttrs != INVALID_FILE_ATTRIBUTES) {
-                    // Ensure destination directory exists
-                    size_t lastSlash = efiFile.find_last_of("\\");
-                    if (lastSlash != std::string::npos) {
-                        std::string dstDir = efiFile.substr(0, lastSlash);
-                        CreateDirectoryA(dstDir.c_str(), NULL);
-                    }
-                    // Remove invalid file
-                    DeleteFileA(efiFile.c_str());
-                    // Copy system file
-                    if (copyFileUtf8(systemEFI, efiFile)) {
-                        uint16_t machine = getPEMachine(efiFile);
-                        logFile << this->getTimestamp() << "Replaced invalid EFI file with system bootmgfw.efi: " << efiFile << " (machine=0x" << std::hex << machine << std::dec << ")" << std::endl;
-                    } else {
-                        logFile << this->getTimestamp() << "Failed to replace invalid EFI file: " << efiFile << std::endl;
-                    }
-                } else {
-                    logFile << this->getTimestamp() << "System EFI file not found, cannot replace invalid file: " << efiFile << std::endl;
-                }
-            } else {
-                uint16_t machine = getPEMachine(efiFile);
-                logFile << this->getTimestamp() << "EFI file is valid: " << efiFile << " (machine=0x" << std::hex << machine << std::dec << ")" << std::endl;
-            }
-        }
-    }
-}
 
-std::string ISOCopyManager::getTimestamp() {
+const char* ISOCopyManager::getTimestamp() {
+    static char buffer[64];
     std::time_t now = std::time(nullptr);
     std::tm localTime;
     localtime_s(&localTime, &now);
-    std::stringstream timeStream;
-    timeStream << std::put_time(&localTime, "[%Y-%m-%d %H:%M:%S] ");
-    return timeStream.str();
+    std::strftime(buffer, sizeof(buffer), "[%Y-%m-%d %H:%M:%S] ", &localTime);
+    return buffer;
 }
 
 std::string ISOCopyManager::exec(const char* cmd) {
@@ -207,32 +112,6 @@ DWORD CALLBACK CopyProgressRoutine(
     return PROGRESS_CONTINUE;
 }
 
-struct CopyProgressContext {
-    EventManager* eventManager;
-    long long totalSize;
-    long long& copiedSoFar;
-    std::string operation;
-};
-
-static DWORD CALLBACK CopyFileProgressRoutine(
-    LARGE_INTEGER TotalFileSize,
-    LARGE_INTEGER TotalBytesTransferred,
-    LARGE_INTEGER StreamSize,
-    LARGE_INTEGER StreamBytesTransferred,
-    DWORD dwStreamNumber,
-    DWORD dwCallbackReason,
-    HANDLE hSourceFile,
-    HANDLE hDestinationFile,
-    LPVOID lpData
-) {
-    CopyProgressContext* ctx = static_cast<CopyProgressContext*>(lpData);
-    if (ctx && ctx->eventManager && TotalFileSize.QuadPart > 0) {
-        long long current = ctx->copiedSoFar + TotalBytesTransferred.QuadPart;
-        ctx->eventManager->notifyDetailedProgress(current, ctx->totalSize, ctx->operation);
-    }
-    return PROGRESS_CONTINUE;
-}
-
 void ISOCopyManager::listDirectoryRecursive(std::ofstream& log, const std::string& path, int depth, int maxDepth) {
     if (depth >= maxDepth) return;
     
@@ -256,129 +135,12 @@ void ISOCopyManager::listDirectoryRecursive(std::ofstream& log, const std::strin
     FindClose(hFind);
 }
 
-bool ISOCopyManager::copyDirectoryWithProgress(const std::string& source, const std::string& dest, EventManager& eventManager, long long totalSize, long long& copiedSoFar, const std::set<std::string>& excludeDirs) {
-    std::string logDir = Utils::getExeDirectory() + "logs";
-    CreateDirectoryA(logDir.c_str(), NULL);
-    // Skip creating directory if it's a drive root (e.g., "Z:\")
-    bool isDriveRoot = (dest.length() == 3 && dest[1] == ':' && dest[2] == '\\');
-    if (!isDriveRoot) {
-        BOOL result = CreateDirectoryA(dest.c_str(), NULL);
-        if (!result) {
-            DWORD error = GetLastError();
-            if (error != ERROR_ALREADY_EXISTS) {
-                std::ofstream errorLog(logDir + "\\" + COPY_ERROR_LOG_FILE, std::ios::app);
-                errorLog << getTimestamp() << "Failed to create directory: " << dest << " Error code: " << error << "\n";
-                errorLog.close();
-                eventManager.notifyLogUpdate("Error: Failed to create directory " + dest + " (Error " + std::to_string(error) + ")\r\n");
-                return false;
-            } else {
-                std::ofstream errorLog(logDir + "\\" + COPY_ERROR_LOG_FILE, std::ios::app);
-                errorLog << getTimestamp() << "Directory already exists: " << dest << "\n";
-                errorLog.close();
-            }
-        } else {
-            std::ofstream errorLog(logDir + "\\" + COPY_ERROR_LOG_FILE, std::ios::app);
-            errorLog << getTimestamp() << "Created directory: " << dest << "\n";
-            errorLog.close();
-        }
-    }
-    WIN32_FIND_DATAA findData;
-    HANDLE hFind = FindFirstFileA((source + "\\*").c_str(), &findData);
-    if (hFind == INVALID_HANDLE_VALUE) return true;
-    do {
-        std::string name = findData.cFileName;
-        if (eventManager.isCancelRequested()) {
-            FindClose(hFind);
-            return false;
-        }
-
-        if (name != "." && name != ".." && excludeDirs.find(name) == excludeDirs.end()) {
-            std::string srcItem = source + "\\" + name;
-            std::string destItem = dest + "\\" + name;
-            if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-                if (!copyDirectoryWithProgress(srcItem, destItem, eventManager, totalSize, copiedSoFar, excludeDirs)) {
-                    if (eventManager.isCancelRequested()) {
-                        FindClose(hFind);
-                        return false;
-                    }
-                    std::ofstream errorLog(logDir + "\\" + COPY_ERROR_LOG_FILE, std::ios::app);
-                    errorLog << getTimestamp() << "Failed to copy directory: " << srcItem << " to " << destItem << "\n";
-                    errorLog.close();
-                    eventManager.notifyLogUpdate("Error: Failed to copy directory " + srcItem + " to " + destItem + "\r\n");
-                    FindClose(hFind);
-                    return false;
-                }
-            } else {
-                // Log source file info before copying only on error
-                long long fileSize = ((long long)findData.nFileSizeHigh << 32) | findData.nFileSizeLow;
-
-                // Attempt to normalize source file attributes to avoid copy issues
-                SetFileAttributesA(srcItem.c_str(), FILE_ATTRIBUTE_NORMAL);
-
-                // Also normalize destination file attributes if it exists
-                DWORD destAttrs = GetFileAttributesA(destItem.c_str());
-                if (destAttrs != INVALID_FILE_ATTRIBUTES) {
-                    SetFileAttributesA(destItem.c_str(), FILE_ATTRIBUTE_NORMAL);
-                }
-
-                if (eventManager.isCancelRequested()) {
-                    FindClose(hFind);
-                    return false;
-                }
-
-                CopyProgressContext ctx = {&eventManager, totalSize, copiedSoFar, excludeDirs.empty() ? "Copiando EFI" : "Copiando contenido del ISO"};
-                BOOL copyResult = CopyFileExW(Utils::utf8_to_wstring(srcItem).c_str(), Utils::utf8_to_wstring(destItem).c_str(), CopyFileProgressRoutine, &ctx, NULL, 0);
-                if (!copyResult) {
-                    DWORD error = GetLastError();
-                    std::ofstream errorLog2(logDir + "\\" + COPY_ERROR_LOG_FILE, std::ios::app);
-                    errorLog2 << getTimestamp() << "Failed to copy file: " << srcItem << " to " << destItem << " Error code: " << error << "\n";
-                    // Additional error details
-                    errorLog2 << getTimestamp() << "Error description: ";
-                    switch (error) {
-                        case ERROR_ACCESS_DENIED: errorLog2 << "Access denied. Check permissions.\n"; break;
-                        case ERROR_FILE_NOT_FOUND: errorLog2 << "Source file not found.\n"; break;
-                        case ERROR_PATH_NOT_FOUND: errorLog2 << "Path not found.\n"; break;
-                        case ERROR_INVALID_DRIVE: errorLog2 << "Invalid drive.\n"; break;
-                        case ERROR_SHARING_VIOLATION: errorLog2 << "Sharing violation.\n"; break;
-                        default: errorLog2 << "Unknown error.\n"; break;
-                    }
-                    // Check destination attributes
-                    DWORD destAttrs = GetFileAttributesA(destItem.c_str());
-                    errorLog2 << getTimestamp() << "Destination attributes after failure: " << destAttrs << "\n";
-                    errorLog2.close();
-                    eventManager.notifyLogUpdate("Error: Failed to copy file " + srcItem + " to " + destItem + " (Error " + std::to_string(error) + ")\r\n");
-                    FindClose(hFind);
-                    return false;
-                }
-                // If this is an EFI/PE file, do a quick validation to ensure it's a valid PE image
-                auto isEfiFile = [](const std::string& p)->bool {
-                    size_t pos = p.find_last_of('.');
-                    if (pos == std::string::npos) return false;
-                    std::string ext = p.substr(pos);
-                    for (auto &c : ext) c = (char)tolower((unsigned char)c);
-                    return ext == ".efi" || ext == ".exe" || ext == ".dll";
-                };
-                if (isEfiFile(destItem)) {
-                    if (!isValidPE(destItem)) {
-                        std::ofstream errorLog2(logDir + "\\" + COPY_ERROR_LOG_FILE, std::ios::app);
-                        errorLog2 << getTimestamp() << "Copied file appears invalid (not PE): " << destItem << "\n";
-                        errorLog2.close();
-                        eventManager.notifyLogUpdate("Error: Copied file appears invalid (not PE): " + destItem + "\r\n");
-                        FindClose(hFind);
-                        return false;
-                    }
-                }
-
-                copiedSoFar += fileSize;
-            }
-        }
-    } while (FindNextFileA(hFind, &findData));
-    FindClose(hFind);
-    return true;
-}
-
 bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::string& isoPath, const std::string& destPath, const std::string& espPath, bool extractContent)
 {
+    // Initialize managers with EventManager
+    fileCopyManager = std::make_unique<FileCopyManager>(eventManager);
+    efiManager = std::make_unique<EFIManager>(eventManager, *fileCopyManager);
+
     std::string logDir = Utils::getExeDirectory() + "logs";
     CreateDirectoryA(logDir.c_str(), NULL);
     // Create log file for debugging
@@ -392,23 +154,9 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
     long long copiedSoFar = 0;
     eventManager.notifyDetailedProgress(0, isoSize, "Montando ISO");
     
-    // Mount the ISO using PowerShell and get drive letter
-    std::string mountCmd = "powershell -Command \"$iso = Mount-DiskImage -ImagePath '" + isoPath + "' -PassThru; $volume = Get-DiskImage -ImagePath '" + isoPath + "' | Get-Volume; if ($volume) { $volume.DriveLetter } else { 'FAILED' }\"";
-    logFile << getTimestamp() << "Mount command: " << mountCmd << std::endl;
-    
-    std::string mountResult = exec(mountCmd.c_str());
-    // Check if mount was successful by looking for a drive letter in the result
+    // Mount the ISO
     std::string driveLetterStr;
-    for (char c : mountResult) {
-        if (isalpha(c)) {
-            driveLetterStr = c;
-            break;
-        }
-    }
-    bool mountSuccess = !driveLetterStr.empty();
-    logFile << getTimestamp() << "Mount " << (mountSuccess ? "successful" : "failed") << std::endl;
-    
-    if (!mountSuccess) {
+    if (!isoMounter->mountISO(isoPath, driveLetterStr)) {
         logFile << getTimestamp() << "Failed to mount ISO" << std::endl;
         logFile.close();
         eventManager.notifyLogUpdate("Error: Falló el montaje del ISO.\r\n");
@@ -425,12 +173,9 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
     Sleep(5000);
     logFile << getTimestamp() << "Drive ready, proceeding with analysis" << std::endl;
 
-    // Prepare dismount command so we can ensure unmount on early exit
-    std::string dismountCmd = "powershell -Command \"Dismount-DiskImage -ImagePath '" + isoPath + "'\"";
-
     if (eventManager.isCancelRequested()) {
         logFile << getTimestamp() << "Operation cancelled after mount preparation\n";
-        exec(dismountCmd.c_str());
+        isoMounter->unmountISO(isoPath);
         logFile.close();
         return false;
     }
@@ -445,14 +190,7 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
     eventManager.notifyLogUpdate("Analizando contenido del ISO...\r\n");
     
     // Check if it's Windows ISO
-    DWORD sourcesAttrs = GetFileAttributesA((sourcePath + "sources").c_str());
-    bool hasSources = (sourcesAttrs != INVALID_FILE_ATTRIBUTES && (sourcesAttrs & FILE_ATTRIBUTE_DIRECTORY));
-    bool isWindowsISO = false;
-    if (hasSources) {
-        DWORD installWimAttrs = GetFileAttributesA((sourcePath + "sources\\install.wim").c_str());
-        DWORD installEsdAttrs = GetFileAttributesA((sourcePath + "sources\\install.esd").c_str());
-        isWindowsISO = (installWimAttrs != INVALID_FILE_ATTRIBUTES) || (installEsdAttrs != INVALID_FILE_ATTRIBUTES);
-    }
+    bool isWindowsISO = typeDetector->isWindowsISO(sourcePath);
     logFile << getTimestamp() << "Is Windows ISO: " << (isWindowsISO ? "Yes" : "No") << std::endl;
     
     if (isWindowsISO) {
@@ -461,15 +199,15 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
         eventManager.notifyLogUpdate("ISO no-Windows detectado.\r\n");
     }
     
-    this->isWindowsISO = isWindowsISO;
+    isWindowsISODetected = isWindowsISO;
     
     if (extractContent) {
         // Extract all ISO contents to data partition, excluding EFI
         std::set<std::string> excludeDirs = {"efi", "EFI"};
-        if (!copyDirectoryWithProgress(sourcePath, destPath, eventManager, isoSize, copiedSoFar, excludeDirs)) {
+        if (!fileCopyManager->copyDirectoryWithProgress(sourcePath, destPath, isoSize, copiedSoFar, excludeDirs, "Copiando contenido del ISO")) {
             logFile << getTimestamp() << "Failed to copy content or cancelled" << std::endl;
             // Ensure ISO is dismounted
-            exec(dismountCmd.c_str());
+            isoMounter->unmountISO(isoPath);
             logFile.close();
             return false;
         }
@@ -477,320 +215,24 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
         logFile << getTimestamp() << "Skipping content extraction (Boot desde Memoria mode)" << std::endl;
     }
 
-    // Extract EFI directory to ESP
-    logFile << getTimestamp() << "Extracting EFI directory to ESP" << std::endl;
-    eventManager.notifyLogUpdate("Extrayendo archivos EFI al ESP...\r\n");
-    // Check if source EFI directory exists
-    std::string efiSourcePath = sourcePath + "efi";
-    DWORD efiAttrs = GetFileAttributesA(efiSourcePath.c_str());
-    if (efiAttrs == INVALID_FILE_ATTRIBUTES || !(efiAttrs & FILE_ATTRIBUTE_DIRECTORY)) {
-        logFile << getTimestamp() << "EFI directory not found at: " << efiSourcePath << std::endl;
-        // Try alternative paths
-        std::string altEfiPath = sourcePath + "EFI";
-        DWORD altAttrs = GetFileAttributesA(altEfiPath.c_str());
-        if (altAttrs != INVALID_FILE_ATTRIBUTES && (altAttrs & FILE_ATTRIBUTE_DIRECTORY)) {
-            efiSourcePath = altEfiPath;
-            logFile << getTimestamp() << "Found EFI directory at alternative path: " << efiSourcePath << std::endl;
-        } else {
-            logFile << getTimestamp() << "EFI directory not found at alternative path either" << std::endl;
-            logFile.close();
-            return false;
-        }
-    }
-    
-    // Create destination EFI directory on ESP
-    std::string efiDestPath = espPath + "EFI";
-    if (!CreateDirectoryA(efiDestPath.c_str(), NULL) && GetLastError() != ERROR_ALREADY_EXISTS) {
-        logFile << getTimestamp() << "Failed to create destination EFI directory: " << efiDestPath << std::endl;
-        logFile.close();
-        return false;
-    }
-    
-    // Copy EFI files with progress
-    std::set<std::string> noExclude;
-    if (!copyDirectoryWithProgress(efiSourcePath, efiDestPath, eventManager, isoSize, copiedSoFar, noExclude)) {
-        logFile << getTimestamp() << "Failed to copy EFI or cancelled" << std::endl;
-        exec(dismountCmd.c_str());
-        logFile.close();
-        return false;
-    }
-    
-    // Validate and fix EFI files after copying
-    logFile << getTimestamp() << "Validating copied EFI files" << std::endl;
-    validateAndFixEFIFiles(efiDestPath, logFile);
-    
-    // For non-Windows ISOs, copy bootmgr.efi from root to ESP if it exists
-    std::string bootmgrSource = sourcePath + "bootmgr.efi";
-    bool bootmgrCopied = false;
-    if (GetFileAttributesA(bootmgrSource.c_str()) != INVALID_FILE_ATTRIBUTES) {
-        std::string bootmgrDest = espPath + "EFI\\Microsoft\\Boot\\bootmgr.efi";
-        // Ensure destination directory exists
-        std::string bootmgrDir = espPath + "EFI\\Microsoft\\Boot";
-        CreateDirectoryA(bootmgrDir.c_str(), NULL); // Ignore error if exists
-        DWORD destAttrs = GetFileAttributesA(bootmgrDest.c_str());
-        if (destAttrs != INVALID_FILE_ATTRIBUTES) {
-            SetFileAttributesA(bootmgrDest.c_str(), FILE_ATTRIBUTE_NORMAL);
-        }
-        if (copyFileUtf8(bootmgrSource, bootmgrDest)) {
-            logFile << getTimestamp() << "Copied bootmgr.efi to ESP" << std::endl;
-            bootmgrCopied = true;
-        } else {
-            logFile << getTimestamp() << "Failed to copy bootmgr.efi to ESP, error: " << GetLastError() << std::endl;
-            // Try cmd copy
-            std::string cmdCopy = "cmd /c copy \"" + bootmgrSource + "\" \"" + bootmgrDest + "\" >nul 2>&1";
-            std::string copyResult = exec(cmdCopy.c_str());
-            if (GetFileAttributesA(bootmgrDest.c_str()) != INVALID_FILE_ATTRIBUTES) {
-                logFile << getTimestamp() << "Copied bootmgr.efi to ESP using cmd" << std::endl;
-                bootmgrCopied = true;
-            } else {
-                logFile << getTimestamp() << "Failed to copy bootmgr.efi to ESP using cmd" << std::endl;
-            }
-        }
-        
-        // For non-Windows ISOs, do not copy bootmgr.efi to BOOTX64.EFI as it may overwrite the correct EFI boot file from the ISO
-    }
-    
-    // If boot.wim exists and this is a Windows ISO, extract additional boot files from it
-    std::string bootWimPath = sourcePath + "sources\\boot.wim";
-    if (isWindowsISO && GetFileAttributesA(bootWimPath.c_str()) != INVALID_FILE_ATTRIBUTES) {
-        logFile << getTimestamp() << "Extracting additional boot files from boot.wim" << std::endl;
-        // Create temp dir for mounting
-        char tempPath[MAX_PATH];
-        GetTempPathA(MAX_PATH, tempPath);
-        std::string tempDir = std::string(tempPath) + "EasyISOBoot_WimMount\\";
-        
-        // Ensure temp dir is completely clean
-        ensureTempDirectoryClean(tempDir, logFile);
-        
-        // Create fresh temp directory
-        if (CreateDirectoryA(tempDir.c_str(), NULL) || GetLastError() == ERROR_ALREADY_EXISTS) {
-            // Directory exists, verify it's empty
-            if (isDirectoryEmpty(tempDir)) {
-                // Mount boot.wim index 1
-                std::string mountCmd = "cmd /c dism /Mount-Wim /WimFile:\"" + bootWimPath + "\" /index:1 /MountDir:\"" + tempDir.substr(0, tempDir.size()-1) + "\" /ReadOnly";
-                logFile << getTimestamp() << "Mount command: " << mountCmd << std::endl;
-                std::string mountResult = exec(mountCmd.c_str());
-                bool mountSuccessWim = mountResult.find("The operation completed successfully") != std::string::npos;
-                logFile << getTimestamp() << "Mount WIM " << (mountSuccessWim ? "successful" : "failed") << std::endl;
-                if (!mountSuccessWim) {
-                    logFile << getTimestamp() << "DISM output: " << mountResult << std::endl;
-                } else {
-                    // Extract EFI files to ESP
-                    std::vector<std::pair<std::string, std::string>> efiFiles = {
-                        {"Windows\\Boot\\EFI\\bootx64.efi", espPath + "EFI\\BOOT\\BOOTX64.EFI"},
-                        {"Windows\\Boot\\EFI\\bootmgfw.efi", espPath + "EFI\\Microsoft\\Boot\\bootmgfw.efi"},
-                        {"Windows\\Boot\\EFI\\bootmgr.efi", espPath + "EFI\\Microsoft\\Boot\\bootmgr.efi"},
-                        {"Windows\\Boot\\BCD", espPath + "EFI\\Microsoft\\Boot\\BCD"},
-                        {"Windows\\System32\\memtest.efi", espPath + "EFI\\Microsoft\\Boot\\memtest.efi"}
-                    };
-                    
-                    for (auto& filePair : efiFiles) {
-                        std::string src = tempDir + filePair.first;
-                        std::string dst = filePair.second;
-                        // Ensure destination directory exists
-                        size_t lastSlash = dst.find_last_of("\\");
-                        if (lastSlash != std::string::npos) {
-                            std::string dstDir = dst.substr(0, lastSlash);
-                            CreateDirectoryA(dstDir.c_str(), NULL); // Ignore error if exists
-                        }
-                        if (copyFileUtf8(src, dst)) {
-                            // Validate PE for EFI files and log machine type
-                            bool valid = true;
-                            uint16_t machine = 0;
-                            size_t pos = dst.find_last_of('.');
-                            if (pos != std::string::npos) {
-                                std::string ext = dst.substr(pos);
-                                for (auto &c : ext) c = (char)tolower((unsigned char)c);
-                                if (ext == ".efi") {
-                                    valid = isValidPE(dst);
-                                    machine = getPEMachine(dst);
-                                }
-                            }
-                            if (!valid) {
-                                logFile << getTimestamp() << "Copied EFI file appears invalid: " << dst << std::endl;
-                            } else {
-                                logFile << getTimestamp() << "Instalado: " << filePair.first << " to " << dst << " (machine=0x" << std::hex << machine << std::dec << ")" << std::endl;
-                            }
-                        } else {
-                            logFile << getTimestamp() << "Failed to extract: " << filePair.first << " error: " << GetLastError() << std::endl;
-                        }
-                    }
-                    
-                    // Extract data files if extracting content
-                    if (extractContent) {
-                        std::vector<std::pair<std::string, std::string>> dataFiles = {
-                            {"Boot\\BCD", destPath + "boot\\bcd"},
-                            {"Boot\\boot.sdi", destPath + "boot\\boot.sdi"},
-                            {"Windows\\Boot\\EFI\\bootmgfw.efi", destPath + "bootmgr.efi"}
-                        };
-                        
-                        for (auto& filePair : dataFiles) {
-                            std::string src = tempDir + filePair.first;
-                            std::string dst = filePair.second;
-                            size_t lastSlash = dst.find_last_of("\\");
-                            if (lastSlash != std::string::npos) {
-                                std::string dstDir = dst.substr(0, lastSlash);
-                                CreateDirectoryA(dstDir.c_str(), NULL);
-                            }
-                            if (copyFileUtf8(src, dst)) {
-                                uint16_t machine = 0;
-                                size_t pos = dst.find_last_of('.');
-                                if (pos != std::string::npos) {
-                                    std::string ext = dst.substr(pos);
-                                    for (auto &c : ext) c = (char)tolower((unsigned char)c);
-                                    if (ext == ".efi") machine = getPEMachine(dst);
-                                }
-                                logFile << getTimestamp() << "Instalado: " << filePair.first << " to " << dst << " (machine=0x" << std::hex << machine << std::dec << ")" << std::endl;
-                            } else {
-                                logFile << getTimestamp() << "Failed to extract: " << filePair.first << " error: " << GetLastError() << std::endl;
-                            }
-                        }
-                        
-                        // Copy fonts and resources directories
-                        std::string fontsSrc = tempDir + "Windows\\Boot\\Fonts";
-                        std::string fontsDst = destPath + "boot\\fonts";
-                        if (GetFileAttributesA(fontsSrc.c_str()) != INVALID_FILE_ATTRIBUTES) {
-                            copyDirectoryWithProgress(fontsSrc, fontsDst, eventManager, isoSize, copiedSoFar, noExclude);
-                        }
-                        
-                        std::string resourcesSrc = tempDir + "Windows\\Boot\\Resources";
-                        std::string resourcesDst = destPath + "boot\\resources";
-                        if (GetFileAttributesA(resourcesSrc.c_str()) != INVALID_FILE_ATTRIBUTES) {
-                            copyDirectoryWithProgress(resourcesSrc, resourcesDst, eventManager, isoSize, copiedSoFar, noExclude);
-                        }
-                        
-                        // Copy setup.exe from ISO
-                        std::string setupSrc = sourcePath + "sources\\setup.exe";
-                        std::string setupDst = destPath + "setup.exe";
-                        if (copyFileUtf8(setupSrc, setupDst)) {
-                            logFile << getTimestamp() << "Copied setup.exe" << std::endl;
-                        }
-                    }
-                    
-                    // Unmount WIM
-                    std::string unmountCmd = "cmd /c dism /Unmount-Wim /MountDir:\"" + tempDir.substr(0, tempDir.size()-1) + "\" /discard";
-                    logFile << getTimestamp() << "Unmount command: " << unmountCmd << std::endl;
-                    std::string unmountResult = exec(unmountCmd.c_str());
-                    bool unmountSuccess = unmountResult.find("The operation completed successfully") != std::string::npos;
-                    logFile << getTimestamp() << "Unmount WIM " << (unmountSuccess ? "successful" : "failed") << std::endl;
-                    if (!unmountSuccess) {
-                        logFile << getTimestamp() << "DISM unmount output: " << unmountResult << std::endl;
-                    }
-                    
-                    // Remove temp dir
-                    RemoveDirectoryA(tempDir.c_str());
-                }
-            } else {
-                logFile << getTimestamp() << "Temp directory not empty after cleanup, skipping WIM mount" << std::endl;
-            }
-        } else {
-            logFile << getTimestamp() << "Failed to create temp dir for WIM mount" << std::endl;
-        }
-    }
-    
-    // Check if bootx64.efi or bootia32.efi was copied to ESP
-    std::string bootFilePath = efiDestPath + "\\BOOT\\BOOTX64.EFI";
-    DWORD bootAttrs = GetFileAttributesA(bootFilePath.c_str());
-    bool bootFileExists = (bootAttrs != INVALID_FILE_ATTRIBUTES && !(bootAttrs & FILE_ATTRIBUTE_DIRECTORY));
-
-    if (!bootFileExists) {
-        bootFilePath = efiDestPath + "\\boot\\BOOTX64.EFI";
-        bootAttrs = GetFileAttributesA(bootFilePath.c_str());
-        bootFileExists = (bootAttrs != INVALID_FILE_ATTRIBUTES && !(bootAttrs & FILE_ATTRIBUTE_DIRECTORY));
-    }
-
-    if (!bootFileExists) {
-        bootFilePath = efiDestPath + "\\boot\\bootx64.efi";
-        bootAttrs = GetFileAttributesA(bootFilePath.c_str());
-        bootFileExists = (bootAttrs != INVALID_FILE_ATTRIBUTES && !(bootAttrs & FILE_ATTRIBUTE_DIRECTORY));
-    }
-
-    if (!bootFileExists) {
-        bootFilePath = efiDestPath + "\\BOOT\\BOOTIA32.EFI";
-        bootAttrs = GetFileAttributesA(bootFilePath.c_str());
-        bootFileExists = (bootAttrs != INVALID_FILE_ATTRIBUTES && !(bootAttrs & FILE_ATTRIBUTE_DIRECTORY));
-    }
-
-    if (!bootFileExists) {
-        bootFilePath = efiDestPath + "\\boot\\BOOTIA32.EFI";
-        bootAttrs = GetFileAttributesA(bootFilePath.c_str());
-        bootFileExists = (bootAttrs != INVALID_FILE_ATTRIBUTES && !(bootAttrs & FILE_ATTRIBUTE_DIRECTORY));
-    }
-
-    if (!bootFileExists) {
-        bootFilePath = efiDestPath + "\\boot\\bootia32.efi";
-        bootAttrs = GetFileAttributesA(bootFilePath.c_str());
-        bootFileExists = (bootAttrs != INVALID_FILE_ATTRIBUTES && !(bootAttrs & FILE_ATTRIBUTE_DIRECTORY));
-    }
-    
-    logFile << getTimestamp() << "Boot file check: " << bootFilePath << " - " << (bootFileExists ? "EXISTS" : "NOT FOUND") << std::endl;
-    
-    // If BOOTX64.EFI is missing, copy from system to ensure compatibility
-    if (!bootFileExists) {
-        logFile << getTimestamp() << "Copying BOOTX64.EFI from system for compatibility" << std::endl;
-        // Create EFI\BOOT directory
-        std::string bootDir = efiDestPath + "\\BOOT";
-        if (!CreateDirectoryA(bootDir.c_str(), NULL) && GetLastError() != ERROR_ALREADY_EXISTS) {
-            logFile << getTimestamp() << "Failed to create BOOT directory" << std::endl;
-        } else {
-            std::string systemBootmgr = "C:\\Windows\\Boot\\EFI\\bootmgfw.efi";
-            std::string destBootx64 = bootDir + "\\BOOTX64.EFI";
-            // Only copy system boot file if BOOTX64.EFI does not already exist to avoid overwriting
-            DWORD existingAttrs = GetFileAttributesA(destBootx64.c_str());
-            bool shouldCopy = (existingAttrs == INVALID_FILE_ATTRIBUTES);
-            if (!shouldCopy) {
-                // If exists, compare sizes to decide
-                WIN32_FILE_ATTRIBUTE_DATA srcData, dstData;
-                if (GetFileAttributesExA(systemBootmgr.c_str(), GetFileExInfoStandard, &srcData) && GetFileAttributesExA(destBootx64.c_str(), GetFileExInfoStandard, &dstData)) {
-                    ULONGLONG srcSize = ((ULONGLONG)srcData.nFileSizeHigh << 32) | srcData.nFileSizeLow;
-                    ULONGLONG dstSize = ((ULONGLONG)dstData.nFileSizeHigh << 32) | dstData.nFileSizeLow;
-                    if (srcSize != dstSize) shouldCopy = true;
-                } else {
-                    shouldCopy = true; // can't compare, try copying
-                }
-            }
-
-            if (shouldCopy) {
-                if (copyFileUtf8(systemBootmgr, destBootx64)) {
-                    uint16_t machine = getPEMachine(destBootx64);
-                    logFile << getTimestamp() << "Successfully copied bootmgfw.efi as BOOTX64.EFI (machine=0x" << std::hex << machine << std::dec << ")" << std::endl;
-                    bootFileExists = true;
-                    bootFilePath = destBootx64;
-                } else {
-                    logFile << getTimestamp() << "Failed to copy bootmgfw.efi, error: " << GetLastError() << std::endl;
-                    // Try alternative path
-                    std::string altSystemBoot = "C:\\Windows\\Boot\\EFI\\bootx64.efi";
-                    if (copyFileUtf8(altSystemBoot, destBootx64)) {
-                        uint16_t machine = getPEMachine(destBootx64);
-                        logFile << getTimestamp() << "Successfully copied bootx64.efi as BOOTX64.EFI (machine=0x" << std::hex << machine << std::dec << ")" << std::endl;
-                        bootFileExists = true;
-                        bootFilePath = destBootx64;
-                    } else {
-                        logFile << getTimestamp() << "Failed to copy bootx64.efi, error: " << GetLastError() << std::endl;
-                    }
-                }
-            } else {
-                logFile << getTimestamp() << "BOOTX64.EFI already exists on ESP, skipping system copy\n";
-                bootFileExists = true;
-                bootFilePath = destBootx64;
-            }
-        }
-    }
+    // Extract EFI
+    bool efiSuccess = efiManager->extractEFI(sourcePath, espPath, isWindowsISO, copiedSoFar, isoSize);
     
     // Dismount the ISO
     eventManager.notifyDetailedProgress(isoSize * 9 / 10, isoSize, "Desmontando ISO");
-    logFile << getTimestamp() << "Dismount command: " << dismountCmd << std::endl;
-    std::string dismountResult = exec(dismountCmd.c_str());
+    if (!isoMounter->unmountISO(isoPath)) {
+        logFile << getTimestamp() << "Warning: Failed to unmount ISO" << std::endl;
+    }
     logFile << getTimestamp() << "Dismount ISO completed" << std::endl;
     
-    logFile << getTimestamp() << "EFI extraction " << (bootFileExists ? "SUCCESS" : "FAILED") << std::endl;
+    logFile << getTimestamp() << "EFI extraction " << (efiSuccess ? "SUCCESS" : "FAILED") << std::endl;
     if (extractContent) {
         logFile << getTimestamp() << "Content extraction completed." << std::endl;
     }
     logFile.close();
     
     eventManager.notifyDetailedProgress(0, 0, "");
-    return bootFileExists;
+    return efiSuccess;
 }
 
 bool ISOCopyManager::copyISOFile(EventManager& eventManager, const std::string& isoPath, const std::string& destPath)

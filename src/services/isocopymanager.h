@@ -4,7 +4,13 @@
 #include <string>
 #include <set>
 #include <fstream>
+#include <memory>
 #include "../models/EventManager.h"
+
+class ISOTypeDetector;
+class EFIManager;
+class ISOMounter;
+class FileCopyManager;
 
 class ISOCopyManager
 {
@@ -20,17 +26,19 @@ public:
     bool extractISOContents(EventManager& eventManager, const std::string& isoPath, const std::string& destPath, const std::string& espPath, bool extractContent = true);
     bool copyISOFile(EventManager& eventManager, const std::string& isoPath, const std::string& destPath);
 
-    bool isWindowsISO;
+    bool getIsWindowsISO() const;
+    const char* getTimestamp();
 
 private:
+    std::unique_ptr<ISOTypeDetector> typeDetector;
+    std::unique_ptr<EFIManager> efiManager;
+    std::unique_ptr<ISOMounter> isoMounter;
+    std::unique_ptr<FileCopyManager> fileCopyManager;
+    bool isWindowsISODetected;
+
     std::string exec(const char* cmd);
-    std::string getTimestamp();
     long long getDirectorySize(const std::string& path);
-    bool copyDirectoryWithProgress(const std::string& source, const std::string& dest, EventManager& eventManager, long long totalSize, long long& copiedSoFar, const std::set<std::string>& excludeDirs = {});
     void listDirectoryRecursive(std::ofstream& log, const std::string& path, int depth, int maxDepth);
-    void validateAndFixEFIFiles(const std::string& efiDestPath, std::ofstream& logFile);
-    void ensureTempDirectoryClean(const std::string& tempDir, std::ofstream& logFile);
-    bool isDirectoryEmpty(const std::string& dirPath);
 };
 
 #endif // ISOCOPYMANAGER_H
