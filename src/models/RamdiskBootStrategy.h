@@ -37,23 +37,23 @@ public:
             // Execute ramdisk SDI settings first
             logFile << "  " << cmdRamdiskSdiDevice << std::endl;
             std::string result4 = Utils::exec(cmdRamdiskSdiDevice.c_str());
-            logFile << "  Result: " << (result4.find("correctamente") != std::string::npos ? "OK" : "ERROR") << result4 << std::endl;
+            logFile << "  Result: " << result4 << std::endl;
 
             logFile << "  " << cmdRamdiskSdiPath << std::endl;
             std::string result5 = Utils::exec(cmdRamdiskSdiPath.c_str());
-            logFile << "  Result: " << (result5.find("correctamente") != std::string::npos ? "OK" : "ERROR") << result5 << std::endl;
+            logFile << "  Result: " << result5 << std::endl;
 
             logFile << "  " << cmd1 << std::endl;
             std::string result1 = Utils::exec(cmd1.c_str());
-            logFile << "  Result: " << (result1.find("correctamente") != std::string::npos ? "OK" : "ERROR") << result1 << std::endl;
+            logFile << "  Result: " << result1 << std::endl;
 
             logFile << "  " << cmd2 << std::endl;
             std::string result2 = Utils::exec(cmd2.c_str());
-            logFile << "  Result: " << (result2.find("correctamente") != std::string::npos ? "OK" : "ERROR") << result2 << std::endl;
+            logFile << "  Result: " << result2 << std::endl;
 
             logFile << "  " << cmd3 << std::endl;
             std::string result3 = Utils::exec(cmd3.c_str());
-            logFile << "  Result: " << (result3.find("correctamente") != std::string::npos ? "OK" : "ERROR") << result3 << std::endl;
+            logFile << "  Result: " << result3 << std::endl;
 
             logFile.close();
         }

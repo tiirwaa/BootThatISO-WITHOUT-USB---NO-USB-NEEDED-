@@ -29,15 +29,15 @@ public:
             logFile << "Executing BCD commands for ExtractedBootStrategy:" << std::endl;
             logFile << "  " << cmd1 << std::endl;
             std::string result1 = Utils::exec(cmd1.c_str());
-            logFile << "  Result: " << (result1.find("error") != std::string::npos ? "ERROR: " : "OK") << result1 << std::endl;
+            logFile << "  Result: " << result1 << std::endl;
 
             logFile << "  " << cmd2 << std::endl;
             std::string result2 = Utils::exec(cmd2.c_str());
-            logFile << "  Result: " << (result2.find("error") != std::string::npos ? "ERROR: " : "OK") << result2 << std::endl;
+            logFile << "  Result: " << result2 << std::endl;
 
             logFile << "  " << cmd3 << std::endl;
             std::string result3 = Utils::exec(cmd3.c_str());
-            logFile << "  Result: " << (result3.find("error") != std::string::npos ? "ERROR: " : "OK") << result3 << std::endl;
+            logFile << "  Result: " << result3 << std::endl;
 
             logFile.close();
         }

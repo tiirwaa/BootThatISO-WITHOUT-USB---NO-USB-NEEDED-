@@ -4,7 +4,10 @@ Proyecto para crear particiones bootables desde ISOs de Windows.
 
 ## Información Importante para Copilot
 
-**IMPORTANTE**: Todas las pruebas y ejecución del programa se realizan en una máquina virtual donde existe una copia exacta del ISO `Windows10_22H2_X64.iso` en la ruta `C:\Users\vboxuser\Desktop\Windows10_22H2_X64.iso`.
+**IMPORTANTE**: Todas las pruebas y ejecución del programa se realizan en una máquina virtual donde existe una copia exacta del ISO `Windows10_22H2_X64.iso` en la ruta 
+`C:\Users\vboxuser\Desktop\Windows10_22H2_X64.iso`.
+en la maquina de desarrollo el ISO está en:
+`C:\Users\Andrey\Downloads\Windows10_22H2_X64.iso`
 
 El código fuente se desarrolla en la máquina local (`C:\Users\Andrey\Documentos\EasyISOBoot`), pero la ejecución y pruebas se hacen siempre en la máquina virtual con el ISO en la ubicación mencionada.
 
