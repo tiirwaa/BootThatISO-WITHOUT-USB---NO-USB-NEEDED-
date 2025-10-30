@@ -260,7 +260,9 @@ bool ISOCopyManager::copyDirectoryWithProgress(const std::string& source, const 
                     return false;
                 }
 
-                if (!copyFileUtf8(srcItem, destItem)) {
+                CopyProgressContext ctx = {&eventManager, totalSize, copiedSoFar, excludeDirs.empty() ? "Copiando EFI" : "Copiando contenido del ISO"};
+                BOOL copyResult = CopyFileExW(Utils::utf8_to_wstring(srcItem).c_str(), Utils::utf8_to_wstring(destItem).c_str(), CopyFileProgressRoutine, &ctx, NULL, 0);
+                if (!copyResult) {
                     DWORD error = GetLastError();
                     std::ofstream errorLog2(logDir + "\\" + COPY_ERROR_LOG_FILE, std::ios::app);
                     errorLog2 << getTimestamp() << "Failed to copy file: " << srcItem << " to " << destItem << " Error code: " << error << "\n";
@@ -302,7 +304,6 @@ bool ISOCopyManager::copyDirectoryWithProgress(const std::string& source, const 
                 }
 
                 copiedSoFar += fileSize;
-                eventManager.notifyDetailedProgress(copiedSoFar, totalSize, excludeDirs.empty() ? "Copiando EFI" : "Copiando contenido del ISO");
             }
         }
     } while (FindNextFileA(hFind, &findData));
