@@ -199,7 +199,9 @@ void MainWindow::HandleCommand(UINT msg, WPARAM wParam, LPARAM lParam)
     case WM_UPDATE_ERROR:
         {
             std::string* errorMsg = reinterpret_cast<std::string*>(lParam);
-            std::wstring wmsg(errorMsg->begin(), errorMsg->end());
+            int wlen = MultiByteToWideChar(CP_UTF8, 0, errorMsg->c_str(), -1, NULL, 0);
+            std::wstring wmsg(wlen, L'\0');
+            MultiByteToWideChar(CP_UTF8, 0, errorMsg->c_str(), -1, &wmsg[0], wlen);
             MessageBoxW(hWndParent, wmsg.c_str(), L"Error", MB_OK | MB_ICONERROR);
             delete errorMsg;
         }
@@ -265,7 +267,9 @@ void MainWindow::OnCreatePartition()
     // Disable button and start process
     EnableWindow(createPartitionButton, FALSE);
     isProcessing = true;
-    std::string isoPathStr = std::string(isoPath, isoPath + wcslen(isoPath));
+    int len = WideCharToMultiByte(CP_UTF8, 0, isoPath, -1, NULL, 0, NULL, NULL);
+    std::string isoPathStr(len, '\0');
+    WideCharToMultiByte(CP_UTF8, 0, isoPath, -1, &isoPathStr[0], len, NULL, NULL);
     processController->startProcess(isoPathStr, selectedFormat, selectedBootMode);
 }
 
@@ -300,7 +304,9 @@ void MainWindow::LogMessage(const std::string& msg)
         generalLogFile << timestampedMsg;
         generalLogFile.flush();
     }
-    std::wstring wmsg(timestampedMsg.begin(), timestampedMsg.end());
+    int wlen = MultiByteToWideChar(CP_UTF8, 0, timestampedMsg.c_str(), -1, NULL, 0);
+    std::wstring wmsg(wlen, L'\0');
+    MultiByteToWideChar(CP_UTF8, 0, timestampedMsg.c_str(), -1, &wmsg[0], wlen);
     int len = GetWindowTextLengthW(logTextEdit);
     SendMessageW(logTextEdit, EM_SETSEL, len, len);
     SendMessageW(logTextEdit, EM_REPLACESEL, FALSE, (LPARAM)wmsg.c_str());
@@ -330,12 +336,15 @@ void MainWindow::onProgressUpdate(int progress) {
 void MainWindow::onLogUpdate(const std::string& message) {
     // Get current time
     std::time_t now = std::time(nullptr);
-    std::tm* localTime = std::localtime(&now);
+    std::tm localTime;
+    localtime_s(&localTime, &now);
     std::stringstream timeStream;
-    timeStream << std::put_time(localTime, "[%Y-%m-%d %H:%M:%S] ");
+    timeStream << std::put_time(&localTime, "[%Y-%m-%d %H:%M:%S] ");
     std::string timestampedMsg = timeStream.str() + message;
 
-    std::wstring wmsg(timestampedMsg.begin(), timestampedMsg.end());
+    int wlen = MultiByteToWideChar(CP_UTF8, 0, timestampedMsg.c_str(), -1, NULL, 0);
+    std::wstring wmsg(wlen, L'\0');
+    MultiByteToWideChar(CP_UTF8, 0, timestampedMsg.c_str(), -1, &wmsg[0], wlen);
     int len = GetWindowTextLengthW(logTextEdit);
     SendMessageW(logTextEdit, EM_SETSEL, len, len);
     SendMessageW(logTextEdit, EM_REPLACESEL, FALSE, (LPARAM)wmsg.c_str());

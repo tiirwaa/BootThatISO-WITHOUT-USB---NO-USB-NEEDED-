@@ -80,7 +80,10 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
 
     // Get volume GUID for data partition
     WCHAR dataVolumeName[MAX_PATH];
-    std::wstring wDriveLetter = std::wstring(driveLetter.begin(), driveLetter.end()) + L"\\";
+    int wlen1 = MultiByteToWideChar(CP_UTF8, 0, driveLetter.c_str(), -1, NULL, 0);
+    std::wstring wDriveLetter(wlen1, L'\0');
+    MultiByteToWideChar(CP_UTF8, 0, driveLetter.c_str(), -1, &wDriveLetter[0], wlen1);
+    wDriveLetter += L"\\";
     if (!GetVolumeNameForVolumeMountPointW(wDriveLetter.c_str(), dataVolumeName, MAX_PATH)) {
         return "Error al obtener el nombre del volumen de datos";
     }
@@ -90,7 +93,10 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
 
     // Get volume GUID for ESP
     WCHAR espVolumeName[MAX_PATH];
-    std::wstring wEspDriveLetter = std::wstring(espDriveLetter.begin(), espDriveLetter.end()) + L"\\";
+    int wlen2 = MultiByteToWideChar(CP_UTF8, 0, espDriveLetter.c_str(), -1, NULL, 0);
+    std::wstring wEspDriveLetter(wlen2, L'\0');
+    MultiByteToWideChar(CP_UTF8, 0, espDriveLetter.c_str(), -1, &wEspDriveLetter[0], wlen2);
+    wEspDriveLetter += L"\\";
     if (!GetVolumeNameForVolumeMountPointW(wEspDriveLetter.c_str(), espVolumeName, MAX_PATH)) {
         return "Error al obtener el nombre del volumen ESP";
     }
