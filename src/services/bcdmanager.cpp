@@ -4,6 +4,7 @@
 #include <windows.h>
 #include <winnt.h>
 #include <string>
+#include <ctime>
 #include <vector>
 #include <sstream>
 #include <cstdio>
@@ -80,12 +81,105 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
 
     // Get volume GUID for data partition
     WCHAR dataVolumeName[MAX_PATH];
-    int wlen1 = MultiByteToWideChar(CP_UTF8, 0, driveLetter.c_str(), -1, NULL, 0);
-    std::wstring wDriveLetter(wlen1, L'\0');
-    MultiByteToWideChar(CP_UTF8, 0, driveLetter.c_str(), -1, &wDriveLetter[0], wlen1);
-    wDriveLetter += L"\\";
-    if (!GetVolumeNameForVolumeMountPointW(wDriveLetter.c_str(), dataVolumeName, MAX_PATH)) {
-        return "Error al obtener el nombre del volumen de datos";
+    std::wstring wDriveLetter = Utils::utf8_to_wstring(driveLetter);
+    if (wDriveLetter.empty() || wDriveLetter.back() != L'\\') wDriveLetter += L'\\';
+
+    // Try GetVolumeNameForVolumeMountPointW with a few retries (transient mount timing issues)
+    const int MAX_ATTEMPTS = 3;
+    BOOL gotVolumeName = FALSE;
+    DWORD lastErr = 0;
+
+    // Prepare a small timestamp helper and a log file for detailed BCD config diagnostics
+    auto getTS = []() -> std::string {
+        char buffer[64];
+        std::time_t now = std::time(nullptr);
+        std::tm localTime;
+        localtime_s(&localTime, &now);
+        std::strftime(buffer, sizeof(buffer), "[%Y-%m-%d %H:%M:%S] ", &localTime);
+        return std::string(buffer);
+    };
+
+    // Prepare a log file for detailed BCD config diagnostics
+    std::string bcdLogDir = Utils::getExeDirectory() + "logs";
+    CreateDirectoryA(bcdLogDir.c_str(), NULL);
+    std::ofstream dbgLog((bcdLogDir + "\\" + BCD_CONFIG_LOG_FILE).c_str(), std::ios::app);
+    dbgLog << getTS() << "Attempting GetVolumeNameForVolumeMountPointW for: " << Utils::wstring_to_utf8(wDriveLetter) << std::endl;
+
+    for (int attempt = 1; attempt <= MAX_ATTEMPTS; ++attempt) {
+            if (GetVolumeNameForVolumeMountPointW(wDriveLetter.c_str(), dataVolumeName, MAX_PATH)) {
+            gotVolumeName = TRUE;
+            dbgLog << getTS() << "GetVolumeNameForVolumeMountPointW succeeded on attempt " << attempt << std::endl;
+            break;
+        } else {
+            lastErr = GetLastError();
+            dbgLog << getTS() << "GetVolumeNameForVolumeMountPointW failed on attempt " << attempt << ", error=" << lastErr << std::endl;
+            // small delay before retry
+            Sleep(500);
+        }
+    }
+
+    if (!gotVolumeName) {
+        if (eventManager) eventManager->notifyLogUpdate("GetVolumeNameForVolumeMountPointW failed for " + driveLetter + ", trying fallback enumeration...\r\n");
+    dbgLog << getTS() << "Starting fallback volume enumeration to find mount point matching: " << Utils::wstring_to_utf8(wDriveLetter) << std::endl;
+
+        BOOL found = FALSE;
+        WCHAR volName[MAX_PATH];
+        HANDLE hVol = FindFirstVolumeW(volName, MAX_PATH);
+        if (hVol != INVALID_HANDLE_VALUE) {
+            do {
+                // Ensure volume name ends with backslash for GetVolumePathNamesForVolumeNameW
+                std::wstring volNameStr = volName;
+                if (volNameStr.back() != L'\\') volNameStr.push_back(L'\\');
+
+                dbgLog << getTS() << "Enumerating volume: " << Utils::wstring_to_utf8(volNameStr) << std::endl;
+
+                // Get mount points for this volume
+                DWORD returnLen = 0;
+                BOOL got = GetVolumePathNamesForVolumeNameW(volNameStr.c_str(), NULL, 0, &returnLen);
+                DWORD gle = GetLastError();
+                dbgLog << getTS() << "  GetVolumePathNamesForVolumeNameW initial call returned " << got << " lastErr=" << gle << " needLen=" << returnLen << std::endl;
+
+                if (!got && gle == ERROR_MORE_DATA && returnLen > 0) {
+                    std::vector<WCHAR> buf(returnLen);
+                    if (GetVolumePathNamesForVolumeNameW(volNameStr.c_str(), buf.data(), returnLen, &returnLen)) {
+                        // buffer contains multi-string of path names
+                        WCHAR* p = buf.data();
+                        while (*p) {
+                            std::wstring mountPoint(p);
+                            if (mountPoint.back() != L'\\') mountPoint.push_back(L'\\');
+                            dbgLog << getTS() << "    Found mount point: " << Utils::wstring_to_utf8(mountPoint) << std::endl;
+                            if (mountPoint == wDriveLetter) {
+                                // Found matching volume
+                                wcsncpy_s(dataVolumeName, volName, MAX_PATH);
+                                found = TRUE;
+                                dbgLog << getTS() << "    -> MATCH for " << Utils::wstring_to_utf8(wDriveLetter) << std::endl;
+                                break;
+                            }
+                            p += wcslen(p) + 1;
+                        }
+                    } else {
+                        dbgLog << getTS() << "    GetVolumePathNamesForVolumeNameW failed on populate, err=" << GetLastError() << std::endl;
+                    }
+                }
+
+                if (found) break;
+            } while (FindNextVolumeW(hVol, volName, MAX_PATH));
+            FindVolumeClose(hVol);
+            } else {
+            dbgLog << getTS() << "FindFirstVolumeW failed, err=" << GetLastError() << std::endl;
+        }
+
+        if (!found) {
+            dbgLog << getTS() << "Fallback enumeration did not find a matching mount point for " << Utils::wstring_to_utf8(wDriveLetter) << std::endl;
+            dbgLog.close();
+            return "Error al obtener el nombre del volumen de datos";
+        }
+        dbgLog << getTS() << "Fallback found volume: " << Utils::wstring_to_utf8(dataVolumeName) << std::endl;
+        dbgLog.close();
+    } else {
+        // success from initial call; log and close debug log
+        dbgLog << getTS() << "Volume name: " << Utils::wstring_to_utf8(dataVolumeName) << std::endl;
+        dbgLog.close();
     }
     char narrowDataVolumeName[MAX_PATH * 2];
     WideCharToMultiByte(CP_UTF8, 0, dataVolumeName, -1, narrowDataVolumeName, sizeof(narrowDataVolumeName), NULL, NULL);
@@ -93,10 +187,8 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
 
     // Get volume GUID for ESP
     WCHAR espVolumeName[MAX_PATH];
-    int wlen2 = MultiByteToWideChar(CP_UTF8, 0, espDriveLetter.c_str(), -1, NULL, 0);
-    std::wstring wEspDriveLetter(wlen2, L'\0');
-    MultiByteToWideChar(CP_UTF8, 0, espDriveLetter.c_str(), -1, &wEspDriveLetter[0], wlen2);
-    wEspDriveLetter += L"\\";
+    std::wstring wEspDriveLetter = Utils::utf8_to_wstring(espDriveLetter);
+    if (wEspDriveLetter.empty() || wEspDriveLetter.back() != L'\\') wEspDriveLetter += L'\\';
     if (!GetVolumeNameForVolumeMountPointW(wEspDriveLetter.c_str(), espVolumeName, MAX_PATH)) {
         return "Error al obtener el nombre del volumen ESP";
     }

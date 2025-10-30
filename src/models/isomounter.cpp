@@ -74,10 +74,30 @@ bool ISOMounter::unmountISO(const std::string& isoPath)
     while (!trimmedIsoPath.empty() && isTrimChar2(trimmedIsoPath.front())) trimmedIsoPath.erase(trimmedIsoPath.begin());
     while (!trimmedIsoPath.empty() && isTrimChar2(trimmedIsoPath.back())) trimmedIsoPath.pop_back();
 
-    std::string dismountCmd = "powershell -Command \"Dismount-DiskImage -ImagePath \\\"" + trimmedIsoPath + "\\\"\"";
+    // Use PowerShell try/catch and explicit OK output to reliably detect success across locales
+    std::string dismountCmd =
+        "powershell -NoProfile -NonInteractive -Command \"try { Dismount-DiskImage -ImagePath \\\"" + trimmedIsoPath + "\\\" -ErrorAction Stop; Write-Output 'OK' } catch { Write-Output 'ERROR:'; Write-Output $_.ToString(); exit 1 }\"";
+
     std::string result = exec(dismountCmd.c_str());
-    // Check for success
-    return result.find("successfully") != std::string::npos || result.empty(); // empty might mean no error
+
+    // If PowerShell printed OK, consider success
+    if (result.find("OK") != std::string::npos) {
+        return true;
+    }
+
+    // Fallback: try piping the Get-DiskImage to Dismount-DiskImage (sometimes more reliable)
+    std::string fallbackCmd =
+        "powershell -NoProfile -NonInteractive -Command \"try { Get-DiskImage -ImagePath \\\"" + trimmedIsoPath + "\\\" | Dismount-DiskImage -ErrorAction Stop; Write-Output 'OK' } catch { Write-Output 'ERROR:'; Write-Output $_.ToString(); exit 1 }\"";
+    std::string fallbackResult = exec(fallbackCmd.c_str());
+    if (fallbackResult.find("OK") != std::string::npos) {
+        return true;
+    }
+
+    // Log the failure details to a separate log for easier debugging
+    std::ofstream f("logs\\iso_mount.log", std::ios::app);
+    f << getTimestamp() << "Warning: Failed to unmount ISO. Primary result: '''" << result << "''' Fallback result: '''" << fallbackResult << "'''" << std::endl;
+    f.close();
+    return false;
 }
 
 std::string ISOMounter::exec(const char* cmd) {
