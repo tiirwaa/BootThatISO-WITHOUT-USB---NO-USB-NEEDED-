@@ -1,0 +1,19 @@
+Diskpart list volume output:
+
+Microsoft DiskPart versi¢n 10.0.19041.3636
+
+Copyright (C) Microsoft Corporation.
+En el equipo: WINDOWS
+
+  N£m Volumen Ltr  Etiqueta     Fs     Tipo        Tama¤o   Estado     Info
+  ----------- ---  -----------  -----  ----------  -------  ---------  --------
+  Volumen 0     D   HBCD_PE_x6  UDF    CD-ROM      3139 MB  Correcto           
+  Volumen 1     C   Windows     NTFS   Partici¢n     39 GB  Correcto   Arranque
+  Volumen 2     Z   ISOBOOT     NTFS   Partici¢n      9 GB  Correcto           
+  Volumen 3         WINRE       NTFS   Partici¢n    300 MB  Correcto   Oculto  
+  Volumen 4         EFI         FAT32  Partici¢n    100 MB  Correcto   Sistema 
+  Volumen 5     Y   ISOEFI      FAT32  Partici¢n    500 MB  Correcto   Oculto  
+
+Saliendo de DiskPart...
+
+Found volume number: 2

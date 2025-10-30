@@ -1,0 +1,12 @@
+[2025-10-30 05:49:37] Starting ISO extraction from: C:\Users\vboxuser\Desktop\Windows10_22H2_X64.iso
+[2025-10-30 05:49:37] Destination (data): Z:\
+[2025-10-30 05:49:37] ESP path: Y:\
+[2025-10-30 05:49:37] Extract content: Yes
+[2025-10-30 05:49:44] Source path: E:\
+[2025-10-30 05:49:44] Waiting 5 seconds for drive to be ready
+[2025-10-30 05:49:52] Drive ready, proceeding with analysis
+[2025-10-30 05:49:52] Is Windows ISO: Yes
+[2025-10-30 05:52:16] Warning: Failed to unmount ISO
+[2025-10-30 05:52:16] Dismount ISO completed
+[2025-10-30 05:52:16] EFI extraction SUCCESS
+[2025-10-30 05:52:16] Content extraction completed.

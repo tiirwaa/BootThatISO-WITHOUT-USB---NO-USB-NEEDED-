@@ -234,8 +234,6 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
         return "Error al configurar default: " + cmd6;
     }
 
-    if (eventManager) eventManager->notifyLogUpdate("BCD configurado exitosamente para arranque EFI.\r\n");
-
     logFile.close();
 
     return "";

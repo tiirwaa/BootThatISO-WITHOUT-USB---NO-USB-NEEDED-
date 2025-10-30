@@ -179,6 +179,7 @@ bool PartitionManager::createPartition(const std::string& format)
     CreateDirectoryA(logDir.c_str(), NULL);
     std::ofstream logFile((logDir + "\\" + DISKPART_LOG_FILE).c_str());
     if (logFile) {
+        logFile << "\xef\xbb\xbf"; // UTF-8 BOM
         logFile << "Diskpart script executed.\n";
         logFile << "Script content:\n";
         logFile << "select disk 0\n";
@@ -190,7 +191,7 @@ bool PartitionManager::createPartition(const std::string& format)
         logFile << "format fs=" << fsFormat << " quick label=\"" << VOLUME_LABEL << "\"\n";
         logFile << "exit\n";
         logFile << "\nExit code: " << exitCode << "\n";
-        logFile << "\nDiskpart output:\n" << output << "\n";
+        logFile << "\nDiskpart output:\n" << Utils::ansi_to_utf8(output) << "\n";
         logFile << "\nPartition detectable after creation: " << (partitionFound ? "YES" : "NO") << "\n";
         logFile.close();
     }
@@ -632,8 +633,9 @@ bool PartitionManager::reformatPartition(const std::string& format)
         CreateDirectoryA(logDir.c_str(), NULL);
         std::ofstream logFile((logDir + "\\" + REFORMAT_LOG_FILE).c_str());
         if (logFile) {
+            logFile << "\xef\xbb\xbf"; // UTF-8 BOM
             logFile << "Diskpart list volume failed with exit code: " << exitCode << "\n";
-            logFile << "Output:\n" << output << "\n";
+            logFile << "Output:\n" << Utils::ansi_to_utf8(output) << "\n";
             logFile.close();
         }
         return false;
@@ -678,7 +680,8 @@ bool PartitionManager::reformatPartition(const std::string& format)
     CreateDirectoryA(logDir.c_str(), NULL);
     std::ofstream logFile((logDir + "\\" + REFORMAT_LOG_FILE).c_str());
     if (logFile) {
-        logFile << "Diskpart list volume output:\n" << output << "\n";
+        logFile << "\xef\xbb\xbf"; // UTF-8 BOM
+        logFile << "Diskpart list volume output:\n" << Utils::ansi_to_utf8(output) << "\n";
         if (volumeNumber == -1) {
             logFile << "Volume with " << VOLUME_LABEL << " not found in output.\n";
         } else {

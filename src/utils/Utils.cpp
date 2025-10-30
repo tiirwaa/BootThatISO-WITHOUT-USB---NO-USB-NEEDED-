@@ -81,3 +81,12 @@ std::string Utils::wstring_to_utf8(const std::wstring& wstr) {
     WideCharToMultiByte(CP_UTF8, 0, wstr.c_str(), (int)wstr.size(), &str[0], size_needed, NULL, NULL);
     return str;
 }
+
+std::string Utils::ansi_to_utf8(const std::string& ansi) {
+    if (ansi.empty()) return std::string();
+    int size_needed = MultiByteToWideChar(CP_ACP, 0, ansi.c_str(), (int)ansi.size(), NULL, 0);
+    if (size_needed <= 0) return std::string();
+    std::wstring wstr(size_needed, 0);
+    MultiByteToWideChar(CP_ACP, 0, ansi.c_str(), (int)ansi.size(), &wstr[0], size_needed);
+    return wstring_to_utf8(wstr);
+}
