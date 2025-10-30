@@ -113,42 +113,45 @@ bool EFIManager::extractBootFilesFromWIM(const std::string& sourcePath, const st
                 } else {
                     // Extract EFI files to ESP
                     std::vector<std::pair<std::string, std::string>> efiFiles = {
-                        {"Windows\\Boot\\EFI\\bootx64.efi", espPath + "EFI\\BOOT\\BOOTX64.EFI"},
                         {"Windows\\Boot\\EFI\\bootmgfw.efi", espPath + "EFI\\Microsoft\\Boot\\bootmgfw.efi"},
-                        {"Windows\\Boot\\EFI\\bootmgr.efi", espPath + "EFI\\Microsoft\\Boot\\bootmgr.efi"},
-                        {"Windows\\Boot\\BCD", espPath + "EFI\\Microsoft\\Boot\\BCD"},
-                        {"Windows\\System32\\memtest.efi", espPath + "EFI\\Microsoft\\Boot\\memtest.efi"}
+                        // Note: Other files like bootx64.efi, bootmgr.efi, BCD, memtest.efi may not exist in boot.wim
+                        // and are not essential for EFI booting
                     };
 
                     for (auto& filePair : efiFiles) {
                         std::string src = tempDir + filePair.first;
                         std::string dst = filePair.second;
-                        // Ensure destination directory exists
-                        size_t lastSlash = dst.find_last_of("\\");
-                        if (lastSlash != std::string::npos) {
-                            std::string dstDir = dst.substr(0, lastSlash);
-                            CreateDirectoryA(dstDir.c_str(), NULL); // Ignore error if exists
-                        }
-                        if (copyFileUtf8(src, dst)) {
-                            // Validate PE for EFI files and log machine type
-                            bool valid = true;
-                            uint16_t machine = 0;
-                            size_t pos = dst.find_last_of('.');
-                            if (pos != std::string::npos) {
-                                std::string ext = dst.substr(pos);
-                                for (auto &c : ext) c = (char)tolower((unsigned char)c);
-                                if (ext == ".efi") {
-                                    valid = isValidPE(dst);
-                                    machine = getPEMachine(dst);
-                                }
+                        // Check if source file exists before attempting to copy
+                        if (GetFileAttributesA(src.c_str()) != INVALID_FILE_ATTRIBUTES) {
+                            // Ensure destination directory exists
+                            size_t lastSlash = dst.find_last_of("\\");
+                            if (lastSlash != std::string::npos) {
+                                std::string dstDir = dst.substr(0, lastSlash);
+                                CreateDirectoryA(dstDir.c_str(), NULL); // Ignore error if exists
                             }
-                            if (!valid) {
-                                logFile << getTimestamp() << "Copied EFI file appears invalid: " << dst << std::endl;
+                            if (copyFileUtf8(src, dst)) {
+                                // Validate PE for EFI files and log machine type
+                                bool valid = true;
+                                uint16_t machine = 0;
+                                size_t pos = dst.find_last_of('.');
+                                if (pos != std::string::npos) {
+                                    std::string ext = dst.substr(pos);
+                                    for (auto &c : ext) c = (char)tolower((unsigned char)c);
+                                    if (ext == ".efi") {
+                                        valid = isValidPE(dst);
+                                        machine = getPEMachine(dst);
+                                    }
+                                }
+                                if (!valid) {
+                                    logFile << getTimestamp() << "Copied EFI file appears invalid: " << dst << std::endl;
+                                } else {
+                                    logFile << getTimestamp() << "Instalado: " << filePair.first << " to " << dst << " (machine=0x" << std::hex << machine << std::dec << ")" << std::endl;
+                                }
                             } else {
-                                logFile << getTimestamp() << "Instalado: " << filePair.first << " to " << dst << " (machine=0x" << std::hex << machine << std::dec << ")" << std::endl;
+                                logFile << getTimestamp() << "Failed to extract: " << filePair.first << " error: " << GetLastError() << std::endl;
                             }
                         } else {
-                            logFile << getTimestamp() << "Failed to extract: " << filePair.first << " error: " << GetLastError() << std::endl;
+                            logFile << getTimestamp() << "File not found in boot.wim: " << filePair.first << std::endl;
                         }
                     }
 

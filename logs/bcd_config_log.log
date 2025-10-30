@@ -2,5 +2,5 @@ Selected EFI boot file: Y:\EFI\BOOT\BOOTX64.EFI
 Selected mode: ISOBOOT
 EFI path: \EFI\BOOT\BOOTX64.EFI
 -b49f-11f0-8309-080027d280f3} device partition=Y:
-Executing: bcdedit /set {bde0e4fe-b49f-11f0-8309-080027d280f3} osdevice partition=Z:
-Executing: bcdedit /set {bde0e4fe-b49f-11f0-8309-080027d280f3} path "\EFI\BOOT\BOOTX64.EFI"
+Executing: bcdedit /set {bde0e4ff-b49f-11f0-8309-080027d280f3} osdevice partition=Z:
+Executing: bcdedit /set {bde0e4ff-b49f-11f0-8309-080027d280f3} path "\EFI\BOOT\BOOTX64.EFI"
