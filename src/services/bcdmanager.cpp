@@ -267,22 +267,22 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
     // Build candidate lists per mode and choose the best candidate by validating architecture
     std::vector<std::string> candidates;
     if (bcdLabel == "ISOBOOT") {
-        // Installation mode: prefer BOOTX64 files, then Microsoft bootmgfw
+        // Installation mode: prefer Microsoft bootmgfw first, then BOOTX64
         candidates = {
+            espDriveLetter + "\\EFI\\Microsoft\\Boot\\bootmgfw.efi",
+            espDriveLetter + "\\EFI\\microsoft\\boot\\bootmgfw.efi",
             espDriveLetter + "\\EFI\\BOOT\\BOOTX64.EFI",
             espDriveLetter + "\\EFI\\boot\\BOOTX64.EFI",
-            espDriveLetter + "\\EFI\\boot\\bootx64.efi",
-            espDriveLetter + "\\EFI\\Microsoft\\Boot\\bootmgfw.efi",
-            espDriveLetter + "\\EFI\\microsoft\\boot\\bootmgfw.efi"
+            espDriveLetter + "\\EFI\\boot\\bootx64.efi"
         };
     } else if (bcdLabel == "ISOBOOT_RAM") {
-        // Ramdisk mode: prefer BOOTX64 as well, then Microsoft bootmgfw
+        // Ramdisk mode: prefer Microsoft bootmgfw first, then BOOTX64
         candidates = {
+            espDriveLetter + "\\EFI\\Microsoft\\Boot\\bootmgfw.efi",
+            espDriveLetter + "\\EFI\\microsoft\\boot\\bootmgfw.efi",
             espDriveLetter + "\\EFI\\BOOT\\BOOTX64.EFI",
             espDriveLetter + "\\EFI\\boot\\BOOTX64.EFI",
-            espDriveLetter + "\\EFI\\boot\\bootx64.efi",
-            espDriveLetter + "\\EFI\\Microsoft\\Boot\\bootmgfw.efi",
-            espDriveLetter + "\\EFI\\microsoft\\boot\\bootmgfw.efi"
+            espDriveLetter + "\\EFI\\boot\\bootx64.efi"
         };
     } else {
         candidates = {
@@ -461,6 +461,17 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
         logFile << "ERROR: Failed to set default boot entry. Result: " << result6 << "\n";
         logFile.close();
         return "Error al configurar default: " + result6;
+    }
+
+    // Add to display order so it appears in boot menu
+    std::string cmdDisplay = BCD_CMD + " /displayorder " + guid + " /addfirst";
+    std::string resultDisplay = Utils::exec(cmdDisplay.c_str());
+    logFile << "Displayorder command: " << cmdDisplay << "\nResult: " << resultDisplay << "\n";
+    if (resultDisplay.find("error") != std::string::npos || resultDisplay.find("Error") != std::string::npos) {
+        if (eventManager) eventManager->notifyLogUpdate("Error al configurar displayorder: " + resultDisplay + "\r\n");
+        logFile << "ERROR: Failed to add to displayorder. Result: " << resultDisplay << "\n";
+        logFile.close();
+        return "Error al configurar displayorder: " + resultDisplay;
     }
 
     logFile << "BCD configuration completed successfully\n";

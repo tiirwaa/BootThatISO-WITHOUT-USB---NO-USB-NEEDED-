@@ -22,6 +22,7 @@
 #define IDC_BOOTMODE_RAMDISK 1007
 #define IDC_BOOTMODE_EXTRACTED 1008
 #define IDC_RECOVER_BUTTON 1009
+#define IDC_INTEGRITY_CHECKBOX 1010
 
 #define WM_UPDATE_PROGRESS (WM_USER + 1)
 #define WM_UPDATE_LOG (WM_USER + 2)
@@ -73,6 +74,8 @@ private:
     std::string selectedFormat;
     // Boot mode selection: "RAMDISK" or "EXTRACTED"
     std::string selectedBootMode;
+    // Skip integrity check
+    bool skipIntegrityCheck;
 
     // Controls
     HWND logoLabel;
@@ -99,6 +102,7 @@ private:
     HWND detailedProgressLabel;
     HWND detailedProgressBar;
     HWND recoverButton;
+    HWND integrityCheckBox;
 
     HINSTANCE hInst;
     HWND hWndParent;

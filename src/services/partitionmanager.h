@@ -24,7 +24,7 @@ public:
 
     SpaceValidationResult validateAvailableSpace();
     long long getAvailableSpaceGB();
-    bool createPartition(const std::string& format = "FAT32");
+    bool createPartition(const std::string& format = "FAT32", bool skipIntegrityCheck = false);
     bool partitionExists();
     std::string getPartitionDriveLetter();
     std::string getEfiPartitionDriveLetter();

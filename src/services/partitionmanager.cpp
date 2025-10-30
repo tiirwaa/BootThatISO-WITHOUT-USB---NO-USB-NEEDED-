@@ -66,11 +66,12 @@ long long PartitionManager::getAvailableSpaceGB()
     return 0;
 }
 
-bool PartitionManager::createPartition(const std::string& format)
+bool PartitionManager::createPartition(const std::string& format, bool skipIntegrityCheck)
 {
     std::string logDir = Utils::getExeDirectory() + "logs";
     CreateDirectoryA(logDir.c_str(), NULL);
 
+    if (!skipIntegrityCheck) {
     if (eventManager) eventManager->notifyLogUpdate("Verificando integridad del disco...\r\n");
 
     // Run chkdsk C: to check for errors
@@ -364,6 +365,7 @@ bool PartitionManager::createPartition(const std::string& format)
             return false;
         }
     }
+    } // end if (!skipIntegrityCheck)
 
     if (eventManager) eventManager->notifyLogUpdate("Creando script de diskpart para particiones...\r\n");
     char tempPath[MAX_PATH];

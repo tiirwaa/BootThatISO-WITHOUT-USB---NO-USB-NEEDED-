@@ -30,7 +30,7 @@ void ProcessController::requestCancel()
     }
 }
 
-void ProcessController::startProcess(const std::string& isoPath, const std::string& selectedFormat, const std::string& selectedBootMode)
+void ProcessController::startProcess(const std::string& isoPath, const std::string& selectedFormat, const std::string& selectedBootMode, bool skipIntegrityCheck)
 {
     eventManager.notifyProgressUpdate(0);
 
@@ -64,10 +64,10 @@ void ProcessController::startProcess(const std::string& isoPath, const std::stri
     }
 
     // Iniciar hilo
-    workerThread = new std::thread(&ProcessController::processInThread, this, trimmedIsoPath, selectedFormat, selectedBootMode);
+    workerThread = new std::thread(&ProcessController::processInThread, this, trimmedIsoPath, selectedFormat, selectedBootMode, skipIntegrityCheck);
 }
 
-void ProcessController::processInThread(const std::string& isoPath, const std::string& selectedFormat, const std::string& selectedBootMode)
+void ProcessController::processInThread(const std::string& isoPath, const std::string& selectedFormat, const std::string& selectedBootMode, bool skipIntegrityCheck)
 {
     eventManager.notifyLogUpdate("Verificando estado de particiones...\r\n");
     bool partitionExists = partitionManager->partitionExists();
@@ -122,7 +122,7 @@ void ProcessController::processInThread(const std::string& isoPath, const std::s
         eventManager.notifyLogUpdate("Creando nuevas particiones...\r\n");
         eventManager.notifyProgressUpdate(20);
 
-        if (!partitionManager->createPartition(selectedFormat)) {
+        if (!partitionManager->createPartition(selectedFormat, skipIntegrityCheck)) {
             eventManager.notifyLogUpdate("Error: Falló la creación de la partición.\r\n");
             eventManager.notifyError("Error al crear la partición.");
             eventManager.notifyButtonEnable();
