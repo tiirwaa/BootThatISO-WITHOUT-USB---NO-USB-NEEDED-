@@ -123,7 +123,7 @@ void MainWindow::SetupUI(HWND parent)
     SendMessage(footerLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
     servicesButton = CreateWindowW(L"BUTTON", L"Servicios", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 650, 630, 100, 20, parent, (HMENU)IDC_SERVICES_BUTTON, hInst, NULL);
     SendMessage(servicesButton, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
-    recoverButton = CreateWindowW(L"BUTTON", L"Recuperar mi espacio", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 500, 630, 140, 20, parent, (HMENU)IDC_RECOVER_BUTTON, hInst, NULL);
+    recoverButton = CreateWindowW(L"BUTTON", L"Recuperar mi espacio", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 500, 650, 140, 20, parent, (HMENU)IDC_RECOVER_BUTTON, hInst, NULL);
     SendMessage(recoverButton, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 }
 

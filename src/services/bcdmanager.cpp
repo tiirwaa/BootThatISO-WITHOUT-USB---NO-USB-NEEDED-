@@ -244,8 +244,18 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
     }
 
     std::string bcdLabel = strategy.getBCDLabel();
-    std::string output = Utils::exec((BCD_CMD + " /copy {default} /d \"" + bcdLabel + "\"").c_str());
-    if (output.find("error") != std::string::npos || output.find("{") == std::string::npos) return "Error al copiar entrada BCD";
+    
+    // Create appropriate BCD entry based on boot mode
+    std::string output;
+    if (bcdLabel == "ISOBOOT_RAM") {
+        // For ramdisk mode, create a new OSLOADER entry that supports ramdisk parameters
+        output = Utils::exec((BCD_CMD + " /create /application OSLOADER /d \"" + bcdLabel + "\"").c_str());
+    } else {
+        // For other modes, copy the default entry
+        output = Utils::exec((BCD_CMD + " /copy {default} /d \"" + bcdLabel + "\"").c_str());
+    }
+    
+    if (output.find("error") != std::string::npos || output.find("{") == std::string::npos) return "Error al crear/copiar entrada BCD";
     size_t pos = output.find("{");
     size_t end = output.find("}", pos);
     if (end == std::string::npos) return "Error al extraer GUID de la nueva entrada";
@@ -434,17 +444,26 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
     // Pass simple drive letters (e.g., "Z:") to strategies so they can use partition= syntax
     strategy.configureBCD(guid, driveLetter, espDriveLetter, efiPath);
 
-    // Remove systemroot for EFI booting
+    // Log after strategy configuration
+    logFile << "Strategy configuration completed. Proceeding with final BCD setup...\n";
+
+    // Remove systemroot for EFI booting (ignore error if it doesn't exist - normal for OSLOADER entries)
     std::string cmd4 = BCD_CMD + " /deletevalue " + guid + " systemroot";
-    Utils::exec(cmd4.c_str()); // Don't check error as it might not exist
+    std::string result4 = Utils::exec(cmd4.c_str());
+    logFile << "Remove systemroot command: " << cmd4 << "\nResult: " << result4 << "\n";
+    // Note: This may fail for OSLOADER entries that don't have systemroot - that's OK
 
     std::string cmd6 = BCD_CMD + " /default " + guid;
     std::string result6 = Utils::exec(cmd6.c_str());
-    if (result6.find("error") != std::string::npos) {
-        if (eventManager) eventManager->notifyLogUpdate("Error al configurar default: " + cmd6 + "\r\n");
-        return "Error al configurar default: " + cmd6;
+    logFile << "Set default command: " << cmd6 << "\nResult: " << result6 << "\n";
+    if (result6.find("error") != std::string::npos || result6.find("Error") != std::string::npos) {
+        if (eventManager) eventManager->notifyLogUpdate("Error al configurar default: " + result6 + "\r\n");
+        logFile << "ERROR: Failed to set default boot entry. Result: " << result6 << "\n";
+        logFile.close();
+        return "Error al configurar default: " + result6;
     }
 
+    logFile << "BCD configuration completed successfully\n";
     logFile.close();
 
     return "";

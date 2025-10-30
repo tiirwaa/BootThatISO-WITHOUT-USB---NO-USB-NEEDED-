@@ -21,10 +21,8 @@ public:
     std::string cmd2 = BCD_CMD + " /set " + guid + " osdevice ramdisk=" + ramdiskPath;
     std::string cmd3 = BCD_CMD + " /set " + guid + " path \"" + efiPath + "\"";
 
-    // Additional ramdisk options: point ramdisksdidevice to the ramdisk itself and ramdisksdipath to the standard boot SDI inside the ISO
-    // For Windows install ISOs, the SDI is inside the ramdisk
-    std::string cmdRamdiskSdiDevice = BCD_CMD + " /set " + guid + " ramdisksdidevice ramdisk=" + ramdiskPath;
-    std::string cmdRamdiskSdiPath = BCD_CMD + " /set " + guid + " ramdisksdipath \\boot\\boot.sdi";
+    // Set inheritance for OSLOADER entry to get necessary boot settings
+    std::string cmdInherit = BCD_CMD + " /set " + guid + " inherit {bootloadersettings}";
 
         // Log commands for debugging
         std::string logDir = Utils::getExeDirectory() + "logs";
@@ -33,15 +31,12 @@ public:
         std::ofstream logFile(logFilePath.c_str(), std::ios::app);
         if (logFile) {
             logFile << "Executing BCD commands for RamdiskBootStrategy:" << std::endl;
+            logFile << "Note: ramdisksdidevice/ramdisksdipath parameters are not needed in Windows 10/11 - SDI is found automatically in ramdisk" << std::endl;
 
-            // Execute ramdisk SDI settings first
-            logFile << "  " << cmdRamdiskSdiDevice << std::endl;
-            std::string result4 = Utils::exec(cmdRamdiskSdiDevice.c_str());
-            logFile << "  Result: " << result4 << std::endl;
-
-            logFile << "  " << cmdRamdiskSdiPath << std::endl;
-            std::string result5 = Utils::exec(cmdRamdiskSdiPath.c_str());
-            logFile << "  Result: " << result5 << std::endl;
+            // Execute inheritance first
+            logFile << "  " << cmdInherit << std::endl;
+            std::string resultInherit = Utils::exec(cmdInherit.c_str());
+            logFile << "  Result: " << resultInherit << std::endl;
 
             logFile << "  " << cmd1 << std::endl;
             std::string result1 = Utils::exec(cmd1.c_str());
@@ -55,15 +50,27 @@ public:
             std::string result3 = Utils::exec(cmd3.c_str());
             logFile << "  Result: " << result3 << std::endl;
 
+            // Verify ramdisk parameters were set correctly
+            std::string verifyCmd = BCD_CMD + " /enum " + guid;
+            std::string verifyResult = Utils::exec(verifyCmd.c_str());
+            logFile << "BCD entry verification after ramdisk setup:\n" << verifyResult << std::endl;
+            
+            // Check if essential ramdisk parameters are present
+            bool hasDevice = verifyResult.find("device") != std::string::npos && verifyResult.find("ramdisk") != std::string::npos;
+            bool hasOsDevice = verifyResult.find("osdevice") != std::string::npos && verifyResult.find("ramdisk") != std::string::npos;
+            bool hasPath = verifyResult.find("path") != std::string::npos && verifyResult.find("BOOTX64.EFI") != std::string::npos;
+            
+            if (hasDevice && hasOsDevice && hasPath) {
+                logFile << "SUCCESS: Essential ramdisk parameters configured correctly\n";
+            } else {
+                logFile << "WARNING: Some ramdisk parameters may be missing!\n";
+                logFile << "  device+ramdisk: " << (hasDevice ? "YES" : "NO") << "\n";
+                logFile << "  osdevice+ramdisk: " << (hasOsDevice ? "YES" : "NO") << "\n";
+                logFile << "  path+BOOTX64.EFI: " << (hasPath ? "YES" : "NO") << "\n";
+            }
+
             logFile.close();
         }
-
-        // Execute in correct order: SDI settings first, then device/osdevice/path
-        Utils::exec(cmdRamdiskSdiDevice.c_str());
-        Utils::exec(cmdRamdiskSdiPath.c_str());
-        Utils::exec(cmd1.c_str());
-        Utils::exec(cmd2.c_str());
-        Utils::exec(cmd3.c_str());
     }
 };
 
