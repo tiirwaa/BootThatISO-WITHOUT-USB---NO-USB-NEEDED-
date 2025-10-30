@@ -1,634 +1,85 @@
-[2025-10-29 16:26:29] Created directory: Z:\\CustomDrivers
-[2025-10-29 16:26:29] Created directory: Z:\\Programs
-[2025-10-29 16:26:29] Created directory: Z:\\Programs\7-Zip
-[2025-10-29 16:26:29] Created directory: Z:\\Programs\7-Zip\Lang
-[2025-10-29 16:26:29] Created directory: Z:\\Programs\AOMEI Backupper
-[2025-10-29 16:26:30] Created directory: Z:\\Programs\AOMEI Backupper\lang
-[2025-10-29 16:26:30] Created directory: Z:\\Programs\AOMEI Partition Assistant
-[2025-10-29 16:26:31] Created directory: Z:\\Programs\AOMEI Partition Assistant\lang
-[2025-10-29 16:26:31] Created directory: Z:\\Programs\Aero Admin
-[2025-10-29 16:26:31] Created directory: Z:\\Programs\AnyDesk
-[2025-10-29 16:26:31] Created directory: Z:\\Programs\AquaKeyTest
-[2025-10-29 16:26:31] Created directory: Z:\\Programs\AttributeChanger
-[2025-10-29 16:26:31] Created directory: Z:\\Programs\Bootice
-[2025-10-29 16:26:31] Created directory: Z:\\Programs\CDBurnerXP
-[2025-10-29 16:26:31] Created directory: Z:\\Programs\CDBurnerXP\Resources
-[2025-10-29 16:26:31] Created directory: Z:\\Programs\CPU-Z
-[2025-10-29 16:26:31] Created directory: Z:\\Programs\Change Keyboard Layout
-[2025-10-29 16:26:31] Created directory: Z:\\Programs\ChkDskGUI
-[2025-10-29 16:26:31] Created directory: Z:\\Programs\Crystal Disk Info
-[2025-10-29 16:26:31] Created directory: Z:\\Programs\Crystal Disk Info\CdiResource
-[2025-10-29 16:26:31] Created directory: Z:\\Programs\Crystal Disk Info\CdiResource\dialog
-[2025-10-29 16:26:31] Created directory: Z:\\Programs\Crystal Disk Info\CdiResource\dialog\flot
-[2025-10-29 16:26:31] Created directory: Z:\\Programs\Crystal Disk Info\CdiResource\dialog\image
-[2025-10-29 16:26:32] Created directory: Z:\\Programs\Crystal Disk Info\CdiResource\dll
-[2025-10-29 16:26:32] Created directory: Z:\\Programs\Crystal Disk Info\CdiResource\language
-[2025-10-29 16:26:32] Created directory: Z:\\Programs\Crystal Disk Info\CdiResource\opus
-[2025-10-29 16:26:32] Created directory: Z:\\Programs\Crystal Disk Info\CdiResource\themes
-[2025-10-29 16:26:32] Created directory: Z:\\Programs\Crystal Disk Info\CdiResource\themes\Dark
-[2025-10-29 16:26:32] Created directory: Z:\\Programs\Crystal Disk Info\CdiResource\themes\Default
-[2025-10-29 16:26:33] Created directory: Z:\\Programs\Crystal Disk Info\CdiResource\themes\FlatSquare
-[2025-10-29 16:26:34] Created directory: Z:\\Programs\Crystal Disk Info\CdiResource\themes\Simplicity
-[2025-10-29 16:26:34] Created directory: Z:\\Programs\DMDE
-[2025-10-29 16:26:34] Created directory: Z:\\Programs\DMDE\locals
-[2025-10-29 16:26:34] Created directory: Z:\\Programs\Defraggler
-[2025-10-29 16:26:34] Created directory: Z:\\Programs\Defraggler\Lang
-[2025-10-29 16:26:35] Created directory: Z:\\Programs\Dependency Walker
-[2025-10-29 16:26:35] Created directory: Z:\\Programs\DiskGenius
-[2025-10-29 16:26:35] Created directory: Z:\\Programs\DiskGenius\lang
-[2025-10-29 16:26:35] Created directory: Z:\\Programs\DriveSnapshot
-[2025-10-29 16:26:35] Created directory: Z:\\Programs\ESET Online Scanner
-[2025-10-29 16:26:35] Created directory: Z:\\Programs\EaseUS Partition Master
-[2025-10-29 16:26:35] Created directory: Z:\\Programs\EaseUS Partition Master\DC
-[2025-10-29 16:26:35] Created directory: Z:\\Programs\EaseUS Partition Master\DC\bin
-[2025-10-29 16:26:36] Created directory: Z:\\Programs\EaseUS Partition Master\DC\bin\usb
-[2025-10-29 16:26:36] Created directory: Z:\\Programs\EaseUS Partition Master\DC\bin\usb\x64
-[2025-10-29 16:26:36] Created directory: Z:\\Programs\EaseUS Partition Master\DC\bin\usb\x86
-[2025-10-29 16:26:36] Created directory: Z:\\Programs\EaseUS Partition Master\DC\multi
-[2025-10-29 16:26:36] Created directory: Z:\\Programs\EaseUS Partition Master\DC\multi\res_da_DK
-[2025-10-29 16:26:36] Created directory: Z:\\Programs\EaseUS Partition Master\DC\multi\res_da_DK\bin
-[2025-10-29 16:26:36] Created directory: Z:\\Programs\EaseUS Partition Master\DC\multi\res_da_DK\res
-[2025-10-29 16:26:36] Created directory: Z:\\Programs\EaseUS Partition Master\DC\multi\res_de_DE
-[2025-10-29 16:26:36] Created directory: Z:\\Programs\EaseUS Partition Master\DC\multi\res_de_DE\bin
-[2025-10-29 16:26:36] Created directory: Z:\\Programs\EaseUS Partition Master\DC\multi\res_de_DE\res
-[2025-10-29 16:26:36] Created directory: Z:\\Programs\EaseUS Partition Master\DC\multi\res_en_US
-[2025-10-29 16:26:36] Created directory: Z:\\Programs\EaseUS Partition Master\DC\multi\res_en_US\bin
-[2025-10-29 16:26:36] Created directory: Z:\\Programs\EaseUS Partition Master\DC\multi\res_en_US\res
-[2025-10-29 16:26:36] Created directory: Z:\\Programs\EaseUS Partition Master\DC\multi\res_es_ES
-[2025-10-29 16:26:36] Created directory: Z:\\Programs\EaseUS Partition Master\DC\multi\res_es_ES\bin
-[2025-10-29 16:26:36] Created directory: Z:\\Programs\EaseUS Partition Master\DC\multi\res_es_ES\res
-[2025-10-29 16:26:36] Created directory: Z:\\Programs\EaseUS Partition Master\DC\multi\res_fr_FR
-[2025-10-29 16:26:36] Created directory: Z:\\Programs\EaseUS Partition Master\DC\multi\res_fr_FR\bin
-[2025-10-29 16:26:36] Created directory: Z:\\Programs\EaseUS Partition Master\DC\multi\res_fr_FR\res
-[2025-10-29 16:26:36] Created directory: Z:\\Programs\EaseUS Partition Master\DC\multi\res_it_IT
-[2025-10-29 16:26:36] Created directory: Z:\\Programs\EaseUS Partition Master\DC\multi\res_it_IT\bin
-[2025-10-29 16:26:36] Created directory: Z:\\Programs\EaseUS Partition Master\DC\multi\res_it_IT\res
-[2025-10-29 16:26:36] Created directory: Z:\\Programs\EaseUS Partition Master\DC\multi\res_ja_JP
-[2025-10-29 16:26:36] Created directory: Z:\\Programs\EaseUS Partition Master\DC\multi\res_ja_JP\bin
-[2025-10-29 16:26:36] Created directory: Z:\\Programs\EaseUS Partition Master\DC\multi\res_ja_JP\res
-[2025-10-29 16:26:36] Created directory: Z:\\Programs\EaseUS Partition Master\DC\multi\res_ko_KR
-[2025-10-29 16:26:36] Created directory: Z:\\Programs\EaseUS Partition Master\DC\multi\res_ko_KR\bin
-[2025-10-29 16:26:36] Created directory: Z:\\Programs\EaseUS Partition Master\DC\multi\res_ko_KR\res
-[2025-10-29 16:26:36] Created directory: Z:\\Programs\EaseUS Partition Master\DC\multi\res_nl_NL
-[2025-10-29 16:26:36] Created directory: Z:\\Programs\EaseUS Partition Master\DC\multi\res_nl_NL\bin
-[2025-10-29 16:26:36] Created directory: Z:\\Programs\EaseUS Partition Master\DC\multi\res_nl_NL\res
-[2025-10-29 16:26:36] Created directory: Z:\\Programs\EaseUS Partition Master\DC\multi\res_poland
-[2025-10-29 16:26:36] Created directory: Z:\\Programs\EaseUS Partition Master\DC\multi\res_poland\bin
-[2025-10-29 16:26:36] Created directory: Z:\\Programs\EaseUS Partition Master\DC\multi\res_poland\res
-[2025-10-29 16:26:36] Created directory: Z:\\Programs\EaseUS Partition Master\DC\multi\res_portugal
-[2025-10-29 16:26:36] Created directory: Z:\\Programs\EaseUS Partition Master\DC\multi\res_portugal\bin
-[2025-10-29 16:26:36] Created directory: Z:\\Programs\EaseUS Partition Master\DC\multi\res_portugal\res
-[2025-10-29 16:26:36] Created directory: Z:\\Programs\EaseUS Partition Master\DC\multi\res_zh_CN
-[2025-10-29 16:26:36] Created directory: Z:\\Programs\EaseUS Partition Master\DC\multi\res_zh_CN\bin
-[2025-10-29 16:26:36] Created directory: Z:\\Programs\EaseUS Partition Master\DC\multi\res_zh_CN\res
-[2025-10-29 16:26:36] Created directory: Z:\\Programs\EaseUS Partition Master\DC\multi\res_zh_TW
-[2025-10-29 16:26:36] Created directory: Z:\\Programs\EaseUS Partition Master\DC\multi\res_zh_TW\bin
-[2025-10-29 16:26:36] Created directory: Z:\\Programs\EaseUS Partition Master\DC\multi\res_zh_TW\res
-[2025-10-29 16:26:36] Created directory: Z:\\Programs\EaseUS Partition Master\bin
-[2025-10-29 16:26:37] Created directory: Z:\\Programs\EaseUS Partition Master\bin\iconengines
-[2025-10-29 16:26:37] Created directory: Z:\\Programs\EaseUS Partition Master\bin\imageformats
-[2025-10-29 16:26:37] Created directory: Z:\\Programs\EaseUS Partition Master\bin\platforms
-[2025-10-29 16:26:37] Created directory: Z:\\Programs\EaseUS Partition Master\multi
-[2025-10-29 16:26:38] Created directory: Z:\\Programs\EaseUS Partition Master\multi\res_da_DK
-[2025-10-29 16:26:38] Created directory: Z:\\Programs\EaseUS Partition Master\multi\res_de_DE
-[2025-10-29 16:26:38] Created directory: Z:\\Programs\EaseUS Partition Master\multi\res_en_US
-[2025-10-29 16:26:38] Created directory: Z:\\Programs\EaseUS Partition Master\multi\res_es_ES
-[2025-10-29 16:26:38] Created directory: Z:\\Programs\EaseUS Partition Master\multi\res_fr_FR
-[2025-10-29 16:26:38] Created directory: Z:\\Programs\EaseUS Partition Master\multi\res_it_IT
-[2025-10-29 16:26:38] Created directory: Z:\\Programs\EaseUS Partition Master\multi\res_ja_JP
-[2025-10-29 16:26:38] Created directory: Z:\\Programs\EaseUS Partition Master\multi\res_ko_KR
-[2025-10-29 16:26:38] Created directory: Z:\\Programs\EaseUS Partition Master\multi\res_nl_NL
-[2025-10-29 16:26:38] Created directory: Z:\\Programs\EaseUS Partition Master\multi\res_pl_PL
-[2025-10-29 16:26:38] Created directory: Z:\\Programs\EaseUS Partition Master\multi\res_pt_PT
-[2025-10-29 16:26:38] Created directory: Z:\\Programs\EaseUS Partition Master\multi\res_zh_CN
-[2025-10-29 16:26:38] Created directory: Z:\\Programs\EaseUS Partition Master\multi\res_zh_TW
-[2025-10-29 16:26:38] Created directory: Z:\\Programs\EaseUS Partition Master\multi\setup_urls
-[2025-10-29 16:26:38] Created directory: Z:\\Programs\EaseUS Partition Master\multi\setup_urls\Free
-[2025-10-29 16:26:38] Created directory: Z:\\Programs\EaseUS Partition Master\multi\setup_urls\Free_EDM
-[2025-10-29 16:26:38] Created directory: Z:\\Programs\EaseUS Partition Master\multi\setup_urls\Free_Efrontier
-[2025-10-29 16:26:38] Created directory: Z:\\Programs\EaseUS Partition Master\multi\setup_urls\Free_Xagon
-[2025-10-29 16:26:38] Created directory: Z:\\Programs\EaseUS Partition Master\multi\setup_urls\Trial
-[2025-10-29 16:26:38] Created directory: Z:\\Programs\EaseUS Partition Master\multi\setup_urls\Trial_AD
-[2025-10-29 16:26:38] Created directory: Z:\\Programs\EaseUS Partition Master\multi\setup_urls\Trial_Efrontier
-[2025-10-29 16:26:38] Created directory: Z:\\Programs\EaseUS Partition Master\multi\setup_urls\Trial_Xagon
-[2025-10-29 16:26:38] Created directory: Z:\\Programs\EaseUS Partition Master\res
-[2025-10-29 16:26:39] Created directory: Z:\\Programs\EaseUS Partition Master\res\loading
-[2025-10-29 16:26:39] Created directory: Z:\\Programs\EasyBCD
-[2025-10-29 16:26:39] Created directory: Z:\\Programs\EasyBCD\bin
-[2025-10-29 16:26:39] Created directory: Z:\\Programs\EasyBCD\lang
-[2025-10-29 16:26:39] Created directory: Z:\\Programs\EasyBCD\lang\ar
-[2025-10-29 16:26:39] Created directory: Z:\\Programs\EasyBCD\lang\ca
-[2025-10-29 16:26:39] Created directory: Z:\\Programs\EasyBCD\lang\cs
-[2025-10-29 16:26:39] Created directory: Z:\\Programs\EasyBCD\lang\de
-[2025-10-29 16:26:39] Created directory: Z:\\Programs\EasyBCD\lang\el
-[2025-10-29 16:26:39] Created directory: Z:\\Programs\EasyBCD\lang\en-US
-[2025-10-29 16:26:39] Created directory: Z:\\Programs\EasyBCD\lang\es
-[2025-10-29 16:26:39] Created directory: Z:\\Programs\EasyBCD\lang\fr
-[2025-10-29 16:26:39] Created directory: Z:\\Programs\EasyBCD\lang\he
-[2025-10-29 16:26:39] Created directory: Z:\\Programs\EasyBCD\lang\hu
-[2025-10-29 16:26:40] Created directory: Z:\\Programs\EasyBCD\lang\it
-[2025-10-29 16:26:40] Created directory: Z:\\Programs\EasyBCD\lang\ko
-[2025-10-29 16:26:40] Created directory: Z:\\Programs\EasyBCD\lang\pl
-[2025-10-29 16:26:40] Created directory: Z:\\Programs\EasyBCD\lang\pt
-[2025-10-29 16:26:40] Created directory: Z:\\Programs\EasyBCD\lang\ru
-[2025-10-29 16:26:40] Created directory: Z:\\Programs\EasyBCD\lang\sl
-[2025-10-29 16:26:40] Created directory: Z:\\Programs\EasyBCD\lang\sv
-[2025-10-29 16:26:40] Created directory: Z:\\Programs\EasyBCD\lang\tr
-[2025-10-29 16:26:40] Created directory: Z:\\Programs\EasyBCD\lang\uk
-[2025-10-29 16:26:40] Created directory: Z:\\Programs\EasyBCD\lang\zh-CHS
-[2025-10-29 16:26:40] Created directory: Z:\\Programs\EasyBCD\lang\zh-TW
-[2025-10-29 16:26:40] Created directory: Z:\\Programs\EasyBCD\profiles
-[2025-10-29 16:26:40] Created directory: Z:\\Programs\Eraser
-[2025-10-29 16:26:40] Created directory: Z:\\Programs\Eraser\Plugins
-[2025-10-29 16:26:40] Created directory: Z:\\Programs\Eraser\Plugins\en
-[2025-10-29 16:26:40] Created directory: Z:\\Programs\Eraser\en
-[2025-10-29 16:26:40] Created directory: Z:\\Programs\ExamDiff
-[2025-10-29 16:26:40] Created directory: Z:\\Programs\GPU-Z
-[2025-10-29 16:26:40] Created directory: Z:\\Programs\GSmartControl
-[2025-10-29 16:26:40] Created directory: Z:\\Programs\GSmartControl\doc
-[2025-10-29 16:26:40] Created directory: Z:\\Programs\GSmartControl\etc
-[2025-10-29 16:26:40] Created directory: Z:\\Programs\GSmartControl\etc\fonts
-[2025-10-29 16:26:40] Created directory: Z:\\Programs\GSmartControl\etc\gtk-3.0
-[2025-10-29 16:26:41] Created directory: Z:\\Programs\GSmartControl\lib
-[2025-10-29 16:26:41] Created directory: Z:\\Programs\GSmartControl\lib\gdk-pixbuf-2.0
-[2025-10-29 16:26:41] Created directory: Z:\\Programs\GSmartControl\lib\gdk-pixbuf-2.0\2.10.0
-[2025-10-29 16:26:41] Created directory: Z:\\Programs\GSmartControl\lib\gdk-pixbuf-2.0\2.10.0\loaders
-[2025-10-29 16:26:41] Created directory: Z:\\Programs\GSmartControl\share
-[2025-10-29 16:26:41] Created directory: Z:\\Programs\GSmartControl\share\glib-2.0
-[2025-10-29 16:26:41] Created directory: Z:\\Programs\GSmartControl\share\glib-2.0\schemas
-[2025-10-29 16:26:41] Created directory: Z:\\Programs\GSmartControl\share\icons
-[2025-10-29 16:26:41] Created directory: Z:\\Programs\GSmartControl\share\icons\Adwaita
-[2025-10-29 16:26:41] Created directory: Z:\\Programs\GSmartControl\share\icons\Adwaita\16x16
-[2025-10-29 16:26:41] Created directory: Z:\\Programs\GSmartControl\share\icons\Adwaita\16x16\actions
-[2025-10-29 16:26:41] Created directory: Z:\\Programs\GSmartControl\share\icons\Adwaita\16x16\devices
-[2025-10-29 16:26:41] Created directory: Z:\\Programs\GSmartControl\share\icons\Adwaita\16x16\status
-[2025-10-29 16:26:41] Created directory: Z:\\Programs\GSmartControl\share\icons\Adwaita\24x24
-[2025-10-29 16:26:41] Created directory: Z:\\Programs\GSmartControl\share\icons\Adwaita\24x24\actions
-[2025-10-29 16:26:41] Created directory: Z:\\Programs\GSmartControl\share\icons\Adwaita\24x24\devices
-[2025-10-29 16:26:41] Created directory: Z:\\Programs\GSmartControl\share\icons\Adwaita\24x24\status
-[2025-10-29 16:26:41] Created directory: Z:\\Programs\GSmartControl\share\icons\Adwaita\32x32
-[2025-10-29 16:26:41] Created directory: Z:\\Programs\GSmartControl\share\icons\Adwaita\32x32\actions
-[2025-10-29 16:26:41] Created directory: Z:\\Programs\GSmartControl\share\icons\Adwaita\32x32\devices
-[2025-10-29 16:26:41] Created directory: Z:\\Programs\GSmartControl\share\icons\Adwaita\32x32\status
-[2025-10-29 16:26:41] Created directory: Z:\\Programs\GSmartControl\share\icons\Adwaita\48x48
-[2025-10-29 16:26:41] Created directory: Z:\\Programs\GSmartControl\share\icons\Adwaita\48x48\actions
-[2025-10-29 16:26:41] Created directory: Z:\\Programs\GSmartControl\share\icons\Adwaita\48x48\devices
-[2025-10-29 16:26:41] Created directory: Z:\\Programs\GSmartControl\share\icons\Adwaita\48x48\status
-[2025-10-29 16:26:41] Created directory: Z:\\Programs\GSmartControl\share\icons\Adwaita\512x512
-[2025-10-29 16:26:41] Created directory: Z:\\Programs\GSmartControl\share\icons\Adwaita\512x512\devices
-[2025-10-29 16:26:41] Created directory: Z:\\Programs\GSmartControl\share\icons\Adwaita\64x64
-[2025-10-29 16:26:41] Created directory: Z:\\Programs\GSmartControl\share\icons\Adwaita\64x64\actions
-[2025-10-29 16:26:41] Created directory: Z:\\Programs\GSmartControl\share\icons\Adwaita\64x64\status
-[2025-10-29 16:26:41] Created directory: Z:\\Programs\GSmartControl\share\icons\Adwaita\96x96
-[2025-10-29 16:26:41] Created directory: Z:\\Programs\GSmartControl\share\icons\Adwaita\96x96\actions
-[2025-10-29 16:26:41] Created directory: Z:\\Programs\GSmartControl\share\icons\Adwaita\96x96\status
-[2025-10-29 16:26:41] Created directory: Z:\\Programs\GSmartControl\share\themes
-[2025-10-29 16:26:41] Created directory: Z:\\Programs\GSmartControl\share\themes\Default
-[2025-10-29 16:26:41] Created directory: Z:\\Programs\GSmartControl\share\themes\Default\gtk-3.0
-[2025-10-29 16:26:41] Created directory: Z:\\Programs\GSmartControl\share\themes\Emacs
-[2025-10-29 16:26:41] Created directory: Z:\\Programs\GSmartControl\share\themes\Emacs\gtk-3.0
-[2025-10-29 16:26:42] Created directory: Z:\\Programs\HDDLLF
-[2025-10-29 16:26:42] Created directory: Z:\\Programs\HDTune
-[2025-10-29 16:26:42] Created directory: Z:\\Programs\HWInfo
-[2025-10-29 16:26:42] Created directory: Z:\\Programs\ImageUSB
-[2025-10-29 16:26:42] Created directory: Z:\\Programs\ImageUSB\7zip_dll
-[2025-10-29 16:26:42] Created directory: Z:\\Programs\ImageUSB\Help
-[2025-10-29 16:26:42] Created directory: Z:\\Programs\ImageUSB\Help\HTML
-[2025-10-29 16:26:42] Created directory: Z:\\Programs\ImageUSB\mbr
-[2025-10-29 16:26:42] Created directory: Z:\\Programs\IrfanView
-[2025-10-29 16:26:42] Created directory: Z:\\Programs\IrfanView\Html
-[2025-10-29 16:26:42] Created directory: Z:\\Programs\IrfanView\Languages
-[2025-10-29 16:26:42] Created directory: Z:\\Programs\IrfanView\Plugins
-[2025-10-29 16:26:42] Created directory: Z:\\Programs\IrfanView\Plugins\Plugins32
-[2025-10-29 16:26:42] Created directory: Z:\\Programs\IrfanView\Toolbars
-[2025-10-29 16:26:42] Created directory: Z:\\Programs\Linux_Reader
-[2025-10-29 16:26:42] Created directory: Z:\\Programs\Linux_Reader\$PLUGINSDIR
-[2025-10-29 16:26:42] Created directory: Z:\\Programs\Linux_Reader\av
-[2025-10-29 16:26:43] Created directory: Z:\\Programs\Macrium Reflect
-[2025-10-29 16:26:43] Created directory: Z:\\Programs\McAfee Stinger
-[2025-10-29 16:26:43] Created directory: Z:\\Programs\NTPWedit
-[2025-10-29 16:26:43] Created directory: Z:\\Programs\Puran Data Recovery
-[2025-10-29 16:26:43] Created directory: Z:\\Programs\Puran Data Recovery\Help
-[2025-10-29 16:26:43] Created directory: Z:\\Programs\Puran File Recovery
-[2025-10-29 16:26:43] Created directory: Z:\\Programs\Puran File Recovery\Lang
-[2025-10-29 16:26:43] Created directory: Z:\\Programs\Putty
-[2025-10-29 16:26:43] Created directory: Z:\\Programs\ReclaiMe Free RAID Recovery
-[2025-10-29 16:26:43] Created directory: Z:\\Programs\Recuva
-[2025-10-29 16:26:43] Created directory: Z:\\Programs\Recuva\Lang
-[2025-10-29 16:26:44] Created directory: Z:\\Programs\RegShot
-[2025-10-29 16:26:44] Created directory: Z:\\Programs\Registry Backup
-[2025-10-29 16:26:44] Created directory: Z:\\Programs\Registry Backup\color_presets
-[2025-10-29 16:26:44] Created directory: Z:\\Programs\Registry Backup\files
-[2025-10-29 16:26:44] Created directory: Z:\\Programs\Rufus
-[2025-10-29 16:26:44] Created directory: Z:\\Programs\Runtime DriveImage XML
-[2025-10-29 16:26:45] Created directory: Z:\\Programs\ShowKeyPlus
-[2025-10-29 16:26:45] Created directory: Z:\\Programs\SoftMaker FreeOffice
-[2025-10-29 16:26:45] Created directory: Z:\\Programs\SoftMaker FreeOffice\SoftMaker
-[2025-10-29 16:26:45] Created directory: Z:\\Programs\SoftMaker FreeOffice\SoftMaker\Bullets
-[2025-10-29 16:26:46] Created directory: Z:\\Programs\SoftMaker FreeOffice\SoftMaker\Designs 2012
-[2025-10-29 16:26:46] Created directory: Z:\\Programs\SoftMaker FreeOffice\SoftMaker\Samples
-[2025-10-29 16:26:46] Created directory: Z:\\Programs\SoftMaker FreeOffice\SoftMaker\Settings
-[2025-10-29 16:26:46] Created directory: Z:\\Programs\SoftMaker FreeOffice\SoftMaker\Templates 2012
-[2025-10-29 16:26:46] Created directory: Z:\\Programs\SoftMaker FreeOffice\SoftMaker\Templates 2012\English
-[2025-10-29 16:26:46] Created directory: Z:\\Programs\SoftMaker FreeOffice\SoftMaker\Templates 2012\English\Business Card
-[2025-10-29 16:26:46] Created directory: Z:\\Programs\SoftMaker FreeOffice\SoftMaker\Templates 2012\English\Fax
-[2025-10-29 16:26:46] Created directory: Z:\\Programs\SoftMaker FreeOffice\SoftMaker\Templates 2012\English\Letter
-[2025-10-29 16:26:46] Created directory: Z:\\Programs\SoftMaker FreeOffice\SoftMaker\Templates 2012\English\Memo
-[2025-10-29 16:26:46] Created directory: Z:\\Programs\SoftMaker FreeOffice\SoftMaker\Templates 2012\English\Misc
-[2025-10-29 16:26:46] Created directory: Z:\\Programs\SoftMaker FreeOffice\SoftMaker\Templates 2012\English\PlanMaker
-[2025-10-29 16:26:46] Created directory: Z:\\Programs\SoftMaker FreeOffice\html
-[2025-10-29 16:26:46] Created directory: Z:\\Programs\SoftMaker FreeOffice\inst
-[2025-10-29 16:26:46] Created directory: Z:\\Programs\SoftMaker FreeOffice\inst\banners
-[2025-10-29 16:26:46] Created directory: Z:\\Programs\SoftMaker FreeOffice\inst\banners\pm
-[2025-10-29 16:26:46] Created directory: Z:\\Programs\SoftMaker FreeOffice\inst\banners\pm\download
-[2025-10-29 16:26:46] Created directory: Z:\\Programs\SoftMaker FreeOffice\inst\banners\pr
-[2025-10-29 16:26:46] Created directory: Z:\\Programs\SoftMaker FreeOffice\inst\banners\pr\download
-[2025-10-29 16:26:46] Created directory: Z:\\Programs\SoftMaker FreeOffice\inst\banners\tm
-[2025-10-29 16:26:47] Created directory: Z:\\Programs\SoftMaker FreeOffice\inst\banners\tm\download
-[2025-10-29 16:26:47] Created directory: Z:\\Programs\SoftMaker FreeOffice\inst\hunspell
-[2025-10-29 16:26:47] Created directory: Z:\\Programs\SoftMaker FreeOffice\inst\hunspell\de_de
-[2025-10-29 16:26:47] Created directory: Z:\\Programs\SoftMaker FreeOffice\inst\hunspell\en_gb
-[2025-10-29 16:26:47] Created directory: Z:\\Programs\SoftMaker FreeOffice\inst\hunspell\en_us
-[2025-10-29 16:26:47] Created directory: Z:\\Programs\SoftMaker FreeOffice\spell
-[2025-10-29 16:26:47] Created directory: Z:\\Programs\Speccy
-[2025-10-29 16:26:47] Created directory: Z:\\Programs\Speccy\Lang
-[2025-10-29 16:26:47] Created directory: Z:\\Programs\SumatraPDF
-[2025-10-29 16:26:47] Created directory: Z:\\Programs\Sysinternals Suite
-[2025-10-29 16:26:48] Created directory: Z:\\Programs\Total Commander
-[2025-10-29 16:26:48] Created directory: Z:\\Programs\Total Commander\FILTER64
-[2025-10-29 16:26:48] Created directory: Z:\\Programs\Total Commander\LANGUAGE
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\TreeSize
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\TreeSize\LicenseFiles
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\TreeSize\LicenseFiles\Abbrevia
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\TreeSize\LicenseFiles\GLScene
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\TreeSize\LicenseFiles\Jedi Component Library
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\TreeSize\LicenseFiles\PasOpenCL
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\TreeSize\LicenseFiles\Spring4D
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\TreeSize\LicenseFiles\SynPDF
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\TreeSize\LicenseFiles\Virtual TreeView
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\TreeSize\LicenseFiles\Windows Ribbon Framework for Delphi
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\Unstoppable Copier
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\hrtfs
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\languages
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\ach
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\ach\LC_MESSAGES
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\af
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\af\LC_MESSAGES
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\am
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\am\LC_MESSAGES
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\am_ET
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\am_ET\LC_MESSAGES
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\an
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\an\LC_MESSAGES
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\ar
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\ar\LC_MESSAGES
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\as_IN
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\as_IN\LC_MESSAGES
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\ast
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\ast\LC_MESSAGES
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\be
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\be\LC_MESSAGES
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\bg
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\bg\LC_MESSAGES
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\bn
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\bn\LC_MESSAGES
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\bn_IN
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\bn_IN\LC_MESSAGES
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\br
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\br\LC_MESSAGES
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\brx
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\brx\LC_MESSAGES
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\bs
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\bs\LC_MESSAGES
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\ca
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\ca\LC_MESSAGES
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\ca@valencia
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\ca@valencia\LC_MESSAGES
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\cgg
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\cgg\LC_MESSAGES
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\co
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\co\LC_MESSAGES
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\cs
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\cs\LC_MESSAGES
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\cy
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\cy\LC_MESSAGES
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\da
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\da\LC_MESSAGES
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\de
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\de\LC_MESSAGES
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\el
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\el\LC_MESSAGES
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\en_GB
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\en_GB\LC_MESSAGES
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\eo
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\eo\LC_MESSAGES
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\es
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\es\LC_MESSAGES
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\es_MX
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\es_MX\LC_MESSAGES
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\et
-[2025-10-29 16:26:49] Created directory: Z:\\Programs\VLC Media Player\locale\et\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\eu
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\eu\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\fa
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\fa\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\ff
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\ff\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\fi
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\fi\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\fr
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\fr\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\fur
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\fur\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\fy
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\fy\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\ga
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\ga\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\gd
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\gd\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\gl
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\gl\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\gu
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\gu\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\he
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\he\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\hi
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\hi\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\hr
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\hr\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\hu
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\hu\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\hy
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\hy\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\id
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\id\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\ie
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\ie\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\is
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\is\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\it
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\it\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\ja
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\ja\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\ka
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\ka\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\kab
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\kab\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\kk
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\kk\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\km
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\km\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\kn
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\kn\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\ko
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\ko\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\ks_IN
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\ks_IN\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\ku_IQ
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\ku_IQ\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\ky
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\ky\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\lg
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\lg\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\lo
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\lo\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\lt
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\lt\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\lv
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\lv\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\mai
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\mai\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\mk
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\mk\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\ml
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\ml\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\mn
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\mn\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\mr
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\mr\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\ms
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\ms\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\my
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\my\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\nb
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\nb\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\ne
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\ne\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\nl
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\nl\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\nn
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\nn\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\oc
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\oc\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\or_IN
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\or_IN\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\pa
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\pa\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\pl
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\pl\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\ps
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\ps\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\pt_BR
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\pt_BR\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\pt_PT
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\pt_PT\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\ro
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\ro\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\ru
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\ru\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\si
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\si\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\sk
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\sk\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\sl
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\sl\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\sm
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\sm\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\sq
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\sq\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\sr
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\sr\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\sv
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\sv\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\sw
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\sw\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\ta
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\ta\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\te
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\te\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\th
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\th\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\tr
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\tr\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\tt
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\tt\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\ug
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\ug\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\uk
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\uk\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\uz
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\uz\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\vi
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\vi\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\wa
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\wa\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\zh_CN
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\zh_CN\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\zh_TW
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\zh_TW\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\zu
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\locale\zu\LC_MESSAGES
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\lua
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\lua\extensions
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\lua\http
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\lua\http\css
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\lua\http\css\ui-lightness
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\lua\http\css\ui-lightness\images
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\lua\http\dialogs
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\lua\http\images
-[2025-10-29 16:26:50] Created directory: Z:\\Programs\VLC Media Player\lua\http\js
-[2025-10-29 16:26:51] Created directory: Z:\\Programs\VLC Media Player\lua\http\requests
-[2025-10-29 16:26:51] Created directory: Z:\\Programs\VLC Media Player\lua\intf
-[2025-10-29 16:26:51] Created directory: Z:\\Programs\VLC Media Player\lua\intf\modules
-[2025-10-29 16:26:51] Created directory: Z:\\Programs\VLC Media Player\lua\meta
-[2025-10-29 16:26:51] Created directory: Z:\\Programs\VLC Media Player\lua\meta\art
-[2025-10-29 16:26:51] Created directory: Z:\\Programs\VLC Media Player\lua\meta\reader
-[2025-10-29 16:26:51] Created directory: Z:\\Programs\VLC Media Player\lua\modules
-[2025-10-29 16:26:51] Created directory: Z:\\Programs\VLC Media Player\lua\playlist
-[2025-10-29 16:26:51] Created directory: Z:\\Programs\VLC Media Player\lua\sd
-[2025-10-29 16:26:51] Created directory: Z:\\Programs\VLC Media Player\msi
-[2025-10-29 16:26:51] Created directory: Z:\\Programs\VLC Media Player\plugins
-[2025-10-29 16:26:51] Created directory: Z:\\Programs\VLC Media Player\plugins\access
-[2025-10-29 16:26:51] Created directory: Z:\\Programs\VLC Media Player\plugins\access_output
-[2025-10-29 16:26:51] Created directory: Z:\\Programs\VLC Media Player\plugins\audio_filter
-[2025-10-29 16:26:51] Created directory: Z:\\Programs\VLC Media Player\plugins\audio_mixer
-[2025-10-29 16:26:51] Created directory: Z:\\Programs\VLC Media Player\plugins\audio_output
-[2025-10-29 16:26:51] Created directory: Z:\\Programs\VLC Media Player\plugins\codec
-[2025-10-29 16:26:52] Created directory: Z:\\Programs\VLC Media Player\plugins\control
-[2025-10-29 16:26:52] Created directory: Z:\\Programs\VLC Media Player\plugins\d3d11
-[2025-10-29 16:26:52] Created directory: Z:\\Programs\VLC Media Player\plugins\d3d9
-[2025-10-29 16:26:52] Created directory: Z:\\Programs\VLC Media Player\plugins\demux
-[2025-10-29 16:26:52] Created directory: Z:\\Programs\VLC Media Player\plugins\gui
-[2025-10-29 16:26:52] Created directory: Z:\\Programs\VLC Media Player\plugins\keystore
-[2025-10-29 16:26:52] Created directory: Z:\\Programs\VLC Media Player\plugins\logger
-[2025-10-29 16:26:52] Created directory: Z:\\Programs\VLC Media Player\plugins\lua
-[2025-10-29 16:26:52] Created directory: Z:\\Programs\VLC Media Player\plugins\meta_engine
-[2025-10-29 16:26:52] Created directory: Z:\\Programs\VLC Media Player\plugins\misc
-[2025-10-29 16:26:52] Created directory: Z:\\Programs\VLC Media Player\plugins\mux
-[2025-10-29 16:26:52] Created directory: Z:\\Programs\VLC Media Player\plugins\packetizer
-[2025-10-29 16:26:52] Created directory: Z:\\Programs\VLC Media Player\plugins\services_discovery
-[2025-10-29 16:26:53] Created directory: Z:\\Programs\VLC Media Player\plugins\spu
-[2025-10-29 16:26:53] Created directory: Z:\\Programs\VLC Media Player\plugins\stream_extractor
-[2025-10-29 16:26:53] Created directory: Z:\\Programs\VLC Media Player\plugins\stream_filter
-[2025-10-29 16:26:53] Created directory: Z:\\Programs\VLC Media Player\plugins\stream_out
-[2025-10-29 16:26:53] Created directory: Z:\\Programs\VLC Media Player\plugins\text_renderer
-[2025-10-29 16:26:53] Created directory: Z:\\Programs\VLC Media Player\plugins\video_chroma
-[2025-10-29 16:26:53] Created directory: Z:\\Programs\VLC Media Player\plugins\video_filter
-[2025-10-29 16:26:53] Created directory: Z:\\Programs\VLC Media Player\plugins\video_output
-[2025-10-29 16:26:53] Created directory: Z:\\Programs\VLC Media Player\plugins\video_splitter
-[2025-10-29 16:26:53] Created directory: Z:\\Programs\VLC Media Player\plugins\visualization
-[2025-10-29 16:26:53] Created directory: Z:\\Programs\VLC Media Player\sdk
-[2025-10-29 16:26:53] Created directory: Z:\\Programs\VLC Media Player\sdk\activex
-[2025-10-29 16:26:53] Created directory: Z:\\Programs\VLC Media Player\sdk\include
-[2025-10-29 16:26:53] Created directory: Z:\\Programs\VLC Media Player\sdk\include\vlc
-[2025-10-29 16:26:53] Created directory: Z:\\Programs\VLC Media Player\sdk\include\vlc\plugins
-[2025-10-29 16:26:54] Created directory: Z:\\Programs\VLC Media Player\sdk\lib
-[2025-10-29 16:26:54] Created directory: Z:\\Programs\VLC Media Player\sdk\lib\pkgconfig
-[2025-10-29 16:26:54] Created directory: Z:\\Programs\VLC Media Player\skins
-[2025-10-29 16:26:54] Created directory: Z:\\Programs\VLC Media Player\skins\fonts
-[2025-10-29 16:26:54] Created directory: Z:\\Programs\VeraCrypt
-[2025-10-29 16:26:54] Created directory: Z:\\Programs\VeraCrypt\Languages
-[2025-10-29 16:26:54] Created directory: Z:\\Programs\VeraCrypt\docs
-[2025-10-29 16:26:54] Created directory: Z:\\Programs\VeraCrypt\docs\EFI-DCS
-[2025-10-29 16:26:54] Created directory: Z:\\Programs\VeraCrypt\docs\html
-[2025-10-29 16:26:54] Created directory: Z:\\Programs\VeraCrypt\docs\html\en
-[2025-10-29 16:26:55] Created directory: Z:\\Programs\VeraCrypt\docs\html\en\CompilingGuidelineWin
-[2025-10-29 16:26:56] Created directory: Z:\\Programs\VeraCrypt\docs\html\en\ru
-[2025-10-29 16:26:57] Created directory: Z:\\Programs\WesternDigital
-[2025-10-29 16:26:57] Created directory: Z:\\Programs\WinMerge
-[2025-10-29 16:26:57] Created directory: Z:\\Programs\WinMerge\ColorSchemes
-[2025-10-29 16:26:57] Created directory: Z:\\Programs\WinMerge\Commands
-[2025-10-29 16:26:57] Created directory: Z:\\Programs\WinMerge\Commands\Apache-Tika
-[2025-10-29 16:26:57] Created directory: Z:\\Programs\WinMerge\Commands\Java
-[2025-10-29 16:26:57] Created directory: Z:\\Programs\WinMerge\Commands\PlantUML
-[2025-10-29 16:26:57] Created directory: Z:\\Programs\WinMerge\Commands\dumpbin
-[2025-10-29 16:26:57] Created directory: Z:\\Programs\WinMerge\Commands\ildasm
-[2025-10-29 16:26:57] Created directory: Z:\\Programs\WinMerge\Commands\jq
-[2025-10-29 16:26:57] Created directory: Z:\\Programs\WinMerge\Commands\md4c
-[2025-10-29 16:26:57] Created directory: Z:\\Programs\WinMerge\Commands\msys2
-[2025-10-29 16:26:57] Created directory: Z:\\Programs\WinMerge\Commands\msys2\usr
-[2025-10-29 16:26:57] Created directory: Z:\\Programs\WinMerge\Commands\msys2\usr\bin
-[2025-10-29 16:26:57] Created directory: Z:\\Programs\WinMerge\Commands\msys2\usr\share
-[2025-10-29 16:26:57] Created directory: Z:\\Programs\WinMerge\Commands\msys2\usr\share\cygwin
-[2025-10-29 16:26:57] Created directory: Z:\\Programs\WinMerge\Commands\msys2\usr\share\doc
-[2025-10-29 16:26:57] Created directory: Z:\\Programs\WinMerge\Commands\msys2\usr\share\doc\Msys
-[2025-10-29 16:26:57] Created directory: Z:\\Programs\WinMerge\Commands\msys2\usr\share\info
-[2025-10-29 16:26:57] Created directory: Z:\\Programs\WinMerge\Commands\msys2\usr\share\licenses
-[2025-10-29 16:26:57] Created directory: Z:\\Programs\WinMerge\Commands\msys2\usr\share\licenses\gcc-libs
-[2025-10-29 16:26:57] Created directory: Z:\\Programs\WinMerge\Commands\msys2\usr\share\man
-[2025-10-29 16:26:57] Created directory: Z:\\Programs\WinMerge\Commands\msys2\usr\share\man\man1
-[2025-10-29 16:26:57] Created directory: Z:\\Programs\WinMerge\Commands\msys2\usr\share\man\man3
-[2025-10-29 16:26:57] Created directory: Z:\\Programs\WinMerge\Commands\msys2\usr\share\man\man7
-[2025-10-29 16:26:57] Created directory: Z:\\Programs\WinMerge\Commands\q
-[2025-10-29 16:26:57] Created directory: Z:\\Programs\WinMerge\Commands\tidy-html5
-[2025-10-29 16:26:57] Created directory: Z:\\Programs\WinMerge\Commands\yq
-[2025-10-29 16:26:57] Created directory: Z:\\Programs\WinMerge\Docs
-[2025-10-29 16:26:57] Created directory: Z:\\Programs\WinMerge\Filters
-[2025-10-29 16:26:57] Created directory: Z:\\Programs\WinMerge\Frhed
-[2025-10-29 16:26:57] Created directory: Z:\\Programs\WinMerge\Frhed\Docs
-[2025-10-29 16:26:57] Created directory: Z:\\Programs\WinMerge\Frhed\Languages
-[2025-10-29 16:26:57] Created directory: Z:\\Programs\WinMerge\Languages
-[2025-10-29 16:26:58] Created directory: Z:\\Programs\WinMerge\Languages\ShellExtension
-[2025-10-29 16:26:58] Created directory: Z:\\Programs\WinMerge\Merge7z
-[2025-10-29 16:26:58] Created directory: Z:\\Programs\WinMerge\Merge7z\Lang
-[2025-10-29 16:26:58] Created directory: Z:\\Programs\WinMerge\MergePlugins
-[2025-10-29 16:26:58] Created directory: Z:\\Programs\WinMerge\WinIMerge
-[2025-10-29 16:26:59] Created directory: Z:\\Programs\WinMerge\WinWebDiff
-[2025-10-29 16:26:59] Created directory: Z:\\Programs\WinNTSetup
-[2025-10-29 16:26:59] Created directory: Z:\\Programs\WinNTSetup\Compact
-[2025-10-29 16:26:59] Created directory: Z:\\Programs\WinNTSetup\DISM
-[2025-10-29 16:26:59] Created directory: Z:\\Programs\WinNTSetup\Diskpart
-[2025-10-29 16:26:59] Created directory: Z:\\Programs\WinNTSetup\Diskpart\XP_legacy
-[2025-10-29 16:26:59] Created directory: Z:\\Programs\WinNTSetup\Lang
-[2025-10-29 16:26:59] Created directory: Z:\\Programs\WinNTSetup\MinWin
-[2025-10-29 16:26:59] Created directory: Z:\\Programs\WinNTSetup\MinWin\Default
-[2025-10-29 16:26:59] Created directory: Z:\\Programs\WinNTSetup\MinWin\Default\Reg
-[2025-10-29 16:26:59] Created directory: Z:\\Programs\WinNTSetup\MinWin\Default\Remove
-[2025-10-29 16:26:59] Created directory: Z:\\Programs\WinNTSetup\RegTweaks
-[2025-10-29 16:26:59] Created directory: Z:\\Programs\WinNTSetup\RegTweaks\Win10
-[2025-10-29 16:26:59] Created directory: Z:\\Programs\WinNTSetup\RegTweaks\Win7
-[2025-10-29 16:26:59] Created directory: Z:\\Programs\WinNTSetup\RegTweaks\WinXP
-[2025-10-29 16:26:59] Created directory: Z:\\Programs\WinNTSetup\Tools
-[2025-10-29 16:26:59] Created directory: Z:\\Programs\WinNTSetup\Tools\Win7USB3
-[2025-10-29 16:26:59] Created directory: Z:\\Programs\WinNTSetup\Tools\arm64
-[2025-10-29 16:26:59] Created directory: Z:\\Programs\WinNTSetup\Tools\imdisk
-[2025-10-29 16:26:59] Created directory: Z:\\Programs\WinNTSetup\Tools\imdisk\cpl
-[2025-10-29 16:26:59] Created directory: Z:\\Programs\WinNTSetup\Tools\imdisk\cpl\amd64
-[2025-10-29 16:26:59] Created directory: Z:\\Programs\WinNTSetup\Tools\imdisk\sys
-[2025-10-29 16:26:59] Created directory: Z:\\Programs\WinNTSetup\Tools\imdisk\sys\amd64
-[2025-10-29 16:26:59] Created directory: Z:\\Programs\WinNTSetup\Tools\x64
-[2025-10-29 16:26:59] Created directory: Z:\\Programs\WinNTSetup\Tools\x64\BootICE
-[2025-10-29 16:26:59] Created directory: Z:\\Programs\WinNTSetup\Tools\x64\BootICE\Lang
-[2025-10-29 16:26:59] Created directory: Z:\\Programs\WinNTSetup\Tools\x64\DISM
-[2025-10-29 16:26:59] Created directory: Z:\\Programs\WinNTSetup\Tools\x86
-[2025-10-29 16:26:59] Created directory: Z:\\Programs\WinNTSetup\Tools\x86\DISM
-[2025-10-29 16:26:59] Created directory: Z:\\Programs\WinNTSetup\Unattend
-[2025-10-29 16:26:59] Created directory: Z:\\Programs\WinNTSetup\WimScript
-[2025-10-29 16:26:59] Created directory: Z:\\Programs\WinSCP
-[2025-10-29 16:26:59] Created directory: Z:\\Programs\Windows Login Unlocker
-[2025-10-29 16:26:59] Created directory: Z:\\Programs\Windows Login Unlocker\language
-[2025-10-29 16:26:59] Created directory: Z:\\Programs\WordPad
-[2025-10-29 16:26:59] Created directory: Z:\\Programs\WordPad\en-US
-[2025-10-29 16:26:59] Created directory: Z:\\boot
-[2025-10-29 16:26:59] Created directory: Z:\\boot\Fonts
-[2025-10-29 16:26:59] Created directory: Z:\\boot\en-US
-[2025-10-29 16:26:59] Created directory: Z:\\sources
-[2025-10-29 16:27:09] Directory already exists: Y:\EFI
-[2025-10-29 16:27:09] Directory already exists: Y:\EFI\boot
-[2025-10-29 16:27:09] Directory already exists: Y:\EFI\boot\en-US
-[2025-10-29 16:27:09] Directory already exists: Y:\EFI\microsoft
-[2025-10-29 16:27:09] Directory already exists: Y:\EFI\microsoft\boot
-[2025-10-29 16:27:09] Directory already exists: Y:\EFI\microsoft\boot\en-US
-[2025-10-29 16:27:09] Directory already exists: Y:\EFI\microsoft\boot\fonts
+[2025-10-29 16:45:29] Created directory: Z:\\boot
+[2025-10-29 16:45:29] Created directory: Z:\\boot\es-mx
+[2025-10-29 16:45:29] Created directory: Z:\\boot\fonts
+[2025-10-29 16:45:29] Created directory: Z:\\boot\resources
+[2025-10-29 16:45:29] Created directory: Z:\\sources
+[2025-10-29 16:45:29] Created directory: Z:\\sources\dlmanifests
+[2025-10-29 16:45:29] Created directory: Z:\\sources\dlmanifests\microsoft-activedirectory-webservices-dl
+[2025-10-29 16:45:29] Created directory: Z:\\sources\dlmanifests\microsoft-windows-bluetooth-config
+[2025-10-29 16:45:29] Created directory: Z:\\sources\dlmanifests\microsoft-windows-com-complus-setup-dl
+[2025-10-29 16:45:29] Created directory: Z:\\sources\dlmanifests\microsoft-windows-com-dtc-setup-dl
+[2025-10-29 16:45:29] Created directory: Z:\\sources\dlmanifests\microsoft-windows-dhcpservermigplugin-dl
+[2025-10-29 16:45:29] Created directory: Z:\\sources\dlmanifests\microsoft-windows-directoryservices-adam-dl
+[2025-10-29 16:45:29] Created directory: Z:\\sources\dlmanifests\microsoft-windows-iasserver-migplugin
+[2025-10-29 16:45:29] Created directory: Z:\\sources\dlmanifests\microsoft-windows-ie-clientnetworkprotocolimplementation-migration
+[2025-10-29 16:45:29] Created directory: Z:\\sources\dlmanifests\microsoft-windows-internet-naming-service-runtime
+[2025-10-29 16:45:29] Created directory: Z:\\sources\dlmanifests\microsoft-windows-msmq-messagingcoreservice
+[2025-10-29 16:45:29] Created directory: Z:\\sources\dlmanifests\microsoft-windows-networkbridge
+[2025-10-29 16:45:29] Created directory: Z:\\sources\dlmanifests\microsoft-windows-networkloadbalancing-core
+[2025-10-29 16:45:29] Created directory: Z:\\sources\dlmanifests\microsoft-windows-rasconnectionmanager
+[2025-10-29 16:45:29] Created directory: Z:\\sources\dlmanifests\microsoft-windows-rasserver-migplugin
+[2025-10-29 16:45:29] Created directory: Z:\\sources\dlmanifests\microsoft-windows-tapisetup
+[2025-10-29 16:45:29] Created directory: Z:\\sources\dlmanifests\microsoft-windows-terminalservices-licenseserver
+[2025-10-29 16:45:29] Created directory: Z:\\sources\dlmanifests\microsoft-windows-textservicesframework-migration-dl
+[2025-10-29 16:45:29] Created directory: Z:\\sources\dlmanifests\microsoft-windows-unimodem-config
+[2025-10-29 16:45:29] Created directory: Z:\\sources\dlmanifests\microsoft-windows-winsock-core-infrastructure-upgrade
+[2025-10-29 16:45:29] Created directory: Z:\\sources\dlmanifests\microsoft-windows-wmi-core
+[2025-10-29 16:45:29] Created directory: Z:\\sources\dlmanifests\networking-mpssvc-svc
+[2025-10-29 16:45:30] Created directory: Z:\\sources\es-mx
+[2025-10-29 16:45:30] Created directory: Z:\\sources\etwproviders
+[2025-10-29 16:45:30] Created directory: Z:\\sources\etwproviders\es-mx
+[2025-10-29 16:45:30] Created directory: Z:\\sources\inf
+[2025-10-29 16:45:30] Created directory: Z:\\sources\migration
+[2025-10-29 16:45:30] Created directory: Z:\\sources\migration\wtr
+[2025-10-29 16:45:30] Created directory: Z:\\sources\replacementmanifests
+[2025-10-29 16:45:30] Created directory: Z:\\sources\replacementmanifests\hwvid-migration-2
+[2025-10-29 16:45:30] Created directory: Z:\\sources\replacementmanifests\microsoft-activedirectory-webservices
+[2025-10-29 16:45:30] Created directory: Z:\\sources\replacementmanifests\microsoft-client-license-platform-service-migration
+[2025-10-29 16:45:30] Created directory: Z:\\sources\replacementmanifests\microsoft-edge-migration-plugin
+[2025-10-29 16:45:30] Created directory: Z:\\sources\replacementmanifests\microsoft-onecore-tiledatarepository
+[2025-10-29 16:45:30] Created directory: Z:\\sources\replacementmanifests\microsoft-windows-appmanagement-migration
+[2025-10-29 16:45:30] Created directory: Z:\\sources\replacementmanifests\microsoft-windows-appx-deployment-server
+[2025-10-29 16:45:30] Created directory: Z:\\sources\replacementmanifests\microsoft-windows-audio-mmecore-other
+[2025-10-29 16:45:30] Created directory: Z:\\sources\replacementmanifests\microsoft-windows-bth-user
+[2025-10-29 16:45:30] Created directory: Z:\\sources\replacementmanifests\microsoft-windows-com-complus-setup
+[2025-10-29 16:45:30] Created directory: Z:\\sources\replacementmanifests\microsoft-windows-deviceassociationframeworkmigration
+[2025-10-29 16:45:30] Created directory: Z:\\sources\replacementmanifests\microsoft-windows-directoryservices-adam-client
+[2025-10-29 16:45:30] Created directory: Z:\\sources\replacementmanifests\microsoft-windows-iis-rm
+[2025-10-29 16:45:30] Created directory: Z:\\sources\replacementmanifests\microsoft-windows-mapscontrol-migration
+[2025-10-29 16:45:30] Created directory: Z:\\sources\replacementmanifests\microsoft-windows-mup
+[2025-10-29 16:45:30] Created directory: Z:\\sources\replacementmanifests\microsoft-windows-network-setup
+[2025-10-29 16:45:30] Created directory: Z:\\sources\replacementmanifests\microsoft-windows-offlinefiles-core
+[2025-10-29 16:45:30] Created directory: Z:\\sources\replacementmanifests\microsoft-windows-offlinefiles-core\es-mx
+[2025-10-29 16:45:30] Created directory: Z:\\sources\replacementmanifests\microsoft-windows-pnpmigration
+[2025-10-29 16:45:30] Created directory: Z:\\sources\replacementmanifests\microsoft-windows-rasapi-mig
+[2025-10-29 16:45:30] Created directory: Z:\\sources\replacementmanifests\microsoft-windows-rasserver-migplugin
+[2025-10-29 16:45:30] Created directory: Z:\\sources\replacementmanifests\microsoft-windows-security-ngc-localaccountmigplugin
+[2025-10-29 16:45:30] Created directory: Z:\\sources\replacementmanifests\microsoft-windows-shmig
+[2025-10-29 16:45:30] Created directory: Z:\\sources\replacementmanifests\microsoft-windows-shmig\es-mx
+[2025-10-29 16:45:30] Created directory: Z:\\sources\replacementmanifests\microsoft-windows-sxs
+[2025-10-29 16:45:30] Created directory: Z:\\sources\replacementmanifests\microsoft-windows-sxs\es-mx
+[2025-10-29 16:45:30] Created directory: Z:\\sources\replacementmanifests\microsoft-windows-tcpip
+[2025-10-29 16:45:30] Created directory: Z:\\sources\replacementmanifests\microsoft-windows-terminalservices-appserver-licensing
+[2025-10-29 16:45:30] Created directory: Z:\\sources\replacementmanifests\microsoft-windows-terminalservices-licenseserver
+[2025-10-29 16:45:30] Created directory: Z:\\sources\replacementmanifests\microsoft-windows-textservicesframework-migration
+[2025-10-29 16:45:30] Created directory: Z:\\sources\replacementmanifests\microsoft-windows-virtualization-vmswitch
+[2025-10-29 16:45:30] Created directory: Z:\\sources\replacementmanifests\networkbridge
+[2025-10-29 16:45:30] Created directory: Z:\\sources\replacementmanifests\networking-mpssvc-svc
+[2025-10-29 16:45:30] Created directory: Z:\\sources\replacementmanifests\printing-localprinting-replacement
+[2025-10-29 16:45:30] Created directory: Z:\\sources\replacementmanifests\sppmig
+[2025-10-29 16:45:30] Created directory: Z:\\sources\replacementmanifests\windowssearchengine
+[2025-10-29 16:45:30] Created directory: Z:\\sources\replacementmanifests\wpc
+[2025-10-29 16:45:32] Created directory: Z:\\sources\sxs
+[2025-10-29 16:45:32] Created directory: Z:\\sources\uup
+[2025-10-29 16:45:32] Created directory: Z:\\sources\uup\metadata
+[2025-10-29 16:45:32] Created directory: Z:\\sources\vista
+[2025-10-29 16:45:32] Created directory: Z:\\sources\xp
+[2025-10-29 16:45:57] Created directory: Z:\\support
+[2025-10-29 16:45:57] Created directory: Z:\\support\logging
+[2025-10-29 16:45:57] Created directory: Z:\\support\logging\es-mx
+[2025-10-29 16:45:58] Directory already exists: Y:\EFI
+[2025-10-29 16:45:58] Directory already exists: Y:\EFI\boot
+[2025-10-29 16:45:58] Directory already exists: Y:\EFI\microsoft
+[2025-10-29 16:45:58] Directory already exists: Y:\EFI\microsoft\boot
+[2025-10-29 16:45:58] Directory already exists: Y:\EFI\microsoft\boot\fonts
+[2025-10-29 16:45:58] Directory already exists: Y:\EFI\microsoft\boot\resources

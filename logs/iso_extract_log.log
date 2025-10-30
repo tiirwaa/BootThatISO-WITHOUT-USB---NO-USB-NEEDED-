@@ -1,17 +1,21 @@
-[2025-10-29 16:26:10] Starting ISO extraction from: C:\Users\vboxuser\Desktop\HBCD_PE_x64.iso
-[2025-10-29 16:26:10] Destination (data): Z:\
-[2025-10-29 16:26:10] ESP path: Y:\
-[2025-10-29 16:26:10] Extract content: Yes
-[2025-10-29 16:26:10] Mount command: powershell -Command "$iso = Mount-DiskImage -ImagePath 'C:\Users\vboxuser\Desktop\HBCD_PE_x64.iso' -PassThru; $volume = Get-DiskImage -ImagePath 'C:\Users\vboxuser\Desktop\HBCD_PE_x64.iso' | Get-Volume; if ($volume) { $volume.DriveLetter } else { 'FAILED' }"
-[2025-10-29 16:26:17] Mount successful
-[2025-10-29 16:26:17] Source path: E:\
-[2025-10-29 16:26:17] Waiting 5 seconds for drive to be ready
-[2025-10-29 16:26:25] Drive ready, proceeding with analysis
-[2025-10-29 16:26:29] Is Windows ISO: No
-[2025-10-29 16:27:09] Extracting EFI directory to ESP
-[2025-10-29 16:27:10] Copied bootmgr.efi to ESP
-[2025-10-29 16:27:10] Boot file check: Y:\EFI\boot\bootx64.efi - EXISTS
-[2025-10-29 16:27:10] Dismount command: powershell -Command "Dismount-DiskImage -ImagePath 'C:\Users\vboxuser\Desktop\HBCD_PE_x64.iso'"
-[2025-10-29 16:27:14] Dismount ISO completed
-[2025-10-29 16:27:14] EFI extraction SUCCESS
-[2025-10-29 16:27:14] Content extraction completed.
+[2025-10-29 16:45:15] Starting ISO extraction from: C:\Users\vboxuser\Desktop\Windows10_22H2_X64.iso
+[2025-10-29 16:45:15] Destination (data): Z:\
+[2025-10-29 16:45:15] ESP path: Y:\
+[2025-10-29 16:45:15] Extract content: Yes
+[2025-10-29 16:45:15] Mount command: powershell -Command "$iso = Mount-DiskImage -ImagePath 'C:\Users\vboxuser\Desktop\Windows10_22H2_X64.iso' -PassThru; $volume = Get-DiskImage -ImagePath 'C:\Users\vboxuser\Desktop\Windows10_22H2_X64.iso' | Get-Volume; if ($volume) { $volume.DriveLetter } else { 'FAILED' }"
+[2025-10-29 16:45:22] Mount successful
+[2025-10-29 16:45:22] Source path: E:\
+[2025-10-29 16:45:22] Waiting 5 seconds for drive to be ready
+[2025-10-29 16:45:28] Drive ready, proceeding with analysis
+[2025-10-29 16:45:29] Is Windows ISO: Yes
+[2025-10-29 16:45:58] Extracting EFI directory to ESP
+[2025-10-29 16:45:59] Copied bootmgr.efi to ESP
+[2025-10-29 16:45:59] Extracting additional boot files from boot.wim
+[2025-10-29 16:45:59] Mount command: dism /Mount-Wim /WimFile:"E:\sources\boot.wim" /index:1 /MountDir:"C:\Users\vboxuser\AppData\Local\Temp\EasyISOBoot_WimMount\" /ReadOnly
+[2025-10-29 16:46:00] Mount WIM failed
+[2025-10-29 16:46:00] Failed to mount boot.wim
+[2025-10-29 16:46:00] Boot file check: Y:\EFI\boot\bootx64.efi - EXISTS
+[2025-10-29 16:46:00] Dismount command: powershell -Command "Dismount-DiskImage -ImagePath 'C:\Users\vboxuser\Desktop\Windows10_22H2_X64.iso'"
+[2025-10-29 16:46:07] Dismount ISO completed
+[2025-10-29 16:46:07] EFI extraction SUCCESS
+[2025-10-29 16:46:07] Content extraction completed.

@@ -11,6 +11,11 @@
 #include <iomanip>
 #include "../utils/Utils.h"
 
+// Forward declarations for helper functions defined later in this file
+static bool isValidPE(const std::string& path);
+static uint16_t getPEMachine(const std::string& path);
+static BOOL copyFileUtf8(const std::string& src, const std::string& dst);
+
 ISOCopyManager& ISOCopyManager::getInstance() {
     static ISOCopyManager instance;
     return instance;
@@ -211,7 +216,7 @@ bool ISOCopyManager::copyDirectoryWithProgress(const std::string& source, const 
                     return false;
                 }
 
-                if (!CopyFileA(srcItem.c_str(), destItem.c_str(), FALSE)) {
+                if (!copyFileUtf8(srcItem, destItem)) {
                     DWORD error = GetLastError();
                     std::ofstream errorLog2(logDir + "\\" + COPY_ERROR_LOG_FILE, std::ios::app);
                     errorLog2 << getTimestamp() << "Failed to copy file: " << srcItem << " to " << destItem << " Error code: " << error << "\n";
@@ -233,6 +238,25 @@ bool ISOCopyManager::copyDirectoryWithProgress(const std::string& source, const 
                     FindClose(hFind);
                     return false;
                 }
+                // If this is an EFI/PE file, do a quick validation to ensure it's a valid PE image
+                auto isEfiFile = [](const std::string& p)->bool {
+                    size_t pos = p.find_last_of('.');
+                    if (pos == std::string::npos) return false;
+                    std::string ext = p.substr(pos);
+                    for (auto &c : ext) c = (char)tolower((unsigned char)c);
+                    return ext == ".efi" || ext == ".exe" || ext == ".dll";
+                };
+                if (isEfiFile(destItem)) {
+                    if (!isValidPE(destItem)) {
+                        std::ofstream errorLog2(logDir + "\\" + COPY_ERROR_LOG_FILE, std::ios::app);
+                        errorLog2 << getTimestamp() << "Copied file appears invalid (not PE): " << destItem << "\n";
+                        errorLog2.close();
+                        eventManager.notifyLogUpdate("Error: Copied file appears invalid (not PE): " + destItem + "\r\n");
+                        FindClose(hFind);
+                        return false;
+                    }
+                }
+
                 copiedSoFar += fileSize;
                 eventManager.notifyDetailedProgress(copiedSoFar, totalSize, excludeDirs.empty() ? "Copiando EFI" : "Copiando contenido del ISO");
             }
@@ -378,7 +402,7 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
         if (destAttrs != INVALID_FILE_ATTRIBUTES) {
             SetFileAttributesA(bootmgrDest.c_str(), FILE_ATTRIBUTE_NORMAL);
         }
-        if (CopyFileA(bootmgrSource.c_str(), bootmgrDest.c_str(), FALSE)) {
+                if (copyFileUtf8(bootmgrSource, bootmgrDest)) {
             logFile << getTimestamp() << "Copied bootmgr.efi to ESP" << std::endl;
             bootmgrCopied = true;
         } else {
@@ -434,11 +458,27 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
                             std::string dstDir = dst.substr(0, lastSlash);
                             CreateDirectoryA(dstDir.c_str(), NULL); // Ignore error if exists
                         }
-                        if (CopyFileA(src.c_str(), dst.c_str(), FALSE)) {
-                            logFile << getTimestamp() << "Instalado: " << filePair.first << " to " << dst << std::endl;
-                        } else {
-                            logFile << getTimestamp() << "Failed to extract: " << filePair.first << " error: " << GetLastError() << std::endl;
-                        }
+                                        if (copyFileUtf8(src, dst)) {
+                                        // Validate PE for EFI files and log machine type
+                                        bool valid = true;
+                                        uint16_t machine = 0;
+                                        size_t pos = dst.find_last_of('.');
+                                        if (pos != std::string::npos) {
+                                            std::string ext = dst.substr(pos);
+                                            for (auto &c : ext) c = (char)tolower((unsigned char)c);
+                                            if (ext == ".efi") {
+                                                valid = isValidPE(dst);
+                                                machine = getPEMachine(dst);
+                                            }
+                                        }
+                                        if (!valid) {
+                                            logFile << getTimestamp() << "Copied EFI file appears invalid: " << dst << std::endl;
+                                        } else {
+                                            logFile << getTimestamp() << "Instalado: " << filePair.first << " to " << dst << " (machine=0x" << std::hex << machine << std::dec << ")" << std::endl;
+                                        }
+                                    } else {
+                                        logFile << getTimestamp() << "Failed to extract: " << filePair.first << " error: " << GetLastError() << std::endl;
+                                    }
                     }
                     
                     // Extract data files if extracting content
@@ -457,8 +497,15 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
                                 std::string dstDir = dst.substr(0, lastSlash);
                                 CreateDirectoryA(dstDir.c_str(), NULL);
                             }
-                            if (CopyFileA(src.c_str(), dst.c_str(), FALSE)) {
-                                logFile << getTimestamp() << "Instalado: " << filePair.first << " to " << dst << std::endl;
+                            if (copyFileUtf8(src, dst)) {
+                                uint16_t machine = 0;
+                                size_t pos = dst.find_last_of('.');
+                                if (pos != std::string::npos) {
+                                    std::string ext = dst.substr(pos);
+                                    for (auto &c : ext) c = (char)tolower((unsigned char)c);
+                                    if (ext == ".efi") machine = getPEMachine(dst);
+                                }
+                                logFile << getTimestamp() << "Instalado: " << filePair.first << " to " << dst << " (machine=0x" << std::hex << machine << std::dec << ")" << std::endl;
                             } else {
                                 logFile << getTimestamp() << "Failed to extract: " << filePair.first << " error: " << GetLastError() << std::endl;
                             }
@@ -480,7 +527,7 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
                         // Copy setup.exe from ISO
                         std::string setupSrc = sourcePath + "sources\\setup.exe";
                         std::string setupDst = destPath + "setup.exe";
-                        if (CopyFileA(setupSrc.c_str(), setupDst.c_str(), FALSE)) {
+                        if (copyFileUtf8(setupSrc, setupDst)) {
                             logFile << getTimestamp() << "Copied setup.exe" << std::endl;
                         }
                     }
@@ -556,16 +603,18 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
             }
 
             if (shouldCopy) {
-                if (CopyFileA(systemBootmgr.c_str(), destBootx64.c_str(), FALSE)) {
-                    logFile << getTimestamp() << "Successfully copied bootmgfw.efi as BOOTX64.EFI" << std::endl;
+                if (copyFileUtf8(systemBootmgr, destBootx64)) {
+                    uint16_t machine = getPEMachine(destBootx64);
+                    logFile << getTimestamp() << "Successfully copied bootmgfw.efi as BOOTX64.EFI (machine=0x" << std::hex << machine << std::dec << ")" << std::endl;
                     bootFileExists = true;
                     bootFilePath = destBootx64;
                 } else {
                     logFile << getTimestamp() << "Failed to copy bootmgfw.efi, error: " << GetLastError() << std::endl;
                     // Try alternative path
                     std::string altSystemBoot = "C:\\Windows\\Boot\\EFI\\bootx64.efi";
-                    if (CopyFileA(altSystemBoot.c_str(), destBootx64.c_str(), FALSE)) {
-                        logFile << getTimestamp() << "Successfully copied bootx64.efi as BOOTX64.EFI" << std::endl;
+                    if (copyFileUtf8(altSystemBoot, destBootx64)) {
+                        uint16_t machine = getPEMachine(destBootx64);
+                        logFile << getTimestamp() << "Successfully copied bootx64.efi as BOOTX64.EFI (machine=0x" << std::hex << machine << std::dec << ")" << std::endl;
                         bootFileExists = true;
                         bootFilePath = destBootx64;
                     } else {
@@ -617,4 +666,42 @@ bool ISOCopyManager::copyISOFile(EventManager& eventManager, const std::string& 
     logFile.close();
     
     return result != FALSE;
+}
+
+// Quick validation for PE/EFI files: check for 'MZ' header
+static bool isValidPE(const std::string& path) {
+    std::wstring wpath = Utils::utf8_to_wstring(path);
+    HANDLE h = CreateFileW(wpath.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (h == INVALID_HANDLE_VALUE) return false;
+    CHAR hdr[2] = {0};
+    DWORD read = 0;
+    BOOL ok = ReadFile(h, hdr, 2, &read, NULL);
+    CloseHandle(h);
+    if (!ok || read < 2) return false;
+    return hdr[0] == 'M' && hdr[1] == 'Z';
+}
+
+// Returns IMAGE_FILE_MACHINE_* value or 0 on failure
+static uint16_t getPEMachine(const std::string& path) {
+    std::wstring wpath = Utils::utf8_to_wstring(path);
+    HANDLE h = CreateFileW(wpath.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (h == INVALID_HANDLE_VALUE) return 0;
+    DWORD read = 0;
+    DWORD e_lfanew = 0;
+    // Read e_lfanew at offset 0x3C (DWORD)
+    SetFilePointer(h, 0x3C, NULL, FILE_BEGIN);
+    if (!ReadFile(h, &e_lfanew, sizeof(DWORD), &read, NULL) || read != sizeof(DWORD)) { CloseHandle(h); return 0; }
+    // Seek to PE signature + Machine (e_lfanew + 4)
+    DWORD machine = 0;
+    SetFilePointer(h, e_lfanew + 4, NULL, FILE_BEGIN);
+    if (!ReadFile(h, &machine, sizeof(uint16_t), &read, NULL) || read != sizeof(uint16_t)) { CloseHandle(h); return 0; }
+    CloseHandle(h);
+    return static_cast<uint16_t>(machine & 0xFFFF);
+}
+
+// Copy using wide APIs from UTF-8 input paths
+static BOOL copyFileUtf8(const std::string& src, const std::string& dst) {
+    std::wstring wsrc = Utils::utf8_to_wstring(src);
+    std::wstring wdst = Utils::utf8_to_wstring(dst);
+    return CopyFileW(wsrc.c_str(), wdst.c_str(), FALSE);
 }
