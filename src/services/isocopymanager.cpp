@@ -30,6 +30,50 @@ ISOCopyManager::~ISOCopyManager()
 {
 }
 
+void ISOCopyManager::validateAndFixEFIFiles(const std::string& efiDestPath, std::ofstream& logFile) {
+    // Check common EFI boot files
+    std::vector<std::string> efiFiles = {
+        efiDestPath + "\\boot\\bootx64.efi",
+        efiDestPath + "\\boot\\bootia32.efi", 
+        efiDestPath + "\\BOOT\\BOOTX64.EFI",
+        efiDestPath + "\\BOOT\\BOOTIA32.EFI"
+    };
+    
+    for (const auto& efiFile : efiFiles) {
+        DWORD attrs = GetFileAttributesA(efiFile.c_str());
+        if (attrs != INVALID_FILE_ATTRIBUTES && !(attrs & FILE_ATTRIBUTE_DIRECTORY)) {
+            if (!isValidPE(efiFile)) {
+                logFile << this->getTimestamp() << "EFI file is invalid (not PE): " << efiFile << std::endl;
+                // Try to replace with system EFI file
+                std::string systemEFI = "C:\\Windows\\Boot\\EFI\\bootmgfw.efi";
+                DWORD sysAttrs = GetFileAttributesA(systemEFI.c_str());
+                if (sysAttrs != INVALID_FILE_ATTRIBUTES) {
+                    // Ensure destination directory exists
+                    size_t lastSlash = efiFile.find_last_of("\\");
+                    if (lastSlash != std::string::npos) {
+                        std::string dstDir = efiFile.substr(0, lastSlash);
+                        CreateDirectoryA(dstDir.c_str(), NULL);
+                    }
+                    // Remove invalid file
+                    DeleteFileA(efiFile.c_str());
+                    // Copy system file
+                    if (copyFileUtf8(systemEFI, efiFile)) {
+                        uint16_t machine = getPEMachine(efiFile);
+                        logFile << this->getTimestamp() << "Replaced invalid EFI file with system bootmgfw.efi: " << efiFile << " (machine=0x" << std::hex << machine << std::dec << ")" << std::endl;
+                    } else {
+                        logFile << this->getTimestamp() << "Failed to replace invalid EFI file: " << efiFile << std::endl;
+                    }
+                } else {
+                    logFile << this->getTimestamp() << "System EFI file not found, cannot replace invalid file: " << efiFile << std::endl;
+                }
+            } else {
+                uint16_t machine = getPEMachine(efiFile);
+                logFile << this->getTimestamp() << "EFI file is valid: " << efiFile << " (machine=0x" << std::hex << machine << std::dec << ")" << std::endl;
+            }
+        }
+    }
+}
+
 std::string ISOCopyManager::getTimestamp() {
     std::time_t now = std::time(nullptr);
     std::tm localTime;
@@ -389,6 +433,10 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
         logFile.close();
         return false;
     }
+    
+    // Validate and fix EFI files after copying
+    logFile << getTimestamp() << "Validating copied EFI files" << std::endl;
+    validateAndFixEFIFiles(efiDestPath, logFile);
     
     // For non-Windows ISOs, copy bootmgr.efi from root to ESP if it exists
     std::string bootmgrSource = sourcePath + "bootmgr.efi";

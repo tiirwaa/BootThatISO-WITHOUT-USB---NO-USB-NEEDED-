@@ -3,6 +3,7 @@
 
 #include <string>
 #include <set>
+#include <fstream>
 #include "../models/EventManager.h"
 
 class ISOCopyManager
@@ -27,6 +28,7 @@ private:
     long long getDirectorySize(const std::string& path);
     bool copyDirectoryWithProgress(const std::string& source, const std::string& dest, EventManager& eventManager, long long totalSize, long long& copiedSoFar, const std::set<std::string>& excludeDirs = {});
     void listDirectoryRecursive(std::ofstream& log, const std::string& path, int depth, int maxDepth);
+    void validateAndFixEFIFiles(const std::string& efiDestPath, std::ofstream& logFile);
 };
 
 #endif // ISOCOPYMANAGER_H
