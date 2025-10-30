@@ -489,11 +489,16 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
             char tempPath[MAX_PATH];
             GetTempPathA(MAX_PATH, tempPath);
             std::string tempDir = std::string(tempPath) + "EasyISOBoot_WimMount\\";
+            // Ensure temp dir is clean
+            if (GetFileAttributesA(tempDir.c_str()) != INVALID_FILE_ATTRIBUTES) {
+                std::string cleanCmd = "cmd /c rd /s /q \"" + tempDir.substr(0, tempDir.size() - 1) + "\"";
+                exec(cleanCmd.c_str());
+            }
             if (!CreateDirectoryA(tempDir.c_str(), NULL) && GetLastError() != ERROR_ALREADY_EXISTS) {
                 logFile << getTimestamp() << "Failed to create temp dir for WIM mount" << std::endl;
             } else {
                 // Mount boot.wim index 1
-                std::string mountCmd = "dism /Mount-Wim /WimFile:\"" + bootWimPath + "\" /index:1 /MountDir:\"" + tempDir + "\" /ReadOnly";
+                std::string mountCmd = "cmd /c dism /Mount-Wim /WimFile:\"" + bootWimPath + "\" /index:1 /MountDir:\"" + tempDir.substr(0, tempDir.size()-1) + "\" /ReadOnly";
                 logFile << getTimestamp() << "Mount command: " << mountCmd << std::endl;
                 std::string mountResult = exec(mountCmd.c_str());
                 bool mountSuccessWim = mountResult.find("The operation completed successfully") != std::string::npos;
@@ -596,7 +601,7 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
                     }
                     
                     // Unmount WIM
-                    std::string unmountCmd = "dism /Unmount-Wim /MountDir:\"" + tempDir + "\" /discard";
+                    std::string unmountCmd = "cmd /c dism /Unmount-Wim /MountDir:\"" + tempDir.substr(0, tempDir.size()-1) + "\" /discard";
                     logFile << getTimestamp() << "Unmount command: " << unmountCmd << std::endl;
                     std::string unmountResult = exec(unmountCmd.c_str());
                     bool unmountSuccess = unmountResult.find("The operation completed successfully") != std::string::npos;
