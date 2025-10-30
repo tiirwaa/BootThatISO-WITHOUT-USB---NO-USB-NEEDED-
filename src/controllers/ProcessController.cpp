@@ -181,14 +181,9 @@ void ProcessController::processInThread(const std::string& isoPath, const std::s
     eventManager.notifyButtonEnable();
 }
 
-void ProcessController::recoverSpace()
+bool ProcessController::recoverSpace()
 {
-    eventManager.notifyLogUpdate("Iniciando recuperación de espacio...\r\n");
-    if (partitionManager->recoverSpace()) {
-        eventManager.notifyLogUpdate("Recuperación completada.\r\n");
-    } else {
-        eventManager.notifyLogUpdate("Error en recuperación.\r\n");
-    }
+    return partitionManager->recoverSpace();
 }
 
 bool ProcessController::copyISO(const std::string& isoPath, const std::string& destPath, const std::string& espPath, const std::string& mode, bool skipCopyISO)

@@ -15,6 +15,8 @@ private:
 
     EventManager* eventManager;
 
+    bool RestartComputer();
+
 public:
     static PartitionManager& getInstance();
 

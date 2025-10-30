@@ -18,5 +18,7 @@ const char* const DEBUG_DRIVES_LOG_FILE = "debug_drives.log";
 const char* const DISKPART_LOG_FILE = "diskpart_log.log";
 const char* const REFORMAT_LOG_FILE = "reformat_log.log";
 const char* const REFORMAT_EXIT_LOG_FILE = "reformat_exit_log.log";
+const char* const CHKDSK_LOG_FILE = "chkdsk_log.txt";
+const char* const CHKDSK_F_LOG_FILE = "chkdsk_f_log.txt";
 
 #endif // CONSTANTS_H

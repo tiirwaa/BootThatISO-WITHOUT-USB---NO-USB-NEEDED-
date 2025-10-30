@@ -151,7 +151,12 @@ void MainWindow::HandleCommand(UINT msg, WPARAM wParam, LPARAM lParam)
             OnOpenServicesPage();
             break;
         case IDC_RECOVER_BUTTON:
-            processController->recoverSpace();
+            if (processController->recoverSpace()) {
+                WCHAR exePath[MAX_PATH];
+                GetModuleFileNameW(NULL, exePath, MAX_PATH);
+                ShellExecuteW(NULL, L"open", exePath, NULL, NULL, SW_SHOWNORMAL);
+                PostQuitMessage(0);
+            }
             break;
         case IDC_FAT32_RADIO:
             if (HIWORD(wParam) == BN_CLICKED) {

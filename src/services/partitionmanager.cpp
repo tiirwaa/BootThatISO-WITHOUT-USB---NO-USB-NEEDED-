@@ -1,13 +1,30 @@
+#include <mutex>
+#include <string>
+#include <fstream>
+#include <windows.h>
 #include "partitionmanager.h"
 #include "../utils/constants.h"
 #include "../utils/Utils.h"
-#include <windows.h>
-#include <string>
+
+// Helper to append and flush to general_log.log
+void logToGeneral(const std::string& msg) {
+    static std::mutex logMutex;
+    std::lock_guard<std::mutex> lock(logMutex);
+    std::string logDir = Utils::getExeDirectory() + "logs";
+    CreateDirectoryA(logDir.c_str(), NULL);
+    std::ofstream logFile((logDir + "\\" + GENERAL_LOG_FILE).c_str(), std::ios::app);
+    if (logFile) {
+        logFile << msg << std::flush;
+        logFile.close();
+    }
+}
+
 #include <sstream>
-#include <fstream>
 #include <iostream>
 #include <cstring>
 #include <cstdlib>
+#include <algorithm>
+#include <cctype>
 
 PartitionManager& PartitionManager::getInstance() {
     static PartitionManager instance;
@@ -51,9 +68,304 @@ long long PartitionManager::getAvailableSpaceGB()
 
 bool PartitionManager::createPartition(const std::string& format)
 {
-    if (eventManager) eventManager->notifyLogUpdate("Creando script de diskpart para particiones...\r\n");
+    std::string logDir = Utils::getExeDirectory() + "logs";
+    CreateDirectoryA(logDir.c_str(), NULL);
 
-    // Create a temporary script file for diskpart
+    if (eventManager) eventManager->notifyLogUpdate("Verificando integridad del disco...\r\n");
+
+    // Run chkdsk C: to check for errors
+    STARTUPINFOA si_chk = { sizeof(si_chk) };
+    PROCESS_INFORMATION pi_chk;
+    SECURITY_ATTRIBUTES sa_chk;
+    sa_chk.nLength = sizeof(sa_chk);
+    sa_chk.lpSecurityDescriptor = NULL;
+    sa_chk.bInheritHandle = TRUE;
+
+    HANDLE hRead_chk, hWrite_chk;
+    if (!CreatePipe(&hRead_chk, &hWrite_chk, &sa_chk, 0)) {
+        if (eventManager) eventManager->notifyLogUpdate("Error: No se pudo crear pipe para chkdsk.\r\n");
+        return false;
+    }
+
+    si_chk.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
+    si_chk.hStdOutput = hWrite_chk;
+    si_chk.hStdError = hWrite_chk;
+    si_chk.wShowWindow = SW_HIDE;
+
+    std::string cmd_chk = "chkdsk C:";
+    if (!CreateProcessA(NULL, const_cast<char*>(cmd_chk.c_str()), NULL, NULL, TRUE, 0, NULL, NULL, &si_chk, &pi_chk)) {
+        CloseHandle(hRead_chk);
+        CloseHandle(hWrite_chk);
+        if (eventManager) eventManager->notifyLogUpdate("Error: No se pudo ejecutar chkdsk.\r\n");
+        return false;
+    }
+
+    CloseHandle(hWrite_chk);
+
+    std::string output_chk;
+    char buffer_chk[1024];
+    DWORD bytesRead_chk;
+    while (ReadFile(hRead_chk, buffer_chk, sizeof(buffer_chk) - 1, &bytesRead_chk, NULL) && bytesRead_chk > 0) {
+        buffer_chk[bytesRead_chk] = '\0';
+        output_chk += buffer_chk;
+    }
+
+    CloseHandle(hRead_chk);
+
+    WaitForSingleObject(pi_chk.hProcess, 300000); // 5 minutes
+
+    DWORD exitCode_chk;
+    GetExitCodeProcess(pi_chk.hProcess, &exitCode_chk);
+
+    CloseHandle(pi_chk.hProcess);
+    CloseHandle(pi_chk.hThread);
+
+    // Log the chkdsk output
+    std::ofstream chkLog((logDir + "\\" + CHKDSK_LOG_FILE).c_str());
+    if (chkLog) {
+        chkLog << "Chkdsk exit code: " << exitCode_chk << "\n";
+        chkLog << "Output:\n" << Utils::ansi_to_utf8(output_chk) << "\n";
+        chkLog.close();
+    }
+
+    // Show chkdsk result in UI log
+    if (eventManager) eventManager->notifyLogUpdate("Resultado de verificación de disco:\r\n" + Utils::ansi_to_utf8(output_chk) + "\r\n");
+
+    // If errors found, ask user if they want to repair
+    if (exitCode_chk != 0) {
+        int result = MessageBoxA(NULL, "Se encontraron errores en el disco C:. ¿Desea reparar el disco y reiniciar el sistema?", "Reparar disco", MB_YESNO | MB_ICONQUESTION);
+        if (result != IDYES) {
+            return false;
+        }
+
+        if (eventManager) eventManager->notifyLogUpdate("Ejecutando chkdsk /f para reparar errores...\r\n");
+
+        // Run chkdsk /f
+        STARTUPINFOA si_f = { sizeof(si_f) };
+        PROCESS_INFORMATION pi_f;
+        SECURITY_ATTRIBUTES sa_f;
+        sa_f.nLength = sizeof(sa_f);
+        sa_f.lpSecurityDescriptor = NULL;
+        sa_f.bInheritHandle = TRUE;
+
+        HANDLE hRead_f, hWrite_f;
+        HANDLE hRead_stdin, hWrite_stdin;
+        if (!CreatePipe(&hRead_stdin, &hWrite_stdin, &sa_f, 0)) {
+            if (eventManager) eventManager->notifyLogUpdate("Error: No se pudo crear pipe para stdin.\r\n");
+            return false;
+        }
+        if (!CreatePipe(&hRead_f, &hWrite_f, &sa_f, 0)) {
+            CloseHandle(hRead_stdin);
+            CloseHandle(hWrite_stdin);
+            if (eventManager) eventManager->notifyLogUpdate("Error: No se pudo crear pipe para chkdsk /f.\r\n");
+            return false;
+        }
+
+        si_f.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
+        si_f.hStdInput = hRead_stdin;
+        si_f.hStdOutput = hWrite_f;
+        si_f.hStdError = hWrite_f;
+        si_f.wShowWindow = SW_HIDE;
+
+        std::string cmd_f = "chkdsk C: /f";
+        if (!CreateProcessA(NULL, const_cast<char*>(cmd_f.c_str()), NULL, NULL, TRUE, 0, NULL, NULL, &si_f, &pi_f)) {
+            CloseHandle(hRead_f);
+            CloseHandle(hWrite_f);
+            CloseHandle(hRead_stdin);
+            CloseHandle(hWrite_stdin);
+            if (eventManager) eventManager->notifyLogUpdate("Error: No se pudo ejecutar chkdsk /f.\r\n");
+            return false;
+        }
+
+        // Send 'S' to stdin
+        DWORD bytesWritten;
+        bool inputSent = false;
+
+        std::string output_f;
+        char buffer_f[1024];
+        DWORD bytesRead_f;
+
+        // Read output in real-time
+        while (true) {
+            DWORD bytesAvailable = 0;
+            if (!PeekNamedPipe(hRead_f, NULL, 0, NULL, &bytesAvailable, NULL)) {
+                break;
+            }
+            if (bytesAvailable > 0) {
+                if (ReadFile(hRead_f, buffer_f, min(sizeof(buffer_f) - 1, bytesAvailable), &bytesRead_f, NULL) && bytesRead_f > 0) {
+                    buffer_f[bytesRead_f] = '\0';
+                    output_f += buffer_f;
+                    // Notify partial output
+                    if (eventManager) eventManager->notifyLogUpdate(buffer_f);
+                    // Check if prompt is present and send input
+                    if (!inputSent && output_f.find("(S/N)") != std::string::npos) {
+                        if (eventManager) eventManager->notifyLogUpdate("Enviando respuesta 'S' a chkdsk...\r\n");
+                        WriteFile(hWrite_stdin, "S\r\n", 3, &bytesWritten, NULL);
+                        CloseHandle(hWrite_stdin);
+                        inputSent = true;
+                        Sleep(2000); // Give time for chkdsk to process the input
+                    }
+                }
+            }
+
+            DWORD waitResult = WaitForSingleObject(pi_f.hProcess, 100); // 100ms timeout
+            if (waitResult == WAIT_OBJECT_0) {
+                break;
+            }
+        }
+
+        // Tracing: loop ended
+        const std::string loopEndMsg = "Bucle de lectura en tiempo real terminado. Esperando fin del proceso chkdsk /f...\r\n";
+        if (eventManager) eventManager->notifyLogUpdate(loopEndMsg);
+        logToGeneral(loopEndMsg);
+
+        DWORD exitCode_f;
+        GetExitCodeProcess(pi_f.hProcess, &exitCode_f);
+
+        // Tracing: process ended
+        const std::string processEndMsg = "Chkdsk /f terminó con código: " + std::to_string(exitCode_f) + "\r\n";
+        if (eventManager) eventManager->notifyLogUpdate(processEndMsg);
+        logToGeneral(processEndMsg);
+
+        CloseHandle(pi_f.hProcess);
+        CloseHandle(pi_f.hThread);
+
+        // Tracing: final read
+        const std::string finalReadMsg = "Leyendo salida final...\r\n";
+        if (eventManager) eventManager->notifyLogUpdate(finalReadMsg);
+        logToGeneral(finalReadMsg);
+
+        // Force final read of any remaining output after process ends
+        while (ReadFile(hRead_f, buffer_f, sizeof(buffer_f) - 1, &bytesRead_f, NULL) && bytesRead_f > 0) {
+            buffer_f[bytesRead_f] = '\0';
+            output_f += buffer_f;
+            if (eventManager) eventManager->notifyLogUpdate(buffer_f);
+        }
+
+        const std::string finalReadDoneMsg = "Lectura final completada.\r\n";
+        if (eventManager) eventManager->notifyLogUpdate(finalReadDoneMsg);
+        logToGeneral(finalReadDoneMsg);
+
+        CloseHandle(hRead_f);
+        CloseHandle(hWrite_f);
+        CloseHandle(hRead_stdin);
+
+        // Log the chkdsk /f output
+        std::ofstream chkLogF((logDir + "\\" + CHKDSK_F_LOG_FILE).c_str());
+        if (chkLogF) {
+            chkLogF << "Chkdsk /f exit code: " << exitCode_f << "\n";
+            chkLogF << "Output:\n" << Utils::ansi_to_utf8(output_f) << "\n";
+            chkLogF.close();
+        }
+
+        // Show chkdsk /f result in UI log
+        if (eventManager) {
+            eventManager->notifyLogUpdate("Resultado de chkdsk /f:\r\n" + Utils::ansi_to_utf8(output_f) + "\r\n");
+            Sleep(100); // Give UI time to flush
+        }
+
+        // FINAL scheduling detection and restart logic (always runs after process ends)
+        std::string utf8_output_f = Utils::ansi_to_utf8(output_f);
+        const std::string verifyMsg = "Verificando si se programó para el próximo reinicio...\r\n";
+        logToGeneral(verifyMsg);
+        if (eventManager) eventManager->notifyLogUpdate(verifyMsg);
+        Sleep(100);
+
+        std::string lower = output_f;
+        std::transform(lower.begin(), lower.end(), lower.begin(), [](unsigned char c){ return std::tolower(c); });
+        // Debug: log output details
+        logToGeneral("output_f length: " + std::to_string(output_f.length()) + "\n");
+        logToGeneral("lower substr: " + lower.substr(0, 200) + "\n"); // first 200 chars
+        bool hasSeComprobar = lower.find("se comprobar") != std::string::npos;
+        bool hasReiniciar = lower.find("reiniciar") != std::string::npos;
+        logToGeneral("has 'se comprobar': " + std::string(hasSeComprobar ? "yes" : "no") + "\n");
+        logToGeneral("has 'reiniciar': " + std::string(hasReiniciar ? "yes" : "no") + "\n");
+
+        logToGeneral("Starting detection\n");
+        bool scheduled = false;
+
+        // Language-independent detection: check exit code 3 (scheduled for next boot)
+        if (exitCode_f == 3) {
+            scheduled = true;
+            logToGeneral("Scheduled = true via exit code 3\n");
+        }
+        // Robust detection: check for key phrases in raw output
+        if (hasSeComprobar && hasReiniciar) {
+            scheduled = true;
+            logToGeneral("Scheduled = true via robust check\n");
+        } else {
+            // Fallback to markers in UTF-8
+            std::string lower_utf8 = utf8_output_f;
+            std::transform(lower_utf8.begin(), lower_utf8.end(), lower_utf8.begin(), [](unsigned char c){ return std::tolower(c); });
+            const char* markers[] = {
+                "próxima vez",
+                "proxima vez",
+                "próximo arranque",
+                "proximo arranque",
+                "se comprobar",
+                "se comprobará",
+                "se comprobara",
+                "este volumen",
+                "(s/n)",
+                "will be checked",
+                "next boot",
+                "restart"
+            };
+            for (const char* m : markers) {
+                std::string mm = m;
+                std::string mmLower = mm;
+                std::transform(mmLower.begin(), mmLower.end(), mmLower.begin(), [](unsigned char c){ return std::tolower(c); });
+                if (utf8_output_f.find(mm) != std::string::npos || lower_utf8.find(mmLower) != std::string::npos) {
+                    scheduled = true;
+                    logToGeneral("Scheduled = true via marker: " + std::string(m) + "\n");
+                    break;
+                }
+            }
+        }
+        if (utf8_output_f.find("Este volumen se comprobará la próxima vez que se reinicie el sistema.") != std::string::npos ||
+            lower.find("este volumen se comprobará la próxima vez que se reinicie el sistema.") != std::string::npos) {
+            scheduled = true;
+            logToGeneral("Scheduled = true via exact match\n");
+        }
+
+        logToGeneral("Final scheduled: " + std::string(scheduled ? "true" : "false") + "\n");
+
+        if (scheduled) {
+            const std::string scheduledMsg = "Chkdsk ha programado una verificación para el próximo reinicio. Intentando reiniciar el sistema...\r\n";
+            logToGeneral(scheduledMsg);
+            if (eventManager) eventManager->notifyLogUpdate(scheduledMsg);
+            Sleep(1000); // small pause before attempting restart
+            bool restarted = RestartComputer();
+            if (!restarted) {
+                DWORD lastErr = GetLastError();
+                const std::string failMsg = "RestartComputer() falló; código de error: " + std::to_string(lastErr) + ". Intentando comando de emergencia 'shutdown /r /t 0'...\r\n";
+                logToGeneral(failMsg);
+                if (eventManager) eventManager->notifyLogUpdate(failMsg);
+                int ret = system("shutdown /r /t 0");
+                const std::string shutdownMsg = "Resultado comando 'shutdown': " + std::to_string(ret) + " (0=OK, otro=error o sin privilegios)\r\n";
+                logToGeneral(shutdownMsg);
+                if (eventManager) eventManager->notifyLogUpdate(shutdownMsg);
+            }
+            logToGeneral("Fin de proceso de verificación/reinicio.\r\n");
+            return false;
+        } else {
+            const std::string notScheduledMsg = "No se detectó programación de chkdsk para el próximo reinicio. No se reiniciará automáticamente.\r\n";
+            logToGeneral(notScheduledMsg);
+            if (eventManager) eventManager->notifyLogUpdate(notScheduledMsg);
+        }
+        logToGeneral("Fin de proceso de verificación/reinicio.\r\n");
+        if (eventManager) {
+            eventManager->notifyLogUpdate("Fin de proceso de verificación/reinicio.\r\n");
+            Sleep(100);
+        }
+
+        if (exitCode_f != 0) {
+            if (eventManager) eventManager->notifyLogUpdate("Error: Chkdsk /f falló.\r\n");
+            return false;
+        }
+    }
+
+    if (eventManager) eventManager->notifyLogUpdate("Creando script de diskpart para particiones...\r\n");
     char tempPath[MAX_PATH];
     GetTempPathA(MAX_PATH, tempPath);
     char tempFile[MAX_PATH];
@@ -175,8 +487,6 @@ bool PartitionManager::createPartition(const std::string& format)
     }
 
     // Write to log.txt
-    std::string logDir = Utils::getExeDirectory() + "logs";
-    CreateDirectoryA(logDir.c_str(), NULL);
     std::ofstream logFile((logDir + "\\" + DISKPART_LOG_FILE).c_str());
     if (logFile) {
         logFile << "\xef\xbb\xbf"; // UTF-8 BOM
@@ -940,6 +1250,45 @@ bool PartitionManager::recoverSpace()
 {
     if (eventManager) eventManager->notifyLogUpdate("Iniciando recuperación de espacio...\r\n");
 
+    // Create PowerShell script to recover space
+    char tempPath[MAX_PATH];
+    GetTempPathA(MAX_PATH, tempPath);
+    char tempFile[MAX_PATH];
+    GetTempFileNameA(tempPath, "recover_ps", 0, tempFile);
+    std::string psFile = std::string(tempFile) + ".ps1";
+
+    std::ofstream scriptFile(psFile);
+    if (!scriptFile) {
+        return false;
+    }
+    scriptFile << "$volumes = Get-Volume | Where-Object { $_.FileSystemLabel -eq '" << VOLUME_LABEL << "' -or $_.FileSystemLabel -eq '" << EFI_VOLUME_LABEL << "' }\n";
+    scriptFile << "foreach ($vol in $volumes) {\n";
+    scriptFile << "    $part = Get-Partition | Where-Object { $_.AccessPaths -contains $vol.Path }\n";
+    scriptFile << "    if ($part) {\n";
+    scriptFile << "        Remove-PartitionAccessPath -DiskNumber 0 -PartitionNumber $part.PartitionNumber -AccessPath $vol.Path -Confirm:$false\n";
+    scriptFile << "        Remove-Partition -DiskNumber 0 -PartitionNumber $part.PartitionNumber -Confirm:$false\n";
+    scriptFile << "    }\n";
+    scriptFile << "}\n";
+    scriptFile << "$systemPartition = Get-Partition | Where-Object { $_.DriveLetter -eq 'C' }\n";
+    scriptFile << "if ($systemPartition) {\n";
+    scriptFile << "    $supportedSize = Get-PartitionSupportedSize -DiskNumber 0 -PartitionNumber $systemPartition.PartitionNumber\n";
+    scriptFile << "    Resize-Partition -DiskNumber 0 -PartitionNumber $systemPartition.PartitionNumber -Size $supportedSize.SizeMax -Confirm:$false\n";
+    scriptFile << "}\n";
+    scriptFile.close();
+
+    // Log the script content
+    std::string logDir = Utils::getExeDirectory() + "logs";
+    CreateDirectoryA(logDir.c_str(), NULL);
+    std::ofstream logScriptFile((logDir + "\\recover_script_log.txt").c_str());
+    if (logScriptFile) {
+        std::ifstream readScript(psFile);
+        std::string scriptContent((std::istreambuf_iterator<char>(readScript)), std::istreambuf_iterator<char>());
+        logScriptFile << scriptContent;
+        logScriptFile.close();
+    }
+    if (eventManager) eventManager->notifyLogUpdate("Script de recuperación creado.\r\n");
+
+    // Execute PowerShell script
     STARTUPINFOA si = { sizeof(si) };
     PROCESS_INFORMATION pi;
     SECURITY_ATTRIBUTES sa;
@@ -951,137 +1300,9 @@ bool PartitionManager::recoverSpace()
     char buffer[1024];
     DWORD bytesRead;
     DWORD exitCode;
-    std::string cmd;
-
-    // First, find volumes with VOLUME_LABEL and EFI_VOLUME_LABEL
-    char tempPath[MAX_PATH];
-    GetTempPathA(MAX_PATH, tempPath);
-    char tempFile[MAX_PATH];
-    GetTempFileNameA(tempPath, "recover", 0, tempFile);
-
-    std::ofstream scriptFile(tempFile);
-    if (!scriptFile) {
-        return false;
-    }
-    scriptFile << "list volume\n";
-    scriptFile << "exit\n";
-    scriptFile.close();
 
     if (!CreatePipe(&hRead, &hWrite, &sa, 0)) {
-        DeleteFileA(tempFile);
-        return false;
-    }
-
-    si.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
-    si.hStdOutput = hWrite;
-    si.hStdError = hWrite;
-    si.wShowWindow = SW_HIDE;
-
-    cmd = "diskpart /s " + std::string(tempFile);
-    if (!CreateProcessA(NULL, const_cast<char*>(cmd.c_str()), NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi)) {
-        CloseHandle(hRead);
-        CloseHandle(hWrite);
-        DeleteFileA(tempFile);
-        return false;
-    }
-
-    CloseHandle(hWrite);
-
-    output = "";
-    while (ReadFile(hRead, buffer, sizeof(buffer) - 1, &bytesRead, NULL) && bytesRead > 0) {
-        buffer[bytesRead] = '\0';
-        output += buffer;
-    }
-
-    CloseHandle(hRead);
-
-    WaitForSingleObject(pi.hProcess, 30000);
-
-    GetExitCodeProcess(pi.hProcess, &exitCode);
-
-    CloseHandle(pi.hProcess);
-    CloseHandle(pi.hThread);
-
-    DeleteFileA(tempFile);
-
-    if (exitCode != 0) {
-        if (eventManager) eventManager->notifyLogUpdate("Error: Falló list volume para recuperación.\r\n");
-        return false;
-    }
-
-    // Parse to find volume numbers for VOLUME_LABEL and EFI_VOLUME_LABEL
-    std::istringstream iss(output);
-    std::string line;
-    int dataVol = -1, efiVol = -1;
-    while (std::getline(iss, line)) {
-        size_t volPos = line.find("Volumen");
-        if (volPos == std::string::npos) {
-            volPos = line.find("Volume");
-        }
-        if (volPos != std::string::npos) {
-            std::string numStr = line.substr(volPos + 8, 3);
-            size_t spacePos = numStr.find(' ');
-            if (spacePos != std::string::npos) {
-                numStr = numStr.substr(0, spacePos);
-            }
-            int volNum = std::atoi(numStr.c_str());
-            
-            std::string label = line.substr(volPos + 15, 13);
-            size_t start = label.find_first_not_of(" \t");
-            size_t end = label.find_last_not_of(" \t");
-            if (start != std::string::npos && end != std::string::npos) {
-                label = label.substr(start, end - start + 1);
-            } else {
-                label = "";
-            }
-            
-            if (label == VOLUME_LABEL) {
-                dataVol = volNum;
-            } else if (label == EFI_VOLUME_LABEL) {
-                efiVol = volNum;
-            }
-        }
-    }
-
-    if (dataVol == -1 && efiVol == -1) {
-        if (eventManager) eventManager->notifyLogUpdate("No se encontraron particiones creadas por el programa.\r\n");
-        return true; // Nothing to do
-    }
-
-    // Create script to delete volumes and extend C:
-    GetTempFileNameA(tempPath, "recover_script", 0, tempFile);
-    scriptFile.open(tempFile);
-    scriptFile << "select disk 0\n";
-    if (dataVol != -1) {
-        scriptFile << "select volume " << dataVol << "\n";
-        scriptFile << "remove letter\n";
-        scriptFile << "delete volume\n";
-    }
-    if (efiVol != -1) {
-        scriptFile << "select volume " << efiVol << "\n";
-        scriptFile << "remove letter\n";
-        scriptFile << "delete volume\n";
-    }
-    scriptFile << "select partition 3\n"; // Assume C: is partition 3 in typical GPT layout
-    scriptFile << "extend\n";
-    scriptFile << "exit\n";
-    scriptFile.close();
-
-    // Log the script content for debugging
-    std::string logDir = Utils::getExeDirectory() + "logs";
-    CreateDirectoryA(logDir.c_str(), NULL);
-    std::ofstream logScriptFile((logDir + "\\recover_script_log.txt").c_str());
-    if (logScriptFile) {
-        std::ifstream readScript(tempFile);
-        std::string scriptContent((std::istreambuf_iterator<char>(readScript)), std::istreambuf_iterator<char>());
-        logScriptFile << scriptContent;
-        logScriptFile.close();
-    }
-    if (eventManager) eventManager->notifyLogUpdate("Script de recuperación creado.\r\n");
-
-    // Execute the script with output capture
-    if (!CreatePipe(&hRead, &hWrite, &sa, 0)) {
-        DeleteFileA(tempFile);
+        DeleteFileA(psFile.c_str());
         if (eventManager) eventManager->notifyLogUpdate("Error: No se pudo crear pipe para recuperación.\r\n");
         return false;
     }
@@ -1091,12 +1312,12 @@ bool PartitionManager::recoverSpace()
     si.hStdError = hWrite;
     si.wShowWindow = SW_HIDE;
 
-    cmd = "diskpart /s \"" + std::string(tempFile) + "\"";
+    std::string cmd = "powershell -ExecutionPolicy Bypass -File \"" + psFile + "\"";
     if (!CreateProcessA(NULL, const_cast<char*>(cmd.c_str()), NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi)) {
         CloseHandle(hRead);
         CloseHandle(hWrite);
-        DeleteFileA(tempFile);
-        if (eventManager) eventManager->notifyLogUpdate("Error: No se pudo ejecutar diskpart para recuperación.\r\n");
+        DeleteFileA(psFile.c_str());
+        if (eventManager) eventManager->notifyLogUpdate("Error: No se pudo ejecutar PowerShell para recuperación.\r\n");
         return false;
     }
 
@@ -1117,9 +1338,7 @@ bool PartitionManager::recoverSpace()
     CloseHandle(pi.hProcess);
     CloseHandle(pi.hThread);
 
-    DeleteFileA(tempFile);
-
-    // Log the output
+    // Log the result
     std::ofstream logFile((logDir + "\\recover_log.txt").c_str());
     if (logFile) {
         logFile << "Recover script exit code: " << exitCode << "\n";
@@ -1127,11 +1346,50 @@ bool PartitionManager::recoverSpace()
         logFile.close();
     }
 
+    // Clean up
+    DeleteFileA(psFile.c_str());
+
     if (exitCode == 0) {
         if (eventManager) eventManager->notifyLogUpdate("Espacio recuperado exitosamente.\r\n");
         return true;
     } else {
         if (eventManager) eventManager->notifyLogUpdate("Error: Falló la recuperación de espacio (código " + std::to_string(exitCode) + ").\r\n");
+        return false;
+    }
+}
+
+bool PartitionManager::RestartComputer()
+{
+    if (eventManager) eventManager->notifyLogUpdate("Intentando reiniciar el sistema...\r\n");
+    
+    // Enable shutdown privilege
+    HANDLE hToken;
+    TOKEN_PRIVILEGES tkp;
+    if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken)) {
+        if (eventManager) eventManager->notifyLogUpdate("Error: No se pudo abrir el token del proceso.\r\n");
+        return false;
+    }
+    LookupPrivilegeValue(NULL, SE_SHUTDOWN_NAME, &tkp.Privileges[0].Luid);
+    tkp.PrivilegeCount = 1;
+    tkp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+    if (!AdjustTokenPrivileges(hToken, FALSE, &tkp, 0, (PTOKEN_PRIVILEGES)NULL, 0)) {
+        if (eventManager) eventManager->notifyLogUpdate("Error: No se pudo ajustar los privilegios.\r\n");
+        CloseHandle(hToken);
+        return false;
+    }
+    if (GetLastError() != ERROR_SUCCESS) {
+        if (eventManager) eventManager->notifyLogUpdate("Error: Falló la verificación de privilegios.\r\n");
+        CloseHandle(hToken);
+        return false;
+    }
+    CloseHandle(hToken);
+    
+    // Attempt to restart the computer
+    if (ExitWindowsEx(EWX_REBOOT, 0)) {
+        return true;
+    } else {
+        DWORD error = GetLastError();
+        if (eventManager) eventManager->notifyLogUpdate("Error: No se pudo reiniciar el sistema. Código de error: " + std::to_string(error) + "\r\n");
         return false;
     }
 }
