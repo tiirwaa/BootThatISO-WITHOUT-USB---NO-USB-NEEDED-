@@ -7,4 +7,6 @@ public:
     ~ISOTypeDetector();
 
     bool isWindowsISO(const std::string& mountedIsoPath);
+private:
+    const char* getTimestamp();
 };

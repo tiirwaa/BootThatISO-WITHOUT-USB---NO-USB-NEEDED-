@@ -169,8 +169,8 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
     logFile << getTimestamp() << "Source path: " << sourcePath << std::endl;
     
     // Add delay to allow the drive to be ready
-    logFile << getTimestamp() << "Waiting 5 seconds for drive to be ready" << std::endl;
-    Sleep(5000);
+    logFile << getTimestamp() << "Waiting 10 seconds for drive to be ready" << std::endl;
+    Sleep(10000);
     logFile << getTimestamp() << "Drive ready, proceeding with analysis" << std::endl;
 
     if (eventManager.isCancelRequested()) {
