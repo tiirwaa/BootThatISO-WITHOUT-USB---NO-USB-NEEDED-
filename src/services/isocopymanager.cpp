@@ -498,6 +498,9 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
                 std::string mountResult = exec(mountCmd.c_str());
                 bool mountSuccessWim = mountResult.find("The operation completed successfully") != std::string::npos;
                 logFile << getTimestamp() << "Mount WIM " << (mountSuccessWim ? "successful" : "failed") << std::endl;
+                if (!mountSuccessWim) {
+                    logFile << getTimestamp() << "DISM output: " << mountResult << std::endl;
+                }
                 
                 if (mountSuccessWim) {
                     // Extract EFI files to ESP
@@ -598,6 +601,9 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
                     std::string unmountResult = exec(unmountCmd.c_str());
                     bool unmountSuccess = unmountResult.find("The operation completed successfully") != std::string::npos;
                     logFile << getTimestamp() << "Unmount WIM " << (unmountSuccess ? "successful" : "failed") << std::endl;
+                    if (!unmountSuccess) {
+                        logFile << getTimestamp() << "DISM unmount output: " << unmountResult << std::endl;
+                    }
                     
                     // Remove temp dir
                     RemoveDirectoryA(tempDir.c_str());
@@ -608,31 +614,38 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
         }
     
     // Check if bootx64.efi or bootia32.efi was copied to ESP
-    std::string bootFilePath = efiDestPath + "\\boot\\bootx64.efi";
+    std::string bootFilePath = efiDestPath + "\\BOOT\\BOOTX64.EFI";
     DWORD bootAttrs = GetFileAttributesA(bootFilePath.c_str());
     bool bootFileExists = (bootAttrs != INVALID_FILE_ATTRIBUTES && !(bootAttrs & FILE_ATTRIBUTE_DIRECTORY));
+
+    if (!bootFileExists) {
+        bootFilePath = efiDestPath + "\\boot\\BOOTX64.EFI";
+        bootAttrs = GetFileAttributesA(bootFilePath.c_str());
+        bootFileExists = (bootAttrs != INVALID_FILE_ATTRIBUTES && !(bootAttrs & FILE_ATTRIBUTE_DIRECTORY));
+    }
+
+    if (!bootFileExists) {
+        bootFilePath = efiDestPath + "\\boot\\bootx64.efi";
+        bootAttrs = GetFileAttributesA(bootFilePath.c_str());
+        bootFileExists = (bootAttrs != INVALID_FILE_ATTRIBUTES && !(bootAttrs & FILE_ATTRIBUTE_DIRECTORY));
+    }
+
+    if (!bootFileExists) {
+        bootFilePath = efiDestPath + "\\BOOT\\BOOTIA32.EFI";
+        bootAttrs = GetFileAttributesA(bootFilePath.c_str());
+        bootFileExists = (bootAttrs != INVALID_FILE_ATTRIBUTES && !(bootAttrs & FILE_ATTRIBUTE_DIRECTORY));
+    }
+
+    if (!bootFileExists) {
+        bootFilePath = efiDestPath + "\\boot\\BOOTIA32.EFI";
+        bootAttrs = GetFileAttributesA(bootFilePath.c_str());
+        bootFileExists = (bootAttrs != INVALID_FILE_ATTRIBUTES && !(bootAttrs & FILE_ATTRIBUTE_DIRECTORY));
+    }
 
     if (!bootFileExists) {
         bootFilePath = efiDestPath + "\\boot\\bootia32.efi";
         bootAttrs = GetFileAttributesA(bootFilePath.c_str());
         bootFileExists = (bootAttrs != INVALID_FILE_ATTRIBUTES && !(bootAttrs & FILE_ATTRIBUTE_DIRECTORY));
-    }
-
-    // Also check for alternative boot file names
-    if (!bootFileExists) {
-        std::string altBootPath = efiDestPath + "\\BOOT\\BOOTX64.EFI";
-        DWORD altAttrs = GetFileAttributesA(altBootPath.c_str());
-        bootFileExists = (altAttrs != INVALID_FILE_ATTRIBUTES && !(altAttrs & FILE_ATTRIBUTE_DIRECTORY));
-        if (bootFileExists) {
-            bootFilePath = altBootPath;
-        } else {
-            altBootPath = efiDestPath + "\\BOOT\\BOOTIA32.EFI";
-            altAttrs = GetFileAttributesA(altBootPath.c_str());
-            bootFileExists = (altAttrs != INVALID_FILE_ATTRIBUTES && !(altAttrs & FILE_ATTRIBUTE_DIRECTORY));
-            if (bootFileExists) {
-                bootFilePath = altBootPath;
-            }
-        }
     }
     
     logFile << getTimestamp() << "Boot file check: " << bootFilePath << " - " << (bootFileExists ? "EXISTS" : "NOT FOUND") << std::endl;

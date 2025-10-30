@@ -155,37 +155,42 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
     // Find the EFI boot file in ESP - prioritize standard EFI boot files
     std::string efiBootFile;
     // First priority: Standard EFI boot files
-    std::string candidate1 = espDriveLetter + "\\EFI\\boot\\BOOTX64.EFI";  // Standard EFI boot
+    std::string candidate1 = espDriveLetter + "\\EFI\\BOOT\\BOOTX64.EFI";  // Standard EFI boot uppercase
     if (GetFileAttributesA(candidate1.c_str()) != INVALID_FILE_ATTRIBUTES) {
         efiBootFile = candidate1;
     } else {
-        std::string candidate2 = espDriveLetter + "\\EFI\\boot\\bootx64.efi";  // Alternative case
+        std::string candidate2 = espDriveLetter + "\\EFI\\boot\\BOOTX64.EFI";  // lowercase dir
         if (GetFileAttributesA(candidate2.c_str()) != INVALID_FILE_ATTRIBUTES) {
             efiBootFile = candidate2;
         } else {
-            std::string candidate3 = espDriveLetter + "\\EFI\\boot\\BOOTIA32.EFI";  // 32-bit
+            std::string candidate3 = espDriveLetter + "\\EFI\\boot\\bootx64.efi";  // Alternative case
             if (GetFileAttributesA(candidate3.c_str()) != INVALID_FILE_ATTRIBUTES) {
                 efiBootFile = candidate3;
             } else {
-                std::string candidate4 = espDriveLetter + "\\EFI\\boot\\bootia32.efi";  // 32-bit alternative case
+                std::string candidate4 = espDriveLetter + "\\EFI\\boot\\BOOTIA32.EFI";  // 32-bit
                 if (GetFileAttributesA(candidate4.c_str()) != INVALID_FILE_ATTRIBUTES) {
                     efiBootFile = candidate4;
                 } else {
-                    // Fallback to Microsoft Boot files
-                    std::string candidate5 = espDriveLetter + "\\EFI\\Microsoft\\Boot\\bootmgr.efi";  // Windows bootmgr
+                    std::string candidate5 = espDriveLetter + "\\EFI\\boot\\bootia32.efi";  // 32-bit alternative case
                     if (GetFileAttributesA(candidate5.c_str()) != INVALID_FILE_ATTRIBUTES) {
                         efiBootFile = candidate5;
                     } else {
-                        std::string candidate6 = espDriveLetter + "\\EFI\\Microsoft\\Boot\\bootmgfw.efi";  // Windows bootmgfw
+                        // Fallback to Microsoft Boot files
+                        std::string candidate6 = espDriveLetter + "\\EFI\\Microsoft\\Boot\\bootmgr.efi";  // Windows bootmgr
                         if (GetFileAttributesA(candidate6.c_str()) != INVALID_FILE_ATTRIBUTES) {
                             efiBootFile = candidate6;
                         } else {
-                            // Last resort: system files
-                            std::string candidate7 = espDriveLetter + "\\EFI\\microsoft\\boot\\bootmgfw.efi";
+                            std::string candidate7 = espDriveLetter + "\\EFI\\Microsoft\\Boot\\bootmgfw.efi";  // Windows bootmgfw
                             if (GetFileAttributesA(candidate7.c_str()) != INVALID_FILE_ATTRIBUTES) {
                                 efiBootFile = candidate7;
                             } else {
-                                return "Archivo EFI boot no encontrado en ESP";
+                                // Last resort: system files
+                                std::string candidate8 = espDriveLetter + "\\EFI\\microsoft\\boot\\bootmgfw.efi";
+                                if (GetFileAttributesA(candidate8.c_str()) != INVALID_FILE_ATTRIBUTES) {
+                                    efiBootFile = candidate8;
+                                } else {
+                                    return "Archivo EFI boot no encontrado en ESP";
+                                }
                             }
                         }
                     }
