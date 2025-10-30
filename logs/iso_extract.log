@@ -1,10 +1,2 @@
-[2025-10-30 06:05:37] Extracting EFI directory to ESP
-[2025-10-30 06:05:38] EFI file is valid: Y:\EFI\boot\bootx64.efi (machine=0x8664)
-[2025-10-30 06:05:38] EFI file is valid: Y:\EFI\BOOT\BOOTX64.EFI (machine=0x8664)
-[2025-10-30 06:05:38] Extracting additional boot files from boot.wim
-[2025-10-30 06:05:40] Mount command: cmd /c dism /Mount-Wim /WimFile:"E:\sources\boot.wim" /index:1 /MountDir:"C:\Users\vboxuser\AppData\Local\Temp\EasyISOBoot_WimMount" /ReadOnly
-[2025-10-30 06:06:31] Mount WIM successful
-[2025-10-30 06:06:31] Instalado: Windows\Boot\EFI\bootmgfw.efi to Y:\EFI\Microsoft\Boot\bootmgfw.efi (machine=0x8664)
-[2025-10-30 06:06:31] Unmount command: cmd /c dism /Unmount-Wim /MountDir:"C:\Users\vboxuser\AppData\Local\Temp\EasyISOBoot_WimMount" /discard
-[2025-10-30 06:06:47] Unmount WIM successful
-[2025-10-30 06:06:47] Boot file check: Y:\EFI\BOOT\BOOTX64.EFI - EXISTS
+[2025-10-30 08:56:24] Extracting EFI directory to ESP
+[2025-10-30 08:56:24] EFI directory not found at alternative path either

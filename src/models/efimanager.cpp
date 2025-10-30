@@ -67,9 +67,9 @@ bool EFIManager::extractEFI(const std::string& sourcePath, const std::string& es
         copyBootmgrForNonWindows(sourcePath, espPath);
     }
 
-    // If boot.wim exists and this is a Windows ISO, extract additional boot files from it
+    // For Windows ISOs, ensure we have a Secure Boot compatible bootloader
     if (isWindowsISO) {
-        extractBootFilesFromWIM(sourcePath, espPath, copiedSoFar, isoSize);
+        ensureSecureBootCompatibleBootloader(espPath);
     }
 
     // Check if bootx64.efi or bootia32.efi was copied to ESP
@@ -114,9 +114,7 @@ bool EFIManager::extractBootFilesFromWIM(const std::string& sourcePath, const st
                     // Extract EFI files to ESP
                     std::vector<std::pair<std::string, std::string>> efiFiles = {
                         {"Windows\\Boot\\EFI\\bootmgfw.efi", espPath + "EFI\\Microsoft\\Boot\\bootmgfw.efi"},
-                        {"Windows\\Boot\\EFI\\bootmgr.efi", espPath + "EFI\\Microsoft\\Boot\\bootmgr.efi"},
-                        // Note: Other files like bootx64.efi, BCD, memtest.efi may not exist in boot.wim
-                        // and are not essential for EFI booting
+                        // bootmgr.efi is for BIOS boot, not needed for EFI
                     };
 
                     for (auto& filePair : efiFiles) {
@@ -449,10 +447,39 @@ bool EFIManager::isDirectoryEmpty(const std::string& dirPath) {
     return isEmpty;
 }
 
-// Need to implement copyDirectoryWithProgress, but it's in ISOCopyManager, so perhaps move to FileCopyManager
-// For now, assume it's available or implement here
-// bool EFIManager::copyDirectoryWithProgress(const std::string& source, const std::string& dest, long long& copiedSoFar, long long totalSize, const std::set<std::string>& excludeDirs) {
-//     // Simplified implementation, assuming FileCopyManager has it
-//     // For now, return true
-//     return true;
-// }
+bool EFIManager::ensureSecureBootCompatibleBootloader(const std::string& espPath)
+{
+    std::string logDir = Utils::getExeDirectory() + "logs";
+    std::ofstream logFile(logDir + "\\iso_extract.log", std::ios::app);
+
+    logFile << getTimestamp() << "Ensuring Secure Boot compatible bootloader..." << std::endl;
+
+    // Use system's Secure Boot signed bootmgfw.efi for EFI booting
+    std::string systemBootmgfw = "C:\\Windows\\Boot\\EFI\\bootmgfw.efi";
+    std::string destBootmgfw = espPath + "EFI\\Microsoft\\Boot\\bootmgfw.efi";
+
+    DWORD sysAttrs = GetFileAttributesA(systemBootmgfw.c_str());
+    logFile << getTimestamp() << "System bootmgfw.efi exists: " << (sysAttrs != INVALID_FILE_ATTRIBUTES ? "YES" : "NO") << std::endl;
+
+    if (sysAttrs != INVALID_FILE_ATTRIBUTES) {
+        // Ensure destination directory exists
+        std::string destDir = espPath + "EFI\\Microsoft\\Boot";
+        CreateDirectoryA(destDir.c_str(), NULL);
+
+        // Check if destination already exists
+        DWORD destAttrs = GetFileAttributesA(destBootmgfw.c_str());
+        logFile << getTimestamp() << "Destination bootmgfw.efi exists: " << (destAttrs != INVALID_FILE_ATTRIBUTES ? "YES" : "NO") << std::endl;
+
+        // Copy system bootmgfw.efi to ESP
+        if (copyFileUtf8(systemBootmgfw, destBootmgfw)) {
+            uint16_t machine = getPEMachine(destBootmgfw);
+            logFile << getTimestamp() << "Copied Secure Boot compatible bootmgfw.efi to ESP (machine=0x" << std::hex << machine << std::dec << ")" << std::endl;
+            return true;
+        } else {
+            logFile << getTimestamp() << "Failed to copy system bootmgfw.efi to ESP, error: " << GetLastError() << std::endl;
+        }
+    } else {
+        logFile << getTimestamp() << "System bootmgfw.efi not found" << std::endl;
+    }
+    return false;
+}

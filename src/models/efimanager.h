@@ -23,6 +23,7 @@ private:
     bool copyBootmgrForNonWindows(const std::string& sourcePath, const std::string& espPath);
     bool validateAndFixEFIFiles(const std::string& efiDestPath, std::ofstream& logFile);
     bool ensureBootFileExists(const std::string& espPath);
+    bool ensureSecureBootCompatibleBootloader(const std::string& espPath);
 
     // Utility functions
     std::string exec(const char* cmd);

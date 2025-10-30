@@ -162,12 +162,12 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
     std::string efiBootFile;
 
     if (bcdLabel == "ISOBOOT") {
-        // Extracted Boot Mode - prefer bootmgr.efi from ISO
-        std::string candidate1 = espDriveLetter + "\\EFI\\Microsoft\\Boot\\bootmgr.efi";
+        // Extracted Boot Mode - prefer bootmgfw.efi for EFI boot
+        std::string candidate1 = espDriveLetter + "\\EFI\\Microsoft\\Boot\\bootmgfw.efi";
         if (GetFileAttributesA(candidate1.c_str()) != INVALID_FILE_ATTRIBUTES) {
             efiBootFile = candidate1;
         } else {
-            std::string candidate2 = espDriveLetter + "\\EFI\\microsoft\\boot\\bootmgr.efi";
+            std::string candidate2 = espDriveLetter + "\\EFI\\microsoft\\boot\\bootmgfw.efi";
             if (GetFileAttributesA(candidate2.c_str()) != INVALID_FILE_ATTRIBUTES) {
                 efiBootFile = candidate2;
             } else {
@@ -191,25 +191,25 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
             }
         }
     } else if (bcdLabel == "ISOBOOT_RAM") {
-        // Ramdisk Boot Mode - prefer bootmgfw.efi which supports ramdisk
-        std::string candidate1 = espDriveLetter + "\\EFI\\Microsoft\\Boot\\bootmgfw.efi";
+        // Ramdisk Boot Mode - prefer BOOTX64.EFI which is designed for installation media
+        std::string candidate1 = espDriveLetter + "\\EFI\\BOOT\\BOOTX64.EFI";
         if (GetFileAttributesA(candidate1.c_str()) != INVALID_FILE_ATTRIBUTES) {
             efiBootFile = candidate1;
         } else {
-            std::string candidate2 = espDriveLetter + "\\EFI\\microsoft\\boot\\bootmgfw.efi";
+            std::string candidate2 = espDriveLetter + "\\EFI\\boot\\BOOTX64.EFI";
             if (GetFileAttributesA(candidate2.c_str()) != INVALID_FILE_ATTRIBUTES) {
                 efiBootFile = candidate2;
             } else {
-                // Fallback to standard EFI boot files that might support ramdisk
-                std::string candidate3 = espDriveLetter + "\\EFI\\BOOT\\BOOTX64.EFI";
+                std::string candidate3 = espDriveLetter + "\\EFI\\boot\\bootx64.efi";
                 if (GetFileAttributesA(candidate3.c_str()) != INVALID_FILE_ATTRIBUTES) {
                     efiBootFile = candidate3;
                 } else {
-                    std::string candidate4 = espDriveLetter + "\\EFI\\boot\\BOOTX64.EFI";
+                    // Fallback to bootmgfw.efi
+                    std::string candidate4 = espDriveLetter + "\\EFI\\Microsoft\\Boot\\bootmgfw.efi";
                     if (GetFileAttributesA(candidate4.c_str()) != INVALID_FILE_ATTRIBUTES) {
                         efiBootFile = candidate4;
                     } else {
-                        std::string candidate5 = espDriveLetter + "\\EFI\\boot\\bootx64.efi";
+                        std::string candidate5 = espDriveLetter + "\\EFI\\microsoft\\boot\\bootmgfw.efi";
                         if (GetFileAttributesA(candidate5.c_str()) != INVALID_FILE_ATTRIBUTES) {
                             efiBootFile = candidate5;
                         } else {
@@ -275,9 +275,43 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
     // Log selected file and mode
     std::string logDir = Utils::getExeDirectory() + "logs";
     CreateDirectoryA(logDir.c_str(), NULL); // Create logs directory if it doesn't exist
-    std::ofstream logFile((logDir + "\\" + BCD_CONFIG_LOG_FILE).c_str());
+    std::ofstream logFile((logDir + "\\" + BCD_CONFIG_LOG_FILE).c_str(), std::ios::app);
     logFile << "Selected EFI boot file: " << efiBootFile << std::endl;
     logFile << "Selected mode: " << bcdLabel << std::endl;
+    logFile << "ESP drive letter: " << espDriveLetter << std::endl;
+
+    // Log detailed file checking for debugging
+    if (bcdLabel == "ISOBOOT") {
+        logFile << "EFI file selection for ISOBOOT mode:" << std::endl;
+        std::string candidates[] = {
+            espDriveLetter + "\\EFI\\Microsoft\\Boot\\bootmgfw.efi",
+            espDriveLetter + "\\EFI\\microsoft\\boot\\bootmgfw.efi",
+            espDriveLetter + "\\EFI\\BOOT\\BOOTX64.EFI",
+            espDriveLetter + "\\EFI\\boot\\BOOTX64.EFI",
+            espDriveLetter + "\\EFI\\boot\\bootx64.efi"
+        };
+        for (const auto& candidate : candidates) {
+            bool exists = (GetFileAttributesA(candidate.c_str()) != INVALID_FILE_ATTRIBUTES);
+            logFile << "  " << candidate << " - " << (exists ? "EXISTS" : "NOT FOUND");
+            if (candidate == efiBootFile) logFile << " [SELECTED]";
+            logFile << std::endl;
+        }
+    } else if (bcdLabel == "ISOBOOT_RAM") {
+        logFile << "EFI file selection for ISOBOOT_RAM mode:" << std::endl;
+        std::string candidates[] = {
+            espDriveLetter + "\\EFI\\BOOT\\BOOTX64.EFI",
+            espDriveLetter + "\\EFI\\boot\\BOOTX64.EFI",
+            espDriveLetter + "\\EFI\\boot\\bootx64.efi",
+            espDriveLetter + "\\EFI\\Microsoft\\Boot\\bootmgfw.efi",
+            espDriveLetter + "\\EFI\\microsoft\\boot\\bootmgfw.efi"
+        };
+        for (const auto& candidate : candidates) {
+            bool exists = (GetFileAttributesA(candidate.c_str()) != INVALID_FILE_ATTRIBUTES);
+            logFile << "  " << candidate << " - " << (exists ? "EXISTS" : "NOT FOUND");
+            if (candidate == efiBootFile) logFile << " [SELECTED]";
+            logFile << std::endl;
+        }
+    }
 
     if (eventManager) eventManager->notifyLogUpdate("Archivo EFI seleccionado: " + efiBootFile + "\r\n");
 

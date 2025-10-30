@@ -29,11 +29,27 @@ public:
         std::string logFilePath = logDir + "\\" + BCD_CONFIG_LOG_FILE;
         std::ofstream logFile(logFilePath.c_str(), std::ios::app);
         if (logFile) {
-            logFile << "Executing: " << cmd1 << std::endl;
-            logFile << "Executing: " << cmd2 << std::endl;
-            logFile << "Executing: " << cmd3 << std::endl;
-            logFile << "Executing: " << cmdRamdiskSdiDevice << std::endl;
-            logFile << "Executing: " << cmdRamdiskSdiPath << std::endl;
+            logFile << "Executing BCD commands for RamdiskBootStrategy:" << std::endl;
+            logFile << "  " << cmd1 << std::endl;
+            std::string result1 = Utils::exec(cmd1.c_str());
+            logFile << "  Result: " << (result1.find("error") != std::string::npos ? "ERROR: " : "OK") << result1 << std::endl;
+
+            logFile << "  " << cmd2 << std::endl;
+            std::string result2 = Utils::exec(cmd2.c_str());
+            logFile << "  Result: " << (result2.find("error") != std::string::npos ? "ERROR: " : "OK") << result2 << std::endl;
+
+            logFile << "  " << cmd3 << std::endl;
+            std::string result3 = Utils::exec(cmd3.c_str());
+            logFile << "  Result: " << (result3.find("error") != std::string::npos ? "ERROR: " : "OK") << result3 << std::endl;
+
+            logFile << "  " << cmdRamdiskSdiDevice << std::endl;
+            std::string result4 = Utils::exec(cmdRamdiskSdiDevice.c_str());
+            logFile << "  Result: " << (result4.find("error") != std::string::npos ? "ERROR: " : "OK") << result4 << std::endl;
+
+            logFile << "  " << cmdRamdiskSdiPath << std::endl;
+            std::string result5 = Utils::exec(cmdRamdiskSdiPath.c_str());
+            logFile << "  Result: " << (result5.find("error") != std::string::npos ? "ERROR: " : "OK") << result5 << std::endl;
+
             logFile.close();
         }
 
