@@ -461,6 +461,8 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
         eventManager.notifyLogUpdate("ISO no-Windows detectado.\r\n");
     }
     
+    this->isWindowsISO = isWindowsISO;
+    
     if (extractContent) {
         // Extract all ISO contents to data partition, excluding EFI
         std::set<std::string> excludeDirs = {"efi", "EFI"};

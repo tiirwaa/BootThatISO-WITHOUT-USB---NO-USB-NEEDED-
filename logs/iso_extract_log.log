@@ -1,35 +1,34 @@
-[2025-10-29 19:24:37] Starting ISO extraction from: C:\Users\vboxuser\Desktop\Windows10_22H2_X64.iso
-[2025-10-29 19:24:37] Destination (data): Z:\
-[2025-10-29 19:24:37] ESP path: Y:\
-[2025-10-29 19:24:37] Extract content: Yes
-[2025-10-29 19:24:37] Mount command: powershell -Command "$iso = Mount-DiskImage -ImagePath 'C:\Users\vboxuser\Desktop\Windows10_22H2_X64.iso' -PassThru; $volume = Get-DiskImage -ImagePath 'C:\Users\vboxuser\Desktop\Windows10_22H2_X64.iso' | Get-Volume; if ($volume) { $volume.DriveLetter } else { 'FAILED' }"
-[2025-10-29 19:24:43] Mount successful
-[2025-10-29 19:24:43] Source path: E:\
-[2025-10-29 19:24:43] Waiting 5 seconds for drive to be ready
-[2025-10-29 19:24:51] Drive ready, proceeding with analysis
-[2025-10-29 19:24:51] Is Windows ISO: Yes
-[2025-10-29 19:26:03] Extracting EFI directory to ESP
-[2025-10-29 19:26:05] Validating copied EFI files
-[2025-10-29 19:26:05] EFI file is valid: Y:\EFI\boot\bootx64.efi (machine=0x8664)
-[2025-10-29 19:26:05] EFI file is valid: Y:\EFI\BOOT\BOOTX64.EFI (machine=0x8664)
-[2025-10-29 19:26:05] Copied bootmgr.efi to ESP
-[2025-10-29 19:26:05] Extracting additional boot files from boot.wim
-[2025-10-29 19:26:06] Mount command: cmd /c dism /Mount-Wim /WimFile:"E:\sources\boot.wim" /index:1 /MountDir:"C:\Users\vboxuser\AppData\Local\Temp\EasyISOBoot_WimMount" /ReadOnly
-[2025-10-29 19:26:06] Mount WIM failed
-[2025-10-29 19:26:06] DISM output: 
-Deployment Image Servicing and Management tool
-Version: 10.0.19041.3636
-
-
-Error: 0xc1420114
-
-The user attempted to mount to a directory that is not empty.  This is not supported.
-
-The DISM log file can be found at C:\Windows\Logs\DISM\dism.log
-
-[2025-10-29 19:26:06] Failed to mount boot.wim
-[2025-10-29 19:26:06] Boot file check: Y:\EFI\BOOT\BOOTX64.EFI - EXISTS
-[2025-10-29 19:26:06] Dismount command: powershell -Command "Dismount-DiskImage -ImagePath 'C:\Users\vboxuser\Desktop\Windows10_22H2_X64.iso'"
-[2025-10-29 19:26:13] Dismount ISO completed
-[2025-10-29 19:26:13] EFI extraction SUCCESS
-[2025-10-29 19:26:13] Content extraction completed.
+[2025-10-30 05:10:01] Starting ISO extraction from: C:\Users\vboxuser\Desktop\Windows10_22H2_X64.iso
+[2025-10-30 05:10:01] Destination (data): Z:\
+[2025-10-30 05:10:01] ESP path: Y:\
+[2025-10-30 05:10:01] Extract content: Yes
+[2025-10-30 05:10:01] Mount command: powershell -Command "$iso = Mount-DiskImage -ImagePath 'C:\Users\vboxuser\Desktop\Windows10_22H2_X64.iso' -PassThru; $volume = Get-DiskImage -ImagePath 'C:\Users\vboxuser\Desktop\Windows10_22H2_X64.iso' | Get-Volume; if ($volume) { $volume.DriveLetter } else { 'FAILED' }"
+[2025-10-30 05:10:03] Mount successful
+[2025-10-30 05:10:03] Source path: F:\
+[2025-10-30 05:10:03] Waiting 5 seconds for drive to be ready
+[2025-10-30 05:10:07] Drive ready, proceeding with analysis
+[2025-10-30 05:10:07] Is Windows ISO: Yes
+[2025-10-30 05:10:34] Extracting EFI directory to ESP
+[2025-10-30 05:10:35] Validating copied EFI files
+[2025-10-30 05:10:35] EFI file is valid: Y:\EFI\boot\bootx64.efi (machine=0x8664)
+[2025-10-30 05:10:35] EFI file is valid: Y:\EFI\BOOT\BOOTX64.EFI (machine=0x8664)
+[2025-10-30 05:10:35] Copied bootmgr.efi to ESP
+[2025-10-30 05:10:35] Extracting additional boot files from boot.wim
+[2025-10-30 05:10:38] Temp directory cleaned successfully
+[2025-10-30 05:10:38] Mount command: cmd /c dism /Mount-Wim /WimFile:"F:\sources\boot.wim" /index:1 /MountDir:"C:\Users\vboxuser\AppData\Local\Temp\EasyISOBoot_WimMount" /ReadOnly
+[2025-10-30 05:11:14] Mount WIM successful
+[2025-10-30 05:11:14] Failed to extract: Windows\Boot\EFI\bootx64.efi error: 2
+[2025-10-30 05:11:14] Instalado: Windows\Boot\EFI\bootmgfw.efi to Y:\EFI\Microsoft\Boot\bootmgfw.efi (machine=0x8664)
+[2025-10-30 05:11:14] Failed to extract: Windows\Boot\EFI\bootmgr.efi error: 5
+[2025-10-30 05:11:14] Failed to extract: Windows\Boot\BCD error: 2
+[2025-10-30 05:11:14] Failed to extract: Windows\System32\memtest.efi error: 2
+[2025-10-30 05:11:14] Failed to extract: Boot\BCD error: 3
+[2025-10-30 05:11:14] Failed to extract: Boot\boot.sdi error: 3
+[2025-10-30 05:11:14] Failed to extract: Windows\Boot\EFI\bootmgfw.efi error: 5
+[2025-10-30 05:11:14] Unmount command: cmd /c dism /Unmount-Wim /MountDir:"C:\Users\vboxuser\AppData\Local\Temp\EasyISOBoot_WimMount" /discard
+[2025-10-30 05:11:28] Unmount WIM successful
+[2025-10-30 05:11:28] Boot file check: Y:\EFI\BOOT\BOOTX64.EFI - EXISTS
+[2025-10-30 05:11:28] Dismount command: powershell -Command "Dismount-DiskImage -ImagePath 'C:\Users\vboxuser\Desktop\Windows10_22H2_X64.iso'"
+[2025-10-30 05:11:32] Dismount ISO completed
+[2025-10-30 05:11:32] EFI extraction SUCCESS
+[2025-10-30 05:11:32] Content extraction completed.
