@@ -940,6 +940,19 @@ bool PartitionManager::recoverSpace()
 {
     if (eventManager) eventManager->notifyLogUpdate("Iniciando recuperación de espacio...\r\n");
 
+    STARTUPINFOA si = { sizeof(si) };
+    PROCESS_INFORMATION pi;
+    SECURITY_ATTRIBUTES sa;
+    sa.nLength = sizeof(sa);
+    sa.lpSecurityDescriptor = NULL;
+    sa.bInheritHandle = TRUE;
+    HANDLE hRead, hWrite;
+    std::string output;
+    char buffer[1024];
+    DWORD bytesRead;
+    DWORD exitCode;
+    std::string cmd;
+
     // First, find volumes with VOLUME_LABEL and EFI_VOLUME_LABEL
     char tempPath[MAX_PATH];
     GetTempPathA(MAX_PATH, tempPath);
@@ -954,14 +967,6 @@ bool PartitionManager::recoverSpace()
     scriptFile << "exit\n";
     scriptFile.close();
 
-    STARTUPINFOA si = { sizeof(si) };
-    PROCESS_INFORMATION pi;
-    SECURITY_ATTRIBUTES sa;
-    sa.nLength = sizeof(sa);
-    sa.lpSecurityDescriptor = NULL;
-    sa.bInheritHandle = TRUE;
-
-    HANDLE hRead, hWrite;
     if (!CreatePipe(&hRead, &hWrite, &sa, 0)) {
         DeleteFileA(tempFile);
         return false;
@@ -972,7 +977,7 @@ bool PartitionManager::recoverSpace()
     si.hStdError = hWrite;
     si.wShowWindow = SW_HIDE;
 
-    std::string cmd = "diskpart /s " + std::string(tempFile);
+    cmd = "diskpart /s " + std::string(tempFile);
     if (!CreateProcessA(NULL, const_cast<char*>(cmd.c_str()), NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi)) {
         CloseHandle(hRead);
         CloseHandle(hWrite);
@@ -982,9 +987,7 @@ bool PartitionManager::recoverSpace()
 
     CloseHandle(hWrite);
 
-    std::string output;
-    char buffer[1024];
-    DWORD bytesRead;
+    output = "";
     while (ReadFile(hRead, buffer, sizeof(buffer) - 1, &bytesRead, NULL) && bytesRead > 0) {
         buffer[bytesRead] = '\0';
         output += buffer;
@@ -994,7 +997,6 @@ bool PartitionManager::recoverSpace()
 
     WaitForSingleObject(pi.hProcess, 30000);
 
-    DWORD exitCode;
     GetExitCodeProcess(pi.hProcess, &exitCode);
 
     CloseHandle(pi.hProcess);
@@ -1052,30 +1054,61 @@ bool PartitionManager::recoverSpace()
     scriptFile << "select disk 0\n";
     if (dataVol != -1) {
         scriptFile << "select volume " << dataVol << "\n";
+        scriptFile << "remove letter\n";
         scriptFile << "delete volume\n";
     }
     if (efiVol != -1) {
         scriptFile << "select volume " << efiVol << "\n";
+        scriptFile << "remove letter\n";
         scriptFile << "delete volume\n";
     }
-    scriptFile << "select partition 1\n"; // Assume C: is partition 1
+    scriptFile << "select partition 3\n"; // Assume C: is partition 3 in typical GPT layout
     scriptFile << "extend\n";
     scriptFile << "exit\n";
     scriptFile.close();
 
-    si.dwFlags = STARTF_USESHOWWINDOW;
-    si.wShowWindow = SW_HIDE;
-    si.hStdOutput = NULL;
-    si.hStdError = NULL;
+    // Log the script content for debugging
+    std::string logDir = Utils::getExeDirectory() + "logs";
+    CreateDirectoryA(logDir.c_str(), NULL);
+    std::ofstream logScriptFile((logDir + "\\recover_script_log.txt").c_str());
+    if (logScriptFile) {
+        std::ifstream readScript(tempFile);
+        std::string scriptContent((std::istreambuf_iterator<char>(readScript)), std::istreambuf_iterator<char>());
+        logScriptFile << scriptContent;
+        logScriptFile.close();
+    }
+    if (eventManager) eventManager->notifyLogUpdate("Script de recuperación creado.\r\n");
 
-    cmd = "diskpart /s " + std::string(tempFile);
-    if (!CreateProcessA(NULL, const_cast<char*>(cmd.c_str()), NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
+    // Execute the script with output capture
+    if (!CreatePipe(&hRead, &hWrite, &sa, 0)) {
+        DeleteFileA(tempFile);
+        if (eventManager) eventManager->notifyLogUpdate("Error: No se pudo crear pipe para recuperación.\r\n");
+        return false;
+    }
+
+    si.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
+    si.hStdOutput = hWrite;
+    si.hStdError = hWrite;
+    si.wShowWindow = SW_HIDE;
+
+    cmd = "diskpart /s \"" + std::string(tempFile) + "\"";
+    if (!CreateProcessA(NULL, const_cast<char*>(cmd.c_str()), NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi)) {
+        CloseHandle(hRead);
+        CloseHandle(hWrite);
         DeleteFileA(tempFile);
         if (eventManager) eventManager->notifyLogUpdate("Error: No se pudo ejecutar diskpart para recuperación.\r\n");
         return false;
     }
 
-    if (eventManager) eventManager->notifyLogUpdate("Ejecutando recuperación de espacio...\r\n");
+    CloseHandle(hWrite);
+
+    output = "";
+    while (ReadFile(hRead, buffer, sizeof(buffer) - 1, &bytesRead, NULL) && bytesRead > 0) {
+        buffer[bytesRead] = '\0';
+        output += buffer;
+    }
+
+    CloseHandle(hRead);
 
     WaitForSingleObject(pi.hProcess, 300000); // 5 minutes
 
@@ -1085,6 +1118,14 @@ bool PartitionManager::recoverSpace()
     CloseHandle(pi.hThread);
 
     DeleteFileA(tempFile);
+
+    // Log the output
+    std::ofstream logFile((logDir + "\\recover_log.txt").c_str());
+    if (logFile) {
+        logFile << "Recover script exit code: " << exitCode << "\n";
+        logFile << "Output:\n" << Utils::ansi_to_utf8(output) << "\n";
+        logFile.close();
+    }
 
     if (exitCode == 0) {
         if (eventManager) eventManager->notifyLogUpdate("Espacio recuperado exitosamente.\r\n");
