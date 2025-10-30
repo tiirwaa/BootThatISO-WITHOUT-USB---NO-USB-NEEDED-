@@ -110,7 +110,13 @@ void ProcessController::processInThread(const std::string& isoPath, const std::s
     // Copiar ISO
     if (copyISO(isoPath, partitionDrive, espDrive, selectedBootMode)) {
         eventManager.notifyLogUpdate("Contenido del ISO copiado. Configurando BCD...\r\n");
-        configureBCD(partitionDrive, espDrive, selectedBootMode);
+        // Only configure BCD for Windows ISOs; non-Windows EFI boot directly from ESP
+        if (ISOCopyManager::getInstance().isWindowsISO) {
+            configureBCD(partitionDrive, espDrive, selectedBootMode);
+        } else {
+            eventManager.notifyLogUpdate("ISO no-Windows detectado: omitiendo configuración BCD, usando arranque EFI directo desde ESP.\r\n");
+            eventManager.notifyProgressUpdate(100);
+        }
         eventManager.notifyLogUpdate("Proceso completado exitosamente.\r\n");
         eventManager.notifyProgressUpdate(100);
         eventManager.notifyAskRestart();
