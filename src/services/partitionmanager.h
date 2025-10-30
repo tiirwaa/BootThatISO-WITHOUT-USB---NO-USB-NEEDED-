@@ -3,6 +3,7 @@
 
 #include <string>
 #include "../models/SpaceValidationResult.h"
+#include "../models/EventManager.h"
 
 class PartitionManager
 {
@@ -12,8 +13,12 @@ private:
     PartitionManager(const PartitionManager&) = delete;
     PartitionManager& operator=(const PartitionManager&) = delete;
 
+    EventManager* eventManager;
+
 public:
     static PartitionManager& getInstance();
+
+    void setEventManager(EventManager* em) { eventManager = em; }
 
     SpaceValidationResult validateAvailableSpace();
     long long getAvailableSpaceGB();

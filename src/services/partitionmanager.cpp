@@ -15,6 +15,7 @@ PartitionManager& PartitionManager::getInstance() {
 }
 
 PartitionManager::PartitionManager()
+    : eventManager(nullptr)
 {
 }
 
@@ -50,6 +51,8 @@ long long PartitionManager::getAvailableSpaceGB()
 
 bool PartitionManager::createPartition(const std::string& format)
 {
+    if (eventManager) eventManager->notifyLogUpdate("Creando script de diskpart para particiones...\r\n");
+
     // Create a temporary script file for diskpart
     char tempPath[MAX_PATH];
     GetTempPathA(MAX_PATH, tempPath);
@@ -58,6 +61,7 @@ bool PartitionManager::createPartition(const std::string& format)
 
     std::ofstream scriptFile(tempFile);
     if (!scriptFile) {
+        if (eventManager) eventManager->notifyLogUpdate("Error: No se pudo crear el archivo de script de diskpart.\r\n");
         return false;
     }
 
@@ -79,6 +83,8 @@ bool PartitionManager::createPartition(const std::string& format)
     scriptFile << "format fs=" << fsFormat << " quick label=\"" << VOLUME_LABEL << "\"\n";
     scriptFile << "exit\n";
     scriptFile.close();
+
+    if (eventManager) eventManager->notifyLogUpdate("Ejecutando diskpart para crear particiones...\r\n");
 
     // Execute diskpart with the script and capture output
     STARTUPINFOA si = { sizeof(si) };
@@ -135,6 +141,14 @@ bool PartitionManager::createPartition(const std::string& format)
     // Refresh volume information
     system("mountvol /r >nul 2>&1");
 
+    if (eventManager) {
+        if (exitCode == 0) {
+            eventManager->notifyLogUpdate("Diskpart ejecutado exitosamente. Verificando particiones...\r\n");
+        } else {
+            eventManager->notifyLogUpdate("Error: Diskpart falló con código de salida " + std::to_string(exitCode) + ".\r\n");
+        }
+    }
+
     // Quick check if partition is now detectable
     bool partitionFound = false;
     char volNameCheck[MAX_PATH];
@@ -183,7 +197,13 @@ bool PartitionManager::createPartition(const std::string& format)
 
     DeleteFileA(tempFile);
 
-    return exitCode == 0;
+    if (exitCode == 0) {
+        if (eventManager) eventManager->notifyLogUpdate("Particiones creadas exitosamente.\r\n");
+        return true;
+    } else {
+        if (eventManager) eventManager->notifyLogUpdate("Error: Falló la creación de particiones.\r\n");
+        return false;
+    }
 }
 
 bool PartitionManager::partitionExists()
@@ -532,6 +552,8 @@ std::string PartitionManager::getPartitionFileSystem()
 
 bool PartitionManager::reformatPartition(const std::string& format)
 {
+    if (eventManager) eventManager->notifyLogUpdate("Iniciando reformateo de partición...\r\n");
+
     std::string fsFormat;
     if (format == "EXFAT") {
         fsFormat = "exfat";
@@ -540,6 +562,8 @@ bool PartitionManager::reformatPartition(const std::string& format)
     } else {
         fsFormat = "fat32";
     }
+
+    if (eventManager) eventManager->notifyLogUpdate("Buscando volumen para reformatear...\r\n");
 
     // First, find the volume number by running diskpart list volume
     char tempPath[MAX_PATH];
@@ -663,7 +687,12 @@ bool PartitionManager::reformatPartition(const std::string& format)
         logFile.close();
     }
 
-    if (volumeNumber == -1) return false;
+    if (volumeNumber == -1) {
+        if (eventManager) eventManager->notifyLogUpdate("Error: No se encontró el volumen con etiqueta " + std::string(VOLUME_LABEL) + ".\r\n");
+        return false;
+    }
+
+    if (eventManager) eventManager->notifyLogUpdate("Volumen encontrado (número " + std::to_string(volumeNumber) + "). Creando script de formateo...\r\n");
 
     // Now, create script to select and format
     GetTempFileNameA(tempPath, "format", 0, tempFile);
@@ -682,8 +711,11 @@ bool PartitionManager::reformatPartition(const std::string& format)
     cmd = "diskpart /s " + std::string(tempFile);
     if (!CreateProcessA(NULL, const_cast<char*>(cmd.c_str()), NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
         DeleteFileA(tempFile);
+        if (eventManager) eventManager->notifyLogUpdate("Error: No se pudo ejecutar diskpart para formateo.\r\n");
         return false;
     }
+
+    if (eventManager) eventManager->notifyLogUpdate("Ejecutando formateo de partición...\r\n");
 
     WaitForSingleObject(pi.hProcess, 300000); // 5 minutes
 
@@ -706,5 +738,11 @@ bool PartitionManager::reformatPartition(const std::string& format)
         logFile2.close();
     }
 
-    return exitCode == 0;
+    if (exitCode == 0) {
+        if (eventManager) eventManager->notifyLogUpdate("Partición reformateada exitosamente.\r\n");
+        return true;
+    } else {
+        if (eventManager) eventManager->notifyLogUpdate("Error: Falló el formateo de la partición (código " + std::to_string(exitCode) + ").\r\n");
+        return false;
+    }
 }

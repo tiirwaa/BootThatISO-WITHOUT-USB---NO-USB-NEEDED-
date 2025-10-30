@@ -5,8 +5,10 @@ ProcessController::ProcessController(EventManager& eventManager)
     : eventManager(eventManager), workerThread(nullptr)
 {
     partitionManager = &PartitionManager::getInstance();
+    partitionManager->setEventManager(&eventManager);
     isoCopyManager = &ISOCopyManager::getInstance();
     bcdManager = &BCDManager::getInstance();
+    bcdManager->setEventManager(&eventManager);
 }
 
 ProcessController::~ProcessController()

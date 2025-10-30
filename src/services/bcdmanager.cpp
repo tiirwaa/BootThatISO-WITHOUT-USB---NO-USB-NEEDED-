@@ -16,6 +16,7 @@ BCDManager& BCDManager::getInstance() {
 }
 
 BCDManager::BCDManager()
+    : eventManager(nullptr)
 {
 }
 
@@ -75,6 +76,8 @@ WORD BCDManager::GetMachineType(const std::string& filePath) {
 
 std::string BCDManager::configureBCD(const std::string& driveLetter, const std::string& espDriveLetter, BootStrategy& strategy)
 {
+    if (eventManager) eventManager->notifyLogUpdate("Configurando Boot Configuration Data (BCD)...\r\n");
+
     // Get volume GUID for data partition
     WCHAR dataVolumeName[MAX_PATH];
     std::wstring wDriveLetter = std::wstring(driveLetter.begin(), driveLetter.end()) + L"\\";
@@ -193,6 +196,7 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
 
     WORD machine = GetMachineType(efiBootFile);
     if (machine != IMAGE_FILE_MACHINE_AMD64 && machine != IMAGE_FILE_MACHINE_I386) {
+        if (eventManager) eventManager->notifyLogUpdate("Error: Arquitectura EFI no soportada.\r\n");
         return "Arquitectura EFI no soportada";
     }
 
@@ -202,6 +206,8 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
     std::ofstream logFile((logDir + "\\" + BCD_CONFIG_LOG_FILE).c_str());
     logFile << "Selected EFI boot file: " << efiBootFile << std::endl;
     logFile << "Selected mode: " << bcdLabel << std::endl;
+
+    if (eventManager) eventManager->notifyLogUpdate("Archivo EFI seleccionado: " + efiBootFile + "\r\n");
 
     // Compute the relative path for BCD
     std::string efiPath = efiBootFile.substr(espDriveLetter.length());
@@ -218,7 +224,12 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
 
     std::string cmd6 = "bcdedit /default " + guid;
     std::string result6 = Utils::exec(cmd6.c_str());
-    if (result6.find("error") != std::string::npos) return "Error al configurar default: " + cmd6;
+    if (result6.find("error") != std::string::npos) {
+        if (eventManager) eventManager->notifyLogUpdate("Error al configurar default: " + cmd6 + "\r\n");
+        return "Error al configurar default: " + cmd6;
+    }
+
+    if (eventManager) eventManager->notifyLogUpdate("BCD configurado exitosamente para arranque EFI.\r\n");
 
     logFile.close();
 

@@ -344,8 +344,11 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
     if (!mountSuccess) {
         logFile << getTimestamp() << "Failed to mount ISO" << std::endl;
         logFile.close();
+        eventManager.notifyLogUpdate("Error: Falló el montaje del ISO.\r\n");
         return false;
     }
+    
+    eventManager.notifyLogUpdate("ISO montado exitosamente en " + driveLetterStr + ":.\r\n");
     
     std::string sourcePath = driveLetterStr + ":\\";
     logFile << getTimestamp() << "Source path: " << sourcePath << std::endl;
@@ -372,6 +375,8 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
     listDirectoryRecursive(contentLog, sourcePath, 0, 10);
     contentLog.close();
     
+    eventManager.notifyLogUpdate("Analizando contenido del ISO...\r\n");
+    
     // Check if it's Windows ISO
     DWORD sourcesAttrs = GetFileAttributesA((sourcePath + "sources").c_str());
     bool hasSources = (sourcesAttrs != INVALID_FILE_ATTRIBUTES && (sourcesAttrs & FILE_ATTRIBUTE_DIRECTORY));
@@ -382,6 +387,12 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
         isWindowsISO = (installWimAttrs != INVALID_FILE_ATTRIBUTES) || (installEsdAttrs != INVALID_FILE_ATTRIBUTES);
     }
     logFile << getTimestamp() << "Is Windows ISO: " << (isWindowsISO ? "Yes" : "No") << std::endl;
+    
+    if (isWindowsISO) {
+        eventManager.notifyLogUpdate("ISO de Windows detectado.\r\n");
+    } else {
+        eventManager.notifyLogUpdate("ISO no-Windows detectado.\r\n");
+    }
     
     if (extractContent) {
         // Extract all ISO contents to data partition, excluding EFI
@@ -399,6 +410,7 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
 
     // Extract EFI directory to ESP
     logFile << getTimestamp() << "Extracting EFI directory to ESP" << std::endl;
+    eventManager.notifyLogUpdate("Extrayendo archivos EFI al ESP...\r\n");
     // Check if source EFI directory exists
     std::string efiSourcePath = sourcePath + "efi";
     DWORD efiAttrs = GetFileAttributesA(efiSourcePath.c_str());
