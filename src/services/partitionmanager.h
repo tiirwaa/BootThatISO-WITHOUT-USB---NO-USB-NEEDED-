@@ -28,6 +28,7 @@ public:
     std::string getEfiPartitionDriveLetter();
     std::string getPartitionFileSystem();
     bool reformatPartition(const std::string& format);
+    bool reformatEfiPartition();
 };
 
 #endif // PARTITIONMANAGER_H

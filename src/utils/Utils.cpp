@@ -1,5 +1,6 @@
 #include "Utils.h"
 #include <windows.h>
+#include <wincrypt.h>
 
 #include <vector>
 
@@ -89,4 +90,55 @@ std::string Utils::ansi_to_utf8(const std::string& ansi) {
     std::wstring wstr(size_needed, 0);
     MultiByteToWideChar(CP_ACP, 0, ansi.c_str(), (int)ansi.size(), &wstr[0], size_needed);
     return wstring_to_utf8(wstr);
+}
+
+std::string Utils::calculateMD5(const std::string& filePath) {
+    HCRYPTPROV hProv = 0;
+    HCRYPTHASH hHash = 0;
+    HANDLE hFile = NULL;
+    BYTE rgbHash[16];
+    DWORD cbHash = 0;
+    CHAR rgbDigits[] = "0123456789abcdef";
+    std::string hashStr;
+
+    if (!CryptAcquireContext(&hProv, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT)) {
+        return "";
+    }
+
+    if (!CryptCreateHash(hProv, CALG_MD5, 0, 0, &hHash)) {
+        CryptReleaseContext(hProv, 0);
+        return "";
+    }
+
+    hFile = CreateFileA(filePath.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (hFile == INVALID_HANDLE_VALUE) {
+        CryptDestroyHash(hHash);
+        CryptReleaseContext(hProv, 0);
+        return "";
+    }
+
+    BYTE rgbFile[1024];
+    DWORD cbRead = 0;
+    while (ReadFile(hFile, rgbFile, sizeof(rgbFile), &cbRead, NULL) && cbRead > 0) {
+        if (!CryptHashData(hHash, rgbFile, cbRead, 0)) {
+            CloseHandle(hFile);
+            CryptDestroyHash(hHash);
+            CryptReleaseContext(hProv, 0);
+            return "";
+        }
+    }
+
+    CloseHandle(hFile);
+
+    cbHash = 16;
+    if (CryptGetHashParam(hHash, HP_HASHVAL, rgbHash, &cbHash, 0)) {
+        for (DWORD i = 0; i < cbHash; i++) {
+            hashStr += rgbDigits[rgbHash[i] >> 4];
+            hashStr += rgbDigits[rgbHash[i] & 0xf];
+        }
+    }
+
+    CryptDestroyHash(hHash);
+    CryptReleaseContext(hProv, 0);
+    return hashStr;
 }

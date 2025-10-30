@@ -13,11 +13,12 @@ public:
     }
 
     void configureBCD(const std::string& guid, const std::string& dataDevice, const std::string& espDevice, const std::string& efiPath) override {
+        const std::string BCD_CMD = "C:\\Windows\\System32\\bcdedit.exe";
         // dataDevice and espDevice are expected to be drive letters like "Z:" and "Y:"
-        std::string cmd1 = "bcdedit /set " + guid + " device partition=" + espDevice;
-        std::string cmd2 = "bcdedit /set " + guid + " osdevice partition=" + dataDevice;
+        std::string cmd1 = BCD_CMD + " /set " + guid + " device partition=" + espDevice;
+        std::string cmd2 = BCD_CMD + " /set " + guid + " osdevice partition=" + dataDevice;
         // Quote the path to handle spaces or special characters
-        std::string cmd3 = "bcdedit /set " + guid + " path \"" + efiPath + "\"";
+        std::string cmd3 = BCD_CMD + " /set " + guid + " path \"" + efiPath + "\"";
 
         // Log commands for debugging
         std::string logDir = Utils::getExeDirectory() + "logs";

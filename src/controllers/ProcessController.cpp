@@ -71,7 +71,35 @@ void ProcessController::processInThread(const std::string& isoPath, const std::s
 {
     eventManager.notifyLogUpdate("Verificando estado de particiones...\r\n");
     bool partitionExists = partitionManager->partitionExists();
-    if (partitionExists) {
+
+    bool skipReformat = false;
+    bool skipCopyISO = false;
+
+    if (selectedBootMode == "Boot desde Memoria" && partitionExists) {
+        std::string dataDrive = partitionManager->getPartitionDriveLetter();
+        if (!dataDrive.empty()) {
+            // Verificar formato NTFS
+            std::string volumePath = dataDrive.substr(0, 2) + "\\";
+            char fileSystem[256];
+            DWORD serial, maxLen, flags;
+            if (GetVolumeInformationA(volumePath.c_str(), NULL, 0, &serial, &maxLen, &flags, fileSystem, sizeof(fileSystem))) {
+                if (strcmp(fileSystem, selectedFormat.c_str()) == 0) {
+                    std::string existingISO = dataDrive + "\\iso.iso";
+                    if (GetFileAttributesA(existingISO.c_str()) != INVALID_FILE_ATTRIBUTES) {
+                        std::string existingMD5 = Utils::calculateMD5(existingISO);
+                        std::string newMD5 = Utils::calculateMD5(isoPath);
+                        if (!existingMD5.empty() && !newMD5.empty() && existingMD5 == newMD5) {
+                            skipReformat = true;
+                            skipCopyISO = true;
+                            eventManager.notifyLogUpdate("ISO existente coincide con el nuevo, omitiendo formateo y copia.\r\n");
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (partitionExists && !skipReformat) {
         eventManager.notifyLogUpdate("Particiones existentes detectadas. Iniciando reformateo...\r\n");
         eventManager.notifyProgressUpdate(20);
         if (!partitionManager->reformatPartition(selectedFormat)) {
@@ -119,9 +147,17 @@ void ProcessController::processInThread(const std::string& isoPath, const std::s
     }
     eventManager.notifyLogUpdate("Partición ISOEFI encontrada en: " + espDrive + "\r\n");
 
+    // Always reformat EFI partition
+    if (!partitionManager->reformatEfiPartition()) {
+        eventManager.notifyLogUpdate("Error: Falló el reformateo de la partición EFI.\r\n");
+        eventManager.notifyError("Error al reformatear la partición EFI.");
+        eventManager.notifyButtonEnable();
+        return;
+    }
+
     eventManager.notifyLogUpdate("Iniciando copia de contenido del ISO...\r\n");
     // Copiar ISO
-    if (copyISO(isoPath, partitionDrive, espDrive, selectedBootMode)) {
+    if (copyISO(isoPath, partitionDrive, espDrive, selectedBootMode, skipCopyISO)) {
         eventManager.notifyLogUpdate("Contenido del ISO copiado. Configurando BCD...\r\n");
         // Only configure BCD for Windows ISOs; non-Windows EFI boot directly from ESP
         if (isoCopyManager->getIsWindowsISO()) {
@@ -140,7 +176,7 @@ void ProcessController::processInThread(const std::string& isoPath, const std::s
     eventManager.notifyButtonEnable();
 }
 
-bool ProcessController::copyISO(const std::string& isoPath, const std::string& destPath, const std::string& espPath, const std::string& mode)
+bool ProcessController::copyISO(const std::string& isoPath, const std::string& destPath, const std::string& espPath, const std::string& mode, bool skipCopyISO)
 {
     eventManager.notifyLogUpdate("Montando imagen ISO...\r\n");
     eventManager.notifyProgressUpdate(40);
@@ -157,13 +193,18 @@ bool ProcessController::copyISO(const std::string& isoPath, const std::string& d
             eventManager.notifyLogUpdate("Error: Falló la extracción de archivos EFI.\r\n");
             return false;
         }
-        eventManager.notifyLogUpdate("Copiando archivo ISO completo para modo Boot desde Memoria...\r\n");
-        if (isoCopyManager->copyISOFile(eventManager, isoPath, drive)) {
-            eventManager.notifyLogUpdate("Archivo ISO copiado exitosamente.\r\n");
-            eventManager.notifyProgressUpdate(70);
+        if (!skipCopyISO) {
+            eventManager.notifyLogUpdate("Copiando archivo ISO completo para modo Boot desde Memoria...\r\n");
+            if (isoCopyManager->copyISOFile(eventManager, isoPath, drive)) {
+                eventManager.notifyLogUpdate("Archivo ISO copiado exitosamente.\r\n");
+                eventManager.notifyProgressUpdate(70);
+            } else {
+                eventManager.notifyLogUpdate("Error: Falló la copia del archivo ISO.\r\n");
+                return false;
+            }
         } else {
-            eventManager.notifyLogUpdate("Error: Falló la copia del archivo ISO.\r\n");
-            return false;
+            eventManager.notifyLogUpdate("Copia del ISO omitida (ya existe y coincide).\r\n");
+            eventManager.notifyProgressUpdate(70);
         }
     } else {
         eventManager.notifyLogUpdate("Modo " + mode + " seleccionado: extrayendo contenido completo del ISO...\r\n");

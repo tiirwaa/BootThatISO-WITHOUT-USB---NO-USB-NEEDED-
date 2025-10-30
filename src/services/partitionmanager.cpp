@@ -749,3 +749,189 @@ bool PartitionManager::reformatPartition(const std::string& format)
         return false;
     }
 }
+
+bool PartitionManager::reformatEfiPartition()
+{
+    if (eventManager) eventManager->notifyLogUpdate("Iniciando reformateo de partición EFI...\r\n");
+
+    // First, find the volume number by running diskpart list volume
+    char tempPath[MAX_PATH];
+    GetTempPathA(MAX_PATH, tempPath);
+    char tempFile[MAX_PATH];
+    GetTempFileNameA(tempPath, "listvol_efi", 0, tempFile);
+
+    std::ofstream scriptFile(tempFile);
+    if (!scriptFile) {
+        return false;
+    }
+    scriptFile << "list volume\n";
+    scriptFile << "exit\n";
+    scriptFile.close();
+
+    STARTUPINFOA si = { sizeof(si) };
+    PROCESS_INFORMATION pi;
+    SECURITY_ATTRIBUTES sa;
+    sa.nLength = sizeof(sa);
+    sa.lpSecurityDescriptor = NULL;
+    sa.bInheritHandle = TRUE;
+
+    HANDLE hRead, hWrite;
+    if (!CreatePipe(&hRead, &hWrite, &sa, 0)) {
+        DeleteFileA(tempFile);
+        return false;
+    }
+
+    si.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
+    si.hStdOutput = hWrite;
+    si.hStdError = hWrite;
+    si.wShowWindow = SW_HIDE;
+
+    std::string cmd = "diskpart /s " + std::string(tempFile);
+    if (!CreateProcessA(NULL, const_cast<char*>(cmd.c_str()), NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi)) {
+        CloseHandle(hRead);
+        CloseHandle(hWrite);
+        DeleteFileA(tempFile);
+        return false;
+    }
+
+    CloseHandle(hWrite);
+
+    std::string output;
+    char buffer[1024];
+    DWORD bytesRead;
+    while (ReadFile(hRead, buffer, sizeof(buffer) - 1, &bytesRead, NULL) && bytesRead > 0) {
+        buffer[bytesRead] = '\0';
+        output += buffer;
+    }
+
+    CloseHandle(hRead);
+
+    WaitForSingleObject(pi.hProcess, 30000); // 30 seconds
+
+    DWORD exitCode;
+    GetExitCodeProcess(pi.hProcess, &exitCode);
+
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
+
+    DeleteFileA(tempFile);
+
+    if (exitCode != 0) {
+        std::string logDir = Utils::getExeDirectory() + "logs";
+        CreateDirectoryA(logDir.c_str(), NULL);
+        std::ofstream logFile((logDir + "\\" + REFORMAT_LOG_FILE).c_str(), std::ios::app);
+        if (logFile) {
+            logFile << "Diskpart list volume for EFI failed with exit code: " << exitCode << "\n";
+            logFile << "Output:\n" << Utils::ansi_to_utf8(output) << "\n";
+            logFile.close();
+        }
+        return false;
+    }
+
+    // Parse output to find volume number for EFI_VOLUME_LABEL
+    std::istringstream iss(output);
+    std::string line;
+    int volumeNumber = -1;
+    while (std::getline(iss, line)) {
+        size_t volPos = line.find("Volumen");
+        if (volPos == std::string::npos) {
+            volPos = line.find("Volume");
+        }
+        if (volPos != std::string::npos) {
+            // Parse volume number and label
+            std::string numStr = line.substr(volPos + 8, 3);
+            size_t spacePos = numStr.find(' ');
+            if (spacePos != std::string::npos) {
+                numStr = numStr.substr(0, spacePos);
+            }
+            int volNum = std::atoi(numStr.c_str());
+            
+            std::string label = line.substr(volPos + 15, 13);
+            // Trim leading and trailing spaces
+            size_t start = label.find_first_not_of(" \t");
+            size_t end = label.find_last_not_of(" \t");
+            if (start != std::string::npos && end != std::string::npos) {
+                label = label.substr(start, end - start + 1);
+            } else {
+                label = "";
+            }
+            
+            if (label == EFI_VOLUME_LABEL) {
+                volumeNumber = volNum;
+                break;
+            }
+        }
+    }
+
+    std::string logDir = Utils::getExeDirectory() + "logs";
+    CreateDirectoryA(logDir.c_str(), NULL);
+    std::ofstream logFile((logDir + "\\" + REFORMAT_LOG_FILE).c_str(), std::ios::app);
+    if (logFile) {
+        logFile << "Diskpart list volume for EFI output:\n" << Utils::ansi_to_utf8(output) << "\n";
+        if (volumeNumber == -1) {
+            logFile << "Volume with " << EFI_VOLUME_LABEL << " not found in output.\n";
+        } else {
+            logFile << "Found EFI volume number: " << volumeNumber << "\n";
+        }
+        logFile.close();
+    }
+
+    if (volumeNumber == -1) {
+        if (eventManager) eventManager->notifyLogUpdate("Error: No se encontró el volumen EFI con etiqueta " + std::string(EFI_VOLUME_LABEL) + ".\r\n");
+        return false;
+    }
+
+    if (eventManager) eventManager->notifyLogUpdate("Volumen EFI encontrado (número " + std::to_string(volumeNumber) + "). Creando script de formateo...\r\n");
+
+    // Now, create script to select and format EFI
+    GetTempFileNameA(tempPath, "format_efi", 0, tempFile);
+    scriptFile.open(tempFile);
+    scriptFile << "select volume " << volumeNumber << "\n";
+    scriptFile << "format fs=fat32 quick label=\"" << EFI_VOLUME_LABEL << "\"\n";
+    scriptFile << "exit\n";
+    scriptFile.close();
+
+    // Execute the format script
+    si.dwFlags = STARTF_USESHOWWINDOW;
+    si.wShowWindow = SW_HIDE;
+    si.hStdOutput = NULL;
+    si.hStdError = NULL;
+
+    cmd = "diskpart /s " + std::string(tempFile);
+    if (!CreateProcessA(NULL, const_cast<char*>(cmd.c_str()), NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
+        DeleteFileA(tempFile);
+        if (eventManager) eventManager->notifyLogUpdate("Error: No se pudo ejecutar diskpart para formateo EFI.\r\n");
+        return false;
+    }
+
+    if (eventManager) eventManager->notifyLogUpdate("Ejecutando formateo de partición EFI...\r\n");
+
+    WaitForSingleObject(pi.hProcess, 300000); // 5 minutes
+
+    GetExitCodeProcess(pi.hProcess, &exitCode);
+
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
+
+    DeleteFileA(tempFile);
+
+    // Wait a bit for the system to recognize the changes
+    Sleep(5000);
+
+    // Refresh volume information
+    system("mountvol /r >nul 2>&1");
+
+    std::ofstream logFile2((logDir + "\\" + REFORMAT_EXIT_LOG_FILE).c_str(), std::ios::app);
+    if (logFile2) {
+        logFile2 << "EFI Format command exit code: " << exitCode << "\n";
+        logFile2.close();
+    }
+
+    if (exitCode == 0) {
+        if (eventManager) eventManager->notifyLogUpdate("Partición EFI reformateada exitosamente.\r\n");
+        return true;
+    } else {
+        if (eventManager) eventManager->notifyLogUpdate("Error: Falló el formateo de la partición EFI (código " + std::to_string(exitCode) + ").\r\n");
+        return false;
+    }
+}

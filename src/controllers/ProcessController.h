@@ -20,7 +20,7 @@ public:
 
 private:
     void processInThread(const std::string& isoPath, const std::string& selectedFormat, const std::string& selectedBootMode);
-    bool copyISO(const std::string& isoPath, const std::string& destPath, const std::string& espPath, const std::string& mode);
+    bool copyISO(const std::string& isoPath, const std::string& destPath, const std::string& espPath, const std::string& mode, bool skipCopyISO);
     void configureBCD(const std::string& driveLetter, const std::string& espDriveLetter, const std::string& mode);
 
     PartitionManager* partitionManager;

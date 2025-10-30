@@ -77,6 +77,7 @@ WORD BCDManager::GetMachineType(const std::string& filePath) {
 
 std::string BCDManager::configureBCD(const std::string& driveLetter, const std::string& espDriveLetter, BootStrategy& strategy)
 {
+    const std::string BCD_CMD = "C:\\Windows\\System32\\bcdedit.exe";
     if (eventManager) eventManager->notifyLogUpdate("Configurando Boot Configuration Data (BCD)...\r\n");
 
     // Get volume GUID for data partition
@@ -197,11 +198,11 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
     std::string espDevice = narrowEspVolumeName;
 
     // Set default to current to avoid issues with deleting the default entry
-    Utils::exec("bcdedit /default {current}");
+    Utils::exec((BCD_CMD + " /default {current}").c_str());
 
     // Delete any existing ISOBOOT entries to avoid duplicates
     // Use block parsing and case-insensitive search to handle localized bcdedit output
-    std::string enumOutput = Utils::exec("bcdedit /enum all");
+    std::string enumOutput = Utils::exec((BCD_CMD + " /enum all").c_str());
     auto blocks = split(enumOutput, '\n');
     // Parse into blocks separated by empty lines
     std::vector<std::string> entryBlocks;
@@ -235,7 +236,7 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
                 size_t end = blk.find('}', pos);
                 if (end != std::string::npos) {
                     std::string guid = blk.substr(pos, end - pos + 1);
-                    std::string deleteCmd = "bcdedit /delete " + guid + " /f"; // force remove
+                    std::string deleteCmd = BCD_CMD + " /delete " + guid + " /f"; // force remove
                     Utils::exec(deleteCmd.c_str());
                 }
             }
@@ -243,7 +244,7 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
     }
 
     std::string bcdLabel = strategy.getBCDLabel();
-    std::string output = Utils::exec(("bcdedit /copy {default} /d \"" + bcdLabel + "\"").c_str());
+    std::string output = Utils::exec((BCD_CMD + " /copy {default} /d \"" + bcdLabel + "\"").c_str());
     if (output.find("error") != std::string::npos || output.find("{") == std::string::npos) return "Error al copiar entrada BCD";
     size_t pos = output.find("{");
     size_t end = output.find("}", pos);
@@ -346,6 +347,17 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
         return "Arquitectura EFI no soportada";
     }
 
+    // Validate EFI architecture matches system architecture
+    SYSTEM_INFO sysInfo;
+    GetNativeSystemInfo(&sysInfo);
+    WORD sysArch = (sysInfo.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_AMD64) ? IMAGE_FILE_MACHINE_AMD64 :
+                   (sysInfo.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_INTEL) ? IMAGE_FILE_MACHINE_I386 : 0;
+    if (machine != sysArch) {
+        std::string errorMsg = "Error: Arquitectura EFI (0x" + std::to_string(machine) + ") no coincide con la del sistema (0x" + std::to_string(sysArch) + ").\r\n";
+        if (eventManager) eventManager->notifyLogUpdate(errorMsg);
+        return "Arquitectura EFI no compatible con el sistema";
+    }
+
     // Log selected file and mode
     std::string logDir = Utils::getExeDirectory() + "logs";
     CreateDirectoryA(logDir.c_str(), NULL); // Create logs directory if it doesn't exist
@@ -395,14 +407,38 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
 
     logFile << "EFI path: " << efiPath << "\n";
 
+    // For extracted mode, verify SDI file exists
+    if (bcdLabel == "ISOBOOT") {
+        std::string sdiPath = driveLetter + "\\boot\\boot.sdi";
+        if (GetFileAttributesA(sdiPath.c_str()) == INVALID_FILE_ATTRIBUTES) {
+            std::string errorMsg = "Error: Archivo SDI no encontrado en " + sdiPath + "\r\n";
+            if (eventManager) eventManager->notifyLogUpdate(errorMsg);
+            logFile << errorMsg;
+            logFile.close();
+            return "Archivo SDI no encontrado para extracted boot";
+        }
+        logFile << "SDI file verified: " << sdiPath << std::endl;
+    } else if (bcdLabel == "ISOBOOT_RAM") {
+        // For ramdisk mode, verify ISO file exists (SDI is inside the ISO)
+        std::string isoPath = driveLetter + "\\iso.iso";
+        if (GetFileAttributesA(isoPath.c_str()) == INVALID_FILE_ATTRIBUTES) {
+            std::string errorMsg = "Error: Archivo ISO no encontrado en " + isoPath + "\r\n";
+            if (eventManager) eventManager->notifyLogUpdate(errorMsg);
+            logFile << errorMsg;
+            logFile.close();
+            return "Archivo ISO no encontrado para ramdisk boot";
+        }
+        logFile << "ISO file verified: " << isoPath << std::endl;
+    }
+
     // Pass simple drive letters (e.g., "Z:") to strategies so they can use partition= syntax
     strategy.configureBCD(guid, driveLetter, espDriveLetter, efiPath);
 
     // Remove systemroot for EFI booting
-    std::string cmd4 = "bcdedit /deletevalue " + guid + " systemroot";
+    std::string cmd4 = BCD_CMD + " /deletevalue " + guid + " systemroot";
     Utils::exec(cmd4.c_str()); // Don't check error as it might not exist
 
-    std::string cmd6 = "bcdedit /default " + guid;
+    std::string cmd6 = BCD_CMD + " /default " + guid;
     std::string result6 = Utils::exec(cmd6.c_str());
     if (result6.find("error") != std::string::npos) {
         if (eventManager) eventManager->notifyLogUpdate("Error al configurar default: " + cmd6 + "\r\n");
@@ -416,7 +452,8 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
 
 bool BCDManager::restoreBCD()
 {
-    std::string output = Utils::exec("bcdedit /enum");
+    const std::string BCD_CMD = "C:\\Windows\\System32\\bcdedit.exe";
+    std::string output = Utils::exec((BCD_CMD + " /enum").c_str());
     auto lines = split(output, '\n');
     std::string guid;
     for (size_t i = 0; i < lines.size(); ++i) {
@@ -434,9 +471,9 @@ bool BCDManager::restoreBCD()
         }
     }
     if (!guid.empty()) {
-        std::string cmd1 = "bcdedit /delete " + guid;
+        std::string cmd1 = BCD_CMD + " /delete " + guid;
         Utils::exec(cmd1.c_str());
-        std::string cmd2 = "bcdedit /default {current}";
+        std::string cmd2 = BCD_CMD + " /default {current}";
         Utils::exec(cmd2.c_str());
         return true;
     }
