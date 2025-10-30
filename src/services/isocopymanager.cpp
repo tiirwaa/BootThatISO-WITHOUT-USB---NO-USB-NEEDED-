@@ -30,6 +30,72 @@ ISOCopyManager::~ISOCopyManager()
 {
 }
 
+// Helper function to ensure temp directory is completely clean
+void ISOCopyManager::ensureTempDirectoryClean(const std::string& tempDir, std::ofstream& logFile) {
+    // First try to unmount any existing WIM mount
+    std::string mountDir = tempDir.substr(0, tempDir.size() - 1); // Remove trailing backslash
+    std::string unmountCmd = "cmd /c dism /Unmount-Wim /MountDir:\"" + mountDir + "\" /discard 2>nul";
+    exec(unmountCmd.c_str());
+    
+    // Wait a moment for unmount to complete
+    Sleep(1000);
+    
+    // Try multiple approaches to remove the directory
+    bool removed = false;
+    
+    // Approach 1: Use rd command
+    std::string rdCmd = "cmd /c rd /s /q \"" + mountDir + "\" 2>nul";
+    exec(rdCmd.c_str());
+    if (GetFileAttributesA(tempDir.c_str()) == INVALID_FILE_ATTRIBUTES) {
+        removed = true;
+    }
+    
+    // Approach 2: If still exists, try rmdir
+    if (!removed) {
+        std::string rmdirCmd = "cmd /c rmdir /s /q \"" + mountDir + "\" 2>nul";
+        exec(rmdirCmd.c_str());
+        if (GetFileAttributesA(tempDir.c_str()) == INVALID_FILE_ATTRIBUTES) {
+            removed = true;
+        }
+    }
+    
+    // Approach 3: If still exists, try PowerShell
+    if (!removed) {
+        std::string psCmd = "powershell -Command \"if (Test-Path '" + mountDir + "') { Remove-Item -Path '" + mountDir + "' -Recurse -Force -ErrorAction SilentlyContinue }\"";
+        exec(psCmd.c_str());
+        if (GetFileAttributesA(tempDir.c_str()) == INVALID_FILE_ATTRIBUTES) {
+            removed = true;
+        }
+    }
+    
+    if (!removed && GetFileAttributesA(tempDir.c_str()) != INVALID_FILE_ATTRIBUTES) {
+        logFile << getTimestamp() << "Warning: Could not completely clean temp directory: " << tempDir << std::endl;
+    } else {
+        logFile << getTimestamp() << "Temp directory cleaned successfully" << std::endl;
+    }
+}
+
+// Helper function to check if directory is empty
+bool ISOCopyManager::isDirectoryEmpty(const std::string& dirPath) {
+    WIN32_FIND_DATAA findData;
+    HANDLE hFind = FindFirstFileA((dirPath + "*").c_str(), &findData);
+    if (hFind == INVALID_HANDLE_VALUE) {
+        return true; // Directory doesn't exist or can't be accessed
+    }
+    
+    bool isEmpty = true;
+    do {
+        std::string name = findData.cFileName;
+        if (name != "." && name != "..") {
+            isEmpty = false;
+            break;
+        }
+    } while (FindNextFileA(hFind, &findData));
+    
+    FindClose(hFind);
+    return isEmpty;
+}
+
 void ISOCopyManager::validateAndFixEFIFiles(const std::string& efiDestPath, std::ofstream& logFile) {
     // Check common EFI boot files
     std::vector<std::string> efiFiles = {
@@ -463,7 +529,7 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
         if (destAttrs != INVALID_FILE_ATTRIBUTES) {
             SetFileAttributesA(bootmgrDest.c_str(), FILE_ATTRIBUTE_NORMAL);
         }
-                if (copyFileUtf8(bootmgrSource, bootmgrDest)) {
+        if (copyFileUtf8(bootmgrSource, bootmgrDest)) {
             logFile << getTimestamp() << "Copied bootmgr.efi to ESP" << std::endl;
             bootmgrCopied = true;
         } else {
@@ -486,18 +552,18 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
     std::string bootWimPath = sourcePath + "sources\\boot.wim";
     if (isWindowsISO && GetFileAttributesA(bootWimPath.c_str()) != INVALID_FILE_ATTRIBUTES) {
         logFile << getTimestamp() << "Extracting additional boot files from boot.wim" << std::endl;
-            // Create temp dir for mounting
-            char tempPath[MAX_PATH];
-            GetTempPathA(MAX_PATH, tempPath);
-            std::string tempDir = std::string(tempPath) + "EasyISOBoot_WimMount\\";
-            // Ensure temp dir is clean
-            if (GetFileAttributesA(tempDir.c_str()) != INVALID_FILE_ATTRIBUTES) {
-                std::string cleanCmd = "cmd /c rd /s /q \"" + tempDir.substr(0, tempDir.size() - 1) + "\"";
-                exec(cleanCmd.c_str());
-            }
-            if (!CreateDirectoryA(tempDir.c_str(), NULL) && GetLastError() != ERROR_ALREADY_EXISTS) {
-                logFile << getTimestamp() << "Failed to create temp dir for WIM mount" << std::endl;
-            } else {
+        // Create temp dir for mounting
+        char tempPath[MAX_PATH];
+        GetTempPathA(MAX_PATH, tempPath);
+        std::string tempDir = std::string(tempPath) + "EasyISOBoot_WimMount\\";
+        
+        // Ensure temp dir is completely clean
+        ensureTempDirectoryClean(tempDir, logFile);
+        
+        // Create fresh temp directory
+        if (CreateDirectoryA(tempDir.c_str(), NULL) || GetLastError() == ERROR_ALREADY_EXISTS) {
+            // Directory exists, verify it's empty
+            if (isDirectoryEmpty(tempDir)) {
                 // Mount boot.wim index 1
                 std::string mountCmd = "cmd /c dism /Mount-Wim /WimFile:\"" + bootWimPath + "\" /index:1 /MountDir:\"" + tempDir.substr(0, tempDir.size()-1) + "\" /ReadOnly";
                 logFile << getTimestamp() << "Mount command: " << mountCmd << std::endl;
@@ -506,9 +572,7 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
                 logFile << getTimestamp() << "Mount WIM " << (mountSuccessWim ? "successful" : "failed") << std::endl;
                 if (!mountSuccessWim) {
                     logFile << getTimestamp() << "DISM output: " << mountResult << std::endl;
-                }
-                
-                if (mountSuccessWim) {
+                } else {
                     // Extract EFI files to ESP
                     std::vector<std::pair<std::string, std::string>> efiFiles = {
                         {"Windows\\Boot\\EFI\\bootx64.efi", espPath + "EFI\\BOOT\\BOOTX64.EFI"},
@@ -527,27 +591,27 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
                             std::string dstDir = dst.substr(0, lastSlash);
                             CreateDirectoryA(dstDir.c_str(), NULL); // Ignore error if exists
                         }
-                                        if (copyFileUtf8(src, dst)) {
-                                        // Validate PE for EFI files and log machine type
-                                        bool valid = true;
-                                        uint16_t machine = 0;
-                                        size_t pos = dst.find_last_of('.');
-                                        if (pos != std::string::npos) {
-                                            std::string ext = dst.substr(pos);
-                                            for (auto &c : ext) c = (char)tolower((unsigned char)c);
-                                            if (ext == ".efi") {
-                                                valid = isValidPE(dst);
-                                                machine = getPEMachine(dst);
-                                            }
-                                        }
-                                        if (!valid) {
-                                            logFile << getTimestamp() << "Copied EFI file appears invalid: " << dst << std::endl;
-                                        } else {
-                                            logFile << getTimestamp() << "Instalado: " << filePair.first << " to " << dst << " (machine=0x" << std::hex << machine << std::dec << ")" << std::endl;
-                                        }
-                                    } else {
-                                        logFile << getTimestamp() << "Failed to extract: " << filePair.first << " error: " << GetLastError() << std::endl;
-                                    }
+                        if (copyFileUtf8(src, dst)) {
+                            // Validate PE for EFI files and log machine type
+                            bool valid = true;
+                            uint16_t machine = 0;
+                            size_t pos = dst.find_last_of('.');
+                            if (pos != std::string::npos) {
+                                std::string ext = dst.substr(pos);
+                                for (auto &c : ext) c = (char)tolower((unsigned char)c);
+                                if (ext == ".efi") {
+                                    valid = isValidPE(dst);
+                                    machine = getPEMachine(dst);
+                                }
+                            }
+                            if (!valid) {
+                                logFile << getTimestamp() << "Copied EFI file appears invalid: " << dst << std::endl;
+                            } else {
+                                logFile << getTimestamp() << "Instalado: " << filePair.first << " to " << dst << " (machine=0x" << std::hex << machine << std::dec << ")" << std::endl;
+                            }
+                        } else {
+                            logFile << getTimestamp() << "Failed to extract: " << filePair.first << " error: " << GetLastError() << std::endl;
+                        }
                     }
                     
                     // Extract data files if extracting content
@@ -613,11 +677,14 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
                     
                     // Remove temp dir
                     RemoveDirectoryA(tempDir.c_str());
-                } else {
-                    logFile << getTimestamp() << "Failed to mount boot.wim" << std::endl;
                 }
+            } else {
+                logFile << getTimestamp() << "Temp directory not empty after cleanup, skipping WIM mount" << std::endl;
             }
+        } else {
+            logFile << getTimestamp() << "Failed to create temp dir for WIM mount" << std::endl;
         }
+    }
     
     // Check if bootx64.efi or bootia32.efi was copied to ESP
     std::string bootFilePath = efiDestPath + "\\BOOT\\BOOTX64.EFI";

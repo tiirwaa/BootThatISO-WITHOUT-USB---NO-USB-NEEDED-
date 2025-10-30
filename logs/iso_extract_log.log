@@ -1,0 +1,35 @@
+[2025-10-29 19:24:37] Starting ISO extraction from: C:\Users\vboxuser\Desktop\Windows10_22H2_X64.iso
+[2025-10-29 19:24:37] Destination (data): Z:\
+[2025-10-29 19:24:37] ESP path: Y:\
+[2025-10-29 19:24:37] Extract content: Yes
+[2025-10-29 19:24:37] Mount command: powershell -Command "$iso = Mount-DiskImage -ImagePath 'C:\Users\vboxuser\Desktop\Windows10_22H2_X64.iso' -PassThru; $volume = Get-DiskImage -ImagePath 'C:\Users\vboxuser\Desktop\Windows10_22H2_X64.iso' | Get-Volume; if ($volume) { $volume.DriveLetter } else { 'FAILED' }"
+[2025-10-29 19:24:43] Mount successful
+[2025-10-29 19:24:43] Source path: E:\
+[2025-10-29 19:24:43] Waiting 5 seconds for drive to be ready
+[2025-10-29 19:24:51] Drive ready, proceeding with analysis
+[2025-10-29 19:24:51] Is Windows ISO: Yes
+[2025-10-29 19:26:03] Extracting EFI directory to ESP
+[2025-10-29 19:26:05] Validating copied EFI files
+[2025-10-29 19:26:05] EFI file is valid: Y:\EFI\boot\bootx64.efi (machine=0x8664)
+[2025-10-29 19:26:05] EFI file is valid: Y:\EFI\BOOT\BOOTX64.EFI (machine=0x8664)
+[2025-10-29 19:26:05] Copied bootmgr.efi to ESP
+[2025-10-29 19:26:05] Extracting additional boot files from boot.wim
+[2025-10-29 19:26:06] Mount command: cmd /c dism /Mount-Wim /WimFile:"E:\sources\boot.wim" /index:1 /MountDir:"C:\Users\vboxuser\AppData\Local\Temp\EasyISOBoot_WimMount" /ReadOnly
+[2025-10-29 19:26:06] Mount WIM failed
+[2025-10-29 19:26:06] DISM output: 
+Deployment Image Servicing and Management tool
+Version: 10.0.19041.3636
+
+
+Error: 0xc1420114
+
+The user attempted to mount to a directory that is not empty.  This is not supported.
+
+The DISM log file can be found at C:\Windows\Logs\DISM\dism.log
+
+[2025-10-29 19:26:06] Failed to mount boot.wim
+[2025-10-29 19:26:06] Boot file check: Y:\EFI\BOOT\BOOTX64.EFI - EXISTS
+[2025-10-29 19:26:06] Dismount command: powershell -Command "Dismount-DiskImage -ImagePath 'C:\Users\vboxuser\Desktop\Windows10_22H2_X64.iso'"
+[2025-10-29 19:26:13] Dismount ISO completed
+[2025-10-29 19:26:13] EFI extraction SUCCESS
+[2025-10-29 19:26:13] Content extraction completed.

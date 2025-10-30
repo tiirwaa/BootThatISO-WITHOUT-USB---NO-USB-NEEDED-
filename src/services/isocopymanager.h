@@ -29,6 +29,8 @@ private:
     bool copyDirectoryWithProgress(const std::string& source, const std::string& dest, EventManager& eventManager, long long totalSize, long long& copiedSoFar, const std::set<std::string>& excludeDirs = {});
     void listDirectoryRecursive(std::ofstream& log, const std::string& path, int depth, int maxDepth);
     void validateAndFixEFIFiles(const std::string& efiDestPath, std::ofstream& logFile);
+    void ensureTempDirectoryClean(const std::string& tempDir, std::ofstream& logFile);
+    bool isDirectoryEmpty(const std::string& dirPath);
 };
 
 #endif // ISOCOPYMANAGER_H
