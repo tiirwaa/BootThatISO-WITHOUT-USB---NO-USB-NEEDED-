@@ -16,6 +16,7 @@
 #include <iomanip>
 #include <ctime>
 #include <memory>
+#include <algorithm>
 #include <objidl.h>
 #include "../resource.h"
 
@@ -27,8 +28,8 @@ constexpr int LOGO_TARGET_WIDTH = 56;
 constexpr int LOGO_TARGET_HEIGHT = 56;
 constexpr int BUTTON_ICON_WIDTH = 160;
 constexpr int BUTTON_ICON_HEIGHT = 160;
-constexpr int BUTTON_ICON_LEFT_MARGIN = 6;
-constexpr int BUTTON_ICON_TEXT_GAP = 12;
+constexpr int BUTTON_ICON_PADDING = 8;
+constexpr int CONTENT_OFFSET_X = BUTTON_ICON_WIDTH + 30; // button width plus spacing
 }
 
 struct DetailedProgressData {
@@ -185,6 +186,11 @@ void MainWindow::CreateControls(HWND parent)
         logoWidth = static_cast<int>(logoBitmap->GetWidth());
         logoHeight = static_cast<int>(logoBitmap->GetHeight());
     }
+    const int contentLeft = CONTENT_OFFSET_X;
+    const int contentWidth = 580;
+    const int isoEditLeft = 10;
+    const int isoEditWidth = 600;
+
     logoLabel = CreateWindowW(L"STATIC", NULL, WS_CHILD | WS_VISIBLE | SS_ICON | SS_CENTERIMAGE, 10, 10, logoWidth, logoHeight, parent, NULL, hInst, NULL);
     if (logoBitmap && logoBitmap->GetHICON(&logoHIcon) == Gdiplus::Ok) {
         HICON previousIcon = reinterpret_cast<HICON>(SendMessage(logoLabel, STM_SETICON, (WPARAM)logoHIcon, 0));
@@ -193,20 +199,43 @@ void MainWindow::CreateControls(HWND parent)
         }
     }
 
-    titleLabel = CreateWindowW(L"STATIC", titleText.c_str(), WS_CHILD | WS_VISIBLE, 70, 10, 300, 30, parent, NULL, hInst, NULL);
+    const int developedLabelWidth = 250;
+    int developedLabelLeft = contentLeft + contentWidth - developedLabelWidth;
+
+    int textLeft = 70;
+    int textWidth = 300;
+
+    titleLabel = CreateWindowW(L"STATIC", titleText.c_str(), WS_CHILD | WS_VISIBLE, textLeft, 10, textWidth, 30, parent, NULL, hInst, NULL);
     SendMessage(titleLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    subtitleLabel = CreateWindowW(L"STATIC", subtitleText.c_str(), WS_CHILD | WS_VISIBLE, 70, 40, 300, 20, parent, NULL, hInst, NULL);
+    subtitleLabel = CreateWindowW(L"STATIC", subtitleText.c_str(), WS_CHILD | WS_VISIBLE, textLeft, 40, textWidth, 20, parent, NULL, hInst, NULL);
     SendMessage(subtitleLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
     isoPathLabel = CreateWindowW(L"STATIC", isoLabelText.c_str(), WS_CHILD | WS_VISIBLE, 10, 80, 200, 20, parent, NULL, hInst, NULL);
     SendMessage(isoPathLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    isoPathEdit = CreateWindowW(L"EDIT", L"", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_READONLY, 10, 100, 600, 25, parent, NULL, hInst, NULL);
+    isoPathEdit = CreateWindowW(L"EDIT", L"", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_READONLY, isoEditLeft, 100, isoEditWidth, 25, parent, NULL, hInst, NULL);
     SendMessage(isoPathEdit, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
     browseButton = CreateWindowW(L"BUTTON", browseText.c_str(), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 620, 100, 80, 25, parent, (HMENU)IDC_BROWSE_BUTTON, hInst, NULL);
     SendMessage(browseButton, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
+
+    if (developedLabelLeft < 10) {
+        developedLabelLeft = 10;
+    }
+    developedByLabel = CreateWindowW(
+        L"STATIC",
+        LocalizedOrW("mainwindow.developedBy", L"Software desarrollado por una empresa Costarricense").c_str(),
+        WS_CHILD | WS_VISIBLE | SS_RIGHT,
+        developedLabelLeft,
+        10,
+        developedLabelWidth,
+        20,
+        parent,
+        NULL,
+        hInst,
+        NULL);
+    SendMessage(developedByLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
     formatLabel = CreateWindowW(L"STATIC", formatText.c_str(), WS_CHILD | WS_VISIBLE, 10, 135, 200, 20, parent, NULL, hInst, NULL);
     SendMessage(formatLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
@@ -221,43 +250,52 @@ void MainWindow::CreateControls(HWND parent)
     SendMessage(ntfsRadio, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
     SendMessage(ntfsRadio, BM_SETCHECK, BST_CHECKED, 0);
 
-    bootModeLabel = CreateWindowW(L"STATIC", bootModeText.c_str(), WS_CHILD | WS_VISIBLE, 330, 135, 150, 20, parent, NULL, hInst, NULL);
+    bootModeLabel = CreateWindowW(L"STATIC", bootModeText.c_str(), WS_CHILD | WS_VISIBLE, contentLeft, 225, contentWidth, 20, parent, NULL, hInst, NULL);
     SendMessage(bootModeLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    bootRamdiskRadio = CreateWindowW(L"BUTTON", bootRamText.c_str(), WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON | WS_GROUP, 330, 155, 420, 20, parent, (HMENU)IDC_BOOTMODE_RAMDISK, hInst, NULL);
+    bootRamdiskRadio = CreateWindowW(L"BUTTON", bootRamText.c_str(), WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON | WS_GROUP, contentLeft, 245, contentWidth, 20, parent, (HMENU)IDC_BOOTMODE_RAMDISK, hInst, NULL);
     SendMessage(bootRamdiskRadio, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    bootExtractedRadio = CreateWindowW(L"BUTTON", bootDiskText.c_str(), WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON, 330, 175, 420, 40, parent, (HMENU)IDC_BOOTMODE_EXTRACTED, hInst, NULL);
+    bootExtractedRadio = CreateWindowW(L"BUTTON", bootDiskText.c_str(), WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON, contentLeft, 265, contentWidth, 40, parent, (HMENU)IDC_BOOTMODE_EXTRACTED, hInst, NULL);
     SendMessage(bootExtractedRadio, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
     SendMessage(bootExtractedRadio, BM_SETCHECK, BST_CHECKED, 0);
 
-    integrityCheckBox = CreateWindowW(L"BUTTON", integrityText.c_str(), WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX, 10, 220, 350, 20, parent, (HMENU)IDC_INTEGRITY_CHECKBOX, hInst, NULL);
+    integrityCheckBox = CreateWindowW(L"BUTTON", integrityText.c_str(), WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX, contentLeft, 310, contentWidth, 20, parent, (HMENU)IDC_INTEGRITY_CHECKBOX, hInst, NULL);
     SendMessage(integrityCheckBox, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    diskSpaceLabel = CreateWindowW(L"STATIC", L"", WS_CHILD | WS_VISIBLE, 10, 240, 700, 20, parent, NULL, hInst, NULL);
+    diskSpaceLabel = CreateWindowW(L"STATIC", L"", WS_CHILD | WS_VISIBLE, contentLeft, 340, contentWidth, 20, parent, NULL, hInst, NULL);
     SendMessage(diskSpaceLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    detailedProgressLabel = CreateWindowW(L"STATIC", L"", WS_CHILD | WS_VISIBLE, 10, 265, 700, 20, parent, NULL, hInst, NULL);
+    detailedProgressLabel = CreateWindowW(L"STATIC", L"", WS_CHILD | WS_VISIBLE, contentLeft, 365, contentWidth, 20, parent, NULL, hInst, NULL);
     SendMessage(detailedProgressLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    detailedProgressBar = CreateWindowW(PROGRESS_CLASSW, NULL, WS_CHILD | WS_VISIBLE, 10, 290, 760, 20, parent, NULL, hInst, NULL);
+    detailedProgressBar = CreateWindowW(PROGRESS_CLASSW, NULL, WS_CHILD | WS_VISIBLE, contentLeft, 390, contentWidth, 20, parent, NULL, hInst, NULL);
 
-    DWORD createButtonStyle = WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | BS_MULTILINE | BS_CENTER | BS_VCENTER | BS_OWNERDRAW;
-    createPartitionButton = CreateWindowW(L"BUTTON", createButtonText.c_str(), createButtonStyle, 140, 320, 520, 160, parent, (HMENU)IDC_CREATE_PARTITION_BUTTON, hInst, NULL);
+    DWORD createButtonStyle = WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | BS_OWNERDRAW;
+    createPartitionButton = CreateWindowW(L"BUTTON", L"", createButtonStyle, 10, 230, BUTTON_ICON_WIDTH, BUTTON_ICON_WIDTH + 10, parent, (HMENU)IDC_CREATE_PARTITION_BUTTON, hInst, NULL);
     SendMessage(createPartitionButton, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    progressBar = CreateWindowW(PROGRESS_CLASSW, NULL, WS_CHILD | WS_VISIBLE, 10, 500, 760, 20, parent, NULL, hInst, NULL);
+    performHintLabel = CreateWindowW(L"STATIC", LocalizedOrW("button.perform.hint", L"Clic para Bootear el ISO").c_str(),
+        WS_CHILD | WS_VISIBLE, 10, 230 + BUTTON_ICON_WIDTH + 15, BUTTON_ICON_WIDTH, 20, parent, NULL, hInst, NULL);
+    SendMessage(performHintLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    logTextEdit = CreateWindowW(L"EDIT", L"", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_MULTILINE | ES_AUTOVSCROLL | WS_VSCROLL, 10, 530, 760, 120, parent, NULL, hInst, NULL);
+    progressBar = CreateWindowW(PROGRESS_CLASSW, NULL, WS_CHILD | WS_VISIBLE, 10, 420, 760, 20, parent, NULL, hInst, NULL);
+
+    logTextEdit = CreateWindowW(L"EDIT", L"", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_MULTILINE | ES_AUTOVSCROLL | WS_VSCROLL, 10, 450, 760, 120, parent, NULL, hInst, NULL);
     SendMessage(logTextEdit, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    footerLabel = CreateWindowW(L"STATIC", versionText.c_str(), WS_CHILD | WS_VISIBLE, 10, 655, 140, 20, parent, NULL, hInst, NULL);
+    footerLabel = CreateWindowW(L"STATIC", versionText.c_str(), WS_CHILD | WS_VISIBLE, 10, 575, 140, 20, parent, NULL, hInst, NULL);
     SendMessage(footerLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    servicesButton = CreateWindowW(L"BUTTON", servicesText.c_str(), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 650, 655, 100, 20, parent, (HMENU)IDC_SERVICES_BUTTON, hInst, NULL);
+    int servicesButtonX = contentLeft + contentWidth - 100;
+    servicesButton = CreateWindowW(L"BUTTON", servicesText.c_str(), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, servicesButtonX, 575, 100, 20, parent, (HMENU)IDC_SERVICES_BUTTON, hInst, NULL);
     SendMessage(servicesButton, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    recoverButton = CreateWindowW(L"BUTTON", recoverText.c_str(), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 500, 655, 140, 20, parent, (HMENU)IDC_RECOVER_BUTTON, hInst, NULL);
+    int recoverButtonX = servicesButtonX - 150;
+    if (recoverButtonX < contentLeft) {
+        recoverButtonX = contentLeft;
+    }
+    recoverButton = CreateWindowW(L"BUTTON", recoverText.c_str(), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, recoverButtonX, 575, 140, 20, parent, (HMENU)IDC_RECOVER_BUTTON, hInst, NULL);
     SendMessage(recoverButton, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 }
 
@@ -284,6 +322,8 @@ void MainWindow::ApplyStyles()
     SendMessage(footerLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
     SendMessage(servicesButton, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
     SendMessage(recoverButton, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
+    SendMessage(performHintLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
+    SendMessage(developedByLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 }
 
 void MainWindow::HandleCommand(UINT msg, WPARAM wParam, LPARAM lParam)
@@ -435,47 +475,26 @@ void MainWindow::DrawCreateButton(LPDRAWITEMSTRUCT drawInfo)
     DrawEdge(hdc, &borderRect, isPressed ? EDGE_SUNKEN : EDGE_RAISED, BF_RECT);
 
     RECT innerRect = originalRect;
-    InflateRect(&innerRect, -2, 0);
+    InflateRect(&innerRect, -BUTTON_ICON_PADDING, -BUTTON_ICON_PADDING);
     OffsetRect(&innerRect, pressOffset, pressOffset);
 
-    int iconSize = innerRect.bottom - innerRect.top;
-    int maxIconWidth = innerRect.right - innerRect.left - BUTTON_ICON_LEFT_MARGIN;
-    if (iconSize > maxIconWidth) {
-        iconSize = maxIconWidth;
-    }
+    int availableWidth = innerRect.right - innerRect.left;
+    int availableHeight = innerRect.bottom - innerRect.top;
+    int iconSize = (availableWidth < availableHeight) ? availableWidth : availableHeight;
     if (iconSize < 0) {
         iconSize = 0;
     }
 
-    int iconX = innerRect.left + BUTTON_ICON_LEFT_MARGIN;
-    int iconY = innerRect.top;
+    int iconX = innerRect.left + (availableWidth - iconSize) / 2;
+    int iconY = innerRect.top + (availableHeight - iconSize) / 2;
 
     if (buttonHIcon && iconSize > 0) {
         DrawIconEx(hdc, iconX, iconY, buttonHIcon, iconSize, iconSize, 0, nullptr, DI_NORMAL);
     }
 
-    RECT textRect = innerRect;
-    textRect.left = iconX + iconSize + BUTTON_ICON_TEXT_GAP;
-    textRect.right -= BUTTON_ICON_LEFT_MARGIN;
-
-    HFONT buttonFont = reinterpret_cast<HFONT>(SendMessage(drawInfo->hwndItem, WM_GETFONT, 0, 0));
-    HFONT oldFont = nullptr;
-    if (buttonFont) {
-        oldFont = static_cast<HFONT>(SelectObject(hdc, buttonFont));
-    }
-
-    SetBkMode(hdc, TRANSPARENT);
-    SetTextColor(hdc, GetSysColor(isDisabled ? COLOR_GRAYTEXT : COLOR_BTNTEXT));
-
-    DrawTextW(hdc, createButtonText.c_str(), -1, &textRect, DT_LEFT | DT_VCENTER | DT_WORDBREAK);
-
-    if (oldFont) {
-        SelectObject(hdc, oldFont);
-    }
-
     if (isFocused && !isDisabled) {
-        RECT focusRect = innerRect;
-        InflateRect(&focusRect, -2, -2);
+        RECT focusRect = originalRect;
+        InflateRect(&focusRect, -3, -3);
         DrawFocusRect(hdc, &focusRect);
     }
 }

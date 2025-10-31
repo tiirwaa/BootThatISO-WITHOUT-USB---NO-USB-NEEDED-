@@ -196,7 +196,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
         L"BootThatISOClass",
         windowTitle.c_str(),
         WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
-        CW_USEDEFAULT, CW_USEDEFAULT, 800, 720,
+        CW_USEDEFAULT, CW_USEDEFAULT, 800, 640,
         NULL, NULL, hInstance, NULL);
 
     if (hwnd == NULL)

@@ -128,6 +128,8 @@ private:
     HWND detailedProgressBar;
     HWND recoverButton;
     HWND integrityCheckBox;
+    HWND performHintLabel;
+    HWND developedByLabel;
 
     HINSTANCE hInst;
     HWND hWndParent;
