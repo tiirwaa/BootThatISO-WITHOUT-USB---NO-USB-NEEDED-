@@ -25,12 +25,14 @@ jobs:
             if (context.eventName === 'release') {
               core.setOutput('release_id', context.payload.release.id)
               core.setOutput('tag', context.payload.release.tag_name)
+              core.setOutput('upload_url', context.payload.release.upload_url)
               console.log(`Target release (event): ${context.payload.release.tag_name} (id=${context.payload.release.id})`)
             } else {
               const tag = core.getInput('tag') || 'v1.0.0'
               const { data: rel } = await github.rest.repos.getReleaseByTag({ owner: context.repo.owner, repo: context.repo.repo, tag })
               core.setOutput('release_id', rel.id)
               core.setOutput('tag', tag)
+              core.setOutput('upload_url', rel.upload_url)
               console.log(`Target release (manual): ${tag} (id=${rel.id})`)
             }
         env:
@@ -99,7 +101,7 @@ jobs:
       - name: Upload zip to release
         uses: actions/upload-release-asset@v1
         with:
-          upload_url: ${{ github.event.release.upload_url }}
+          upload_url: ${{ steps.resolve-release.outputs.upload_url }}
           asset_path: release-assets/BootThatISO-windows.zip
           asset_name: BootThatISO-windows.zip
           asset_content_type: application/zip
