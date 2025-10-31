@@ -40,6 +40,19 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Delete and recreate tag
+        run: |
+          # Delete local tag
+          git tag -d ${{ steps.resolve-tag.outputs.tag }} || echo "Local tag does not exist"
+          # Delete remote tag
+          git push origin :refs/tags/${{ steps.resolve-tag.outputs.tag }} || echo "Remote tag does not exist"
+          # Create new tag at current commit
+          git tag ${{ steps.resolve-tag.outputs.tag }}
+          # Push new tag
+          git push origin ${{ steps.resolve-tag.outputs.tag }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Configure and build (CMake + MSBuild)
         run: |
           Write-Host "Configuring CMake and building Release..."
