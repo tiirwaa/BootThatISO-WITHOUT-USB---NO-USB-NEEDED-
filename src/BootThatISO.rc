@@ -13,3 +13,8 @@ BEGIN
     DEFPUSHBUTTON   "OK", IDOK, 90, 80, 60, 14
     PUSHBUTTON      "Cancel", IDCANCEL, 160, 80, 60, 14
 END
+
+IDR_AG_LOGO RCDATA "../res/ag.png"
+IDR_LOGO_T RCDATA "../res/logo_t.png"
+IDR_EN_US RCDATA "../lang/en_us.xml"
+IDR_ES_CR RCDATA "../lang/es_cr.xml"

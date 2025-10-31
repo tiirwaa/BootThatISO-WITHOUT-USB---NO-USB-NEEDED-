@@ -5,5 +5,10 @@
 #define IDC_LANGUAGE_LABEL 1000
 #define IDC_LANGUAGE_COMBO 1001
 
+#define IDR_AG_LOGO 102
+#define IDR_LOGO_T 103
+#define IDR_EN_US 104
+#define IDR_ES_CR 105
+
 #endif // RESOURCE_H
 

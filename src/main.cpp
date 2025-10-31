@@ -50,10 +50,14 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nCmdShow)
 {
+    Gdiplus::GdiplusStartupInput gdiplusStartupInput;
+    ULONG_PTR gdiplusToken;
+    Gdiplus::GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
+
     LocalizationManager& localization = LocalizationManager::getInstance();
     std::wstring exeDir = Utils::utf8_to_wstring(Utils::getExeDirectory());
     std::wstring langDir = exeDir + L"lang";
-    if (!localization.initialize(langDir) || !localization.hasLanguages()) {
+    if (!localization.initialize() || !localization.hasLanguages()) {
         std::wstring noLangMessage = LocalizedOrW("message.noLanguagesFound", L"No language files were found in the 'lang' directory.");
         std::wstring errorTitle = LocalizedOrW("title.error", L"Error");
         MessageBoxW(NULL, noLangMessage.c_str(), errorTitle.c_str(), MB_ICONERROR | MB_OK);
@@ -213,6 +217,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
+    Gdiplus::GdiplusShutdown(gdiplusToken);
     return static_cast<int>(msg.wParam);
 }
 

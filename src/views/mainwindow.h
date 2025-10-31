@@ -4,6 +4,7 @@
 #include <windows.h>
 #include <string>
 #include <memory>
+#include <gdiplus.h>
 #include "../services/partitionmanager.h"
 #include "../services/isocopymanager.h"
 #include "../services/bcdmanager.h"
@@ -129,6 +130,10 @@ private:
 
     HINSTANCE hInst;
     HWND hWndParent;
+
+    // Images
+    Gdiplus::Bitmap* logoBitmap;
+    Gdiplus::Bitmap* buttonIcon;
 
     // Thread management
     bool isProcessing;

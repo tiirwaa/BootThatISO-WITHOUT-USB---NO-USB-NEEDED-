@@ -9,14 +9,14 @@
 struct LanguageInfo {
     std::wstring code;
     std::wstring name;
-    std::wstring filePath;
+    int resourceId;
 };
 
 class LocalizationManager {
 public:
     static LocalizationManager& getInstance();
 
-    bool initialize(const std::wstring& directory);
+    bool initialize();
     bool hasLanguages() const;
     const std::vector<LanguageInfo>& getAvailableLanguages() const;
 
@@ -39,12 +39,11 @@ private:
     LocalizationManager(const LocalizationManager&) = delete;
     LocalizationManager& operator=(const LocalizationManager&) = delete;
 
-    bool parseLanguageFile(const std::wstring& path, std::unordered_map<std::string, std::wstring>& outStrings, LanguageInfo& metadata) const;
+    bool parseLanguageFile(int resourceId, std::unordered_map<std::string, std::wstring>& outStrings, LanguageInfo& metadata) const;
     static std::wstring decodeEntities(const std::wstring& input);
     static std::wstring trim(const std::wstring& input);
     static void replaceAll(std::wstring& target, const std::wstring& from, const std::wstring& to);
 
-    std::wstring languageDirectory;
     std::unordered_map<std::string, std::wstring> strings;
     std::vector<LanguageInfo> languages;
     LanguageInfo currentLanguage;

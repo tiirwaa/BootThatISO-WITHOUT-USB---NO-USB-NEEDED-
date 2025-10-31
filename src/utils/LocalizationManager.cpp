@@ -19,30 +19,11 @@ LocalizationManager& LocalizationManager::getInstance() {
     return instance;
 }
 
-bool LocalizationManager::initialize(const std::wstring& directory) {
-    languageDirectory = directory;
+bool LocalizationManager::initialize() {
     languages.clear();
-    if (!std::filesystem::exists(directory)) {
-        return false;
-    }
-
-    for (const auto& entry : std::filesystem::directory_iterator(directory)) {
-        if (!entry.is_regular_file()) {
-            continue;
-        }
-        const auto& path = entry.path();
-        if (path.extension() != L".xml") {
-            continue;
-        }
-
-        std::unordered_map<std::string, std::wstring> tmpStrings;
-        LanguageInfo info;
-        if (parseLanguageFile(path.wstring(), tmpStrings, info)) {
-            info.filePath = path.wstring();
-            languages.push_back(info);
-        }
-    }
-    return !languages.empty();
+    languages.push_back({L"en_us", L"English (US)", IDR_EN_US});
+    languages.push_back({L"es_cr", L"Español (CR)", IDR_ES_CR});
+    return true;
 }
 
 bool LocalizationManager::hasLanguages() const {
@@ -69,7 +50,7 @@ bool LocalizationManager::loadLanguageByCode(const std::wstring& code) {
         if (_wcsicmp(languageCode.c_str(), normalized.c_str()) == 0) {
             std::unordered_map<std::string, std::wstring> loadedStrings;
             LanguageInfo info;
-            if (parseLanguageFile(language.filePath, loadedStrings, info)) {
+            if (parseLanguageFile(language.resourceId, loadedStrings, info)) {
                 strings = std::move(loadedStrings);
                 currentLanguage = language;
                 return true;
@@ -205,15 +186,18 @@ bool LocalizationManager::promptForLanguageSelection(HINSTANCE hInstance, HWND p
     return false;
 }
 
-bool LocalizationManager::parseLanguageFile(const std::wstring& path, std::unordered_map<std::string, std::wstring>& outStrings, LanguageInfo& metadata) const {
-    std::ifstream file(path, std::ios::binary);
-    if (!file.is_open()) {
+bool LocalizationManager::parseLanguageFile(int resourceId, std::unordered_map<std::string, std::wstring>& outStrings, LanguageInfo& metadata) const {
+    HRSRC hRes = FindResource(NULL, MAKEINTRESOURCE(resourceId), RT_RCDATA);
+    if (!hRes) {
         return false;
     }
-
-    std::ostringstream oss;
-    oss << file.rdbuf();
-    std::string utf8 = oss.str();
+    HGLOBAL hGlob = LoadResource(NULL, hRes);
+    if (!hGlob) {
+        return false;
+    }
+    LPVOID pData = LockResource(hGlob);
+    DWORD size = SizeofResource(NULL, hRes);
+    std::string utf8(reinterpret_cast<char*>(pData), size);
     if (utf8.size() >= 3 && static_cast<unsigned char>(utf8[0]) == 0xEF &&
         static_cast<unsigned char>(utf8[1]) == 0xBB &&
         static_cast<unsigned char>(utf8[2]) == 0xBF) {

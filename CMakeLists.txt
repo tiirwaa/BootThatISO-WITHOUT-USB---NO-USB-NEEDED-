@@ -63,7 +63,7 @@ else()
 endif()
 
 # Link necessary libraries (MFC is included via CMAKE_MFC_FLAG)
-target_link_libraries(BootThatISO comctl32)
+target_link_libraries(BootThatISO comctl32 gdiplus)
 set(CMAKE_MFC_FLAG 1)
 
 set_target_properties(BootThatISO PROPERTIES OUTPUT_NAME "BootThatISO!")
@@ -124,12 +124,6 @@ else()
         VERBATIM
     )
 endif()
-
-# Copy lang folder to output directory
-add_custom_command(TARGET BootThatISO POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-    ${CMAKE_SOURCE_DIR}/lang $<TARGET_FILE_DIR:BootThatISO>/lang
-)
 
 
 

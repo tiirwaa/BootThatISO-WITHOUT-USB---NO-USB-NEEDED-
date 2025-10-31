@@ -16,6 +16,8 @@
 #include <iomanip>
 #include <ctime>
 #include <memory>
+#include <objidl.h>
+#include "../resource.h"
 
 #define WM_UPDATE_DETAILED_PROGRESS (WM_USER + 5)
 #define WM_UPDATE_ERROR (WM_USER + 6)
@@ -26,8 +28,28 @@ struct DetailedProgressData {
     std::string operation;
 };
 
+#include <objidl.h>
+
+Gdiplus::Bitmap* LoadBitmapFromResource(int resourceId) {
+    HRSRC hRes = FindResource(NULL, MAKEINTRESOURCE(resourceId), RT_RCDATA);
+    if (!hRes) return nullptr;
+    HGLOBAL hGlob = LoadResource(NULL, hRes);
+    if (!hGlob) return nullptr;
+    LPVOID pData = LockResource(hGlob);
+    DWORD size = SizeofResource(NULL, hRes);
+    HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, size);
+    LPVOID pMem = GlobalLock(hMem);
+    memcpy(pMem, pData, size);
+    GlobalUnlock(hMem);
+    IStream* pStream = nullptr;
+    CreateStreamOnHGlobal(hMem, TRUE, &pStream);
+    Gdiplus::Bitmap* bitmap = Gdiplus::Bitmap::FromStream(pStream);
+    pStream->Release();
+    return bitmap;
+}
+
 MainWindow::MainWindow(HWND parent)
-    : hInst(GetModuleHandle(NULL)), hWndParent(parent), selectedFormat("NTFS"), selectedBootModeKey(AppKeys::BootModeExtract), isProcessing(false), isRecovering(false), skipIntegrityCheck(true)
+    : hInst(GetModuleHandle(NULL)), hWndParent(parent), selectedFormat("NTFS"), selectedBootModeKey(AppKeys::BootModeExtract), isProcessing(false), isRecovering(false), skipIntegrityCheck(true), logoBitmap(nullptr), buttonIcon(nullptr)
 {
     partitionManager = &PartitionManager::getInstance();
     isoCopyManager = &ISOCopyManager::getInstance();
@@ -44,7 +66,9 @@ MainWindow::MainWindow(HWND parent)
 
 MainWindow::~MainWindow()
 {
-    }
+    if (logoBitmap) delete logoBitmap;
+    if (buttonIcon) delete buttonIcon;
+}
 
 void MainWindow::requestCancel()
 {
@@ -84,18 +108,25 @@ void MainWindow::LoadTexts()
 void MainWindow::SetupUI(HWND parent)
 {
     LoadTexts();
+    logoBitmap = LoadBitmapFromResource(IDR_AG_LOGO);
+    buttonIcon = LoadBitmapFromResource(IDR_LOGO_T);
     CreateControls(parent);
     ApplyStyles();
 }
 
 void MainWindow::CreateControls(HWND parent)
 {
-    SendMessage(logoLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
+    logoLabel = CreateWindowW(L"STATIC", NULL, WS_CHILD | WS_VISIBLE | SS_BITMAP, 10, 10, 50, 50, parent, NULL, hInst, NULL);
+    if (logoBitmap) {
+        HBITMAP hLogo;
+        logoBitmap->GetHBITMAP(Gdiplus::Color::White, &hLogo);
+        SendMessage(logoLabel, STM_SETIMAGE, IMAGE_BITMAP, (LPARAM)hLogo);
+    }
 
-    titleLabel = CreateWindowW(L"STATIC", titleText.c_str(), WS_CHILD | WS_VISIBLE, 75, 10, 300, 30, parent, NULL, hInst, NULL);
+    titleLabel = CreateWindowW(L"STATIC", titleText.c_str(), WS_CHILD | WS_VISIBLE, 70, 10, 300, 30, parent, NULL, hInst, NULL);
     SendMessage(titleLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    subtitleLabel = CreateWindowW(L"STATIC", subtitleText.c_str(), WS_CHILD | WS_VISIBLE, 75, 40, 300, 20, parent, NULL, hInst, NULL);
+    subtitleLabel = CreateWindowW(L"STATIC", subtitleText.c_str(), WS_CHILD | WS_VISIBLE, 70, 40, 300, 20, parent, NULL, hInst, NULL);
     SendMessage(subtitleLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
     isoPathLabel = CreateWindowW(L"STATIC", isoLabelText.c_str(), WS_CHILD | WS_VISIBLE, 10, 80, 200, 20, parent, NULL, hInst, NULL);
@@ -141,28 +172,32 @@ void MainWindow::CreateControls(HWND parent)
 
     detailedProgressBar = CreateWindowW(PROGRESS_CLASSW, NULL, WS_CHILD | WS_VISIBLE, 10, 290, 760, 20, parent, NULL, hInst, NULL);
 
-    createPartitionButton = CreateWindowW(L"BUTTON", createButtonText.c_str(), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 10, 320, 400, 40, parent, (HMENU)IDC_CREATE_PARTITION_BUTTON, hInst, NULL);
+    createPartitionButton = CreateWindowW(L"BUTTON", createButtonText.c_str(), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 10, 320, 400, 150, parent, (HMENU)IDC_CREATE_PARTITION_BUTTON, hInst, NULL);
+    if (buttonIcon) {
+        HBITMAP hIcon;
+        buttonIcon->GetHBITMAP(Gdiplus::Color::White, &hIcon);
+        SendMessage(createPartitionButton, BM_SETIMAGE, IMAGE_BITMAP, (LPARAM)hIcon);
+    }
     SendMessage(createPartitionButton, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    progressBar = CreateWindowW(PROGRESS_CLASSW, NULL, WS_CHILD | WS_VISIBLE, 10, 360, 760, 20, parent, NULL, hInst, NULL);
+    progressBar = CreateWindowW(PROGRESS_CLASSW, NULL, WS_CHILD | WS_VISIBLE, 10, 480, 760, 20, parent, NULL, hInst, NULL);
 
-    logTextEdit = CreateWindowW(L"EDIT", L"", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_MULTILINE | ES_AUTOVSCROLL, 10, 390, 760, 230, parent, NULL, hInst, NULL);
+    logTextEdit = CreateWindowW(L"EDIT", L"", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_MULTILINE | ES_AUTOVSCROLL | WS_VSCROLL, 10, 510, 760, 180, parent, NULL, hInst, NULL);
     SendMessage(logTextEdit, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    footerLabel = CreateWindowW(L"STATIC", versionText.c_str(), WS_CHILD | WS_VISIBLE, 10, 640, 140, 20, parent, NULL, hInst, NULL);
+    footerLabel = CreateWindowW(L"STATIC", versionText.c_str(), WS_CHILD | WS_VISIBLE, 10, 700, 140, 20, parent, NULL, hInst, NULL);
     SendMessage(footerLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    servicesButton = CreateWindowW(L"BUTTON", servicesText.c_str(), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 650, 640, 100, 20, parent, (HMENU)IDC_SERVICES_BUTTON, hInst, NULL);
+    servicesButton = CreateWindowW(L"BUTTON", servicesText.c_str(), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 650, 700, 100, 20, parent, (HMENU)IDC_SERVICES_BUTTON, hInst, NULL);
     SendMessage(servicesButton, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    recoverButton = CreateWindowW(L"BUTTON", recoverText.c_str(), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 500, 640, 140, 20, parent, (HMENU)IDC_RECOVER_BUTTON, hInst, NULL);
+    recoverButton = CreateWindowW(L"BUTTON", recoverText.c_str(), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 500, 700, 140, 20, parent, (HMENU)IDC_RECOVER_BUTTON, hInst, NULL);
     SendMessage(recoverButton, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 }
 
 void MainWindow::ApplyStyles()
 {
     // Set fonts for all controls
-    SendMessage(logoLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
     SendMessage(titleLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
     SendMessage(subtitleLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
     SendMessage(isoPathLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
