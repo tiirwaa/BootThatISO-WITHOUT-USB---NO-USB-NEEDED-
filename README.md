@@ -12,6 +12,8 @@ Developed by **Andrey Rodriguez Araya**.
 
 ![Screenshot](screenshot.png)
 
+![Boot screen](boot_screen.png)
+
 ## Key Features
 - Creates or reforms `ISOBOOT` (data) and `ISOEFI` (EFI) partitions on the system disk, with FAT32, exFAT, or NTFS format options.
 - Supports two boot modes: full ISO loading to disk or RAMDisk mode (boot.wim in memory).
@@ -134,6 +136,8 @@ Esta utilidad es especialmente útil para:
 Proyecto desarrollado por **Andrey Rodriguez Araya**.
 
 ![Screenshot](screenshot.png)
+
+![Boot screen](boot_screen.png)
 
 ## Caracteristicas clave
 - Crea o reforma particiones `ISOBOOT` (datos) e `ISOEFI` (EFI) en el disco del sistema, con opciones de formato FAT32, exFAT o NTFS.
