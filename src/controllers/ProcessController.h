@@ -30,8 +30,8 @@ private:
     ISOCopyManager* isoCopyManager;
     BCDManager* bcdManager;
     EventManager& eventManager;
-    std::thread* workerThread;
-    std::thread* recoveryThread;
+    std::thread workerThread;
+    std::thread recoveryThread;
     std::atomic<bool> recoveryInProgress{false};
 };
 

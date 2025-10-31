@@ -6,14 +6,9 @@
 #include "../utils/Utils.h"
 #include "../utils/LocalizationManager.h"
 #include "../utils/LocalizationHelpers.h"
+#include "models/HashInfo.h"
 #include "../utils/AppKeys.h"
-
-// Struct for hash info
-struct HashInfo {
-    std::string hash;
-    std::string mode;
-    std::string format;
-};
+#include "../utils/Logger.h"
 
 // Helper function to read hash info from file
 static HashInfo readHashInfo(const std::string& path) {
@@ -28,7 +23,7 @@ static HashInfo readHashInfo(const std::string& path) {
 }
 
 ProcessController::ProcessController(EventManager& eventManager)
-    : eventManager(eventManager), workerThread(nullptr), recoveryThread(nullptr)
+    : eventManager(eventManager)
 {
     partitionManager = &PartitionManager::getInstance();
     partitionManager->setEventManager(&eventManager);
@@ -39,29 +34,17 @@ ProcessController::ProcessController(EventManager& eventManager)
 
 ProcessController::~ProcessController()
 {
-    if (workerThread && workerThread->joinable()) {
-        workerThread->join();
-        delete workerThread;
-        workerThread = nullptr;
+    if (workerThread.joinable()) {
+        workerThread.join();
     }
-    if (recoveryThread) {
-        if (recoveryThread->joinable()) {
-            recoveryThread->join();
-        }
-        delete recoveryThread;
-        recoveryThread = nullptr;
+    if (recoveryThread.joinable()) {
+        recoveryThread.join();
     }
 }
 
 void ProcessController::requestCancel()
 {
     eventManager.requestCancel();
-    // If a worker thread exists, wait for it to finish cleaning up
-    if (workerThread && workerThread->joinable()) {
-        workerThread->join();
-        delete workerThread;
-        workerThread = nullptr;
-    }
     if (recoveryInProgress.load()) {
         eventManager.notifyLogUpdate("La recuperacion de espacio esta en curso y no admite cancelacion.\r\n");
     }
@@ -69,15 +52,8 @@ void ProcessController::requestCancel()
 
 void ProcessController::startProcess(const std::string& isoPath, const std::string& selectedFormat, const std::string& selectedBootModeKey, const std::string& selectedBootModeLabel, bool skipIntegrityCheck, bool synchronous)
 {
-    // Clear logs at start of process
-    std::string logDir = Utils::getExeDirectory() + "logs";
-    CreateDirectoryA(logDir.c_str(), NULL);
-    std::vector<std::string> logFiles = { GENERAL_LOG_FILE, BCD_CONFIG_LOG_FILE, ISO_EXTRACT_LOG_FILE };
-    for (const auto& file : logFiles) {
-        std::string path = logDir + "\\" + file;
-        std::ofstream ofs(path, std::ios::trunc);
-        ofs.close();
-    }
+    Logger::instance().resetProcessLogs();
+    const std::string logDir = Logger::instance().logDirectory();
 
     // Log to file
     std::ofstream logFile((logDir + "\\start_process.log").c_str());
@@ -116,11 +92,12 @@ void ProcessController::startProcess(const std::string& isoPath, const std::stri
     }
 
     if (synchronous) {
-        // Run synchronously
         processInThread(trimmedIsoPath, selectedFormat, selectedBootModeKey, selectedBootModeLabel, skipIntegrityCheck);
     } else {
-        // Iniciar hilo
-        workerThread = new std::thread(&ProcessController::processInThread, this, trimmedIsoPath, selectedFormat, selectedBootModeKey, selectedBootModeLabel, skipIntegrityCheck);
+        if (workerThread.joinable()) {
+            workerThread.join();
+        }
+        workerThread = std::thread(&ProcessController::processInThread, this, trimmedIsoPath, selectedFormat, selectedBootModeKey, selectedBootModeLabel, skipIntegrityCheck);
     }
 }
 
@@ -233,17 +210,13 @@ bool ProcessController::recoverSpace()
         return false;
     }
 
-    if (recoveryThread) {
-        if (recoveryThread->joinable()) {
-            recoveryThread->join();
-        }
-        delete recoveryThread;
-        recoveryThread = nullptr;
+    if (recoveryThread.joinable()) {
+        recoveryThread.join();
     }
 
     eventManager.notifyLogUpdate("Iniciando recuperacion de espacio en segundo plano.\r\n");
     recoveryInProgress.store(true);
-    recoveryThread = new std::thread(&ProcessController::recoverSpaceInThread, this);
+    recoveryThread = std::thread(&ProcessController::recoverSpaceInThread, this);
     return true;
 }
 

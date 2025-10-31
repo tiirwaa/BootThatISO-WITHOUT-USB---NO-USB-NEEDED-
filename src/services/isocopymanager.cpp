@@ -1,4 +1,4 @@
-#include "isocopymanager.h"
+﻿#include "isocopymanager.h"
 #include "../utils/constants.h"
 #include <windows.h>
 #include <string>
@@ -13,18 +13,12 @@
 #include "../utils/Utils.h"
 #include "../utils/LocalizationManager.h"
 #include "../utils/LocalizationHelpers.h"
+#include "models/HashInfo.h"
 #include "../utils/AppKeys.h"
 #include "isotypedetector.h"
 #include "../models/efimanager.h"
 #include "../models/isomounter.h"
 #include "../models/filecopymanager.h"
-
-// Struct for hash info
-struct HashInfo {
-    std::string hash;
-    std::string mode;
-    std::string format;
-};
 
 // Forward declarations for helper functions defined later in this file
 static bool isValidPE(const std::string& path);

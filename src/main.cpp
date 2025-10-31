@@ -6,6 +6,7 @@
 #include <iostream>
 #include <fstream>
 #include <algorithm>
+#include <memory>
 #include <cwctype>
 #include "views/mainwindow.h"
 #include "controllers/ProcessController.h"
@@ -18,6 +19,7 @@
 #include "utils/LocalizationManager.h"
 #include "utils/LocalizationHelpers.h"
 #include "utils/AppKeys.h"
+#include "utils/Logger.h"
 
 BOOL IsRunAsAdmin()
 {
@@ -41,13 +43,7 @@ BOOL IsRunAsAdmin()
 
 void ClearLogs()
 {
-    std::string logDir = Utils::getExeDirectory() + "logs";
-    std::vector<std::string> logFiles = { GENERAL_LOG_FILE, BCD_CONFIG_LOG_FILE, ISO_EXTRACT_LOG_FILE };
-    for (const auto& file : logFiles) {
-        std::string path = logDir + "\\" + file;
-        std::ofstream ofs(path, std::ios::trunc);
-        ofs.close();
-    }
+    Logger::instance().resetProcessLogs();
 }
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -222,60 +218,58 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-    static MainWindow* mainWindow = nullptr;
+    static std::unique_ptr<MainWindow> mainWindow;
 
     switch (msg)
     {
     case WM_CREATE:
-        mainWindow = new MainWindow(hwnd);
-        break;
+        mainWindow = std::make_unique<MainWindow>(hwnd);
+        return 0;
     case WM_COMMAND:
         if (mainWindow)
         {
             mainWindow->HandleCommand(msg, wParam, lParam);
         }
-        break;
+        return 0;
     case WM_CLOSE:
         if (mainWindow && mainWindow->IsProcessing())
         {
-            std::wstring prompt = LocalizedOrW("message.operationInProgress", L"Un proceso está en ejecución. ¿Desea cancelar la operación y cerrar la aplicación?");
-            std::wstring title = LocalizedOrW("title.operationInProgress", L"Proceso en ejecución");
-            int res = MessageBoxW(hwnd, prompt.c_str(), title.c_str(), MB_YESNO | MB_ICONQUESTION);
-            if (res == IDYES) {
+            const std::wstring prompt = LocalizedOrW("message.operationInProgress", L"Un proceso esta en ejecucion. Desea cancelar la operacion y cerrar la aplicacion?");
+            const std::wstring title = LocalizedOrW("title.operationInProgress", L"Proceso en ejecucion");
+            const int result = MessageBoxW(hwnd, prompt.c_str(), title.c_str(), MB_YESNO | MB_ICONQUESTION);
+            if (result == IDYES) {
                 mainWindow->requestCancel();
-                if (mainWindow) {
-                    delete mainWindow;
-                    mainWindow = nullptr;
-                }
-                PostQuitMessage(0);
-                return 0;
-            } else {
-                return 0;
+                DestroyWindow(hwnd);
             }
-        } else {
-            DestroyWindow(hwnd);
             return 0;
         }
+        DestroyWindow(hwnd);
+        return 0;
     case WM_UPDATE_PROGRESS:
     case WM_UPDATE_LOG:
     case WM_ENABLE_BUTTON:
     case WM_UPDATE_DETAILED_PROGRESS:
     case WM_UPDATE_ERROR:
+    case WM_ASK_RESTART:
     case WM_RECOVER_COMPLETE:
         if (mainWindow)
         {
             mainWindow->HandleCommand(msg, wParam, lParam);
         }
-        break;
+        return 0;
     case WM_DESTROY:
-        if (mainWindow)
-        {
-            delete mainWindow;
-        }
+        mainWindow.reset();
         PostQuitMessage(0);
-        break;
+        return 0;
     default:
         return DefWindowProc(hwnd, msg, wParam, lParam);
     }
     return 0;
 }
+
+
+
+
+
+
+

@@ -14,6 +14,7 @@ private:
     PartitionManager& operator=(const PartitionManager&) = delete;
 
     EventManager* eventManager;
+    std::string monitoredDrive;
 
     bool RestartComputer();
 
@@ -23,9 +24,11 @@ public:
     static PartitionManager& getInstance();
 
     void setEventManager(EventManager* em) { eventManager = em; }
+    void setMonitoredDrive(const std::string& driveRoot);
+    std::string getMonitoredDrive() const { return monitoredDrive; }
 
     SpaceValidationResult validateAvailableSpace();
-    long long getAvailableSpaceGB();
+    long long getAvailableSpaceGB(const std::string& driveRoot = std::string());
     bool createPartition(const std::string& format = "FAT32", bool skipIntegrityCheck = false);
     bool partitionExists();
     bool efiPartitionExists();

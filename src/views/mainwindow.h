@@ -3,8 +3,7 @@
 
 #include <windows.h>
 #include <string>
-#include <fstream>
-#include <thread>
+#include <memory>
 #include "../services/partitionmanager.h"
 #include "../services/isocopymanager.h"
 #include "../services/bcdmanager.h"
@@ -57,8 +56,9 @@ private:
     void SetupUI(HWND parent);
     void ApplyStyles();
     void UpdateDiskSpaceInfo();
-    void LogMessage(const std::string& msg);
+    void LogMessage(const std::string& msg, bool persist = true);
     void UpdateDetailedProgressLabel(long long copied, long long total, const std::string& operation);
+    void PromptRestart();
 
     void OnSelectISO();
     void OnCreatePartition();
@@ -70,7 +70,7 @@ private:
     ISOCopyManager* isoCopyManager;
     BCDManager* bcdManager;
     EventManager eventManager;
-    ProcessController* processController;
+    std::unique_ptr<ProcessController> processController;
 
     // File system format selection
     std::string selectedFormat;
@@ -110,12 +110,11 @@ private:
     HWND hWndParent;
 
     // Thread management
-    std::thread* workerThread;
     bool isProcessing;
     bool isRecovering;
-
-    // Log file
-    std::ofstream generalLogFile;
 };
 
 #endif // MAINWINDOW_H
+
+
+

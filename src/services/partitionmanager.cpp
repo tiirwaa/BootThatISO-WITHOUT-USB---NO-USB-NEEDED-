@@ -1,5 +1,4 @@
 ﻿#include <mutex>
-// Force rebuild
 #include <string>
 #include <fstream>
 #include <windows.h>
@@ -9,6 +8,38 @@
 #include "../utils/LocalizationManager.h"
 #include "../utils/LocalizationHelpers.h"
 
+namespace {
+std::string normalizeDriveRoot(const std::string& drive) {
+    if (drive.empty()) {
+        return "";
+    }
+    std::string normalized = drive;
+    if (normalized.size() >= 2 && normalized[1] == ':') {
+        normalized = normalized.substr(0, 2);
+    }
+    if (normalized.size() == 1 && (normalized[0] == '\\' || normalized[0] == '/')) {
+        return normalized;
+    }
+    if (!normalized.empty() && normalized.back() != '\\' && normalized.back() != '/') {
+        normalized += "\\";
+    }
+    return normalized;
+}
+
+std::string detectSystemDrive() {
+    char buffer[MAX_PATH] = {0};
+    DWORD length = GetEnvironmentVariableA("SystemDrive", buffer, MAX_PATH);
+    if (length >= 2 && buffer[1] == ':') {
+        return normalizeDriveRoot(std::string(buffer, length));
+    }
+    char windowsDir[MAX_PATH] = {0};
+    UINT written = GetWindowsDirectoryA(windowsDir, MAX_PATH);
+    if (written >= 2 && windowsDir[1] == ':') {
+        return normalizeDriveRoot(std::string(windowsDir, windowsDir + 2));
+    }
+    return "C:\\";
+}
+}
 // Helper to append and flush to general_log.log
 void logToGeneral(const std::string& msg) {
     static std::mutex logMutex;
@@ -35,10 +66,18 @@ PartitionManager& PartitionManager::getInstance() {
 }
 
 PartitionManager::PartitionManager()
-    : eventManager(nullptr)
+    : eventManager(nullptr),
+      monitoredDrive(detectSystemDrive())
 {
 }
-
+void PartitionManager::setMonitoredDrive(const std::string& driveRoot)
+{
+    std::string normalized = normalizeDriveRoot(driveRoot);
+    if (normalized.empty()) {
+        normalized = detectSystemDrive();
+    }
+    monitoredDrive = normalized;
+}
 PartitionManager::~PartitionManager()
 {
 }
@@ -70,11 +109,17 @@ SpaceValidationResult PartitionManager::validateAvailableSpace()
     return result;
 }
 
-long long PartitionManager::getAvailableSpaceGB()
+long long PartitionManager::getAvailableSpaceGB(const std::string& driveRoot)
 {
-    ULARGE_INTEGER freeBytesAvailable, totalNumberOfBytes, totalNumberOfFreeBytes;
-    if (GetDiskFreeSpaceExA("C:\\", &freeBytesAvailable, &totalNumberOfBytes, &totalNumberOfFreeBytes)) {
-        return freeBytesAvailable.QuadPart / (1024LL * 1024 * 1024);
+    std::string target = driveRoot.empty() ? monitoredDrive : normalizeDriveRoot(driveRoot);
+    if (target.empty()) {
+        target = detectSystemDrive();
+        monitoredDrive = target;
+    }
+
+    ULARGE_INTEGER freeBytesAvailable{}, totalNumberOfBytes{}, totalNumberOfFreeBytes{};
+    if (GetDiskFreeSpaceExA(target.c_str(), &freeBytesAvailable, &totalNumberOfBytes, &totalNumberOfFreeBytes)) {
+        return static_cast<long long>(freeBytesAvailable.QuadPart / (1024LL * 1024 * 1024));
     }
     return 0;
 }
@@ -1591,5 +1636,6 @@ bool PartitionManager::isDiskGpt()
 
     return false;
 }
+
 
 

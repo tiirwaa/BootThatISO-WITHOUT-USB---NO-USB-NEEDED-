@@ -4,6 +4,7 @@
 #include "../utils/LocalizationManager.h"
 #include "../utils/LocalizationHelpers.h"
 #include "../utils/AppKeys.h"
+#include "../utils/Logger.h"
 #include "../models/BootStrategyFactory.h"
 #include "version.h"
 #include <commdlg.h>
@@ -14,6 +15,7 @@
 #include <cstring>
 #include <iomanip>
 #include <ctime>
+#include <memory>
 
 #define WM_UPDATE_DETAILED_PROGRESS (WM_USER + 5)
 #define WM_UPDATE_ERROR (WM_USER + 6)
@@ -25,16 +27,13 @@ struct DetailedProgressData {
 };
 
 MainWindow::MainWindow(HWND parent)
-    : hInst(GetModuleHandle(NULL)), hWndParent(parent), selectedFormat("NTFS"), selectedBootModeKey(AppKeys::BootModeExtract), workerThread(nullptr), isProcessing(false), isRecovering(false), skipIntegrityCheck(true)
+    : hInst(GetModuleHandle(NULL)), hWndParent(parent), selectedFormat("NTFS"), selectedBootModeKey(AppKeys::BootModeExtract), isProcessing(false), isRecovering(false), skipIntegrityCheck(true)
 {
     partitionManager = &PartitionManager::getInstance();
     isoCopyManager = &ISOCopyManager::getInstance();
     bcdManager = &BCDManager::getInstance();
     eventManager.addObserver(this);
-    processController = new ProcessController(eventManager);
-    std::string logDir = Utils::getExeDirectory() + "logs";
-    CreateDirectoryA(logDir.c_str(), NULL);
-    generalLogFile.open(logDir + "\\" + GENERAL_LOG_FILE, std::ios::app);
+    processController = std::make_unique<ProcessController>(eventManager);
     if (partitionManager->partitionExists()) {
         bcdManager->restoreBCD();
     }
@@ -44,13 +43,7 @@ MainWindow::MainWindow(HWND parent)
 
 MainWindow::~MainWindow()
 {
-    generalLogFile.close();
-    if (workerThread && workerThread->joinable()) {
-        workerThread->join();
-        delete workerThread;
     }
-    delete processController;
-}
 
 void MainWindow::requestCancel()
 {
@@ -230,7 +223,7 @@ void MainWindow::HandleCommand(UINT msg, WPARAM wParam, LPARAM lParam)
     case WM_UPDATE_LOG:
         {
             std::string* logMsg = reinterpret_cast<std::string*>(lParam);
-            LogMessage(*logMsg);
+            LogMessage(*logMsg, false);
             delete logMsg;
         }
         break;
@@ -255,6 +248,9 @@ void MainWindow::HandleCommand(UINT msg, WPARAM wParam, LPARAM lParam)
             MessageBoxW(hWndParent, wmsg.c_str(), errorTitle.c_str(), MB_OK | MB_ICONERROR);
             delete errorMsg;
         }
+        break;
+    case WM_ASK_RESTART:
+        PromptRestart();
         break;
     case WM_RECOVER_COMPLETE:
         {
@@ -382,7 +378,7 @@ void MainWindow::UpdateDiskSpaceInfo()
     SetWindowTextW(diskSpaceLabel, infoText.c_str());
 }
 
-void MainWindow::LogMessage(const std::string& msg)
+void MainWindow::LogMessage(const std::string& msg, bool persist)
 {
     // Get current time
     std::time_t now = std::time(nullptr);
@@ -406,10 +402,8 @@ void MainWindow::LogMessage(const std::string& msg)
     }
 
     std::string timestampedMsg = timeStream.str() + normalizedMsg;
-
-    if (generalLogFile.is_open()) {
-        generalLogFile << timestampedMsg;
-        generalLogFile.flush();
+    if (persist) {
+        Logger::instance().append(GENERAL_LOG_FILE, timestampedMsg);
     }
     int wlen = MultiByteToWideChar(CP_UTF8, 0, timestampedMsg.c_str(), -1, NULL, 0);
     std::wstring wmsg(wlen, L'\0');
@@ -417,6 +411,19 @@ void MainWindow::LogMessage(const std::string& msg)
     int len = GetWindowTextLengthW(logTextEdit);
     SendMessageW(logTextEdit, EM_SETSEL, len, len);
     SendMessageW(logTextEdit, EM_REPLACESEL, FALSE, (LPARAM)wmsg.c_str());
+}
+
+void MainWindow::PromptRestart()
+{
+    std::wstring restartPrompt = LocalizedOrW("message.processCompleteRestart", L"Proceso terminado. Desea reiniciar el sistema ahora?");
+    std::wstring restartTitle = LocalizedOrW("title.restart", L"Reiniciar");
+    if (MessageBoxW(hWndParent, restartPrompt.c_str(), restartTitle.c_str(), MB_YESNO) == IDYES) {
+        if (!RestartSystem()) {
+            std::wstring restartError = LocalizedOrW("message.restartFailed", L"Error al reiniciar el sistema.");
+            std::wstring errorTitle = LocalizedOrW("title.error", L"Error");
+            MessageBoxW(hWndParent, restartError.c_str(), errorTitle.c_str(), MB_OK);
+        }
+    }
 }
 
 bool MainWindow::RestartSystem()
@@ -437,48 +444,16 @@ bool MainWindow::RestartSystem()
 }
 
 void MainWindow::onProgressUpdate(int progress) {
-    SendMessage(progressBar, PBM_SETPOS, progress, 0);
+    PostMessage(hWndParent, WM_UPDATE_PROGRESS, static_cast<WPARAM>(progress), 0);
 }
 
 void MainWindow::onLogUpdate(const std::string& message) {
-    // Get current time
-    std::time_t now = std::time(nullptr);
-    std::tm localTime;
-    localtime_s(&localTime, &now);
-    std::stringstream timeStream;
-    timeStream << std::put_time(&localTime, "[%Y-%m-%d %H:%M:%S] " );
-
-    std::string normalizedMsg = message;
-    auto hasTrailingCRLF = [&normalizedMsg]() -> bool {
-        return normalizedMsg.size() >= 2 &&
-               normalizedMsg[normalizedMsg.size() - 2] == '\r' &&
-               normalizedMsg.back() == '\n';
-    };
-    if (!hasTrailingCRLF()) {
-        while (!normalizedMsg.empty() &&
-               (normalizedMsg.back() == '\n' || normalizedMsg.back() == '\r')) {
-            normalizedMsg.pop_back();
-        }
-        normalizedMsg += "\r\n";
-    }
-
-    std::string timestampedMsg = timeStream.str() + normalizedMsg;
-
-    int wlen = MultiByteToWideChar(CP_UTF8, 0, timestampedMsg.c_str(), -1, NULL, 0);
-    std::wstring wmsg(wlen, L'\0');
-    MultiByteToWideChar(CP_UTF8, 0, timestampedMsg.c_str(), -1, &wmsg[0], wlen);
-    int len = GetWindowTextLengthW(logTextEdit);
-    SendMessageW(logTextEdit, EM_SETSEL, len, len);
-    SendMessageW(logTextEdit, EM_REPLACESEL, FALSE, (LPARAM)wmsg.c_str());
-    if (generalLogFile.is_open()) {
-        generalLogFile << timestampedMsg;
-        generalLogFile.flush();
-    }
+    auto* logMsg = new std::string(message);
+    PostMessage(hWndParent, WM_UPDATE_LOG, 0, reinterpret_cast<LPARAM>(logMsg));
 }
 
 void MainWindow::onButtonEnable() {
-    EnableWindow(createPartitionButton, TRUE);
-    isProcessing = false;
+    PostMessage(hWndParent, WM_ENABLE_BUTTON, 0, 0);
 }
 
 void MainWindow::onDetailedProgress(long long copied, long long total, const std::string& operation) {
@@ -520,21 +495,15 @@ void MainWindow::UpdateDetailedProgressLabel(long long copied, long long total, 
 
 
 void MainWindow::onAskRestart() {
-    std::wstring restartPrompt = LocalizedOrW("message.processCompleteRestart", L"Proceso terminado. Desea reiniciar el sistema ahora?");
-    std::wstring restartTitle = LocalizedOrW("title.restart", L"Reiniciar");
-    if (MessageBoxW(hWndParent, restartPrompt.c_str(), restartTitle.c_str(), MB_YESNO) == IDYES) {
-        if (!RestartSystem()) {
-            std::wstring restartError = LocalizedOrW("message.restartFailed", L"Error al reiniciar el sistema.");
-            std::wstring errorTitle = LocalizedOrW("title.error", L"Error");
-            MessageBoxW(hWndParent, restartError.c_str(), errorTitle.c_str(), MB_OK);
-        }
-    }
+    PostMessage(hWndParent, WM_ASK_RESTART, 0, 0);
 }
 
 void MainWindow::onError(const std::string& message) {
     std::string* msg = new std::string(message);
     PostMessage(hWndParent, WM_UPDATE_ERROR, 0, (LPARAM)msg);
 }
+
+
 
 
 
