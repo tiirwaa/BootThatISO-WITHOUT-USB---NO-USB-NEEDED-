@@ -1,6 +1,18 @@
 #include <windows.h>
 #include <commctrl.h>
+#include <shellapi.h>
+#include <string>
+#include <vector>
+#include <iostream>
+#include <fstream>
 #include "views/mainwindow.h"
+#include "controllers/ProcessController.h"
+#include "models/EventManager.h"
+#include "services/partitionmanager.h"
+#include "services/isocopymanager.h"
+#include "services/bcdmanager.h"
+#include "utils/Utils.h"
+#include "utils/constants.h"
 
 BOOL IsRunAsAdmin()
 {
@@ -22,6 +34,17 @@ BOOL IsRunAsAdmin()
     return bElevated;
 }
 
+void ClearLogs()
+{
+    std::string logDir = Utils::getExeDirectory() + "logs";
+    std::vector<std::string> logFiles = { GENERAL_LOG_FILE, BCD_CONFIG_LOG_FILE, ISO_EXTRACT_LOG_FILE };
+    for (const auto& file : logFiles) {
+        std::string path = logDir + "\\" + file;
+        std::ofstream ofs(path, std::ios::trunc);
+        ofs.close();
+    }
+}
+
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nCmdShow)
@@ -30,6 +53,49 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
     {
         MessageBoxW(NULL, L"Este programa requiere privilegios de administrador.", L"Error", MB_ICONERROR | MB_OK);
         return 1;
+    }
+
+    // Clear logs at startup
+    ClearLogs();
+
+    // Parse command line arguments
+    int argc;
+    LPWSTR* argv = CommandLineToArgvW(lpCmdLine, &argc);
+    bool unattended = false;
+    std::string isoPath, mode, format;
+    bool chkdsk = false;
+    bool autoreboot = false;
+
+    if (argv) {
+        for (int i = 0; i < argc; ++i) {
+            std::wstring arg = argv[i];
+            if (arg == L"-unattended") {
+                unattended = true;
+            } else if (arg.find(L"-iso=") == 0) {
+                isoPath = Utils::wstring_to_utf8(arg.substr(5));
+            } else if (arg.find(L"-mode=") == 0) {
+                mode = Utils::wstring_to_utf8(arg.substr(6));
+                if (mode == "RAM") mode = "Boot desde Memoria";
+                else if (mode == "EXTRACT") mode = "Instalación Completa";
+            } else if (arg.find(L"-format=") == 0) {
+                format = Utils::wstring_to_utf8(arg.substr(8));
+            } else if (arg.find(L"-chkdsk=") == 0) {
+                chkdsk = (arg.substr(8) == L"TRUE");
+            } else if (arg.find(L"-autoreboot=") == 0) {
+                autoreboot = (arg.substr(12) == L"y");
+            }
+        }
+        LocalFree(argv);
+    }
+
+    if (unattended) {
+        // Run unattended mode
+        EventManager eventManager;
+        ProcessController processController(eventManager);
+        processController.startProcess(isoPath, format, mode, !chkdsk);
+        // Wait for completion (simplified, in real app might need better handling)
+        // For now, just return
+        return 0;
     }
 
     INITCOMMONCONTROLSEX icex;

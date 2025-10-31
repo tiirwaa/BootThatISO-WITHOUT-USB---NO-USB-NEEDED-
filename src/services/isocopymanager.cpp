@@ -135,7 +135,7 @@ void ISOCopyManager::listDirectoryRecursive(std::ofstream& log, const std::strin
     FindClose(hFind);
 }
 
-bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::string& isoPath, const std::string& destPath, const std::string& espPath, bool extractContent)
+bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::string& isoPath, const std::string& destPath, const std::string& espPath, bool extractContent, bool extractBootWim)
 {
     // Initialize managers with EventManager
     fileCopyManager = std::make_unique<FileCopyManager>(eventManager);
@@ -215,6 +215,21 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
         logFile << getTimestamp() << "Skipping content extraction (Boot desde Memoria mode)" << std::endl;
     }
 
+    // Extract boot.wim if requested
+    bool bootWimSuccess = true;
+    if (extractBootWim) {
+        std::string bootWimSrc = sourcePath + "sources\\boot.wim";
+        std::string bootWimDestDir = destPath + "sources";
+        CreateDirectoryA(bootWimDestDir.c_str(), NULL);
+        std::string bootWimDest = bootWimDestDir + "\\boot.wim";
+        if (copyFileUtf8(bootWimSrc, bootWimDest)) {
+            logFile << getTimestamp() << "boot.wim extracted successfully to " << bootWimDest << std::endl;
+        } else {
+            logFile << getTimestamp() << "Failed to extract boot.wim" << std::endl;
+            bootWimSuccess = false;
+        }
+    }
+
     // Extract EFI
     bool efiSuccess = efiManager->extractEFI(sourcePath, espPath, isWindowsISO, copiedSoFar, isoSize);
     
@@ -226,13 +241,16 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
     logFile << getTimestamp() << "Dismount ISO completed" << std::endl;
     
     logFile << getTimestamp() << "EFI extraction " << (efiSuccess ? "SUCCESS" : "FAILED") << std::endl;
+    if (extractBootWim) {
+        logFile << getTimestamp() << "boot.wim extraction " << (bootWimSuccess ? "SUCCESS" : "FAILED") << std::endl;
+    }
     if (extractContent) {
         logFile << getTimestamp() << "Content extraction completed." << std::endl;
     }
     logFile.close();
     
     eventManager.notifyDetailedProgress(0, 0, "");
-    return efiSuccess;
+    return efiSuccess && bootWimSuccess;
 }
 
 bool ISOCopyManager::copyISOFile(EventManager& eventManager, const std::string& isoPath, const std::string& destPath)

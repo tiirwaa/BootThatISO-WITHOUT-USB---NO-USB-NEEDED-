@@ -4,7 +4,9 @@
 #include "BootStrategy.h"
 #include "../utils/Utils.h"
 #include "../utils/constants.h"
+#include <windows.h>
 #include <fstream>
+#include <string>
 
 class RamdiskBootStrategy : public BootStrategy {
 public:
@@ -14,12 +16,80 @@ public:
 
     void configureBCD(const std::string& guid, const std::string& dataDevice, const std::string& espDevice, const std::string& efiPath) override {
         const std::string BCD_CMD = "C:\\Windows\\System32\\bcdedit.exe";
-        // dataDevice is expected as a drive letter like "Z:" where the ISO file lives
-    // ramdiskPath: use the copied ISO file on the data partition
-    std::string ramdiskPath = "[" + dataDevice + "]\\iso.iso";
-    std::string cmd1 = BCD_CMD + " /set " + guid + " device ramdisk=" + ramdiskPath;
-    std::string cmd2 = BCD_CMD + " /set " + guid + " osdevice ramdisk=" + ramdiskPath;
-    std::string cmd3 = BCD_CMD + " /set " + guid + " path \"" + efiPath + "\"";
+        // ramdiskPath: use the copied ISO file on the data partition (drive-letter form)
+        std::string ramdiskPath = "[" + dataDevice + "]\\iso.iso";
+
+        // Attempt 1: Resolve the DOS device name (\Device\HarddiskVolumeN) from the drive letter
+        std::string deviceFormRamdisk;
+        try {
+            // Ensure a form accepted by QueryDosDeviceW (e.g. "Z:")
+            std::wstring wDriveLetter = Utils::utf8_to_wstring(dataDevice);
+            if (wDriveLetter.size() == 1) {
+                wDriveLetter.push_back(L':');
+            } else if (wDriveLetter.size() > 1 && wDriveLetter.back() != L':') {
+                wDriveLetter.push_back(L':');
+            }
+            WCHAR deviceName[MAX_PATH] = {0};
+            if (!wDriveLetter.empty() && QueryDosDeviceW(wDriveLetter.c_str(), deviceName, MAX_PATH) != 0) {
+                // deviceName e.g. "\\Device\\HarddiskVolume3"
+                std::string deviceNameStr = Utils::wstring_to_utf8(std::wstring(deviceName));
+                deviceFormRamdisk = deviceNameStr + "\\iso.iso";
+            }
+        } catch (...) {
+            // ignore and fallback to GUID/letter based forms
+        }
+
+        // Attempt 2: Resolve the drive letter to a Volume GUID and append it (recommended for pre-boot resolution)
+        std::string ramdiskPathWithGuid = ramdiskPath;
+        try {
+            std::wstring wDrive = Utils::utf8_to_wstring(dataDevice);
+            if (wDrive.empty() || wDrive.back() != L'\\') wDrive += L'\\';
+            WCHAR volName[MAX_PATH] = {0};
+            if (GetVolumeNameForVolumeMountPointW(wDrive.c_str(), volName, MAX_PATH)) {
+                std::wstring wVol(volName);
+                size_t lbrace = wVol.find(L'{');
+                size_t rbrace = wVol.find(L'}');
+                if (lbrace != std::wstring::npos && rbrace != std::wstring::npos && rbrace > lbrace) {
+                    std::wstring wGuid = wVol.substr(lbrace, rbrace - lbrace + 1); // includes braces
+                    std::string guidStr = Utils::wstring_to_utf8(wGuid);
+                    // append comma + GUID (no prefix)
+                    // ramdiskPathWithGuid += "," + guidStr;
+                }
+            }
+        } catch (...) {
+            // best-effort: if resolving GUID fails, continue with drive-letter-only form
+        }
+
+        // Prepare BCD commands: use ramdisk with boot.wim
+        std::string cmd1 = BCD_CMD + " /set " + guid + " device ramdisk=" + ramdiskPathWithGuid;
+        std::string cmd2 = BCD_CMD + " /set " + guid + " osdevice ramdisk=" + ramdiskPathWithGuid;
+
+    // Prefer EFI fallback files (BOOTX64) for ramdisk boot if present on the ESP.
+    std::string selectedEfiPath = efiPath; // efiPath may be relative (starting with '\')
+    try {
+        std::vector<std::string> candidates = {
+            espDevice + "\\EFI\\BOOT\\BOOTX64.EFI",
+            espDevice + "\\EFI\\boot\\BOOTX64.EFI",
+            espDevice + "\\EFI\\boot\\bootx64.efi",
+            espDevice + "\\EFI\\Microsoft\\Boot\\bootmgfw.efi",
+            espDevice + "\\EFI\\microsoft\\boot\\bootmgfw.efi"
+        };
+        for (const auto& c : candidates) {
+            if (GetFileAttributesA(c.c_str()) != INVALID_FILE_ATTRIBUTES) {
+                // make relative path for BCD (remove drive letter and colon if present)
+                if (c.size() > espDevice.size()) {
+                    selectedEfiPath = c.substr(espDevice.size());
+                } else {
+                    selectedEfiPath = c;
+                }
+                break;
+            }
+        }
+    } catch (...) {
+        // ignore and use provided efiPath
+    }
+
+    std::string cmd3 = BCD_CMD + " /set " + guid + " path \"\\EFI\\BOOT\\BOOTX64.EFI\"";
 
     // Set inheritance for OSLOADER entry to get necessary boot settings
     std::string cmdInherit = BCD_CMD + " /set " + guid + " inherit {bootloadersettings}";
@@ -33,8 +103,8 @@ public:
         std::string logFilePath = logDir + "\\" + BCD_CONFIG_LOG_FILE;
         std::ofstream logFile(logFilePath.c_str(), std::ios::app);
         if (logFile) {
-            logFile << "Executing BCD commands for RamdiskBootStrategy:" << std::endl;
-            logFile << "Note: ramdisksdipath parameter is not needed in Windows 10/11 - SDI is found automatically in ramdisk" << std::endl;
+            logFile << "Executing BCD commands for RamdiskBootStrategy (ISO ramdisk mode):" << std::endl;
+            logFile << "Note: Using ISO file for RAMDISK boot with BOOTX64.EFI" << std::endl;
 
             // Execute inheritance first
             logFile << "  " << cmdInherit << std::endl;
@@ -66,7 +136,7 @@ public:
             // Check if essential ramdisk parameters are present
             bool hasDevice = verifyResult.find("device") != std::string::npos && verifyResult.find("ramdisk") != std::string::npos;
             bool hasOsDevice = verifyResult.find("osdevice") != std::string::npos && verifyResult.find("ramdisk") != std::string::npos;
-            bool hasPath = verifyResult.find("path") != std::string::npos;
+            bool hasPath = verifyResult.find("path") != std::string::npos && verifyResult.find("BOOTX64.EFI") != std::string::npos;
             
             if (hasDevice && hasOsDevice && hasPath) {
                 logFile << "SUCCESS: Essential ramdisk parameters configured correctly\n";
@@ -74,7 +144,7 @@ public:
                 logFile << "WARNING: Some ramdisk parameters may be missing!\n";
                 logFile << "  device+ramdisk: " << (hasDevice ? "YES" : "NO") << "\n";
                 logFile << "  osdevice+ramdisk: " << (hasOsDevice ? "YES" : "NO") << "\n";
-                logFile << "  path: " << (hasPath ? "YES" : "NO") << "\n";
+                logFile << "  path+BOOTX64: " << (hasPath ? "YES" : "NO") << "\n";
             }
 
             logFile.close();

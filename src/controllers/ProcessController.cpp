@@ -195,8 +195,8 @@ bool ProcessController::copyISO(const std::string& isoPath, const std::string& d
     std::string espDrive = espPath;
 
     if (mode == "Boot desde Memoria") {
-        eventManager.notifyLogUpdate("Modo Boot desde Memoria seleccionado: extrayendo solo archivos EFI...\r\n");
-        if (isoCopyManager->extractISOContents(eventManager, isoPath, drive, espDrive, false)) {
+        eventManager.notifyLogUpdate("Modo Boot desde Memoria seleccionado: extrayendo archivos EFI...\r\n");
+        if (isoCopyManager->extractISOContents(eventManager, isoPath, drive, espDrive, false, false)) {
             eventManager.notifyLogUpdate("Archivos EFI extraídos exitosamente.\r\n");
             eventManager.notifyProgressUpdate(55);
         } else {
