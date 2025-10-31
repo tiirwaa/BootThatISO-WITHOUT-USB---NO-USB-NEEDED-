@@ -1,35 +1,81 @@
-name: Attach exe and lang to Release
+name: Build, package and attach to Release (replace v1.0.0)
 
 on:
   release:
     types: [published]
 
 jobs:
-  package-and-upload:
+  build-package-and-upload:
     runs-on: windows-latest
     steps:
-      - name: Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Create release-assets directory
-        run: mkdir release-assets
+      - name: Verify release tag
+        if: "${{ github.event.release.tag_name != 'v1.0.0' }}"
+        run: |
+          Write-Host "This workflow only replaces release v1.0.0. Current tag: $($env:GITHUB_REF) / $($env:GITHUB_EVENT_PATH)"
+          Write-Host "Exiting without doing anything."
+          exit 0
         shell: powershell
 
-      - name: Create zip with exe and lang folder
+      - name: Create release-assets directory
+        run: New-Item -ItemType Directory -Path release-assets -Force
+        shell: powershell
+
+      - name: Configure and build (CMake + MSBuild)
         run: |
-          $exe = 'build/Release/BootThatISO!.exe'
-          Write-Host "Looking for exe at: $exe"
-          if (Test-Path $exe) {
+          Write-Host "Configuring CMake and building Release..."
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --config Release
+        shell: powershell
+
+      - name: Locate built exe
+        id: find-exe
+        run: |
+          $exe = Get-ChildItem -Path build -Filter 'BootThatISO*.exe' -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
+          if ([string]::IsNullOrEmpty($exe)) {
+            # fallback: try to find any exe in build/**/Release
+            $exe = Get-ChildItem -Path build -Filter '*.exe' -Recurse -ErrorAction SilentlyContinue | Where-Object { $_.FullName -match '\\Release\\' } | Select-Object -First 1 -ExpandProperty FullName
+          }
+          if (-not [string]::IsNullOrEmpty($exe)) {
+            Write-Host "Found exe: $exe"
+            Write-Output "exe_path=$exe" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          } else {
+            Write-Host "No exe found in build folder. Will package only 'lang' folder."
+            Write-Output "exe_path=" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          }
+        shell: powershell
+
+      - name: Create zip with exe (if present) and lang folder
+        run: |
+          $exe = '${{ steps.find-exe.outputs.exe_path }}'
+          if (-not [string]::IsNullOrEmpty($exe)) {
             Compress-Archive -Path $exe,'lang' -DestinationPath 'release-assets/BootThatISO-windows.zip' -Force
             Write-Host "Created release-assets/BootThatISO-windows.zip (exe + lang)"
           } else {
-            Write-Host "Exe not found at $exe. Listing build/Release contents:"
-            Get-ChildItem -Path 'build/Release' -Recurse | ForEach-Object { Write-Host $_.FullName }
-            # Fallback: include only lang folder
             Compress-Archive -Path 'lang' -DestinationPath 'release-assets/BootThatISO-windows.zip' -Force
             Write-Host "Created release-assets/BootThatISO-windows.zip (lang only)"
           }
         shell: powershell
+
+      - name: Remove existing asset with same name (if any)
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const releaseId = context.payload.release.id
+            const assetName = 'BootThatISO-windows.zip'
+            const owner = context.repo.owner
+            const repo = context.repo.repo
+            const { data: assets } = await github.rest.repos.listReleaseAssets({ owner, repo, release_id: releaseId })
+            for (const a of assets) {
+              if (a.name === assetName) {
+                core.info(`Deleting existing asset ${a.name} (id=${a.id})`)
+                await github.rest.repos.deleteReleaseAsset({ owner, repo, asset_id: a.id })
+              }
+            }
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload zip to release
         uses: actions/upload-release-asset@v1
