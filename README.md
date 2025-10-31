@@ -13,7 +13,7 @@ This utility is especially useful for:
 - **System Recovery**: Access repair tools like HBCD_PE or live environments without depending on external media.
 - **Automation**: Integration in scripts for mass deployments or automated configurations.
 
-Developed by **Andrey Rodriguez Araya**.
+Developed by **Andrey Rodríguez Araya**.
 
 Website: [English](https://agsoft.co.cr/en/software-and-services/) | [Spanish](https://agsoft.co.cr/servicios/)
 
@@ -52,7 +52,11 @@ Website: [English](https://agsoft.co.cr/en/software-and-services/) | [Spanish](h
 cmake -S . -B build -G "Visual Studio 17 2022" -A x64
 cmake --build build --config Release
 ```
+```
 The final executable is located at `build/Release/BootThatISO!.exe`. Also included is `compilar.bat` with the same steps.
+
+**Note**: The executable is digitally signed with a development certificate to enhance trust and reduce security warnings on Windows.
+```
 
 ## Usage
 ### Graphical Interface
@@ -123,7 +127,7 @@ BootThatISO!/
 |- compilar.bat
 ```
 ## Credits
-Developed by **Andrey Rodriguez Araya** in 2025.
+Developed by **Andrey Rodríguez Araya** in 2025.
 
 ## License
 This project is under the GPL 3.0 License. See the `LICENSE` file for more details.
@@ -145,7 +149,7 @@ Esta utilidad es especialmente útil para:
 - **Recuperación de sistemas**: Acceso a herramientas de reparación como HBCD_PE o entornos live sin depender de medios externos.
 - **Automatización**: Integración en scripts para despliegues masivos o configuraciones automatizadas.
 
-Proyecto desarrollado por **Andrey Rodriguez Araya**.
+Proyecto desarrollado por **Andrey Rodríguez Araya**.
 
 Sitio web: [Inglés](https://agsoft.co.cr/en/software-and-services/) | [Español](https://agsoft.co.cr/servicios/)
 
@@ -185,7 +189,11 @@ Sitio web: [Inglés](https://agsoft.co.cr/en/software-and-services/) | [Español
 cmake -S . -B build -G "Visual Studio 17 2022" -A x64
 cmake --build build --config Release
 ```
+```
 El ejecutable final se ubica en `build/Release/BootThatISO!.exe`. Tambien se incluye `compilar.bat` con los mismos pasos.
+
+**Nota**: El ejecutable está firmado digitalmente con un certificado de desarrollo para mejorar la confianza y reducir advertencias de seguridad en Windows.
+```
 
 ## Uso
 ### Interfaz grafica
@@ -256,7 +264,7 @@ BootThatISO!/
 |- compilar.bat
 ```
 ## Creditos
-Desarrollado por **Andrey Rodriguez Araya** en 2025.
+Desarrollado por **Andrey Rodríguez Araya** en 2025.
 
 ## Licencia
 Este proyecto está bajo la Licencia GPL 3.0. Ver el archivo `LICENSE` para más detalles.
