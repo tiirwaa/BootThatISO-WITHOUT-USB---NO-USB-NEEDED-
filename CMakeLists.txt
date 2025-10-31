@@ -53,3 +53,9 @@ set_target_properties(BootThatISO PROPERTIES OUTPUT_NAME "BootThatISO!")
 if(MSVC)
     target_link_options(BootThatISO PRIVATE "/MANIFEST:NO")
 endif()
+
+# Copy lang folder to output directory
+add_custom_command(TARGET BootThatISO POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+    ${CMAKE_SOURCE_DIR}/lang $<TARGET_FILE_DIR:BootThatISO>/lang
+)

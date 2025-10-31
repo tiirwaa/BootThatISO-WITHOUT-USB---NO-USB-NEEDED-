@@ -133,6 +133,17 @@ namespace {
             auto* state = reinterpret_cast<DialogState*>(lParam);
             SetWindowLongPtrW(hDlg, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(state));
 
+            // Center the dialog on the screen
+            RECT rc;
+            GetWindowRect(hDlg, &rc);
+            int width = rc.right - rc.left;
+            int height = rc.bottom - rc.top;
+            int screenWidth = GetSystemMetrics(SM_CXSCREEN);
+            int screenHeight = GetSystemMetrics(SM_CYSCREEN);
+            int x = (screenWidth - width) / 2;
+            int y = (screenHeight - height) / 2;
+            SetWindowPos(hDlg, NULL, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
+
             if (state && state->manager) {
                 const auto& langs = state->manager->getAvailableLanguages();
                 const LanguageInfo* current = state->manager->getCurrentLanguage();

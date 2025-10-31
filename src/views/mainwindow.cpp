@@ -359,7 +359,7 @@ void MainWindow::OnCreatePartition()
 
 void MainWindow::OnOpenServicesPage()
 {
-    ShellExecuteW(NULL, L"open", L"https://agsoft.co.cr/servicios/", NULL, NULL, SW_SHOWNORMAL);
+    ShellExecuteW(NULL, L"open", L"https://agsoft.co.cr/en/software-and-services/", NULL, NULL, SW_SHOWNORMAL);
 }
 
 void MainWindow::UpdateDiskSpaceInfo()
