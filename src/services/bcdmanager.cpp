@@ -12,6 +12,152 @@
 #include <cstdio>
 #include <algorithm>
 #include <fstream>
+#include <filesystem>
+#include <optional>
+
+namespace {
+namespace fs = std::filesystem;
+
+constexpr const char* BCD_CMD_PATH = "C:\\Windows\\System32\\bcdedit.exe";
+constexpr const char* BOOTMGR_BACKUP_FILE = "bootmgr_backup.ini";
+
+std::string trimString(const std::string& input) {
+    const auto start = input.find_first_not_of(" \t\r\n");
+    if (start == std::string::npos) {
+        return std::string();
+    }
+    const auto end = input.find_last_not_of(" \t\r\n");
+    return input.substr(start, end - start + 1);
+}
+
+struct BootmgrState {
+    std::string defaultId;
+    std::optional<std::string> timeout;
+};
+
+std::optional<BootmgrState> queryBootmgrState() {
+    std::string output = Utils::exec((std::string(BCD_CMD_PATH) + " /enum {bootmgr}").c_str());
+    BootmgrState state;
+    bool foundDefault = false;
+    bool foundTimeout = false;
+    std::istringstream stream(output);
+    std::string line;
+    while (std::getline(stream, line)) {
+        std::string trimmed = trimString(line);
+        if (trimmed.empty()) {
+            continue;
+        }
+        std::string lower = trimmed;
+        std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+        if (!foundDefault && lower.rfind("default", 0) == 0) {
+            const auto pos = trimmed.find_first_of(" \t");
+            if (pos != std::string::npos) {
+                std::string value = trimString(trimmed.substr(pos));
+                if (!value.empty()) {
+                    state.defaultId = value;
+                    foundDefault = true;
+                }
+            }
+        } else if (!foundTimeout && lower.rfind("timeout", 0) == 0) {
+            const auto pos = trimmed.find_first_of(" \t");
+            if (pos != std::string::npos) {
+                std::string value = trimString(trimmed.substr(pos));
+                if (!value.empty()) {
+                    state.timeout = value;
+                }
+                foundTimeout = true;
+            }
+        }
+        if (foundDefault && foundTimeout) {
+            break;
+        }
+    }
+
+    if (!foundDefault && !foundTimeout) {
+        return std::nullopt;
+    }
+    return state;
+}
+
+std::string bootmgrBackupPath() {
+    std::string dir = Utils::getExeDirectory() + "logs";
+    CreateDirectoryA(dir.c_str(), NULL);
+    return dir + "\\" + BOOTMGR_BACKUP_FILE;
+}
+
+void captureBootmgrStateIfNeeded() {
+    std::string path = bootmgrBackupPath();
+    if (fs::exists(path)) {
+        return;
+    }
+    auto stateOpt = queryBootmgrState();
+    if (!stateOpt.has_value()) {
+        return;
+    }
+    std::ofstream file(path, std::ios::out | std::ios::trunc);
+    if (!file) {
+        return;
+    }
+    if (!stateOpt->defaultId.empty()) {
+        file << "default=" << stateOpt->defaultId << "\n";
+    }
+    if (stateOpt->timeout.has_value()) {
+        file << "timeout=" << stateOpt->timeout.value() << "\n";
+    }
+}
+
+std::optional<BootmgrState> loadBootmgrBackup() {
+    std::string path = bootmgrBackupPath();
+    std::ifstream file(path);
+    if (!file) {
+        return std::nullopt;
+    }
+    BootmgrState state;
+    std::string line;
+    while (std::getline(file, line)) {
+        std::string trimmed = trimString(line);
+        if (trimmed.empty()) {
+            continue;
+        }
+        auto pos = trimmed.find('=');
+        if (pos == std::string::npos) {
+            continue;
+        }
+        std::string key = trimString(trimmed.substr(0, pos));
+        std::string value = trimString(trimmed.substr(pos + 1));
+        if (key == "default") {
+            state.defaultId = value;
+        } else if (key == "timeout") {
+            if (!value.empty()) {
+                state.timeout = value;
+            }
+        }
+    }
+
+    if (state.defaultId.empty() && !state.timeout.has_value()) {
+        return std::nullopt;
+    }
+    return state;
+}
+
+void deleteBootmgrBackup() {
+    std::string path = bootmgrBackupPath();
+    std::error_code ec;
+    fs::remove(path, ec);
+}
+
+bool restoreBootmgrStateIfPresent(EventManager* eventManager) {
+    std::optional<BootmgrState> stateOpt = loadBootmgrBackup();
+    if (!stateOpt.has_value()) {
+        return false;
+    }
+    if (eventManager) {
+        eventManager->notifyLogUpdate("Limpiando configuracion temporal del gestor de arranque guardada por BootThatISO...\r\n");
+    }
+    deleteBootmgrBackup();
+    return true;
+}
+}
 
 BCDManager& BCDManager::getInstance() {
     static BCDManager instance;
@@ -79,6 +225,7 @@ WORD BCDManager::GetMachineType(const std::string& filePath) {
 
 std::string BCDManager::configureBCD(const std::string& driveLetter, const std::string& espDriveLetter, BootStrategy& strategy)
 {
+    captureBootmgrStateIfNeeded();
     const std::string BCD_CMD = "C:\\Windows\\System32\\bcdedit.exe";
     if (eventManager) eventManager->notifyLogUpdate("Configurando Boot Configuration Data (BCD)...\r\n");
 
@@ -555,9 +702,23 @@ bool BCDManager::restoreBCD()
             }
         }
     }
-    if (deletedAny) {
-        std::string cmd2 = BCD_CMD + " /default {current}";
-        Utils::exec(cmd2.c_str());
+
+    restoreBootmgrStateIfPresent(eventManager);
+
+    if (eventManager) {
+        eventManager->notifyLogUpdate("Estableciendo Windows como entrada predeterminada y ajustando el tiempo de espera a 0 segundos...\r\n");
     }
+    std::string defaultResult = Utils::exec((BCD_CMD + " /default {current}").c_str());
+    std::string timeoutResult = Utils::exec((BCD_CMD + " /timeout 0").c_str());
+
+    if (eventManager) {
+        if (!defaultResult.empty()) {
+            eventManager->notifyLogUpdate("Resultado /default: " + Utils::ansi_to_utf8(defaultResult) + "\r\n");
+        }
+        if (!timeoutResult.empty()) {
+            eventManager->notifyLogUpdate("Resultado /timeout: " + Utils::ansi_to_utf8(timeoutResult) + "\r\n");
+        }
+    }
+
     return deletedAny;
 }
