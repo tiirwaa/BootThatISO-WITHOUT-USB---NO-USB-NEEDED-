@@ -22,6 +22,13 @@
 #define WM_UPDATE_DETAILED_PROGRESS (WM_USER + 5)
 #define WM_UPDATE_ERROR (WM_USER + 6)
 
+namespace {
+constexpr int LOGO_TARGET_WIDTH = 56;
+constexpr int LOGO_TARGET_HEIGHT = 56;
+constexpr int BUTTON_ICON_WIDTH = 48;
+constexpr int BUTTON_ICON_HEIGHT = 48;
+}
+
 struct DetailedProgressData {
     long long copied;
     long long total;
@@ -48,8 +55,46 @@ Gdiplus::Bitmap* LoadBitmapFromResource(int resourceId) {
     return bitmap;
 }
 
+Gdiplus::Bitmap* ResizeBitmap(Gdiplus::Bitmap* source, int targetWidth, int targetHeight) {
+    if (!source || targetWidth <= 0 || targetHeight <= 0) {
+        return nullptr;
+    }
+
+    const UINT srcWidth = source->GetWidth();
+    const UINT srcHeight = source->GetHeight();
+    if (srcWidth == 0 || srcHeight == 0) {
+        return nullptr;
+    }
+
+    const double aspect = static_cast<double>(srcWidth) / static_cast<double>(srcHeight);
+    int destWidth = targetWidth;
+    int destHeight = static_cast<int>(destWidth / aspect);
+
+    if (destHeight > targetHeight) {
+        destHeight = targetHeight;
+        destWidth = static_cast<int>(destHeight * aspect);
+    }
+
+    // Ensure we end up with at least 1px in both dimensions.
+    if (destWidth < 1) destWidth = 1;
+    if (destHeight < 1) destHeight = 1;
+
+    auto* scaled = new Gdiplus::Bitmap(destWidth, destHeight, PixelFormat32bppARGB);
+    if (!scaled) {
+        return nullptr;
+    }
+
+    Gdiplus::Graphics graphics(scaled);
+    graphics.SetInterpolationMode(Gdiplus::InterpolationModeHighQualityBicubic);
+    graphics.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHighQuality);
+    graphics.SetSmoothingMode(Gdiplus::SmoothingModeHighQuality);
+    graphics.Clear(Gdiplus::Color(0, 0, 0, 0));
+    graphics.DrawImage(source, Gdiplus::Rect(0, 0, destWidth, destHeight));
+    return scaled;
+}
+
 MainWindow::MainWindow(HWND parent)
-    : hInst(GetModuleHandle(NULL)), hWndParent(parent), selectedFormat("NTFS"), selectedBootModeKey(AppKeys::BootModeExtract), isProcessing(false), isRecovering(false), skipIntegrityCheck(true), logoBitmap(nullptr), buttonIcon(nullptr)
+    : hInst(GetModuleHandle(NULL)), hWndParent(parent), selectedFormat("NTFS"), selectedBootModeKey(AppKeys::BootModeExtract), isProcessing(false), isRecovering(false), skipIntegrityCheck(true), logoBitmap(nullptr), buttonIcon(nullptr), logoHIcon(nullptr), buttonHIcon(nullptr), buttonImageList(nullptr)
 {
     partitionManager = &PartitionManager::getInstance();
     isoCopyManager = &ISOCopyManager::getInstance();
@@ -68,6 +113,9 @@ MainWindow::~MainWindow()
 {
     if (logoBitmap) delete logoBitmap;
     if (buttonIcon) delete buttonIcon;
+    if (logoHIcon) DestroyIcon(logoHIcon);
+    if (buttonHIcon) DestroyIcon(buttonHIcon);
+    if (buttonImageList) ImageList_Destroy(buttonImageList);
 }
 
 void MainWindow::requestCancel()
@@ -110,17 +158,36 @@ void MainWindow::SetupUI(HWND parent)
     LoadTexts();
     logoBitmap = LoadBitmapFromResource(IDR_AG_LOGO);
     buttonIcon = LoadBitmapFromResource(IDR_LOGO_T);
+    if (logoBitmap) {
+        if (Gdiplus::Bitmap* resizedLogo = ResizeBitmap(logoBitmap, LOGO_TARGET_WIDTH, LOGO_TARGET_HEIGHT)) {
+            delete logoBitmap;
+            logoBitmap = resizedLogo;
+        }
+    }
+    if (buttonIcon) {
+        if (Gdiplus::Bitmap* resizedButton = ResizeBitmap(buttonIcon, BUTTON_ICON_WIDTH, BUTTON_ICON_HEIGHT)) {
+            delete buttonIcon;
+            buttonIcon = resizedButton;
+        }
+    }
     CreateControls(parent);
     ApplyStyles();
 }
 
 void MainWindow::CreateControls(HWND parent)
 {
-    logoLabel = CreateWindowW(L"STATIC", NULL, WS_CHILD | WS_VISIBLE | SS_BITMAP, 10, 10, 50, 50, parent, NULL, hInst, NULL);
+    int logoWidth = LOGO_TARGET_WIDTH;
+    int logoHeight = LOGO_TARGET_HEIGHT;
     if (logoBitmap) {
-        HBITMAP hLogo;
-        logoBitmap->GetHBITMAP(Gdiplus::Color::White, &hLogo);
-        SendMessage(logoLabel, STM_SETIMAGE, IMAGE_BITMAP, (LPARAM)hLogo);
+        logoWidth = static_cast<int>(logoBitmap->GetWidth());
+        logoHeight = static_cast<int>(logoBitmap->GetHeight());
+    }
+    logoLabel = CreateWindowW(L"STATIC", NULL, WS_CHILD | WS_VISIBLE | SS_ICON | SS_CENTERIMAGE, 10, 10, logoWidth, logoHeight, parent, NULL, hInst, NULL);
+    if (logoBitmap && logoBitmap->GetHICON(&logoHIcon) == Gdiplus::Ok) {
+        HICON previousIcon = reinterpret_cast<HICON>(SendMessage(logoLabel, STM_SETICON, (WPARAM)logoHIcon, 0));
+        if (previousIcon && previousIcon != logoHIcon) {
+            DestroyIcon(previousIcon);
+        }
     }
 
     titleLabel = CreateWindowW(L"STATIC", titleText.c_str(), WS_CHILD | WS_VISIBLE, 70, 10, 300, 30, parent, NULL, hInst, NULL);
@@ -172,26 +239,39 @@ void MainWindow::CreateControls(HWND parent)
 
     detailedProgressBar = CreateWindowW(PROGRESS_CLASSW, NULL, WS_CHILD | WS_VISIBLE, 10, 290, 760, 20, parent, NULL, hInst, NULL);
 
-    createPartitionButton = CreateWindowW(L"BUTTON", createButtonText.c_str(), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 10, 320, 400, 150, parent, (HMENU)IDC_CREATE_PARTITION_BUTTON, hInst, NULL);
-    if (buttonIcon) {
-        HBITMAP hIcon;
-        buttonIcon->GetHBITMAP(Gdiplus::Color::White, &hIcon);
-        SendMessage(createPartitionButton, BM_SETIMAGE, IMAGE_BITMAP, (LPARAM)hIcon);
+    DWORD createButtonStyle = WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | BS_MULTILINE | BS_CENTER | BS_VCENTER;
+    createPartitionButton = CreateWindowW(L"BUTTON", createButtonText.c_str(), createButtonStyle, 10, 320, 400, 110, parent, (HMENU)IDC_CREATE_PARTITION_BUTTON, hInst, NULL);
+    if (buttonIcon && buttonIcon->GetHICON(&buttonHIcon) == Gdiplus::Ok) {
+        if (!buttonImageList) {
+            buttonImageList = ImageList_Create(buttonIcon->GetWidth(), buttonIcon->GetHeight(), ILC_COLOR32 | ILC_MASK, 1, 1);
+        }
+        if (buttonImageList) {
+            ImageList_RemoveAll(buttonImageList);
+            ImageList_AddIcon(buttonImageList, buttonHIcon);
+            BUTTON_IMAGELIST imageListInfo = {};
+            imageListInfo.himl = buttonImageList;
+            imageListInfo.uAlign = BUTTON_IMAGELIST_ALIGN_LEFT;
+            imageListInfo.margin.left = 12;
+            imageListInfo.margin.right = 8;
+            imageListInfo.margin.top = 12;
+            imageListInfo.margin.bottom = 12;
+            SendMessage(createPartitionButton, BCM_SETIMAGELIST, 0, reinterpret_cast<LPARAM>(&imageListInfo));
+        }
     }
     SendMessage(createPartitionButton, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    progressBar = CreateWindowW(PROGRESS_CLASSW, NULL, WS_CHILD | WS_VISIBLE, 10, 480, 760, 20, parent, NULL, hInst, NULL);
+    progressBar = CreateWindowW(PROGRESS_CLASSW, NULL, WS_CHILD | WS_VISIBLE, 10, 430, 760, 20, parent, NULL, hInst, NULL);
 
-    logTextEdit = CreateWindowW(L"EDIT", L"", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_MULTILINE | ES_AUTOVSCROLL | WS_VSCROLL, 10, 510, 760, 180, parent, NULL, hInst, NULL);
+    logTextEdit = CreateWindowW(L"EDIT", L"", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_MULTILINE | ES_AUTOVSCROLL | WS_VSCROLL, 10, 460, 760, 190, parent, NULL, hInst, NULL);
     SendMessage(logTextEdit, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    footerLabel = CreateWindowW(L"STATIC", versionText.c_str(), WS_CHILD | WS_VISIBLE, 10, 700, 140, 20, parent, NULL, hInst, NULL);
+    footerLabel = CreateWindowW(L"STATIC", versionText.c_str(), WS_CHILD | WS_VISIBLE, 10, 655, 140, 20, parent, NULL, hInst, NULL);
     SendMessage(footerLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    servicesButton = CreateWindowW(L"BUTTON", servicesText.c_str(), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 650, 700, 100, 20, parent, (HMENU)IDC_SERVICES_BUTTON, hInst, NULL);
+    servicesButton = CreateWindowW(L"BUTTON", servicesText.c_str(), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 650, 655, 100, 20, parent, (HMENU)IDC_SERVICES_BUTTON, hInst, NULL);
     SendMessage(servicesButton, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    recoverButton = CreateWindowW(L"BUTTON", recoverText.c_str(), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 500, 700, 140, 20, parent, (HMENU)IDC_RECOVER_BUTTON, hInst, NULL);
+    recoverButton = CreateWindowW(L"BUTTON", recoverText.c_str(), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 500, 655, 140, 20, parent, (HMENU)IDC_RECOVER_BUTTON, hInst, NULL);
     SendMessage(recoverButton, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 }
 
