@@ -1,0 +1,6 @@
+#ifndef VERSION_H
+#define VERSION_H
+
+#define APP_VERSION "@GIT_TAG@"
+
+#endif // VERSION_H

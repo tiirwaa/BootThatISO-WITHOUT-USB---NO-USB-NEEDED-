@@ -8,6 +8,7 @@ BootThatISO! es una aplicacion Win32 escrita en C++ que automatiza la creacion d
 - Detecta ISOs de Windows y ajusta automaticamente la configuracion de BCD; las ISOs no Windows arrancan directamente desde la particion EFI.
 - Ejecuta comprobaciones opcionales de integridad (`chkdsk`), genera bitacoras detalladas y permite cancelar o recuperar espacio.
 - Proporciona un modo no asistido para integraciones con scripts mediante argumentos de linea de comandos.
+- **Mejora ISOHASHBOOT**: Optimización de eficiencia que compara el hash MD5 del archivo ISO, el modo de arranque y el formato seleccionado contra los valores almacenados en la partición existente. Si coinciden, omite el formateo y la copia de archivos, acelerando procesos repetitivos con el mismo ISO y configuración.
 
 ## ISOs Testeadas
 

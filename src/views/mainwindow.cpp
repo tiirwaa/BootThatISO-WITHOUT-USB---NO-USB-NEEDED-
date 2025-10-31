@@ -2,6 +2,7 @@
 #include "../utils/constants.h"
 #include "../utils/Utils.h"
 #include "../models/BootStrategyFactory.h"
+#include "version.h"
 #include <commdlg.h>
 #include <commctrl.h>
 #include <shellapi.h>
@@ -127,7 +128,11 @@ void MainWindow::SetupUI(HWND parent)
     logTextEdit = CreateWindowW(L"EDIT", L"", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_MULTILINE | ES_AUTOVSCROLL, 10, 390, 760, 230, parent, NULL, hInst, NULL);
     SendMessage(logTextEdit, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    footerLabel = CreateWindowW(L"STATIC", L"Versión 1.0", WS_CHILD | WS_VISIBLE, 10, 640, 100, 20, parent, NULL, hInst, NULL);
+    std::string versionStr = "Versión " + std::string(APP_VERSION);
+    int wlen = MultiByteToWideChar(CP_UTF8, 0, versionStr.c_str(), -1, NULL, 0);
+    std::wstring wversion(wlen, L'\0');
+    MultiByteToWideChar(CP_UTF8, 0, versionStr.c_str(), -1, &wversion[0], wlen);
+    footerLabel = CreateWindowW(L"STATIC", wversion.c_str(), WS_CHILD | WS_VISIBLE, 10, 640, 100, 20, parent, NULL, hInst, NULL);
     SendMessage(footerLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
     servicesButton = CreateWindowW(L"BUTTON", L"Servicios", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 650, 640, 100, 20, parent, (HMENU)IDC_SERVICES_BUTTON, hInst, NULL);
     SendMessage(servicesButton, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);

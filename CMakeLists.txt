@@ -14,8 +14,28 @@ if(MSVC)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
 
+# Get version from git tag
+execute_process(
+    COMMAND git describe --tags --abbrev=0
+    OUTPUT_VARIABLE GIT_TAG
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+    ERROR_QUIET
+)
+if(NOT GIT_TAG)
+    set(GIT_TAG "v1.0.0")
+endif()
+
+# Remove 'v' prefix for display
+string(SUBSTRING ${GIT_TAG} 1 -1 APP_VERSION)
+
+# Configure version header
+configure_file(
+    ${CMAKE_SOURCE_DIR}/include/version.h.in
+    ${CMAKE_BINARY_DIR}/version.h
+)
+
 # Include directories
-include_directories(include)
+include_directories(include ${CMAKE_BINARY_DIR})
 
 # Source files
 file(GLOB_RECURSE SOURCES "src/*.cpp")
