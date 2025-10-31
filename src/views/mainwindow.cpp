@@ -97,7 +97,7 @@ Gdiplus::Bitmap* ResizeBitmap(Gdiplus::Bitmap* source, int targetWidth, int targ
 }
 
 MainWindow::MainWindow(HWND parent)
-    : hInst(GetModuleHandle(NULL)), hWndParent(parent), selectedFormat("NTFS"), selectedBootModeKey(AppKeys::BootModeExtract), isProcessing(false), isRecovering(false), skipIntegrityCheck(true), logoBitmap(nullptr), logoHIcon(nullptr), buttonHIcon(nullptr), buttonIconOwned(false)
+    : hInst(GetModuleHandle(NULL)), hWndParent(parent), selectedFormat("NTFS"), selectedBootModeKey(AppKeys::BootModeExtract), isProcessing(false), isRecovering(false), skipIntegrityCheck(true), logoBitmap(nullptr), logoHIcon(nullptr), buttonHIcon(nullptr), buttonIconOwned(false), performHintLabel(nullptr), developedByLabel(nullptr)
 {
     partitionManager = &PartitionManager::getInstance();
     isoCopyManager = &ISOCopyManager::getInstance();

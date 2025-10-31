@@ -1,4 +1,5 @@
 #include "LocalizationManager.h"
+#include "LocalizationManager.h"
 #include "Utils.h"
 #include <filesystem>
 #include <fstream>
@@ -6,12 +7,80 @@
 #include <cwctype>
 #include <cwchar>
 #include <algorithm>
+#include <memory>
+#include <gdiplus.h>
+#include <objidl.h>
 #include "../resource.h"
 
 namespace {
     constexpr wchar_t LANGUAGE_TAG_START[] = L"<language";
     constexpr wchar_t STRING_TAG_START[] = L"<string";
     constexpr wchar_t STRING_TAG_END[] = L"</string>";
+
+    Gdiplus::Bitmap* LoadBitmapFromResource(int resourceId) {
+        HRSRC hRes = FindResource(NULL, MAKEINTRESOURCE(resourceId), RT_RCDATA);
+        if (!hRes) return nullptr;
+        HGLOBAL hGlob = LoadResource(NULL, hRes);
+        if (!hGlob) return nullptr;
+        LPVOID pData = LockResource(hGlob);
+        DWORD size = SizeofResource(NULL, hRes);
+        HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, size);
+        if (!hMem) return nullptr;
+        LPVOID pMem = GlobalLock(hMem);
+        if (!pMem) {
+            GlobalFree(hMem);
+            return nullptr;
+        }
+        memcpy(pMem, pData, size);
+        GlobalUnlock(hMem);
+        IStream* pStream = nullptr;
+        if (FAILED(CreateStreamOnHGlobal(hMem, TRUE, &pStream))) {
+            GlobalFree(hMem);
+            return nullptr;
+        }
+        Gdiplus::Bitmap* bitmap = Gdiplus::Bitmap::FromStream(pStream);
+        pStream->Release();
+        return bitmap;
+    }
+
+    HBITMAP CreateScaledBitmapFromResource(int resourceId, int targetWidth, int targetHeight) {
+        std::unique_ptr<Gdiplus::Bitmap> bitmap(LoadBitmapFromResource(resourceId));
+        if (!bitmap) {
+            return nullptr;
+        }
+
+        int destWidth = targetWidth;
+        int destHeight = targetHeight;
+
+        if (destWidth <= 0) destWidth = static_cast<int>(bitmap->GetWidth());
+        if (destHeight <= 0) destHeight = static_cast<int>(bitmap->GetHeight());
+
+        if (bitmap->GetWidth() != 0 && bitmap->GetHeight() != 0) {
+            double aspect = static_cast<double>(bitmap->GetWidth()) / static_cast<double>(bitmap->GetHeight());
+            destHeight = static_cast<int>(destWidth / aspect);
+            if (destHeight > targetHeight && targetHeight > 0) {
+                destHeight = targetHeight;
+                destWidth = static_cast<int>(destHeight * aspect);
+            }
+        }
+
+        destWidth = (std::max)(destWidth, 1);
+        destHeight = (std::max)(destHeight, 1);
+        if (targetWidth > 0) destWidth = (std::min)(destWidth, targetWidth);
+        if (targetHeight > 0) destHeight = (std::min)(destHeight, targetHeight);
+
+        Gdiplus::Bitmap scaled(destWidth, destHeight, PixelFormat32bppARGB);
+        Gdiplus::Graphics graphics(&scaled);
+        graphics.SetInterpolationMode(Gdiplus::InterpolationModeHighQualityBicubic);
+        graphics.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHighQuality);
+        graphics.SetSmoothingMode(Gdiplus::SmoothingModeHighQuality);
+        graphics.Clear(Gdiplus::Color(0, 0, 0, 0));
+        graphics.DrawImage(bitmap.get(), 0, 0, destWidth, destHeight);
+
+        HBITMAP hBitmap = nullptr;
+        scaled.GetHBITMAP(Gdiplus::Color(0, 0, 0, 0), &hBitmap);
+        return hBitmap;
+    }
 }
 
 LocalizationManager& LocalizationManager::getInstance() {
@@ -106,6 +175,7 @@ namespace {
     struct DialogState {
         LocalizationManager* manager;
         int selectedIndex;
+        HBITMAP logoBitmap;
     };
 
     INT_PTR CALLBACK LanguageDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam) {
@@ -138,6 +208,18 @@ namespace {
                 SendDlgItemMessageW(hDlg, IDC_LANGUAGE_COMBO, CB_SETCURSEL, selectedIndex, 0);
                 state->selectedIndex = selectedIndex;
             }
+
+            HICON hIcon = static_cast<HICON>(LoadImageW(GetModuleHandle(NULL), MAKEINTRESOURCEW(IDI_APP_ICON), IMAGE_ICON, 32, 32, LR_SHARED));
+            if (hIcon) {
+                SendDlgItemMessageW(hDlg, IDC_LANGUAGE_ICON, STM_SETICON, reinterpret_cast<WPARAM>(hIcon), 0);
+            }
+
+            if (state) {
+                state->logoBitmap = CreateScaledBitmapFromResource(IDR_AG_LOGO, 36, 36);
+                if (state->logoBitmap) {
+                    SendDlgItemMessageW(hDlg, IDC_LANGUAGE_LOGO, STM_SETIMAGE, IMAGE_BITMAP, reinterpret_cast<LPARAM>(state->logoBitmap));
+                }
+            }
             return TRUE;
         }
         case WM_COMMAND: {
@@ -163,6 +245,15 @@ namespace {
             }
             break;
         }
+        case WM_DESTROY: {
+            auto* state = reinterpret_cast<DialogState*>(GetWindowLongPtrW(hDlg, GWLP_USERDATA));
+            if (state && state->logoBitmap) {
+                DeleteObject(state->logoBitmap);
+                state->logoBitmap = nullptr;
+            }
+            SetWindowLongPtrW(hDlg, GWLP_USERDATA, 0);
+            return TRUE;
+        }
         default:
             break;
         }
@@ -175,9 +266,10 @@ bool LocalizationManager::promptForLanguageSelection(HINSTANCE hInstance, HWND p
         return false;
     }
 
-    DialogState state;
+    DialogState state{};
     state.manager = this;
     state.selectedIndex = 0;
+    state.logoBitmap = nullptr;
 
     INT_PTR result = DialogBoxParamW(hInstance, MAKEINTRESOURCEW(IDD_LANGUAGE_DIALOG), parent, LanguageDialogProc, reinterpret_cast<LPARAM>(&state));
     if (result == IDOK) {
