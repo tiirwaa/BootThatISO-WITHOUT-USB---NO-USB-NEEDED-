@@ -644,6 +644,7 @@ void MainWindow::LogMessage(const std::string& msg, bool persist)
 
 void MainWindow::PromptRestart()
 {
+    UpdateDiskSpaceInfo();
     std::wstring restartPrompt = LocalizedOrW("message.processCompleteRestart", L"Proceso terminado. Desea reiniciar el sistema ahora?");
     std::wstring restartTitle = LocalizedOrW("title.restart", L"Reiniciar");
     if (MessageBoxW(hWndParent, restartPrompt.c_str(), restartTitle.c_str(), MB_YESNO) == IDYES) {
