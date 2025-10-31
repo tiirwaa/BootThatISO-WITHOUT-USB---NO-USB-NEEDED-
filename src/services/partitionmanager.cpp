@@ -964,7 +964,9 @@ bool PartitionManager::recoverSpace()
     scriptFile << "$systemPartition = Get-Partition | Where-Object { $_.DriveLetter -eq 'C' }\n";
     scriptFile << "if ($systemPartition) {\n";
     scriptFile << "    $supportedSize = Get-PartitionSupportedSize -DiskNumber 0 -PartitionNumber $systemPartition.PartitionNumber\n";
-    scriptFile << "    Resize-Partition -DiskNumber 0 -PartitionNumber $systemPartition.PartitionNumber -Size $supportedSize.SizeMax -Confirm:$false\n";
+    scriptFile << "    if ($systemPartition.Size -lt $supportedSize.SizeMax) {\n";
+    scriptFile << "        Resize-Partition -DiskNumber 0 -PartitionNumber $systemPartition.PartitionNumber -Size $supportedSize.SizeMax -Confirm:$false\n";
+    scriptFile << "    }\n";
     scriptFile << "}\n";
     scriptFile.close();
 
