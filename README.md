@@ -17,9 +17,9 @@ Developed by **Andrey Rodriguez Araya**.
 
 Website: [English](https://agsoft.co.cr/en/software-and-services/) | [Spanish](https://agsoft.co.cr/servicios/)
 
-![Screenshot](screenshot.png)
+![Screenshot](screenshot.png?v=1)
 
-![Boot screen](boot_screen.png)
+![Boot screen](boot_screen.png?v=1)
 
 ## Key Features
 - Creates or reforms `ISOBOOT` (data) and `ISOEFI` (EFI) partitions on the system disk, with FAT32, exFAT, or NTFS format options.
@@ -149,9 +149,9 @@ Proyecto desarrollado por **Andrey Rodriguez Araya**.
 
 Sitio web: [Inglés](https://agsoft.co.cr/en/software-and-services/) | [Español](https://agsoft.co.cr/servicios/)
 
-![Screenshot](screenshot.png)
+![Screenshot](screenshot.png?v=1)
 
-![Boot screen](boot_screen.png)
+![Boot screen](boot_screen.png?v=1)
 
 ## Caracteristicas clave
 - Crea o reforma particiones `ISOBOOT` (datos) e `ISOEFI` (EFI) en el disco del sistema, con opciones de formato FAT32, exFAT o NTFS.
