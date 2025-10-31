@@ -101,10 +101,10 @@ void MainWindow::SetupUI(HWND parent)
     bootModeLabel = CreateWindowW(L"STATIC", L"Modo de arranque:", WS_CHILD | WS_VISIBLE, 330, 135, 150, 20, parent, NULL, hInst, NULL);
     SendMessage(bootModeLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    bootRamdiskRadio = CreateWindowW(L"BUTTON", L"Boot desde Memoria (cargar ISO completo en RAM para arranque rápido)", WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON | WS_GROUP, 330, 155, 420, 20, parent, (HMENU)IDC_BOOTMODE_RAMDISK, hInst, NULL);
+    bootRamdiskRadio = CreateWindowW(L"BUTTON", L"Boot desde RAM", WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON | WS_GROUP, 330, 155, 420, 20, parent, (HMENU)IDC_BOOTMODE_RAMDISK, hInst, NULL);
     SendMessage(bootRamdiskRadio, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    bootExtractedRadio = CreateWindowW(L"BUTTON", L"Instalación Completa (extraer contenido del ISO al disco para arranque estándar)", WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON, 330, 175, 420, 40, parent, (HMENU)IDC_BOOTMODE_EXTRACTED, hInst, NULL);
+    bootExtractedRadio = CreateWindowW(L"BUTTON", L"Boot desde Disco", WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON, 330, 175, 420, 40, parent, (HMENU)IDC_BOOTMODE_EXTRACTED, hInst, NULL);
     SendMessage(bootExtractedRadio, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
     SendMessage(bootExtractedRadio, BM_SETCHECK, BST_CHECKED, 0); // default: Extracted
 

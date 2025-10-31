@@ -247,7 +247,7 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
     
     // Create appropriate BCD entry based on boot mode
     std::string output;
-    if (bcdLabel == "ISOBOOT_RAM") {
+    if (strategy.getType() == "ramdisk") {
         // For ramdisk mode, create a new OSLOADER entry that supports ramdisk parameters
         output = Utils::exec((BCD_CMD + " /create /application OSLOADER /d \"" + bcdLabel + "\"").c_str());
     } else {
@@ -266,7 +266,7 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
 
     // Build candidate lists per mode and choose the best candidate by validating architecture
     std::vector<std::string> candidates;
-    if (bcdLabel == "ISOBOOT") {
+    if (strategy.getType() == "extracted") {
         // Installation mode: prefer Microsoft bootmgfw first, then BOOTX64
         candidates = {
             espDriveLetter + "\\EFI\\Microsoft\\Boot\\bootmgfw.efi",
@@ -275,7 +275,7 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
             espDriveLetter + "\\EFI\\boot\\BOOTX64.EFI",
             espDriveLetter + "\\EFI\\boot\\bootx64.efi"
         };
-    } else if (bcdLabel == "ISOBOOT_RAM") {
+    } else if (strategy.getType() == "ramdisk") {
         // Ramdisk mode: prefer Microsoft bootmgfw first, then BOOTX64
         candidates = {
             espDriveLetter + "\\EFI\\Microsoft\\Boot\\bootmgfw.efi",
@@ -377,8 +377,8 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
     logFile << "ESP drive letter: " << espDriveLetter << std::endl;
 
     // Log detailed file checking for debugging
-    if (bcdLabel == "ISOBOOT") {
-        logFile << "EFI file selection for ISOBOOT mode:" << std::endl;
+    if (strategy.getType() == "extracted") {
+        logFile << "EFI file selection for extracted mode:" << std::endl;
         std::string candidates[] = {
             espDriveLetter + "\\EFI\\Microsoft\\Boot\\bootmgfw.efi",
             espDriveLetter + "\\EFI\\microsoft\\boot\\bootmgfw.efi",
@@ -392,8 +392,8 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
             if (candidate == efiBootFile) logFile << " [SELECTED]";
             logFile << std::endl;
         }
-    } else if (bcdLabel == "ISOBOOT_RAM") {
-        logFile << "EFI file selection for ISOBOOT_RAM mode:" << std::endl;
+    } else if (strategy.getType() == "ramdisk") {
+        logFile << "EFI file selection for ramdisk mode:" << std::endl;
         std::string candidates[] = {
             espDriveLetter + "\\EFI\\BOOT\\BOOTX64.EFI",
             espDriveLetter + "\\EFI\\boot\\BOOTX64.EFI",
@@ -418,7 +418,7 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
     logFile << "EFI path: " << efiPath << "\n";
 
     // For extracted mode, verify SDI file exists
-    if (bcdLabel == "ISOBOOT") {
+    if (strategy.getType() == "extracted") {
         std::string sdiPath = driveLetter + "\\boot\\boot.sdi";
         if (GetFileAttributesA(sdiPath.c_str()) == INVALID_FILE_ATTRIBUTES) {
             std::string errorMsg = "Error: Archivo SDI no encontrado en " + sdiPath + "\r\n";
@@ -428,7 +428,7 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
             return "Archivo SDI no encontrado para extracted boot";
         }
         logFile << "SDI file verified: " << sdiPath << std::endl;
-    } else if (bcdLabel == "ISOBOOT_RAM") {
+    } else if (strategy.getType() == "ramdisk") {
         // For ramdisk mode, verify boot.wim and boot.sdi were staged on the data partition
         std::string bootWimPath = driveLetter + "\\sources\\boot.wim";
         std::string bootSdiPath = driveLetter + "\\boot\\boot.sdi";
@@ -463,7 +463,7 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
     logFile << "Strategy configuration completed. Proceeding with final BCD setup...\n";
 
     // Remove systemroot for EFI booting (ignore error if it doesn't exist - normal for OSLOADER entries)
-    if (bcdLabel != "ISOBOOT_RAM") {
+    if (strategy.getType() != "ramdisk") {
         std::string cmd4 = BCD_CMD + " /deletevalue " + guid + " systemroot";
         std::string result4 = Utils::exec(cmd4.c_str());
         logFile << "Remove systemroot command: " << cmd4 << "\nResult: " << result4 << "\n";

@@ -11,7 +11,11 @@
 class RamdiskBootStrategy : public BootStrategy {
 public:
     std::string getBCDLabel() const override {
-        return "ISOBOOT_RAM";
+        return RAMDISK_BCD_LABEL;
+    }
+
+    std::string getType() const override {
+        return "ramdisk";
     }
 
     void configureBCD(const std::string& guid, const std::string& dataDevice, const std::string& espDevice, const std::string& efiPath) override {
