@@ -12,14 +12,14 @@ BootThatISO! es una aplicacion Win32 escrita en C++ que automatiza la creacion d
 ## ISOs Testeadas
 
 ### Modo RAM (Boot desde Memoria)
-- ✅ HBCD_PE_x64.iso
-- ✅ Win11_25H2_Spanish_x64.iso
-- ✅ Windows10_22H2_X64.iso
+- ✅ HBCD_PE_x64.iso (ARRANQUE CORRECTO)
+- ✅ Win11_25H2_Spanish_x64.iso (ARRANQUE CORRECTO)
+- ✅ Windows10_22H2_X64.iso (ARRANQUE CORRECTO)
 
 ### Modo EXTRACT (Instalación Completa)
-- ✅ HBCD_PE_x64.iso
-- ❌ Win11_25H2_Spanish_x64.iso
-- ❌ Windows10_22H2_X64.iso
+- ✅ HBCD_PE_x64.iso (hace fallback ISOBOOT_RAM)
+- ✅ Win11_25H2_Spanish_x64.iso (crea ISOBOOT y arranca correctamente)
+- ✅ Windows10_22H2_X64.iso (crea ISOBOOT y arranca correctamente)
 
 ## Requisitos
 - Windows 10 u 11 de 64 bits con privilegios de administrador.

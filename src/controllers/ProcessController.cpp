@@ -221,7 +221,7 @@ bool ProcessController::copyISO(const std::string& isoPath, const std::string& d
         }
     } else {
         eventManager.notifyLogUpdate("Modo " + mode + " seleccionado: extrayendo contenido completo del ISO...\r\n");
-        if (isoCopyManager->extractISOContents(eventManager, isoPath, drive, espDrive, true, false, false)) {
+        if (isoCopyManager->extractISOContents(eventManager, isoPath, drive, espDrive, true, true, true)) {
             eventManager.notifyLogUpdate("Contenido del ISO extraido exitosamente.\r\n");
             eventManager.notifyProgressUpdate(70);
         } else {
