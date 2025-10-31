@@ -54,6 +54,8 @@ public:
 
 private:
     void SetupUI(HWND parent);
+    void LoadTexts();
+    void CreateControls(HWND parent);
     void ApplyStyles();
     void UpdateDiskSpaceInfo();
     void LogMessage(const std::string& msg, bool persist = true);
@@ -78,6 +80,25 @@ private:
     std::string selectedBootModeKey;
     // Skip integrity check
     bool skipIntegrityCheck;
+
+    // Localized texts
+    std::wstring logoText;
+    std::wstring titleText;
+    std::wstring subtitleText;
+    std::wstring isoLabelText;
+    std::wstring browseText;
+    std::wstring formatText;
+    std::wstring fat32Text;
+    std::wstring exfatText;
+    std::wstring ntfsText;
+    std::wstring bootModeText;
+    std::wstring bootRamText;
+    std::wstring bootDiskText;
+    std::wstring integrityText;
+    std::wstring createButtonText;
+    std::wstring versionText;
+    std::wstring servicesText;
+    std::wstring recoverText;
 
     // Controls
     HWND logoLabel;

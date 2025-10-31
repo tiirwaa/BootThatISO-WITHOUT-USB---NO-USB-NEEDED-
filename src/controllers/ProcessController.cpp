@@ -10,18 +10,6 @@
 #include "../utils/AppKeys.h"
 #include "../utils/Logger.h"
 
-// Helper function to read hash info from file
-static HashInfo readHashInfo(const std::string& path) {
-    HashInfo info = {"", "", ""};
-    std::ifstream file(path);
-    if (file.is_open()) {
-        std::getline(file, info.hash);
-        std::getline(file, info.mode);
-        std::getline(file, info.format);
-    }
-    return info;
-}
-
 ProcessController::ProcessController(EventManager& eventManager)
     : eventManager(eventManager)
 {
@@ -30,6 +18,7 @@ ProcessController::ProcessController(EventManager& eventManager)
     isoCopyManager = &ISOCopyManager::getInstance();
     bcdManager = &BCDManager::getInstance();
     bcdManager->setEventManager(&eventManager);
+    processService = std::make_unique<ProcessService>(partitionManager, isoCopyManager, bcdManager, eventManager);
 }
 
 ProcessController::~ProcessController()
@@ -104,102 +93,39 @@ void ProcessController::startProcess(const std::string& isoPath, const std::stri
 void ProcessController::processInThread(const std::string& isoPath, const std::string& selectedFormat, const std::string& selectedBootModeKey, const std::string& selectedBootModeLabel, bool skipIntegrityCheck)
 {
     eventManager.notifyLogUpdate("Verificando estado de particiones...\r\n");
-    bool partitionExists = partitionManager->partitionExists();
+    eventManager.notifyProgressUpdate(10);
 
-    bool skipFormat = false;
-    if (partitionExists) {
-        std::string partitionDrive = partitionManager->getPartitionDriveLetter();
-        if (!partitionDrive.empty()) {
-            std::string hashFilePath = partitionDrive + "\\ISOBOOTHASH";
-            std::string md5 = Utils::calculateMD5(isoPath);
-            HashInfo existing = readHashInfo(hashFilePath);
-            if (existing.hash == md5 && ((existing.mode == selectedBootModeKey) || (existing.mode == selectedBootModeLabel)) && existing.format == selectedFormat && !existing.hash.empty()) {
-                eventManager.notifyLogUpdate("Hash, modo y formato coinciden. Omitiendo formateo.\r\n");
-                skipFormat = true;
-            } else {
-                eventManager.notifyLogUpdate("Hash o configuración no coinciden. Procediendo con formateo.\r\n");
-            }
-        } else {
-            eventManager.notifyLogUpdate("No se pudo acceder a la partición existente para verificar hash. Formateando.\r\n");
-        }
-        if (!skipFormat) {
-            eventManager.notifyLogUpdate("Particiones existentes detectadas. Iniciando reformateo...\r\n");
-            eventManager.notifyProgressUpdate(20);
-            if (!partitionManager->reformatPartition(selectedFormat)) {
-                eventManager.notifyLogUpdate("Error: Fallo el reformateo de la particion.\r\n");
-                eventManager.notifyError("Error al reformatear la particion.");
-                eventManager.notifyButtonEnable();
-                return;
-            }
-            eventManager.notifyLogUpdate("Particion reformateada exitosamente.\r\n");
-            eventManager.notifyProgressUpdate(30);
-        } else {
-            eventManager.notifyProgressUpdate(30);
-        }
-    } else {
-        eventManager.notifyLogUpdate("Validando espacio disponible en disco...\r\n");
-        eventManager.notifyProgressUpdate(10);
-
-        eventManager.notifyLogUpdate("Creando nuevas particiones...\r\n");
-        eventManager.notifyProgressUpdate(20);
-
-        if (!partitionManager->createPartition(selectedFormat, skipIntegrityCheck)) {
-            eventManager.notifyLogUpdate("Error: Fallo la creacion de la particion.\r\n");
-            eventManager.notifyError("Error al crear la particion.");
-            eventManager.notifyButtonEnable();
-            return;
-        }
-        eventManager.notifyLogUpdate("Particion creada exitosamente.\r\n");
-        eventManager.notifyProgressUpdate(30);
-    }
-
-    eventManager.notifyLogUpdate("Verificando acceso a particiones...\r\n");
-    // Verificar particiones
-    std::string partitionDrive = partitionManager->getPartitionDriveLetter();
-    if (partitionDrive.empty()) {
-        eventManager.notifyLogUpdate("Error: No se puede acceder a la particion ISOBOOT.\r\n");
-        eventManager.notifyError("Error: No se puede acceder a la particion ISOBOOT.");
+    auto prepareResult = processService->validateAndPrepare(isoPath, selectedFormat, skipIntegrityCheck);
+    if (!prepareResult.success) {
+        eventManager.notifyLogUpdate("Error: " + prepareResult.errorMessage + "\r\n");
+        eventManager.notifyError("Error: " + prepareResult.errorMessage);
         eventManager.notifyButtonEnable();
         return;
     }
-    eventManager.notifyLogUpdate("Particion ISOBOOT encontrada en: " + partitionDrive + "\r\n");
+    eventManager.notifyProgressUpdate(30);
 
-    std::string espDrive = partitionManager->getEfiPartitionDriveLetter();
-    if (espDrive.empty()) {
-        eventManager.notifyLogUpdate("Error: No se puede acceder a la particion ISOEFI.\r\n");
-        eventManager.notifyError("Error: No se puede acceder a la particion ISOEFI.");
+    eventManager.notifyLogUpdate("Iniciando preparación de archivos del ISO...\r\n");
+    auto copyResult = processService->copyIsoContent(isoPath, selectedFormat, selectedBootModeKey, selectedBootModeLabel);
+    if (!copyResult.success) {
+        eventManager.notifyLogUpdate("Error: " + copyResult.errorMessage + "\r\n");
+        eventManager.notifyError("Error: " + copyResult.errorMessage);
         eventManager.notifyButtonEnable();
         return;
     }
-    eventManager.notifyLogUpdate("Particion ISOEFI encontrada en: " + espDrive + "\r\n");
+    eventManager.notifyProgressUpdate(70);
 
-    // Reformat EFI partition only if not skipping
-    if (!skipFormat) {
-        if (!partitionManager->reformatEfiPartition()) {
-            eventManager.notifyLogUpdate("Error: Fallo el reformateo de la particion EFI.\r\n");
-            eventManager.notifyError("Error al reformatear la particion EFI.");
-            eventManager.notifyButtonEnable();
-            return;
-        }
+    eventManager.notifyLogUpdate("Configurando arranque...\r\n");
+    auto configResult = processService->configureBoot(selectedBootModeKey);
+    if (!configResult.success) {
+        eventManager.notifyLogUpdate("Error: " + configResult.errorMessage + "\r\n");
+        eventManager.notifyError("Error: " + configResult.errorMessage);
+        eventManager.notifyButtonEnable();
+        return;
     }
 
-    eventManager.notifyLogUpdate("Iniciando preparacion de archivos del ISO...\r\n");
-    if (copyISO(isoPath, partitionDrive, espDrive, selectedBootModeKey, selectedBootModeLabel, selectedFormat)) {
-        eventManager.notifyLogUpdate("Archivos preparados. Configurando BCD...\r\n");
-        // Configure BCD for Windows ISOs or for RAM boot mode (even non-Windows can use ramdisk)
-        if (isoCopyManager->getIsWindowsISO() || selectedBootModeKey == AppKeys::BootModeRam) {
-            configureBCD(partitionDrive, espDrive, selectedBootModeKey);
-        } else {
-            eventManager.notifyLogUpdate("ISO no-Windows detectado: omitiendo configuracion BCD, usando arranque EFI directo desde ESP.\r\n");
-            eventManager.notifyProgressUpdate(100);
-        }
-        eventManager.notifyLogUpdate("Proceso completado exitosamente.\r\n");
-        eventManager.notifyProgressUpdate(100);
-        eventManager.notifyAskRestart();
-    } else {
-        eventManager.notifyLogUpdate("Error: Fallo la preparacion del contenido del ISO.\r\n");
-        eventManager.notifyError("Proceso fallido debido a errores durante la preparacion del ISO.");
-    }
+    eventManager.notifyLogUpdate("Proceso completado exitosamente.\r\n");
+    eventManager.notifyProgressUpdate(100);
+    eventManager.notifyAskRestart();
     eventManager.notifyButtonEnable();
 }
 
@@ -219,67 +145,6 @@ bool ProcessController::recoverSpace()
     recoveryThread = std::thread(&ProcessController::recoverSpaceInThread, this);
     return true;
 }
-
-bool ProcessController::copyISO(const std::string& isoPath, const std::string& destPath, const std::string& espPath, const std::string& modeKey, const std::string& modeLabel, const std::string& format)
-{
-    eventManager.notifyLogUpdate("Montando imagen ISO...\r\n");
-    eventManager.notifyProgressUpdate(40);
-
-    std::string drive = destPath;
-    std::string espDrive = espPath;
-
-    if (modeKey == AppKeys::BootModeRam) {
-        eventManager.notifyLogUpdate("Modo " + modeLabel + " seleccionado: extrayendo EFI y recursos para RAMDisk...\r\n");
-        if (isoCopyManager->extractISOContents(eventManager, isoPath, drive, espDrive, false, true, true, modeKey, format)) {
-            eventManager.notifyLogUpdate("EFI y recursos de arranque preparados exitosamente (boot.wim/boot.sdi).\r\n");
-            eventManager.notifyProgressUpdate(70);
-        } else {
-            eventManager.notifyLogUpdate("Error: Fallo la preparacion de archivos para modo " + modeLabel + ".\r\n");
-            return false;
-        }
-    } else {
-        eventManager.notifyLogUpdate("Modo " + modeLabel + " seleccionado: extrayendo contenido completo del ISO...\r\n");
-        if (isoCopyManager->extractISOContents(eventManager, isoPath, drive, espDrive, true, true, true, modeKey, format)) {
-            eventManager.notifyLogUpdate("Contenido del ISO extraido exitosamente.\r\n");
-            eventManager.notifyProgressUpdate(70);
-        } else {
-            eventManager.notifyLogUpdate("Error: Fallo la extraccion del contenido del ISO.\r\n");
-            return false;
-        }
-    }
-    return true;
-}
-
-
-
-void ProcessController::configureBCD(const std::string& driveLetter, const std::string& espDriveLetter, const std::string& modeKey)
-{
-    eventManager.notifyLogUpdate("Configurando Boot Configuration Data (BCD)...\r\n");
-    eventManager.notifyProgressUpdate(80);
-
-    auto strategy = BootStrategyFactory::createStrategy(modeKey);
-    std::string modeLabel = LocalizationManager::getInstance().getUtf8String("bootMode." + modeKey);
-    if (modeLabel.empty()) {
-        modeLabel = modeKey;
-    }
-
-    if (!strategy) {
-        eventManager.notifyLogUpdate("Error: Modo de boot '" + modeLabel + "' no valido.\r\n");
-        return;
-    }
-
-    eventManager.notifyLogUpdate("Aplicando estrategia de configuracion BCD para modo " + modeLabel + "...\r\n");
-    std::string error = bcdManager->configureBCD(driveLetter.substr(0, 2), espDriveLetter.substr(0, 2), *strategy);
-    if (!error.empty()) {
-        eventManager.notifyLogUpdate("Error en configuracion BCD: " + error + "\r\n");
-        eventManager.notifyError("Error al configurar BCD: " + error);
-    } else {
-        eventManager.notifyLogUpdate("BCD configurado exitosamente para arranque EFI.\r\n");
-        eventManager.notifyProgressUpdate(100);
-    }
-}
-
-
 
 void ProcessController::recoverSpaceInThread()
 {

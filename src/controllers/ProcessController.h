@@ -9,6 +9,7 @@
 #include "../services/bcdmanager.h"
 #include "../models/EventManager.h"
 #include "../models/BootStrategyFactory.h"
+#include "ProcessService.h"
 
 class ProcessController {
 public:
@@ -23,8 +24,6 @@ public:
 private:
     void processInThread(const std::string& isoPath, const std::string& selectedFormat, const std::string& selectedBootModeKey, const std::string& selectedBootModeLabel, bool skipIntegrityCheck);
     void recoverSpaceInThread();
-    bool copyISO(const std::string& isoPath, const std::string& destPath, const std::string& espPath, const std::string& modeKey, const std::string& modeLabel, const std::string& format);
-    void configureBCD(const std::string& driveLetter, const std::string& espDriveLetter, const std::string& modeKey);
 
     PartitionManager* partitionManager;
     ISOCopyManager* isoCopyManager;
@@ -33,6 +32,7 @@ private:
     std::thread workerThread;
     std::thread recoveryThread;
     std::atomic<bool> recoveryInProgress{false};
+    std::unique_ptr<ProcessService> processService;
 };
 
 #endif // PROCESSCONTROLLER_H

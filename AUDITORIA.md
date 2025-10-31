@@ -7,9 +7,9 @@
 
 ## Arquitectura y DiseÃ±o
 - [x] Sustituir la gestiÃ³n manual de `MainWindow` en `WndProc` por RAII (`std::unique_ptr`) y destrucciÃ³n controlada; hoy se hace `new`/`delete` explÃ­cito (`src/main.cpp:230`, `src/main.cpp:247`, `src/main.cpp:273`).
-- [ ] Separar la construcciÃ³n de UI, el layout y la carga de textos; `MainWindow::SetupUI` (`src/views/mainwindow.cpp:69`) mezcla responsabilidades y dificulta reutilizar o actualizar el diseÃ±o.
-- [ ] Delimitar responsabilidades de `ProcessController`; la rutina `startProcess` (`src/controllers/ProcessController.cpp:70`) orquesta UI, logs y lÃ³gica de negocio en un mismo mÃ©todo, lo que complica testing y extensiÃ³n (aplicar patrÃ³n Command/Service).
-- [ ] Refactorizar `PartitionManager::createPartition` en pasos pequeÃ±os reutilizables y objetos de estrategia; la implementaciÃ³n actual (`src/services/partitionmanager.cpp:82`) supera el millar de lÃ­neas y mezcla scripting de DiskPart, chkdsk y BCD.
+- [x] Separar la construcción de UI, el layout y la carga de textos; `MainWindow::SetupUI` (`src/views/mainwindow.cpp:69`) mezcla responsabilidades y dificulta reutilizar o actualizar el diseño.
+- [x] Delimitar responsabilidades de `ProcessController`; la rutina `startProcess` (`src/controllers/ProcessController.cpp:70`) orquesta UI, logs y lógica de negocio en un mismo método, lo que complica testing y extensión (aplicar patrón Command/Service).
+- [x] Refactorizar `PartitionManager::createPartition` en pasos pequeÃ±os reutilizables y objetos de estrategia; la implementaciÃ³n actual (`src/services/partitionmanager.cpp:82`) supera el millar de lÃ­neas y mezcla scripting de DiskPart, chkdsk y BCD.
 - [ ] Introducir un ejecutor de comandos del sistema reutilizable con RAII para handles; hoy se repite `CreateProcess` en `Utils::exec` (`src/utils/Utils.cpp:8`), `ISOCopyManager::exec` (`src/services/isocopymanager.cpp:68`) y `EFIManager::exec` (`src/models/efimanager.cpp:360`).
 
 ## Concurrencia y Ciclo de Vida

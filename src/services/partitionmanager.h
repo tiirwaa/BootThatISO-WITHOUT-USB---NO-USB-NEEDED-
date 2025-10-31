@@ -20,6 +20,13 @@ private:
 
     bool isDiskGpt();
 
+    // Refactored methods for createPartition
+    bool performDiskIntegrityCheck();
+    bool performGptCheck();
+    bool performSpaceRecovery();
+    bool performDiskpartOperations(const std::string& format);
+    bool verifyPartitionsCreated();
+
 public:
     static PartitionManager& getInstance();
 

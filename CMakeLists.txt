@@ -11,6 +11,7 @@ add_compile_definitions(UNICODE _UNICODE)
 set(SOURCE_FILES
     src/main.cpp
     src/controllers/ProcessController.cpp
+    src/controllers/ProcessService.cpp
     src/models/efimanager.cpp
     src/models/filecopymanager.cpp
     src/models/isomounter.cpp
