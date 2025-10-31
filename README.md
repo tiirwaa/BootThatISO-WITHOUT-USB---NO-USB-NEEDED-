@@ -1,6 +1,14 @@
 # BootThatISO!
 
-BootThatISO! es una aplicacion Win32 escrita en C++ que automatiza la creacion de particiones EFI y de datos para iniciar sistemas operativos desde imagenes ISO almacenadas en el disco interno. El flujo combina gestion de particiones, montaje de ISOs, copiado de archivos y configuracion de BCD, exponiendo una interfaz amigable con soporte para ejecucion no asistida. Proyecto desarrollado por **Andrey Rodriguez Araya**.
+BootThatISO! es una herramienta innovadora para Windows que permite **arrancar sistemas operativos desde archivos ISO sin necesidad de una memoria USB**. Ideal para situaciones donde no se cuenta con un dispositivo USB a mano, como en viajes, equipos prestados o emergencias. Automatiza la creación de particiones EFI y de datos en el disco interno, montaje de ISOs, copia de archivos y configuración de BCD, ofreciendo una interfaz gráfica intuitiva y soporte para ejecución no asistida.
+
+Esta utilidad es especialmente útil para:
+- **Instalaciones rápidas**: Arranque directo desde ISO para instalación de Windows, Linux o herramientas de recuperación sin preparar USB.
+- **Entornos de prueba**: Prueba ISOs de sistemas operativos o utilidades sin modificar hardware externo.
+- **Recuperación de sistemas**: Acceso a herramientas de reparación como HBCD_PE o entornos live sin depender de medios externos.
+- **Automatización**: Integración en scripts para despliegues masivos o configuraciones automatizadas.
+
+Proyecto desarrollado por **Andrey Rodriguez Araya**.
 
 ![Screenshot](screenshot.png)
 
