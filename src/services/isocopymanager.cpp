@@ -1,4 +1,4 @@
-#include "isocopymanager.h"
+﻿#include "isocopymanager.h"
 #include "../utils/constants.h"
 #include <windows.h>
 #include <string>
@@ -13,18 +13,12 @@
 #include "../utils/Utils.h"
 #include "../utils/LocalizationManager.h"
 #include "../utils/LocalizationHelpers.h"
+#include "models/HashInfo.h"
 #include "../utils/AppKeys.h"
 #include "isotypedetector.h"
 #include "../models/efimanager.h"
 #include "../models/isomounter.h"
 #include "../models/filecopymanager.h"
-
-// Struct for hash info
-struct HashInfo {
-    std::string hash;
-    std::string mode;
-    std::string format;
-};
 
 // Forward declarations for helper functions defined later in this file
 static bool isValidPE(const std::string& path);
@@ -123,7 +117,7 @@ DWORD CALLBACK CopyProgressRoutine(
     return PROGRESS_CONTINUE;
 }
 
-void ISOCopyManager::listDirectoryRecursive(std::ofstream& log, const std::string& path, int depth, int maxDepth) {
+void ISOCopyManager::listDirectoryRecursive(std::ofstream& log, const std::string& path, int depth, int maxDepth, EventManager& eventManager, long long& fileCount) {
     if (depth >= maxDepth) return;
     
     WIN32_FIND_DATAA findData;
@@ -133,11 +127,16 @@ void ISOCopyManager::listDirectoryRecursive(std::ofstream& log, const std::strin
     do {
         std::string fileName = findData.cFileName;
         if (fileName != "." && fileName != "..") {
+            fileCount++;
+            // Update progress every 100 files to show activity
+            if (fileCount % 100 == 0) {
+                eventManager.notifyDetailedProgress(fileCount, 0, "Analizando archivos del ISO");
+            }
             std::string indent(depth * 2, ' ');
             log << indent << fileName;
             if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
                 log << "/" << std::endl;
-                listDirectoryRecursive(log, path + fileName + "\\", depth + 1, maxDepth);
+                listDirectoryRecursive(log, path + fileName + "\\", depth + 1, maxDepth, eventManager, fileCount);
             } else {
                 log << std::endl;
             }
@@ -206,8 +205,10 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
     
     // List all files and directories recursively in the ISO (up to 10 levels deep)
     std::ofstream contentLog(logDir + "\\" + ISO_CONTENT_LOG_FILE);
-    listDirectoryRecursive(contentLog, sourcePath, 0, 10);
+    long long fileCount = 0;
+    listDirectoryRecursive(contentLog, sourcePath, 0, 10, eventManager, fileCount);
     contentLog.close();
+    logFile << getTimestamp() << "Total files analyzed: " << fileCount << std::endl;
     
     eventManager.notifyLogUpdate("Analizando contenido del ISO...\r\n");
     

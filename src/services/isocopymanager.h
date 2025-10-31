@@ -38,7 +38,7 @@ private:
 
     std::string exec(const char* cmd);
     long long getDirectorySize(const std::string& path);
-    void listDirectoryRecursive(std::ofstream& log, const std::string& path, int depth, int maxDepth);
+    void listDirectoryRecursive(std::ofstream& log, const std::string& path, int depth, int maxDepth, EventManager& eventManager, long long& fileCount);
 };
 
 #endif // ISOCOPYMANAGER_H

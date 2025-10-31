@@ -55,3 +55,5 @@
     <string id="unit.mb">MB</string>
     <string id="unit.gb">GB</string>
 </language>
+    <string id="button.perform.hint">Click to boot the ISO</string>
+    <string id="mainwindow.developedBy">Software developed by a Costa Rican company</string>

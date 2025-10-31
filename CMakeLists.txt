@@ -1,18 +1,32 @@
-cmake_minimum_required(VERSION 3.10)
-project(BootThatISO)
+﻿cmake_minimum_required(VERSION 3.16)
+project(BootThatISO LANGUAGES CXX RC)
+
+enable_testing()
 
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED True)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Enable Unicode support
-add_definitions(-DUNICODE -D_UNICODE)
+add_compile_definitions(UNICODE _UNICODE)
 
-# Set UTF-8 source encoding for MSVC
-if(MSVC)
-    add_compile_options(/utf-8)
-    # Use static runtime library
-    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-endif()
+set(SOURCE_FILES
+    src/main.cpp
+    src/controllers/ProcessController.cpp
+    src/controllers/ProcessService.cpp
+    src/models/efimanager.cpp
+    src/models/filecopymanager.cpp
+    src/models/isomounter.cpp
+    src/services/bcdmanager.cpp
+    src/services/isocopymanager.cpp
+    src/services/isotypedetector.cpp    src/services/partitionmanager.cpp
+        src/utils/Logger.cpp
+        src/utils/LocalizationManager.cpp
+        src/utils/Utils.cpp
+        src/views/mainwindow.cpp
+)
+
+set(RESOURCE_FILES
+    src/BootThatISO.rc
+)
 
 # Get version from git tag
 execute_process(
@@ -28,24 +42,28 @@ endif()
 # Remove 'v' prefix for display
 string(SUBSTRING ${GIT_TAG} 1 -1 APP_VERSION)
 
-# Configure version header
 configure_file(
     ${CMAKE_SOURCE_DIR}/include/version.h.in
     ${CMAKE_BINARY_DIR}/version.h
 )
 
-# Include directories
-include_directories(include ${CMAKE_BINARY_DIR})
+add_executable(BootThatISO WIN32 ${SOURCE_FILES} ${RESOURCE_FILES})
 
-# Source files
-file(GLOB_RECURSE SOURCES "src/*.cpp")
-set(SOURCES ${SOURCES} src/BootThatISO.rc)
+target_include_directories(BootThatISO
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_BINARY_DIR}
+)
 
-# Executable
-add_executable(BootThatISO WIN32 ${SOURCES} src/BootThatISO.rc)
+if(MSVC)
+    target_compile_options(BootThatISO PRIVATE /utf-8 /W4 /permissive- /EHsc /Zc:__cplusplus)
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+else()
+    target_compile_options(BootThatISO PRIVATE -Wall -Wextra -Wpedantic -Wconversion -Wshadow)
+endif()
 
 # Link necessary libraries (MFC is included via CMAKE_MFC_FLAG)
-target_link_libraries(BootThatISO comctl32)
+target_link_libraries(BootThatISO comctl32 gdiplus)
 set(CMAKE_MFC_FLAG 1)
 
 set_target_properties(BootThatISO PROPERTIES OUTPUT_NAME "BootThatISO!")
@@ -54,8 +72,59 @@ if(MSVC)
     target_link_options(BootThatISO PRIVATE "/MANIFEST:NO")
 endif()
 
-# Copy lang folder to output directory
-add_custom_command(TARGET BootThatISO POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-    ${CMAKE_SOURCE_DIR}/lang $<TARGET_FILE_DIR:BootThatISO>/lang
+add_executable(UtilsTests
+    tests/utils_tests.cpp
+    src/utils/Utils.cpp
 )
+
+target_include_directories(UtilsTests
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/include
+)
+
+if(MSVC)
+    target_compile_options(UtilsTests PRIVATE /utf-8 /W4 /permissive- /EHsc /Zc:__cplusplus)
+else()
+    target_compile_options(UtilsTests PRIVATE -Wall -Wextra -Wpedantic -Wconversion -Wshadow)
+endif()
+
+if(WIN32)
+    target_link_libraries(UtilsTests PRIVATE advapi32)
+endif()
+
+add_test(NAME UtilsTests COMMAND $<TARGET_FILE:UtilsTests>)
+
+find_program(CLANG_TIDY_EXE NAMES clang-tidy)
+if(CLANG_TIDY_EXE)
+    set_target_properties(BootThatISO PROPERTIES CXX_CLANG_TIDY "${CLANG_TIDY_EXE};-warnings-as-errors=*")
+endif()
+
+find_program(CLANG_FORMAT_EXE NAMES clang-format)
+if(CLANG_FORMAT_EXE)
+    set(FORMAT_FILES
+        ${SOURCE_FILES}
+        src/controllers/ProcessController.h
+        src/models/EventManager.h
+        src/models/EventObserver.h
+        src/views/mainwindow.h
+        src/utils/Logger.h
+        src/utils/Utils.h
+        src/utils/LocalizationManager.h\n        include/models/HashInfo.h
+        tests/utils_tests.cpp
+    )
+    add_custom_target(check-format
+        COMMAND ${CLANG_FORMAT_EXE} --dry-run --Werror ${FORMAT_FILES}
+        COMMENT "Checking source formatting with clang-format"
+        VERBATIM
+    )
+else()
+    add_custom_target(check-format
+        COMMAND ${CMAKE_COMMAND} -E echo "clang-format not found; skipping format check"
+        VERBATIM
+    )
+endif()
+
+
+
+
