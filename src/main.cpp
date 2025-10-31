@@ -135,7 +135,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
     HWND hwnd = CreateWindowExW(
         WS_EX_CLIENTEDGE,
         L"BootThatISOClass",
-        L"BootThatISO! - Bootear ISO fácil sin una USB",
+        L"BootThatISO! - Bootear ISO sin una USB",
         WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
         CW_USEDEFAULT, CW_USEDEFAULT, 800, 720,
         NULL, NULL, hInstance, NULL);
