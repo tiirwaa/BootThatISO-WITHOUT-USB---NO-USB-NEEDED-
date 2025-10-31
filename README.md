@@ -15,6 +15,8 @@ This utility is especially useful for:
 
 Developed by **Andrey Rodriguez Araya**.
 
+Website: [English](https://agsoft.co.cr/en/software-and-services/) | [Spanish](https://agsoft.co.cr/servicios/)
+
 ![Screenshot](screenshot.png)
 
 ![Boot screen](boot_screen.png)
@@ -144,6 +146,8 @@ Esta utilidad es especialmente útil para:
 - **Automatización**: Integración en scripts para despliegues masivos o configuraciones automatizadas.
 
 Proyecto desarrollado por **Andrey Rodriguez Araya**.
+
+Sitio web: [Inglés](https://agsoft.co.cr/en/software-and-services/) | [Español](https://agsoft.co.cr/servicios/)
 
 ![Screenshot](screenshot.png)
 
