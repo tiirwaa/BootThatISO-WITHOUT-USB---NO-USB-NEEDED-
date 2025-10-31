@@ -66,24 +66,12 @@ jobs:
           }
         shell: powershell
 
-      - name: Create zip with exe (if present) and lang folder
-        run: |
-          $exe = '${{ steps.find-exe.outputs.exe_path }}'
-          if (-not [string]::IsNullOrEmpty($exe)) {
-            Compress-Archive -Path $exe,'lang' -DestinationPath 'release-assets/BootThatISO-windows.zip' -Force
-            Write-Host "Created release-assets/BootThatISO-windows.zip (exe + lang)"
-          } else {
-            Compress-Archive -Path 'lang' -DestinationPath 'release-assets/BootThatISO-windows.zip' -Force
-            Write-Host "Created release-assets/BootThatISO-windows.zip (lang only)"
-          }
-        shell: powershell
-
       - name: Remove existing asset with same name (if any)
         uses: actions/github-script@v6
         with:
           script: |
             const releaseId = process.env.RELEASE_ID
-            const assetName = 'BootThatISO-windows.zip'
+            const assetName = 'BootThatISO!.exe'
             const owner = context.repo.owner
             const repo = context.repo.repo
             if (!releaseId) throw new Error('RELEASE_ID is not set')
@@ -98,12 +86,12 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_ID: ${{ steps.resolve-release.outputs.release_id }}
 
-      - name: Upload zip to release
+      - name: Upload exe to release
         uses: actions/upload-release-asset@v1
         with:
           upload_url: ${{ steps.resolve-release.outputs.upload_url }}
-          asset_path: release-assets/BootThatISO-windows.zip
-          asset_name: BootThatISO-windows.zip
-          asset_content_type: application/zip
+          asset_path: ${{ steps.find-exe.outputs.exe_path }}
+          asset_name: BootThatISO!.exe
+          asset_content_type: application/octet-stream
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
