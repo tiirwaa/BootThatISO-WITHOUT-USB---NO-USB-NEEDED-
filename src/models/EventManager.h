@@ -5,6 +5,11 @@
 #include <vector>
 #include <memory>
 #include <atomic>
+#include <fstream>
+#include <string>
+#include <windows.h>
+#include "../utils/Utils.h"
+#include "../utils/constants.h"
 
 class EventManager {
 private:
@@ -27,6 +32,15 @@ public:
     }
 
     void notifyLogUpdate(const std::string& message) {
+        // Write to log file
+        std::string logDir = Utils::getExeDirectory() + "logs";
+        CreateDirectoryA(logDir.c_str(), NULL);
+        std::ofstream logFile((logDir + "\\" + GENERAL_LOG_FILE).c_str(), std::ios::app);
+        if (logFile) {
+            logFile << message;
+            logFile.close();
+        }
+
         for (auto observer : observers) {
             observer->onLogUpdate(message);
         }

@@ -15,7 +15,7 @@ public:
     ProcessController(EventManager& eventManager);
     ~ProcessController();
 
-    void startProcess(const std::string& isoPath, const std::string& selectedFormat, const std::string& selectedBootMode, bool skipIntegrityCheck = false);
+    void startProcess(const std::string& isoPath, const std::string& selectedFormat, const std::string& selectedBootMode, bool skipIntegrityCheck = false, bool synchronous = false);
     // Request cancellation of the running process and wait for cleanup
     void requestCancel();
     bool recoverSpace();

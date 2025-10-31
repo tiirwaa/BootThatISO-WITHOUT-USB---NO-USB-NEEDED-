@@ -89,12 +89,21 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
     }
 
     if (unattended) {
-        // Run unattended mode
+        // Log to file for debugging
+        std::string debugLogPath = Utils::getExeDirectory() + "logs\\unattended_debug.log";
+        std::ofstream debugLog(debugLogPath.c_str());
+        debugLog << "Unattended mode started\n";
+        debugLog << "isoPath: " << isoPath << "\n";
+        debugLog << "format: " << format << "\n";
+        debugLog << "mode: " << mode << "\n";
+        debugLog << "chkdsk: " << chkdsk << "\n";
+        debugLog << "autoreboot: " << autoreboot << "\n";
+        debugLog.close();
+
+        // Run unattended mode synchronously
         EventManager eventManager;
         ProcessController processController(eventManager);
-        processController.startProcess(isoPath, format, mode, !chkdsk);
-        // Wait for completion (simplified, in real app might need better handling)
-        // For now, just return
+        processController.startProcess(isoPath, format, mode, !chkdsk, true);
         return 0;
     }
 

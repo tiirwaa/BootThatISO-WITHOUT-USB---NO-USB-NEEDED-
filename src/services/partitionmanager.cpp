@@ -1,4 +1,5 @@
 ﻿#include <mutex>
+// Force rebuild
 #include <string>
 #include <fstream>
 #include <windows.h>
@@ -48,10 +49,20 @@ SpaceValidationResult PartitionManager::validateAvailableSpace()
     result.availableGB = availableGB;
     result.isValid = availableGB >= 10;
     
-    if (!result.isValid) {
-        std::ostringstream oss;
-        oss << "No hay suficiente espacio disponible. Se requieren al menos 10 GB, pero solo hay " << availableGB << " GB disponibles.";
-        result.errorMessage = oss.str();
+    // Log to file
+    std::string logDir = Utils::getExeDirectory() + "logs";
+    CreateDirectoryA(logDir.c_str(), NULL);
+    std::ofstream logFile((logDir + "\\space_validation.log").c_str());
+    if (logFile) {
+        logFile << "Available space: " << availableGB << " GB\n";
+        logFile << "Is valid: " << (result.isValid ? "yes" : "no") << "\n";
+        if (!result.isValid) {
+            std::ostringstream oss;
+            oss << "No hay suficiente espacio disponible. Se requieren al menos 10 GB, pero solo hay " << availableGB << " GB disponibles.";
+            result.errorMessage = oss.str();
+            logFile << "Error: " << result.errorMessage << "\n";
+        }
+        logFile.close();
     }
     
     return result;
@@ -367,6 +378,20 @@ bool PartitionManager::createPartition(const std::string& format, bool skipInteg
     }
     } // end if (!skipIntegrityCheck)
 
+    if (!isDiskGpt()) {
+        if (eventManager) eventManager->notifyLogUpdate("Error: El disco no es GPT. La aplicación requiere un disco GPT para crear particiones EFI.\r\n");
+        return false;
+    } else {
+        if (eventManager) eventManager->notifyLogUpdate("Disco confirmado como GPT. Procediendo con la creación de particiones...\r\n");
+    }
+
+    // Always recover space to ensure clean state
+    if (eventManager) eventManager->notifyLogUpdate("Recuperando espacio para particiones...\r\n");
+    if (!recoverSpace()) {
+        if (eventManager) eventManager->notifyLogUpdate("Error: Falló la recuperación de espacio.\r\n");
+        return false;
+    }
+
     if (eventManager) eventManager->notifyLogUpdate("Creando script de diskpart para particiones...\r\n");
     char tempPath[MAX_PATH];
     GetTempPathA(MAX_PATH, tempPath);
@@ -390,7 +415,7 @@ bool PartitionManager::createPartition(const std::string& format, bool skipInteg
 
     scriptFile << "select disk 0\n";
     scriptFile << "select volume C\n";
-    scriptFile << "shrink desired=10500 minimum=10500\n";
+    scriptFile << "shrink desired=12000 minimum=12000\n";
     scriptFile << "create partition efi size=500\n";
     scriptFile << "format fs=fat32 quick label=\"" << EFI_VOLUME_LABEL << "\"\n";
     scriptFile << "create partition primary size=10000\n";
@@ -496,7 +521,7 @@ bool PartitionManager::createPartition(const std::string& format, bool skipInteg
         logFile << "Script content:\n";
         logFile << "select disk 0\n";
         logFile << "select volume C\n";
-        logFile << "shrink desired=10500 minimum=10500\n";
+        logFile << "shrink desired=12000 minimum=12000\n";
         logFile << "create partition efi size=500\n";
         logFile << "format fs=fat32 quick label=\"" << EFI_VOLUME_LABEL << "\"\n";
         logFile << "create partition primary size=10000\n";
@@ -558,6 +583,56 @@ bool PartitionManager::partitionExists()
             std::string volPath = std::string(volumeNameCheck) + "\\";
             if (GetVolumeInformationA(volPath.c_str(), volName, sizeof(volName), &serial, &maxComp, &flags, fsName, sizeof(fsName))) {
                 if (_stricmp(volName, VOLUME_LABEL) == 0) {
+                    FindVolumeClose(hVolume);
+                    return true;
+                }
+            }
+        } while (FindNextVolumeA(hVolume, volumeNameCheck, sizeof(volumeNameCheck)));
+        FindVolumeClose(hVolume);
+    }
+
+    return false;
+}
+
+bool PartitionManager::efiPartitionExists()
+{
+    // First check drives with assigned letters
+    char drives[256];
+    GetLogicalDriveStringsA(sizeof(drives), drives);
+
+    char* drive = drives;
+    while (*drive) {
+        if (GetDriveTypeA(drive) == DRIVE_FIXED) {
+            char volumeName[MAX_PATH];
+            char fileSystem[MAX_PATH];
+            DWORD serialNumber, maxComponentLen, fileSystemFlags;
+            if (GetVolumeInformationA(drive, volumeName, sizeof(volumeName), &serialNumber, &maxComponentLen, &fileSystemFlags, fileSystem, sizeof(fileSystem))) {
+                if (_stricmp(volumeName, EFI_VOLUME_LABEL) == 0) {
+                    return true;
+                }
+            }
+        }
+        drive += strlen(drive) + 1;
+    }
+
+    // Also check unassigned volumes
+    char volumeNameCheck[MAX_PATH];
+    HANDLE hVolume = FindFirstVolumeA(volumeNameCheck, sizeof(volumeNameCheck));
+    if (hVolume != INVALID_HANDLE_VALUE) {
+        do {
+            // Remove trailing backslash for GetVolumeInformationA
+            size_t len = strlen(volumeNameCheck);
+            if (len > 0 && volumeNameCheck[len - 1] == '\\') {
+                volumeNameCheck[len - 1] = '\0';
+            }
+            
+            // Get volume information
+            char volName[MAX_PATH] = {0};
+            char fsName[MAX_PATH] = {0};
+            DWORD serial, maxComp, flags;
+            std::string volPath = std::string(volumeNameCheck) + "\\";
+            if (GetVolumeInformationA(volPath.c_str(), volName, sizeof(volName), &serial, &maxComp, &flags, fsName, sizeof(fsName))) {
+                if (_stricmp(volName, EFI_VOLUME_LABEL) == 0) {
                     FindVolumeClose(hVolume);
                     return true;
                 }
@@ -1420,6 +1495,97 @@ bool PartitionManager::RestartComputer()
         if (eventManager) eventManager->notifyLogUpdate("Error: No se pudo reiniciar el sistema. Código de error: " + std::to_string(error) + "\r\n");
         return false;
     }
+}
+
+bool PartitionManager::isDiskGpt()
+{
+    char tempPath[MAX_PATH];
+    GetTempPathA(MAX_PATH, tempPath);
+    char tempFile[MAX_PATH];
+    GetTempFileNameA(tempPath, "listdisk", 0, tempFile);
+
+    std::ofstream scriptFile(tempFile);
+    if (!scriptFile) {
+        return false;
+    }
+    scriptFile << "list disk\n";
+    scriptFile << "exit\n";
+    scriptFile.close();
+
+    STARTUPINFOA si = { sizeof(si) };
+    PROCESS_INFORMATION pi;
+    SECURITY_ATTRIBUTES sa;
+    sa.nLength = sizeof(sa);
+    sa.lpSecurityDescriptor = NULL;
+    sa.bInheritHandle = TRUE;
+
+    HANDLE hRead, hWrite;
+    if (!CreatePipe(&hRead, &hWrite, &sa, 0)) {
+        DeleteFileA(tempFile);
+        return false;
+    }
+
+    si.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
+    si.hStdOutput = hWrite;
+    si.hStdError = hWrite;
+    si.wShowWindow = SW_HIDE;
+
+    std::string cmd = "diskpart /s " + std::string(tempFile);
+    if (!CreateProcessA(NULL, const_cast<char*>(cmd.c_str()), NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi)) {
+        CloseHandle(hRead);
+        CloseHandle(hWrite);
+        DeleteFileA(tempFile);
+        return false;
+    }
+
+    CloseHandle(hWrite);
+
+    std::string output;
+    char buffer[1024];
+    DWORD bytesRead;
+    while (ReadFile(hRead, buffer, sizeof(buffer) - 1, &bytesRead, NULL) && bytesRead > 0) {
+        buffer[bytesRead] = '\0';
+        output += buffer;
+    }
+
+    CloseHandle(hRead);
+
+    WaitForSingleObject(pi.hProcess, 30000); // 30 seconds
+
+    DWORD exitCode;
+    GetExitCodeProcess(pi.hProcess, &exitCode);
+
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
+
+    DeleteFileA(tempFile);
+
+    if (exitCode != 0) {
+        return false;
+    }
+
+    // Log the output
+    std::string logDir = Utils::getExeDirectory() + "logs";
+    CreateDirectoryA(logDir.c_str(), NULL);
+    std::ofstream logFile((logDir + "\\diskpart_list_disk.log").c_str());
+    if (logFile) {
+        logFile << "Diskpart list disk output:\n" << Utils::ansi_to_utf8(output) << "\n";
+        logFile << "Exit code: " << exitCode << "\n";
+        logFile.close();
+    }
+
+    // Parse output to check if disk 0 is GPT
+    std::istringstream iss(output);
+    std::string line;
+    while (std::getline(iss, line)) {
+        if (line.find("Disco 0") != std::string::npos || line.find("Disk 0") != std::string::npos) {
+            if (line.find("*") != std::string::npos) {
+                return true;
+            }
+        }
+    }
+
+    return false;
 }
 
 

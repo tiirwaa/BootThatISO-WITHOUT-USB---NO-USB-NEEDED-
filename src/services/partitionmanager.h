@@ -17,6 +17,8 @@ private:
 
     bool RestartComputer();
 
+    bool isDiskGpt();
+
 public:
     static PartitionManager& getInstance();
 
@@ -26,6 +28,7 @@ public:
     long long getAvailableSpaceGB();
     bool createPartition(const std::string& format = "FAT32", bool skipIntegrityCheck = false);
     bool partitionExists();
+    bool efiPartitionExists();
     std::string getPartitionDriveLetter();
     std::string getEfiPartitionDriveLetter();
     std::string getPartitionFileSystem();

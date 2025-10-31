@@ -1,5 +1,7 @@
 ﻿#include "ProcessController.h"
 #include <memory>
+#include <windows.h>
+#include "../utils/constants.h"
 
 ProcessController::ProcessController(EventManager& eventManager)
     : eventManager(eventManager), workerThread(nullptr), recoveryThread(nullptr)
@@ -41,8 +43,23 @@ void ProcessController::requestCancel()
     }
 }
 
-void ProcessController::startProcess(const std::string& isoPath, const std::string& selectedFormat, const std::string& selectedBootMode, bool skipIntegrityCheck)
+void ProcessController::startProcess(const std::string& isoPath, const std::string& selectedFormat, const std::string& selectedBootMode, bool skipIntegrityCheck, bool synchronous)
 {
+    // Clear logs at start of process
+    std::string logDir = Utils::getExeDirectory() + "logs";
+    CreateDirectoryA(logDir.c_str(), NULL);
+    std::vector<std::string> logFiles = { GENERAL_LOG_FILE, BCD_CONFIG_LOG_FILE, ISO_EXTRACT_LOG_FILE };
+    for (const auto& file : logFiles) {
+        std::string path = logDir + "\\" + file;
+        std::ofstream ofs(path, std::ios::trunc);
+        ofs.close();
+    }
+
+    // Log to file
+    std::ofstream logFile((logDir + "\\start_process.log").c_str());
+    logFile << "startProcess called with synchronous: " << synchronous << "\n";
+    logFile.close();
+
     eventManager.notifyProgressUpdate(0);
 
     // Trim the isoPath to remove leading/trailing whitespace, quotes and common invisible characters
@@ -74,8 +91,13 @@ void ProcessController::startProcess(const std::string& isoPath, const std::stri
         // Aqui se pueden agregar confirmaciones si es necesario, pero por simplicidad, asumir que se confirma.
     }
 
-    // Iniciar hilo
-    workerThread = new std::thread(&ProcessController::processInThread, this, trimmedIsoPath, selectedFormat, selectedBootMode, skipIntegrityCheck);
+    if (synchronous) {
+        // Run synchronously
+        processInThread(trimmedIsoPath, selectedFormat, selectedBootMode, skipIntegrityCheck);
+    } else {
+        // Iniciar hilo
+        workerThread = new std::thread(&ProcessController::processInThread, this, trimmedIsoPath, selectedFormat, selectedBootMode, skipIntegrityCheck);
+    }
 }
 
 void ProcessController::processInThread(const std::string& isoPath, const std::string& selectedFormat, const std::string& selectedBootMode, bool skipIntegrityCheck)
@@ -142,8 +164,8 @@ void ProcessController::processInThread(const std::string& isoPath, const std::s
     eventManager.notifyLogUpdate("Iniciando preparacion de archivos del ISO...\r\n");
     if (copyISO(isoPath, partitionDrive, espDrive, selectedBootMode)) {
         eventManager.notifyLogUpdate("Archivos preparados. Configurando BCD...\r\n");
-        // Only configure BCD for Windows ISOs; non-Windows EFI boot directly from ESP
-        if (isoCopyManager->getIsWindowsISO()) {
+        // Configure BCD for Windows ISOs or for RAM boot mode (even non-Windows can use ramdisk)
+        if (isoCopyManager->getIsWindowsISO() || selectedBootMode == "Boot desde Memoria") {
             configureBCD(partitionDrive, espDrive, selectedBootMode);
         } else {
             eventManager.notifyLogUpdate("ISO no-Windows detectado: omitiendo configuracion BCD, usando arranque EFI directo desde ESP.\r\n");
