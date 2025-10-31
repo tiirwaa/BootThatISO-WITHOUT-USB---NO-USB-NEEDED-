@@ -150,6 +150,11 @@ void ProcessController::recoverSpaceInThread()
 {
     eventManager.notifyLogUpdate("Recuperando espacio. Esto puede tardar varios minutos...\r\n");
     bool success = partitionManager->recoverSpace();
+    if (success) {
+        // Remove BCD entries
+        bcdManager->restoreBCD();
+        eventManager.notifyLogUpdate("Entradas BCD ISOBOOT eliminadas.\r\n");
+    }
     recoveryInProgress.store(false);
     eventManager.notifyRecoverComplete(success);
 }

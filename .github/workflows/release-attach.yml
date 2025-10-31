@@ -77,6 +77,16 @@ jobs:
           }
         shell: powershell
 
+      - name: Create code signing certificate
+        run: |
+          New-SelfSignedCertificate -Type CodeSigningCert -Subject "CN=BootThatISO Dev" -KeyUsage DigitalSignature -KeyLength 2048 -CertStoreLocation "Cert:\CurrentUser\My" -NotAfter (Get-Date).AddYears(1)
+        shell: powershell
+
+      - name: Sign the executable
+        run: |
+          signtool sign /fd SHA256 /a /d "BootThatISO - Bootear ISO sin USB" /du "https://github.com/tiirwaa/BootThatISO-WITHOUT-USB---NO-USB-NEEDED-" /tr http://timestamp.digicert.com /td SHA256 "${{ steps.find-exe.outputs.exe_path }}"
+        shell: pwsh
+
       - name: Create release notes
         run: |
           echo "## Requisitos del Sistema" > release_notes.md
