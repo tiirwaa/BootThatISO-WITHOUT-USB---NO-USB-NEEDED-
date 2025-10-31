@@ -225,7 +225,10 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
         std::string bootWimDestDir = destPath + "sources";
         CreateDirectoryA(bootWimDestDir.c_str(), NULL);
         std::string bootWimDest = bootWimDestDir + "\\boot.wim";
-        if (copyFileUtf8(bootWimSrc, bootWimDest)) {
+        if (GetFileAttributesA(bootWimDest.c_str()) != INVALID_FILE_ATTRIBUTES) {
+            logFile << getTimestamp() << "boot.wim already exists at " << bootWimDest << std::endl;
+            bootWimSuccess = true;
+        } else if (copyFileUtf8(bootWimSrc, bootWimDest)) {
             logFile << getTimestamp() << "boot.wim extracted successfully to " << bootWimDest << std::endl;
         } else {
             logFile << getTimestamp() << "Failed to extract boot.wim" << std::endl;
@@ -237,7 +240,10 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
         std::string bootSdiDestDir = destPath + "boot";
         CreateDirectoryA(bootSdiDestDir.c_str(), NULL);
         std::string bootSdiDest = bootSdiDestDir + "\\boot.sdi";
-        if (GetFileAttributesA(bootSdiSrc.c_str()) != INVALID_FILE_ATTRIBUTES) {
+        if (GetFileAttributesA(bootSdiDest.c_str()) != INVALID_FILE_ATTRIBUTES) {
+            logFile << getTimestamp() << "boot.sdi already exists at " << bootSdiDest << std::endl;
+            bootSdiSuccess = true;
+        } else if (GetFileAttributesA(bootSdiSrc.c_str()) != INVALID_FILE_ATTRIBUTES) {
             if (copyFileUtf8(bootSdiSrc, bootSdiDest)) {
                 logFile << getTimestamp() << "boot.sdi copied successfully to " << bootSdiDest << std::endl;
             } else {
