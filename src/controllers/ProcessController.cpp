@@ -1,7 +1,28 @@
 ﻿#include "ProcessController.h"
 #include <memory>
 #include <windows.h>
+#include <fstream>
 #include "../utils/constants.h"
+#include "../utils/Utils.h"
+
+// Struct for hash info
+struct HashInfo {
+    std::string hash;
+    std::string mode;
+    std::string format;
+};
+
+// Helper function to read hash info from file
+static HashInfo readHashInfo(const std::string& path) {
+    HashInfo info = {"", "", ""};
+    std::ifstream file(path);
+    if (file.is_open()) {
+        std::getline(file, info.hash);
+        std::getline(file, info.mode);
+        std::getline(file, info.format);
+    }
+    return info;
+}
 
 ProcessController::ProcessController(EventManager& eventManager)
     : eventManager(eventManager), workerThread(nullptr), recoveryThread(nullptr)
@@ -105,17 +126,36 @@ void ProcessController::processInThread(const std::string& isoPath, const std::s
     eventManager.notifyLogUpdate("Verificando estado de particiones...\r\n");
     bool partitionExists = partitionManager->partitionExists();
 
+    bool skipFormat = false;
     if (partitionExists) {
-        eventManager.notifyLogUpdate("Particiones existentes detectadas. Iniciando reformateo...\r\n");
-        eventManager.notifyProgressUpdate(20);
-        if (!partitionManager->reformatPartition(selectedFormat)) {
-            eventManager.notifyLogUpdate("Error: Fallo el reformateo de la particion.\r\n");
-            eventManager.notifyError("Error al reformatear la particion.");
-            eventManager.notifyButtonEnable();
-            return;
+        std::string partitionDrive = partitionManager->getPartitionDriveLetter();
+        if (!partitionDrive.empty()) {
+            std::string hashFilePath = partitionDrive + "\\ISOBOOTHASH";
+            std::string md5 = Utils::calculateMD5(isoPath);
+            HashInfo existing = readHashInfo(hashFilePath);
+            if (existing.hash == md5 && existing.mode == selectedBootMode && existing.format == selectedFormat && !existing.hash.empty()) {
+                eventManager.notifyLogUpdate("Hash, modo y formato coinciden. Omitiendo formateo.\r\n");
+                skipFormat = true;
+            } else {
+                eventManager.notifyLogUpdate("Hash o configuración no coinciden. Procediendo con formateo.\r\n");
+            }
+        } else {
+            eventManager.notifyLogUpdate("No se pudo acceder a la partición existente para verificar hash. Formateando.\r\n");
         }
-        eventManager.notifyLogUpdate("Particion reformateada exitosamente.\r\n");
-        eventManager.notifyProgressUpdate(30);
+        if (!skipFormat) {
+            eventManager.notifyLogUpdate("Particiones existentes detectadas. Iniciando reformateo...\r\n");
+            eventManager.notifyProgressUpdate(20);
+            if (!partitionManager->reformatPartition(selectedFormat)) {
+                eventManager.notifyLogUpdate("Error: Fallo el reformateo de la particion.\r\n");
+                eventManager.notifyError("Error al reformatear la particion.");
+                eventManager.notifyButtonEnable();
+                return;
+            }
+            eventManager.notifyLogUpdate("Particion reformateada exitosamente.\r\n");
+            eventManager.notifyProgressUpdate(30);
+        } else {
+            eventManager.notifyProgressUpdate(30);
+        }
     } else {
         eventManager.notifyLogUpdate("Validando espacio disponible en disco...\r\n");
         eventManager.notifyProgressUpdate(10);
@@ -153,16 +193,18 @@ void ProcessController::processInThread(const std::string& isoPath, const std::s
     }
     eventManager.notifyLogUpdate("Particion ISOEFI encontrada en: " + espDrive + "\r\n");
 
-    // Always reformat EFI partition
-    if (!partitionManager->reformatEfiPartition()) {
-        eventManager.notifyLogUpdate("Error: Fallo el reformateo de la particion EFI.\r\n");
-        eventManager.notifyError("Error al reformatear la particion EFI.");
-        eventManager.notifyButtonEnable();
-        return;
+    // Reformat EFI partition only if not skipping
+    if (!skipFormat) {
+        if (!partitionManager->reformatEfiPartition()) {
+            eventManager.notifyLogUpdate("Error: Fallo el reformateo de la particion EFI.\r\n");
+            eventManager.notifyError("Error al reformatear la particion EFI.");
+            eventManager.notifyButtonEnable();
+            return;
+        }
     }
 
     eventManager.notifyLogUpdate("Iniciando preparacion de archivos del ISO...\r\n");
-    if (copyISO(isoPath, partitionDrive, espDrive, selectedBootMode)) {
+    if (copyISO(isoPath, partitionDrive, espDrive, selectedBootMode, selectedFormat)) {
         eventManager.notifyLogUpdate("Archivos preparados. Configurando BCD...\r\n");
         // Configure BCD for Windows ISOs or for RAM boot mode (even non-Windows can use ramdisk)
         if (isoCopyManager->getIsWindowsISO() || selectedBootMode == "Boot desde Memoria") {
@@ -202,7 +244,7 @@ bool ProcessController::recoverSpace()
     return true;
 }
 
-bool ProcessController::copyISO(const std::string& isoPath, const std::string& destPath, const std::string& espPath, const std::string& mode)
+bool ProcessController::copyISO(const std::string& isoPath, const std::string& destPath, const std::string& espPath, const std::string& mode, const std::string& format)
 {
     eventManager.notifyLogUpdate("Montando imagen ISO...\r\n");
     eventManager.notifyProgressUpdate(40);
@@ -212,7 +254,7 @@ bool ProcessController::copyISO(const std::string& isoPath, const std::string& d
 
     if (mode == "Boot desde Memoria") {
         eventManager.notifyLogUpdate("Modo Boot desde Memoria seleccionado: extrayendo EFI y recursos para RAMDisk...\r\n");
-        if (isoCopyManager->extractISOContents(eventManager, isoPath, drive, espDrive, false, true, true)) {
+        if (isoCopyManager->extractISOContents(eventManager, isoPath, drive, espDrive, false, true, true, mode, format)) {
             eventManager.notifyLogUpdate("EFI y recursos de arranque preparados exitosamente (boot.wim/boot.sdi).\r\n");
             eventManager.notifyProgressUpdate(70);
         } else {
@@ -221,7 +263,7 @@ bool ProcessController::copyISO(const std::string& isoPath, const std::string& d
         }
     } else {
         eventManager.notifyLogUpdate("Modo " + mode + " seleccionado: extrayendo contenido completo del ISO...\r\n");
-        if (isoCopyManager->extractISOContents(eventManager, isoPath, drive, espDrive, true, true, true)) {
+        if (isoCopyManager->extractISOContents(eventManager, isoPath, drive, espDrive, true, true, true, mode, format)) {
             eventManager.notifyLogUpdate("Contenido del ISO extraido exitosamente.\r\n");
             eventManager.notifyProgressUpdate(70);
         } else {

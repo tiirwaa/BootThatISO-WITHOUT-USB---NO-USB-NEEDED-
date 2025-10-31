@@ -16,10 +16,18 @@
 #include "../models/isomounter.h"
 #include "../models/filecopymanager.h"
 
+// Struct for hash info
+struct HashInfo {
+    std::string hash;
+    std::string mode;
+    std::string format;
+};
+
 // Forward declarations for helper functions defined later in this file
 static bool isValidPE(const std::string& path);
 static uint16_t getPEMachine(const std::string& path);
 static BOOL copyFileUtf8(const std::string& src, const std::string& dst);
+static HashInfo readHashInfo(const std::string& path);
 
 ISOCopyManager& ISOCopyManager::getInstance() {
     static ISOCopyManager instance;
@@ -135,7 +143,7 @@ void ISOCopyManager::listDirectoryRecursive(std::ofstream& log, const std::strin
     FindClose(hFind);
 }
 
-bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::string& isoPath, const std::string& destPath, const std::string& espPath, bool extractContent, bool extractBootWim, bool copyInstallWim)
+bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::string& isoPath, const std::string& destPath, const std::string& espPath, bool extractContent, bool extractBootWim, bool copyInstallWim, const std::string& mode, const std::string& format)
 {
     // Initialize managers with EventManager
     fileCopyManager = std::make_unique<FileCopyManager>(eventManager);
@@ -201,7 +209,17 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
     
     isWindowsISODetected = isWindowsISO;
     
-    if (extractContent) {
+    // Calculate MD5 of the ISO
+    std::string md5 = Utils::calculateMD5(isoPath);
+    std::string hashFilePath = destPath + "\\ISOBOOTHASH";
+    HashInfo existing = readHashInfo(hashFilePath);
+    bool skipCopy = (existing.hash == md5 && existing.mode == mode && existing.format == format && !existing.hash.empty());
+    if (skipCopy) {
+        logFile << getTimestamp() << "ISO hash, mode and format match existing, skipping content copy" << std::endl;
+        eventManager.notifyLogUpdate("Hash, modo y formato del ISO coinciden, omitiendo copia de contenido.\r\n");
+    }
+    
+    if (extractContent && !skipCopy) {
         // Extract all ISO contents to data partition, excluding EFI
         std::set<std::string> excludeDirs = {"efi", "EFI"};
         if (!fileCopyManager->copyDirectoryWithProgress(sourcePath, destPath, isoSize, copiedSoFar, excludeDirs, "Copiando contenido del ISO")) {
@@ -221,54 +239,56 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
     bool installWimSuccess = true;
     bool additionalBootFilesSuccess = true;
     if (extractBootWim) {
-        std::string bootWimSrc = sourcePath + "sources\\boot.wim";
-        std::string bootWimDestDir = destPath + "sources";
-        CreateDirectoryA(bootWimDestDir.c_str(), NULL);
-        std::string bootWimDest = bootWimDestDir + "\\boot.wim";
-        if (GetFileAttributesA(bootWimDest.c_str()) != INVALID_FILE_ATTRIBUTES) {
-            logFile << getTimestamp() << "boot.wim already exists at " << bootWimDest << std::endl;
-            bootWimSuccess = true;
-        } else if (copyFileUtf8(bootWimSrc, bootWimDest)) {
-            logFile << getTimestamp() << "boot.wim extracted successfully to " << bootWimDest << std::endl;
-        } else {
-            logFile << getTimestamp() << "Failed to extract boot.wim" << std::endl;
-            bootWimSuccess = false;
-        }
-
-        // Copy boot.sdi required for ramdisk boot
-        std::string bootSdiSrc = sourcePath + "boot\\boot.sdi";
-        std::string bootSdiDestDir = destPath + "boot";
-        CreateDirectoryA(bootSdiDestDir.c_str(), NULL);
-        std::string bootSdiDest = bootSdiDestDir + "\\boot.sdi";
-        if (GetFileAttributesA(bootSdiDest.c_str()) != INVALID_FILE_ATTRIBUTES) {
-            logFile << getTimestamp() << "boot.sdi already exists at " << bootSdiDest << std::endl;
-            bootSdiSuccess = true;
-        } else if (GetFileAttributesA(bootSdiSrc.c_str()) != INVALID_FILE_ATTRIBUTES) {
-            if (copyFileUtf8(bootSdiSrc, bootSdiDest)) {
-                logFile << getTimestamp() << "boot.sdi copied successfully to " << bootSdiDest << std::endl;
+        if (!skipCopy) {
+            std::string bootWimSrc = sourcePath + "sources\\boot.wim";
+            std::string bootWimDestDir = destPath + "sources";
+            CreateDirectoryA(bootWimDestDir.c_str(), NULL);
+            std::string bootWimDest = bootWimDestDir + "\\boot.wim";
+            if (GetFileAttributesA(bootWimDest.c_str()) != INVALID_FILE_ATTRIBUTES) {
+                logFile << getTimestamp() << "boot.wim already exists at " << bootWimDest << std::endl;
+                bootWimSuccess = true;
+            } else if (copyFileUtf8(bootWimSrc, bootWimDest)) {
+                logFile << getTimestamp() << "boot.wim extracted successfully to " << bootWimDest << std::endl;
             } else {
-                logFile << getTimestamp() << "Failed to copy boot.sdi" << std::endl;
-                bootSdiSuccess = false;
+                logFile << getTimestamp() << "Failed to extract boot.wim" << std::endl;
+                bootWimSuccess = false;
             }
-        } else {
-            logFile << getTimestamp() << "boot.sdi not found at " << bootSdiSrc << std::endl;
-            bootSdiSuccess = false;
-        }
 
-        if (copyInstallWim) {
-            std::string installWimSrc = sourcePath + "sources\\install.wim";
-            std::string installWimDestDir = destPath + "sources";
-            CreateDirectoryA(installWimDestDir.c_str(), NULL);
-            std::string installWimDest = installWimDestDir + "\\install.wim";
-            if (GetFileAttributesA(installWimSrc.c_str()) != INVALID_FILE_ATTRIBUTES) {
-                if (copyFileUtf8(installWimSrc, installWimDest)) {
-                    logFile << getTimestamp() << "install.wim extracted successfully to " << installWimDest << std::endl;
+            // Copy boot.sdi required for ramdisk boot
+            std::string bootSdiSrc = sourcePath + "boot\\boot.sdi";
+            std::string bootSdiDestDir = destPath + "boot";
+            CreateDirectoryA(bootSdiDestDir.c_str(), NULL);
+            std::string bootSdiDest = bootSdiDestDir + "\\boot.sdi";
+            if (GetFileAttributesA(bootSdiDest.c_str()) != INVALID_FILE_ATTRIBUTES) {
+                logFile << getTimestamp() << "boot.sdi already exists at " << bootSdiDest << std::endl;
+                bootSdiSuccess = true;
+            } else if (GetFileAttributesA(bootSdiSrc.c_str()) != INVALID_FILE_ATTRIBUTES) {
+                if (copyFileUtf8(bootSdiSrc, bootSdiDest)) {
+                    logFile << getTimestamp() << "boot.sdi copied successfully to " << bootSdiDest << std::endl;
                 } else {
-                    logFile << getTimestamp() << "Failed to extract install.wim" << std::endl;
-                    installWimSuccess = false;
+                    logFile << getTimestamp() << "Failed to copy boot.sdi" << std::endl;
+                    bootSdiSuccess = false;
                 }
             } else {
-                logFile << getTimestamp() << "install.wim not found, skipping copy" << std::endl;
+                logFile << getTimestamp() << "boot.sdi not found at " << bootSdiSrc << std::endl;
+                bootSdiSuccess = false;
+            }
+
+            if (copyInstallWim) {
+                std::string installWimSrc = sourcePath + "sources\\install.wim";
+                std::string installWimDestDir = destPath + "sources";
+                CreateDirectoryA(installWimDestDir.c_str(), NULL);
+                std::string installWimDest = installWimDestDir + "\\install.wim";
+                if (GetFileAttributesA(installWimSrc.c_str()) != INVALID_FILE_ATTRIBUTES) {
+                    if (copyFileUtf8(installWimSrc, installWimDest)) {
+                        logFile << getTimestamp() << "install.wim extracted successfully to " << installWimDest << std::endl;
+                    } else {
+                        logFile << getTimestamp() << "Failed to extract install.wim" << std::endl;
+                        installWimSuccess = false;
+                    }
+                } else {
+                    logFile << getTimestamp() << "install.wim not found, skipping copy" << std::endl;
+                }
             }
         }
 
@@ -301,6 +321,15 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
         logFile << getTimestamp() << "Content extraction completed." << std::endl;
     }
     logFile.close();
+    
+    // Write the current ISO hash, mode and format to the file
+    std::ofstream hashFile(hashFilePath);
+    if (hashFile.is_open()) {
+        hashFile << md5 << std::endl;
+        hashFile << mode << std::endl;
+        hashFile << format << std::endl;
+        hashFile.close();
+    }
     
     eventManager.notifyDetailedProgress(0, 0, "");
     return efiSuccess && bootWimSuccess && bootSdiSuccess && installWimSuccess && additionalBootFilesSuccess;
@@ -365,4 +394,16 @@ static BOOL copyFileUtf8(const std::string& src, const std::string& dst) {
     std::wstring wsrc = Utils::utf8_to_wstring(src);
     std::wstring wdst = Utils::utf8_to_wstring(dst);
     return CopyFileW(wsrc.c_str(), wdst.c_str(), FALSE);
+}
+
+// Helper function to read hash info from file
+static HashInfo readHashInfo(const std::string& path) {
+    HashInfo info = {"", "", ""};
+    std::ifstream file(path);
+    if (file.is_open()) {
+        std::getline(file, info.hash);
+        std::getline(file, info.mode);
+        std::getline(file, info.format);
+    }
+    return info;
 }
