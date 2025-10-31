@@ -9,6 +9,18 @@ BootThatISO! es una aplicacion Win32 escrita en C++ que automatiza la creacion d
 - Ejecuta comprobaciones opcionales de integridad (`chkdsk`), genera bitacoras detalladas y permite cancelar o recuperar espacio.
 - Proporciona un modo no asistido para integraciones con scripts mediante argumentos de linea de comandos.
 
+## ISOs Testeadas
+
+### Modo RAM (Boot desde Memoria)
+- ✅ HBCD_PE_x64.iso
+- ✅ Win11_25H2_Spanish_x64.iso
+- ✅ Windows10_22H2_X64.iso
+
+### Modo EXTRACT (Instalación Completa)
+- ✅ HBCD_PE_x64.iso
+- ❌ Win11_25H2_Spanish_x64.iso
+- ❌ Windows10_22H2_X64.iso
+
 ## Requisitos
 - Windows 10 u 11 de 64 bits con privilegios de administrador.
 - Visual Studio 2022 (o toolset MSVC compatible) con soporte para CMake y MFC.
@@ -94,4 +106,4 @@ BootThatISO!/
 Desarrollado por **Andrey Rodriguez Araya** en 2025.
 
 ## Licencia
-Licencia por definir. Todos los derechos reservados por el autor hasta nuevo aviso.
+Este proyecto está bajo la Licencia GPL 3.0. Ver el archivo `LICENSE` para más detalles.
