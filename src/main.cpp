@@ -6,8 +6,10 @@
 #include <iostream>
 #include <fstream>
 #include <algorithm>
+#include <memory>
 #include <cwctype>
 #include "views/mainwindow.h"
+#include "resource.h"
 #include "controllers/ProcessController.h"
 #include "models/EventManager.h"
 #include "services/partitionmanager.h"
@@ -18,6 +20,7 @@
 #include "utils/LocalizationManager.h"
 #include "utils/LocalizationHelpers.h"
 #include "utils/AppKeys.h"
+#include "utils/Logger.h"
 
 BOOL IsRunAsAdmin()
 {
@@ -41,23 +44,21 @@ BOOL IsRunAsAdmin()
 
 void ClearLogs()
 {
-    std::string logDir = Utils::getExeDirectory() + "logs";
-    std::vector<std::string> logFiles = { GENERAL_LOG_FILE, BCD_CONFIG_LOG_FILE, ISO_EXTRACT_LOG_FILE };
-    for (const auto& file : logFiles) {
-        std::string path = logDir + "\\" + file;
-        std::ofstream ofs(path, std::ios::trunc);
-        ofs.close();
-    }
+    Logger::instance().resetProcessLogs();
 }
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nCmdShow)
 {
+    Gdiplus::GdiplusStartupInput gdiplusStartupInput;
+    ULONG_PTR gdiplusToken;
+    Gdiplus::GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
+
     LocalizationManager& localization = LocalizationManager::getInstance();
     std::wstring exeDir = Utils::utf8_to_wstring(Utils::getExeDirectory());
     std::wstring langDir = exeDir + L"lang";
-    if (!localization.initialize(langDir) || !localization.hasLanguages()) {
+    if (!localization.initialize() || !localization.hasLanguages()) {
         std::wstring noLangMessage = LocalizedOrW("message.noLanguagesFound", L"No language files were found in the 'lang' directory.");
         std::wstring errorTitle = LocalizedOrW("title.error", L"Error");
         MessageBoxW(NULL, noLangMessage.c_str(), errorTitle.c_str(), MB_ICONERROR | MB_OK);
@@ -166,12 +167,20 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
     wc.cbClsExtra = 0;
     wc.cbWndExtra = 0;
     wc.hInstance = hInstance;
-    wc.hIcon = LoadIcon(NULL, IDI_APPLICATION);
+    HICON appIcon = static_cast<HICON>(LoadImageW(hInstance, MAKEINTRESOURCEW(IDI_APP_ICON), IMAGE_ICON, 0, 0, LR_DEFAULTSIZE));
+    if (!appIcon) {
+        appIcon = LoadIcon(NULL, IDI_APPLICATION);
+    }
+    wc.hIcon = appIcon;
     wc.hCursor = LoadCursor(NULL, IDC_ARROW);
     wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
     wc.lpszMenuName = NULL;
     wc.lpszClassName = L"BootThatISOClass";
-    wc.hIconSm = LoadIcon(NULL, IDI_APPLICATION);
+    HICON appIconSmall = static_cast<HICON>(LoadImageW(hInstance, MAKEINTRESOURCEW(IDI_APP_ICON), IMAGE_ICON, 16, 16, 0));
+    if (!appIconSmall) {
+        appIconSmall = LoadIcon(NULL, IDI_APPLICATION);
+    }
+    wc.hIconSm = appIconSmall;
 
     if (!RegisterClassExW(&wc))
     {
@@ -187,7 +196,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
         L"BootThatISOClass",
         windowTitle.c_str(),
         WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
-        CW_USEDEFAULT, CW_USEDEFAULT, 800, 720,
+        CW_USEDEFAULT, CW_USEDEFAULT, 800, 640,
         NULL, NULL, hInstance, NULL);
 
     if (hwnd == NULL)
@@ -217,65 +226,70 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
+    Gdiplus::GdiplusShutdown(gdiplusToken);
     return static_cast<int>(msg.wParam);
 }
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
 {
-    static MainWindow* mainWindow = nullptr;
+    static std::unique_ptr<MainWindow> mainWindow;
 
     switch (msg)
     {
     case WM_CREATE:
-        mainWindow = new MainWindow(hwnd);
-        break;
+        mainWindow = std::make_unique<MainWindow>(hwnd);
+        return 0;
     case WM_COMMAND:
         if (mainWindow)
         {
             mainWindow->HandleCommand(msg, wParam, lParam);
         }
-        break;
+        return 0;
+    case WM_DRAWITEM:
+        if (mainWindow)
+        {
+            mainWindow->HandleCommand(msg, wParam, lParam);
+        }
+        return TRUE;
     case WM_CLOSE:
         if (mainWindow && mainWindow->IsProcessing())
         {
-            std::wstring prompt = LocalizedOrW("message.operationInProgress", L"Un proceso está en ejecución. ¿Desea cancelar la operación y cerrar la aplicación?");
-            std::wstring title = LocalizedOrW("title.operationInProgress", L"Proceso en ejecución");
-            int res = MessageBoxW(hwnd, prompt.c_str(), title.c_str(), MB_YESNO | MB_ICONQUESTION);
-            if (res == IDYES) {
+            const std::wstring prompt = LocalizedOrW("message.operationInProgress", L"Un proceso esta en ejecucion. Desea cancelar la operacion y cerrar la aplicacion?");
+            const std::wstring title = LocalizedOrW("title.operationInProgress", L"Proceso en ejecucion");
+            const int result = MessageBoxW(hwnd, prompt.c_str(), title.c_str(), MB_YESNO | MB_ICONQUESTION);
+            if (result == IDYES) {
                 mainWindow->requestCancel();
-                if (mainWindow) {
-                    delete mainWindow;
-                    mainWindow = nullptr;
-                }
-                PostQuitMessage(0);
-                return 0;
-            } else {
-                return 0;
+                DestroyWindow(hwnd);
             }
-        } else {
-            DestroyWindow(hwnd);
             return 0;
         }
+        DestroyWindow(hwnd);
+        return 0;
     case WM_UPDATE_PROGRESS:
     case WM_UPDATE_LOG:
     case WM_ENABLE_BUTTON:
     case WM_UPDATE_DETAILED_PROGRESS:
     case WM_UPDATE_ERROR:
+    case WM_ASK_RESTART:
     case WM_RECOVER_COMPLETE:
         if (mainWindow)
         {
             mainWindow->HandleCommand(msg, wParam, lParam);
         }
-        break;
+        return 0;
     case WM_DESTROY:
-        if (mainWindow)
-        {
-            delete mainWindow;
-        }
+        mainWindow.reset();
         PostQuitMessage(0);
-        break;
+        return 0;
     default:
         return DefWindowProc(hwnd, msg, wParam, lParam);
     }
     return 0;
 }
+
+
+
+
+
+
+

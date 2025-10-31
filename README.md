@@ -1,5 +1,10 @@
 # BootThatISO!
 
+<div style="display: flex; justify-content: center; align-items: center;">
+<img src="res/logo.png" alt="Logo" style="margin-right: 20px;">
+<img src="res/ag.png" alt="Company Logo">
+</div>
+
 BootThatISO! is an innovative Windows tool that allows **booting operating systems from ISO files without needing a USB drive**. Ideal for situations where you don't have a USB device handy, such as during travel, borrowed equipment, or emergencies. It automates the creation of EFI and data partitions on the internal disk, ISO mounting, file copying, and BCD configuration, offering an intuitive graphical interface and support for unattended execution.
 
 This utility is especially useful for:
@@ -10,9 +15,11 @@ This utility is especially useful for:
 
 Developed by **Andrey Rodriguez Araya**.
 
-![Screenshot](screenshot.png)
+Website: [English](https://agsoft.co.cr/en/software-and-services/) | [Spanish](https://agsoft.co.cr/servicios/)
 
-![Boot screen](boot_screen.png)
+![Screenshot](screenshot.png?v=1)
+
+![Boot screen](boot_screen.png?v=1)
 
 ## Key Features
 - Creates or reforms `ISOBOOT` (data) and `ISOEFI` (EFI) partitions on the system disk, with FAT32, exFAT, or NTFS format options.
@@ -125,6 +132,11 @@ This project is under the GPL 3.0 License. See the `LICENSE` file for more detai
 
 # BootThatISO!
 
+<div style="display: flex; justify-content: center; align-items: center;">
+<img src="res/logo.png" alt="Logo" style="margin-right: 20px;">
+<img src="res/ag.png" alt="Company Logo">
+</div>
+
 BootThatISO! es una herramienta innovadora para Windows que permite **arrancar sistemas operativos desde archivos ISO sin necesidad de una memoria USB**. Ideal para situaciones donde no se cuenta con un dispositivo USB a mano, como en viajes, equipos prestados o emergencias. Automatiza la creación de particiones EFI y de datos en el disco interno, montaje de ISOs, copia de archivos y configuración de BCD, ofreciendo una interfaz gráfica intuitiva y soporte para ejecución no asistida.
 
 Esta utilidad es especialmente útil para:
@@ -135,9 +147,11 @@ Esta utilidad es especialmente útil para:
 
 Proyecto desarrollado por **Andrey Rodriguez Araya**.
 
-![Screenshot](screenshot.png)
+Sitio web: [Inglés](https://agsoft.co.cr/en/software-and-services/) | [Español](https://agsoft.co.cr/servicios/)
 
-![Boot screen](boot_screen.png)
+![Screenshot](screenshot.png?v=1)
+
+![Boot screen](boot_screen.png?v=1)
 
 ## Caracteristicas clave
 - Crea o reforma particiones `ISOBOOT` (datos) e `ISOEFI` (EFI) en el disco del sistema, con opciones de formato FAT32, exFAT o NTFS.

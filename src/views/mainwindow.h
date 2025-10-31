@@ -3,8 +3,9 @@
 
 #include <windows.h>
 #include <string>
-#include <fstream>
-#include <thread>
+#include <memory>
+#include <commctrl.h>
+#include <gdiplus.h>
 #include "../services/partitionmanager.h"
 #include "../services/isocopymanager.h"
 #include "../services/bcdmanager.h"
@@ -55,10 +56,13 @@ public:
 
 private:
     void SetupUI(HWND parent);
+    void LoadTexts();
+    void CreateControls(HWND parent);
     void ApplyStyles();
     void UpdateDiskSpaceInfo();
-    void LogMessage(const std::string& msg);
+    void LogMessage(const std::string& msg, bool persist = true);
     void UpdateDetailedProgressLabel(long long copied, long long total, const std::string& operation);
+    void PromptRestart();
 
     void OnSelectISO();
     void OnCreatePartition();
@@ -70,7 +74,7 @@ private:
     ISOCopyManager* isoCopyManager;
     BCDManager* bcdManager;
     EventManager eventManager;
-    ProcessController* processController;
+    std::unique_ptr<ProcessController> processController;
 
     // File system format selection
     std::string selectedFormat;
@@ -78,6 +82,25 @@ private:
     std::string selectedBootModeKey;
     // Skip integrity check
     bool skipIntegrityCheck;
+
+    // Localized texts
+    std::wstring logoText;
+    std::wstring titleText;
+    std::wstring subtitleText;
+    std::wstring isoLabelText;
+    std::wstring browseText;
+    std::wstring formatText;
+    std::wstring fat32Text;
+    std::wstring exfatText;
+    std::wstring ntfsText;
+    std::wstring bootModeText;
+    std::wstring bootRamText;
+    std::wstring bootDiskText;
+    std::wstring integrityText;
+    std::wstring createButtonText;
+    std::wstring versionText;
+    std::wstring servicesText;
+    std::wstring recoverText;
 
     // Controls
     HWND logoLabel;
@@ -105,17 +128,26 @@ private:
     HWND detailedProgressBar;
     HWND recoverButton;
     HWND integrityCheckBox;
+    HWND performHintLabel;
+    HWND developedByLabel;
 
     HINSTANCE hInst;
     HWND hWndParent;
 
+    // Images
+    Gdiplus::Bitmap* logoBitmap;
+    HICON logoHIcon;
+    HICON buttonHIcon;
+    bool buttonIconOwned;
+
     // Thread management
-    std::thread* workerThread;
     bool isProcessing;
     bool isRecovering;
 
-    // Log file
-    std::ofstream generalLogFile;
+    void DrawCreateButton(LPDRAWITEMSTRUCT drawInfo);
 };
 
 #endif // MAINWINDOW_H
+
+
+

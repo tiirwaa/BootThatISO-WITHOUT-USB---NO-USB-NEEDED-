@@ -4,6 +4,7 @@
 #include "../utils/LocalizationManager.h"
 #include "../utils/LocalizationHelpers.h"
 #include "../utils/AppKeys.h"
+#include "../utils/Logger.h"
 #include "../models/BootStrategyFactory.h"
 #include "version.h"
 #include <commdlg.h>
@@ -14,9 +15,22 @@
 #include <cstring>
 #include <iomanip>
 #include <ctime>
+#include <memory>
+#include <algorithm>
+#include <objidl.h>
+#include "../resource.h"
 
 #define WM_UPDATE_DETAILED_PROGRESS (WM_USER + 5)
 #define WM_UPDATE_ERROR (WM_USER + 6)
+
+namespace {
+constexpr int LOGO_TARGET_WIDTH = 56;
+constexpr int LOGO_TARGET_HEIGHT = 56;
+constexpr int BUTTON_ICON_WIDTH = 160;
+constexpr int BUTTON_ICON_HEIGHT = 160;
+constexpr int BUTTON_ICON_PADDING = 8;
+constexpr int CONTENT_OFFSET_X = BUTTON_ICON_WIDTH + 30; // button width plus spacing
+}
 
 struct DetailedProgressData {
     long long copied;
@@ -24,32 +38,85 @@ struct DetailedProgressData {
     std::string operation;
 };
 
+#include <objidl.h>
+
+Gdiplus::Bitmap* LoadBitmapFromResource(int resourceId) {
+    HRSRC hRes = FindResource(NULL, MAKEINTRESOURCE(resourceId), RT_RCDATA);
+    if (!hRes) return nullptr;
+    HGLOBAL hGlob = LoadResource(NULL, hRes);
+    if (!hGlob) return nullptr;
+    LPVOID pData = LockResource(hGlob);
+    DWORD size = SizeofResource(NULL, hRes);
+    HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, size);
+    LPVOID pMem = GlobalLock(hMem);
+    memcpy(pMem, pData, size);
+    GlobalUnlock(hMem);
+    IStream* pStream = nullptr;
+    CreateStreamOnHGlobal(hMem, TRUE, &pStream);
+    Gdiplus::Bitmap* bitmap = Gdiplus::Bitmap::FromStream(pStream);
+    pStream->Release();
+    return bitmap;
+}
+
+Gdiplus::Bitmap* ResizeBitmap(Gdiplus::Bitmap* source, int targetWidth, int targetHeight) {
+    if (!source || targetWidth <= 0 || targetHeight <= 0) {
+        return nullptr;
+    }
+
+    const UINT srcWidth = source->GetWidth();
+    const UINT srcHeight = source->GetHeight();
+    if (srcWidth == 0 || srcHeight == 0) {
+        return nullptr;
+    }
+
+    const double aspect = static_cast<double>(srcWidth) / static_cast<double>(srcHeight);
+    int destWidth = targetWidth;
+    int destHeight = static_cast<int>(destWidth / aspect);
+
+    if (destHeight > targetHeight) {
+        destHeight = targetHeight;
+        destWidth = static_cast<int>(destHeight * aspect);
+    }
+
+    // Ensure we end up with at least 1px in both dimensions.
+    if (destWidth < 1) destWidth = 1;
+    if (destHeight < 1) destHeight = 1;
+
+    auto* scaled = new Gdiplus::Bitmap(destWidth, destHeight, PixelFormat32bppARGB);
+    if (!scaled) {
+        return nullptr;
+    }
+
+    Gdiplus::Graphics graphics(scaled);
+    graphics.SetInterpolationMode(Gdiplus::InterpolationModeHighQualityBicubic);
+    graphics.SetPixelOffsetMode(Gdiplus::PixelOffsetModeHighQuality);
+    graphics.SetSmoothingMode(Gdiplus::SmoothingModeHighQuality);
+    graphics.Clear(Gdiplus::Color(0, 0, 0, 0));
+    graphics.DrawImage(source, Gdiplus::Rect(0, 0, destWidth, destHeight));
+    return scaled;
+}
+
 MainWindow::MainWindow(HWND parent)
-    : hInst(GetModuleHandle(NULL)), hWndParent(parent), selectedFormat("NTFS"), selectedBootModeKey(AppKeys::BootModeExtract), workerThread(nullptr), isProcessing(false), isRecovering(false), skipIntegrityCheck(true)
+    : hInst(GetModuleHandle(NULL)), hWndParent(parent), selectedFormat("NTFS"), selectedBootModeKey(AppKeys::BootModeExtract), isProcessing(false), isRecovering(false), skipIntegrityCheck(true), logoBitmap(nullptr), logoHIcon(nullptr), buttonHIcon(nullptr), buttonIconOwned(false), performHintLabel(nullptr), developedByLabel(nullptr)
 {
     partitionManager = &PartitionManager::getInstance();
     isoCopyManager = &ISOCopyManager::getInstance();
     bcdManager = &BCDManager::getInstance();
     eventManager.addObserver(this);
-    processController = new ProcessController(eventManager);
-    std::string logDir = Utils::getExeDirectory() + "logs";
-    CreateDirectoryA(logDir.c_str(), NULL);
-    generalLogFile.open(logDir + "\\" + GENERAL_LOG_FILE, std::ios::app);
+    processController = std::make_unique<ProcessController>(eventManager);
     if (partitionManager->partitionExists()) {
         bcdManager->restoreBCD();
     }
+    LoadTexts();
     SetupUI(parent);
     UpdateDiskSpaceInfo();
 }
 
 MainWindow::~MainWindow()
 {
-    generalLogFile.close();
-    if (workerThread && workerThread->joinable()) {
-        workerThread->join();
-        delete workerThread;
-    }
-    delete processController;
+    if (logoBitmap) delete logoBitmap;
+    if (logoHIcon) DestroyIcon(logoHIcon);
+    if (buttonIconOwned && buttonHIcon) DestroyIcon(buttonHIcon);
 }
 
 void MainWindow::requestCancel()
@@ -66,98 +133,197 @@ void MainWindow::requestCancel()
     }
 }
 
+void MainWindow::LoadTexts()
+{
+    logoText = LocalizedOrW("mainwindow.logoPlaceholder", L"LOGO");
+    titleText = LocalizedOrW("mainwindow.title", L"BOOT THAT ISO!");
+    subtitleText = LocalizedOrW("mainwindow.subtitle", L"Configuracion de Particiones Bootables EFI");
+    isoLabelText = LocalizedOrW("mainwindow.isoPathLabel", L"Ruta del archivo ISO:");
+    browseText = LocalizedOrW("mainwindow.browseButton", L"Buscar");
+    formatText = LocalizedOrW("mainwindow.formatLabel", L"Formato del sistema de archivos:");
+    fat32Text = LocalizedOrW("mainwindow.format.fat32", L"FAT32 (Recomendado - Maxima compatibilidad EFI)");
+    exfatText = LocalizedOrW("mainwindow.format.exfat", L"exFAT (Sin limite de 4GB por archivo)");
+    ntfsText = LocalizedOrW("mainwindow.format.ntfs", L"NTFS (Soporte completo de Windows)");
+    bootModeText = LocalizedOrW("mainwindow.bootModeLabel", L"Modo de arranque:");
+    bootRamText = LocalizedOrW("bootMode.ram", L"Boot desde RAM");
+    bootDiskText = LocalizedOrW("bootMode.extract", L"Boot desde Disco");
+    integrityText = LocalizedOrW("mainwindow.integrityCheck", L"Realizar verificacion de la integridad del disco");
+    createButtonText = LocalizedOrW("mainwindow.createButton", L"Realizar proceso y Bootear ISO seleccionado");
+    versionText = LocalizedFormatW("mainwindow.versionLabel", { Utils::utf8_to_wstring(APP_VERSION) }, L"Version {0}");
+    servicesText = LocalizedOrW("mainwindow.servicesButton", L"Servicios");
+    recoverText = LocalizedOrW("mainwindow.recoverButton", L"Recuperar mi espacio");
+}
+
 void MainWindow::SetupUI(HWND parent)
 {
-    std::wstring logoText = LocalizedOrW("mainwindow.logoPlaceholder", L"LOGO");
-    logoLabel = CreateWindowW(L"STATIC", logoText.c_str(), WS_CHILD | WS_VISIBLE | SS_CENTER, 10, 10, 65, 65, parent, NULL, hInst, NULL);
-    SendMessage(logoLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
+    LoadTexts();
+    logoBitmap = LoadBitmapFromResource(IDR_AG_LOGO);
+    if (logoBitmap) {
+        if (Gdiplus::Bitmap* resizedLogo = ResizeBitmap(logoBitmap, LOGO_TARGET_WIDTH, LOGO_TARGET_HEIGHT)) {
+            delete logoBitmap;
+            logoBitmap = resizedLogo;
+        }
+    }
+    buttonHIcon = static_cast<HICON>(LoadImageW(hInst, MAKEINTRESOURCEW(IDI_APP_ICON), IMAGE_ICON, BUTTON_ICON_WIDTH, BUTTON_ICON_HEIGHT, LR_CREATEDIBSECTION));
+    if (buttonHIcon) {
+        buttonIconOwned = true;
+    } else {
+        HICON sharedIcon = static_cast<HICON>(LoadImageW(hInst, MAKEINTRESOURCEW(IDI_APP_ICON), IMAGE_ICON, 0, 0, LR_DEFAULTSIZE | LR_SHARED));
+        if (sharedIcon) {
+            buttonHIcon = CopyIcon(sharedIcon);
+            buttonIconOwned = (buttonHIcon != nullptr);
+        }
+    }
+    CreateControls(parent);
+    ApplyStyles();
+}
 
-    std::wstring titleText = LocalizedOrW("mainwindow.title", L"BOOT THAT ISO!");
-    titleLabel = CreateWindowW(L"STATIC", titleText.c_str(), WS_CHILD | WS_VISIBLE, 75, 10, 300, 30, parent, NULL, hInst, NULL);
+void MainWindow::CreateControls(HWND parent)
+{
+    int logoWidth = LOGO_TARGET_WIDTH;
+    int logoHeight = LOGO_TARGET_HEIGHT;
+    if (logoBitmap) {
+        logoWidth = static_cast<int>(logoBitmap->GetWidth());
+        logoHeight = static_cast<int>(logoBitmap->GetHeight());
+    }
+    const int contentLeft = CONTENT_OFFSET_X;
+    const int contentWidth = 580;
+    const int isoEditLeft = 10;
+    const int isoEditWidth = 600;
+
+    logoLabel = CreateWindowW(L"STATIC", NULL, WS_CHILD | WS_VISIBLE | SS_ICON | SS_CENTERIMAGE, 10, 10, logoWidth, logoHeight, parent, NULL, hInst, NULL);
+    if (logoBitmap && logoBitmap->GetHICON(&logoHIcon) == Gdiplus::Ok) {
+        HICON previousIcon = reinterpret_cast<HICON>(SendMessage(logoLabel, STM_SETICON, (WPARAM)logoHIcon, 0));
+        if (previousIcon && previousIcon != logoHIcon) {
+            DestroyIcon(previousIcon);
+        }
+    }
+
+    const int developedLabelWidth = 250;
+    int developedLabelLeft = contentLeft + contentWidth - developedLabelWidth;
+
+    int textLeft = 70;
+    int textWidth = 300;
+
+    titleLabel = CreateWindowW(L"STATIC", titleText.c_str(), WS_CHILD | WS_VISIBLE, textLeft, 10, textWidth, 30, parent, NULL, hInst, NULL);
     SendMessage(titleLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    std::wstring subtitleText = LocalizedOrW("mainwindow.subtitle", L"Configuracion de Particiones Bootables EFI");
-    subtitleLabel = CreateWindowW(L"STATIC", subtitleText.c_str(), WS_CHILD | WS_VISIBLE, 75, 40, 300, 20, parent, NULL, hInst, NULL);
+    subtitleLabel = CreateWindowW(L"STATIC", subtitleText.c_str(), WS_CHILD | WS_VISIBLE, textLeft, 40, textWidth, 20, parent, NULL, hInst, NULL);
     SendMessage(subtitleLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    std::wstring isoLabelText = LocalizedOrW("mainwindow.isoPathLabel", L"Ruta del archivo ISO:");
     isoPathLabel = CreateWindowW(L"STATIC", isoLabelText.c_str(), WS_CHILD | WS_VISIBLE, 10, 80, 200, 20, parent, NULL, hInst, NULL);
     SendMessage(isoPathLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    isoPathEdit = CreateWindowW(L"EDIT", L"", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_READONLY, 10, 100, 600, 25, parent, NULL, hInst, NULL);
+    isoPathEdit = CreateWindowW(L"EDIT", L"", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_READONLY, isoEditLeft, 100, isoEditWidth, 25, parent, NULL, hInst, NULL);
     SendMessage(isoPathEdit, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    std::wstring browseText = LocalizedOrW("mainwindow.browseButton", L"Buscar");
     browseButton = CreateWindowW(L"BUTTON", browseText.c_str(), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 620, 100, 80, 25, parent, (HMENU)IDC_BROWSE_BUTTON, hInst, NULL);
     SendMessage(browseButton, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    std::wstring formatText = LocalizedOrW("mainwindow.formatLabel", L"Formato del sistema de archivos:");
+    if (developedLabelLeft < 10) {
+        developedLabelLeft = 10;
+    }
+    developedByLabel = CreateWindowW(
+        L"STATIC",
+        LocalizedOrW("mainwindow.developedBy", L"Software desarrollado por una empresa Costarricense").c_str(),
+        WS_CHILD | WS_VISIBLE | SS_RIGHT,
+        developedLabelLeft,
+        10,
+        developedLabelWidth,
+        20,
+        parent,
+        NULL,
+        hInst,
+        NULL);
+    SendMessage(developedByLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
+
     formatLabel = CreateWindowW(L"STATIC", formatText.c_str(), WS_CHILD | WS_VISIBLE, 10, 135, 200, 20, parent, NULL, hInst, NULL);
     SendMessage(formatLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    std::wstring fat32Text = LocalizedOrW("mainwindow.format.fat32", L"FAT32 (Recomendado - Maxima compatibilidad EFI)");
     fat32Radio = CreateWindowW(L"BUTTON", fat32Text.c_str(), WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON | WS_GROUP, 10, 155, 350, 20, parent, (HMENU)IDC_FAT32_RADIO, hInst, NULL);
     SendMessage(fat32Radio, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    std::wstring exfatText = LocalizedOrW("mainwindow.format.exfat", L"exFAT (Sin limite de 4GB por archivo)");
     exfatRadio = CreateWindowW(L"BUTTON", exfatText.c_str(), WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON, 10, 175, 300, 20, parent, (HMENU)IDC_EXFAT_RADIO, hInst, NULL);
     SendMessage(exfatRadio, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    std::wstring ntfsText = LocalizedOrW("mainwindow.format.ntfs", L"NTFS (Soporte completo de Windows)");
     ntfsRadio = CreateWindowW(L"BUTTON", ntfsText.c_str(), WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON, 10, 195, 300, 20, parent, (HMENU)IDC_NTFS_RADIO, hInst, NULL);
     SendMessage(ntfsRadio, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
     SendMessage(ntfsRadio, BM_SETCHECK, BST_CHECKED, 0);
 
-    std::wstring bootModeText = LocalizedOrW("mainwindow.bootModeLabel", L"Modo de arranque:");
-    bootModeLabel = CreateWindowW(L"STATIC", bootModeText.c_str(), WS_CHILD | WS_VISIBLE, 330, 135, 150, 20, parent, NULL, hInst, NULL);
+    bootModeLabel = CreateWindowW(L"STATIC", bootModeText.c_str(), WS_CHILD | WS_VISIBLE, contentLeft, 225, contentWidth, 20, parent, NULL, hInst, NULL);
     SendMessage(bootModeLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    std::wstring bootRamText = LocalizedOrW("bootMode.ram", L"Boot desde RAM");
-    bootRamdiskRadio = CreateWindowW(L"BUTTON", bootRamText.c_str(), WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON | WS_GROUP, 330, 155, 420, 20, parent, (HMENU)IDC_BOOTMODE_RAMDISK, hInst, NULL);
+    bootRamdiskRadio = CreateWindowW(L"BUTTON", bootRamText.c_str(), WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON | WS_GROUP, contentLeft, 245, contentWidth, 20, parent, (HMENU)IDC_BOOTMODE_RAMDISK, hInst, NULL);
     SendMessage(bootRamdiskRadio, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    std::wstring bootDiskText = LocalizedOrW("bootMode.extract", L"Boot desde Disco");
-    bootExtractedRadio = CreateWindowW(L"BUTTON", bootDiskText.c_str(), WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON, 330, 175, 420, 40, parent, (HMENU)IDC_BOOTMODE_EXTRACTED, hInst, NULL);
+    bootExtractedRadio = CreateWindowW(L"BUTTON", bootDiskText.c_str(), WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON, contentLeft, 265, contentWidth, 40, parent, (HMENU)IDC_BOOTMODE_EXTRACTED, hInst, NULL);
     SendMessage(bootExtractedRadio, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
     SendMessage(bootExtractedRadio, BM_SETCHECK, BST_CHECKED, 0);
 
-    std::wstring integrityText = LocalizedOrW("mainwindow.integrityCheck", L"Realizar verificacion de la integridad del disco");
-    integrityCheckBox = CreateWindowW(L"BUTTON", integrityText.c_str(), WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX, 10, 220, 350, 20, parent, (HMENU)IDC_INTEGRITY_CHECKBOX, hInst, NULL);
+    integrityCheckBox = CreateWindowW(L"BUTTON", integrityText.c_str(), WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX, contentLeft, 310, contentWidth, 20, parent, (HMENU)IDC_INTEGRITY_CHECKBOX, hInst, NULL);
     SendMessage(integrityCheckBox, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    diskSpaceLabel = CreateWindowW(L"STATIC", L"", WS_CHILD | WS_VISIBLE, 10, 240, 700, 20, parent, NULL, hInst, NULL);
+    diskSpaceLabel = CreateWindowW(L"STATIC", L"", WS_CHILD | WS_VISIBLE, contentLeft, 340, contentWidth, 20, parent, NULL, hInst, NULL);
     SendMessage(diskSpaceLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    detailedProgressLabel = CreateWindowW(L"STATIC", L"", WS_CHILD | WS_VISIBLE, 10, 265, 700, 20, parent, NULL, hInst, NULL);
+    detailedProgressLabel = CreateWindowW(L"STATIC", L"", WS_CHILD | WS_VISIBLE, contentLeft, 365, contentWidth, 20, parent, NULL, hInst, NULL);
     SendMessage(detailedProgressLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    detailedProgressBar = CreateWindowW(PROGRESS_CLASSW, NULL, WS_CHILD | WS_VISIBLE, 10, 290, 760, 20, parent, NULL, hInst, NULL);
+    detailedProgressBar = CreateWindowW(PROGRESS_CLASSW, NULL, WS_CHILD | WS_VISIBLE, contentLeft, 390, contentWidth, 20, parent, NULL, hInst, NULL);
 
-    std::wstring createButtonText = LocalizedOrW("mainwindow.createButton", L"Realizar proceso y Bootear ISO seleccionado");
-    createPartitionButton = CreateWindowW(L"BUTTON", createButtonText.c_str(), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 10, 320, 400, 40, parent, (HMENU)IDC_CREATE_PARTITION_BUTTON, hInst, NULL);
+    DWORD createButtonStyle = WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | BS_OWNERDRAW;
+    createPartitionButton = CreateWindowW(L"BUTTON", L"", createButtonStyle, 10, 230, BUTTON_ICON_WIDTH, BUTTON_ICON_WIDTH + 10, parent, (HMENU)IDC_CREATE_PARTITION_BUTTON, hInst, NULL);
     SendMessage(createPartitionButton, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    progressBar = CreateWindowW(PROGRESS_CLASSW, NULL, WS_CHILD | WS_VISIBLE, 10, 360, 760, 20, parent, NULL, hInst, NULL);
+    performHintLabel = CreateWindowW(L"STATIC", LocalizedOrW("button.perform.hint", L"Clic para Bootear el ISO").c_str(),
+        WS_CHILD | WS_VISIBLE, 10, 230 + BUTTON_ICON_WIDTH + 15, BUTTON_ICON_WIDTH, 20, parent, NULL, hInst, NULL);
+    SendMessage(performHintLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    logTextEdit = CreateWindowW(L"EDIT", L"", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_MULTILINE | ES_AUTOVSCROLL, 10, 390, 760, 230, parent, NULL, hInst, NULL);
+    progressBar = CreateWindowW(PROGRESS_CLASSW, NULL, WS_CHILD | WS_VISIBLE, 10, 420, 760, 20, parent, NULL, hInst, NULL);
+
+    logTextEdit = CreateWindowW(L"EDIT", L"", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_MULTILINE | ES_AUTOVSCROLL | WS_VSCROLL, 10, 450, 760, 120, parent, NULL, hInst, NULL);
     SendMessage(logTextEdit, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    std::wstring versionText = LocalizedFormatW("mainwindow.versionLabel", { Utils::utf8_to_wstring(APP_VERSION) }, L"Version {0}");
-    footerLabel = CreateWindowW(L"STATIC", versionText.c_str(), WS_CHILD | WS_VISIBLE, 10, 640, 140, 20, parent, NULL, hInst, NULL);
+    footerLabel = CreateWindowW(L"STATIC", versionText.c_str(), WS_CHILD | WS_VISIBLE, 10, 575, 140, 20, parent, NULL, hInst, NULL);
     SendMessage(footerLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    std::wstring servicesText = LocalizedOrW("mainwindow.servicesButton", L"Servicios");
-    servicesButton = CreateWindowW(L"BUTTON", servicesText.c_str(), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 650, 640, 100, 20, parent, (HMENU)IDC_SERVICES_BUTTON, hInst, NULL);
+    int servicesButtonX = contentLeft + contentWidth - 100;
+    servicesButton = CreateWindowW(L"BUTTON", servicesText.c_str(), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, servicesButtonX, 575, 100, 20, parent, (HMENU)IDC_SERVICES_BUTTON, hInst, NULL);
     SendMessage(servicesButton, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    std::wstring recoverText = LocalizedOrW("mainwindow.recoverButton", L"Recuperar mi espacio");
-    recoverButton = CreateWindowW(L"BUTTON", recoverText.c_str(), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 500, 640, 140, 20, parent, (HMENU)IDC_RECOVER_BUTTON, hInst, NULL);
+    int recoverButtonX = servicesButtonX - 150;
+    if (recoverButtonX < contentLeft) {
+        recoverButtonX = contentLeft;
+    }
+    recoverButton = CreateWindowW(L"BUTTON", recoverText.c_str(), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, recoverButtonX, 575, 140, 20, parent, (HMENU)IDC_RECOVER_BUTTON, hInst, NULL);
     SendMessage(recoverButton, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 }
 
 void MainWindow::ApplyStyles()
 {
-    // Default styles
+    // Set fonts for all controls
+    SendMessage(titleLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
+    SendMessage(subtitleLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
+    SendMessage(isoPathLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
+    SendMessage(isoPathEdit, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
+    SendMessage(browseButton, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
+    SendMessage(formatLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
+    SendMessage(fat32Radio, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
+    SendMessage(exfatRadio, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
+    SendMessage(ntfsRadio, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
+    SendMessage(bootModeLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
+    SendMessage(bootRamdiskRadio, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
+    SendMessage(bootExtractedRadio, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
+    SendMessage(integrityCheckBox, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
+    SendMessage(diskSpaceLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
+    SendMessage(detailedProgressLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
+    SendMessage(createPartitionButton, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
+    SendMessage(logTextEdit, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
+    SendMessage(footerLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
+    SendMessage(servicesButton, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
+    SendMessage(recoverButton, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
+    SendMessage(performHintLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
+    SendMessage(developedByLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 }
 
 void MainWindow::HandleCommand(UINT msg, WPARAM wParam, LPARAM lParam)
@@ -224,13 +390,20 @@ void MainWindow::HandleCommand(UINT msg, WPARAM wParam, LPARAM lParam)
             break;
         }
         break;
+    case WM_DRAWITEM:
+        if (wParam == IDC_CREATE_PARTITION_BUTTON) {
+            auto* drawInfo = reinterpret_cast<LPDRAWITEMSTRUCT>(lParam);
+            DrawCreateButton(drawInfo);
+            return;
+        }
+        break;
     case WM_UPDATE_PROGRESS:
         SendMessage(progressBar, PBM_SETPOS, wParam, 0);
         break;
     case WM_UPDATE_LOG:
         {
             std::string* logMsg = reinterpret_cast<std::string*>(lParam);
-            LogMessage(*logMsg);
+            LogMessage(*logMsg, false);
             delete logMsg;
         }
         break;
@@ -256,6 +429,9 @@ void MainWindow::HandleCommand(UINT msg, WPARAM wParam, LPARAM lParam)
             delete errorMsg;
         }
         break;
+    case WM_ASK_RESTART:
+        PromptRestart();
+        break;
     case WM_RECOVER_COMPLETE:
         {
             bool success = (wParam != 0);
@@ -275,6 +451,51 @@ void MainWindow::HandleCommand(UINT msg, WPARAM wParam, LPARAM lParam)
             }
         }
         break;
+    }
+}
+
+void MainWindow::DrawCreateButton(LPDRAWITEMSTRUCT drawInfo)
+{
+    if (!drawInfo) {
+        return;
+    }
+
+    HDC hdc = drawInfo->hDC;
+    const RECT originalRect = drawInfo->rcItem;
+
+    const bool isDisabled = (drawInfo->itemState & ODS_DISABLED) != 0;
+    const bool isPressed = (drawInfo->itemState & ODS_SELECTED) != 0;
+    const bool isFocused = (drawInfo->itemState & ODS_FOCUS) != 0;
+
+    const int pressOffset = isPressed ? 1 : 0;
+
+    // Paint background.
+    FillRect(hdc, &drawInfo->rcItem, GetSysColorBrush(COLOR_BTNFACE));
+    RECT borderRect = originalRect;
+    DrawEdge(hdc, &borderRect, isPressed ? EDGE_SUNKEN : EDGE_RAISED, BF_RECT);
+
+    RECT innerRect = originalRect;
+    InflateRect(&innerRect, -BUTTON_ICON_PADDING, -BUTTON_ICON_PADDING);
+    OffsetRect(&innerRect, pressOffset, pressOffset);
+
+    int availableWidth = innerRect.right - innerRect.left;
+    int availableHeight = innerRect.bottom - innerRect.top;
+    int iconSize = (availableWidth < availableHeight) ? availableWidth : availableHeight;
+    if (iconSize < 0) {
+        iconSize = 0;
+    }
+
+    int iconX = innerRect.left + (availableWidth - iconSize) / 2;
+    int iconY = innerRect.top + (availableHeight - iconSize) / 2;
+
+    if (buttonHIcon && iconSize > 0) {
+        DrawIconEx(hdc, iconX, iconY, buttonHIcon, iconSize, iconSize, 0, nullptr, DI_NORMAL);
+    }
+
+    if (isFocused && !isDisabled) {
+        RECT focusRect = originalRect;
+        InflateRect(&focusRect, -3, -3);
+        DrawFocusRect(hdc, &focusRect);
     }
 }
 
@@ -353,8 +574,8 @@ void MainWindow::OnCreatePartition()
     std::string isoPathStr(len, '\0');
     WideCharToMultiByte(CP_UTF8, 0, isoPath, -1, &isoPathStr[0], len, NULL, NULL);
     std::string bootModeFallback = (selectedBootModeKey == AppKeys::BootModeRam) ? "Boot desde Memoria" : "Boot desde Disco";
-    std::string bootModeLabel = LocalizedOrUtf8("bootMode." + selectedBootModeKey, bootModeFallback.c_str());
-    processController->startProcess(isoPathStr, selectedFormat, selectedBootModeKey, bootModeLabel, skipIntegrityCheck);
+    std::string bootModeLabelStr = LocalizedOrUtf8("bootMode." + selectedBootModeKey, bootModeFallback.c_str());
+    processController->startProcess(isoPathStr, selectedFormat, selectedBootModeKey, bootModeLabelStr, skipIntegrityCheck);
 }
 
 void MainWindow::OnOpenServicesPage()
@@ -382,7 +603,7 @@ void MainWindow::UpdateDiskSpaceInfo()
     SetWindowTextW(diskSpaceLabel, infoText.c_str());
 }
 
-void MainWindow::LogMessage(const std::string& msg)
+void MainWindow::LogMessage(const std::string& msg, bool persist)
 {
     // Get current time
     std::time_t now = std::time(nullptr);
@@ -406,10 +627,8 @@ void MainWindow::LogMessage(const std::string& msg)
     }
 
     std::string timestampedMsg = timeStream.str() + normalizedMsg;
-
-    if (generalLogFile.is_open()) {
-        generalLogFile << timestampedMsg;
-        generalLogFile.flush();
+    if (persist) {
+        Logger::instance().append(GENERAL_LOG_FILE, timestampedMsg);
     }
     int wlen = MultiByteToWideChar(CP_UTF8, 0, timestampedMsg.c_str(), -1, NULL, 0);
     std::wstring wmsg(wlen, L'\0');
@@ -417,6 +636,19 @@ void MainWindow::LogMessage(const std::string& msg)
     int len = GetWindowTextLengthW(logTextEdit);
     SendMessageW(logTextEdit, EM_SETSEL, len, len);
     SendMessageW(logTextEdit, EM_REPLACESEL, FALSE, (LPARAM)wmsg.c_str());
+}
+
+void MainWindow::PromptRestart()
+{
+    std::wstring restartPrompt = LocalizedOrW("message.processCompleteRestart", L"Proceso terminado. Desea reiniciar el sistema ahora?");
+    std::wstring restartTitle = LocalizedOrW("title.restart", L"Reiniciar");
+    if (MessageBoxW(hWndParent, restartPrompt.c_str(), restartTitle.c_str(), MB_YESNO) == IDYES) {
+        if (!RestartSystem()) {
+            std::wstring restartError = LocalizedOrW("message.restartFailed", L"Error al reiniciar el sistema.");
+            std::wstring errorTitle = LocalizedOrW("title.error", L"Error");
+            MessageBoxW(hWndParent, restartError.c_str(), errorTitle.c_str(), MB_OK);
+        }
+    }
 }
 
 bool MainWindow::RestartSystem()
@@ -437,48 +669,16 @@ bool MainWindow::RestartSystem()
 }
 
 void MainWindow::onProgressUpdate(int progress) {
-    SendMessage(progressBar, PBM_SETPOS, progress, 0);
+    PostMessage(hWndParent, WM_UPDATE_PROGRESS, static_cast<WPARAM>(progress), 0);
 }
 
 void MainWindow::onLogUpdate(const std::string& message) {
-    // Get current time
-    std::time_t now = std::time(nullptr);
-    std::tm localTime;
-    localtime_s(&localTime, &now);
-    std::stringstream timeStream;
-    timeStream << std::put_time(&localTime, "[%Y-%m-%d %H:%M:%S] " );
-
-    std::string normalizedMsg = message;
-    auto hasTrailingCRLF = [&normalizedMsg]() -> bool {
-        return normalizedMsg.size() >= 2 &&
-               normalizedMsg[normalizedMsg.size() - 2] == '\r' &&
-               normalizedMsg.back() == '\n';
-    };
-    if (!hasTrailingCRLF()) {
-        while (!normalizedMsg.empty() &&
-               (normalizedMsg.back() == '\n' || normalizedMsg.back() == '\r')) {
-            normalizedMsg.pop_back();
-        }
-        normalizedMsg += "\r\n";
-    }
-
-    std::string timestampedMsg = timeStream.str() + normalizedMsg;
-
-    int wlen = MultiByteToWideChar(CP_UTF8, 0, timestampedMsg.c_str(), -1, NULL, 0);
-    std::wstring wmsg(wlen, L'\0');
-    MultiByteToWideChar(CP_UTF8, 0, timestampedMsg.c_str(), -1, &wmsg[0], wlen);
-    int len = GetWindowTextLengthW(logTextEdit);
-    SendMessageW(logTextEdit, EM_SETSEL, len, len);
-    SendMessageW(logTextEdit, EM_REPLACESEL, FALSE, (LPARAM)wmsg.c_str());
-    if (generalLogFile.is_open()) {
-        generalLogFile << timestampedMsg;
-        generalLogFile.flush();
-    }
+    auto* logMsg = new std::string(message);
+    PostMessage(hWndParent, WM_UPDATE_LOG, 0, reinterpret_cast<LPARAM>(logMsg));
 }
 
 void MainWindow::onButtonEnable() {
-    EnableWindow(createPartitionButton, TRUE);
-    isProcessing = false;
+    PostMessage(hWndParent, WM_ENABLE_BUTTON, 0, 0);
 }
 
 void MainWindow::onDetailedProgress(long long copied, long long total, const std::string& operation) {
@@ -520,21 +720,15 @@ void MainWindow::UpdateDetailedProgressLabel(long long copied, long long total, 
 
 
 void MainWindow::onAskRestart() {
-    std::wstring restartPrompt = LocalizedOrW("message.processCompleteRestart", L"Proceso terminado. Desea reiniciar el sistema ahora?");
-    std::wstring restartTitle = LocalizedOrW("title.restart", L"Reiniciar");
-    if (MessageBoxW(hWndParent, restartPrompt.c_str(), restartTitle.c_str(), MB_YESNO) == IDYES) {
-        if (!RestartSystem()) {
-            std::wstring restartError = LocalizedOrW("message.restartFailed", L"Error al reiniciar el sistema.");
-            std::wstring errorTitle = LocalizedOrW("title.error", L"Error");
-            MessageBoxW(hWndParent, restartError.c_str(), errorTitle.c_str(), MB_OK);
-        }
-    }
+    PostMessage(hWndParent, WM_ASK_RESTART, 0, 0);
 }
 
 void MainWindow::onError(const std::string& message) {
     std::string* msg = new std::string(message);
     PostMessage(hWndParent, WM_UPDATE_ERROR, 0, (LPARAM)msg);
 }
+
+
 
 
 
