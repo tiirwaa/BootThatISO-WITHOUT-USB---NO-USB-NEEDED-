@@ -134,14 +134,15 @@ private:
 
     // Images
     Gdiplus::Bitmap* logoBitmap;
-    Gdiplus::Bitmap* buttonIcon;
     HICON logoHIcon;
     HICON buttonHIcon;
-    HIMAGELIST buttonImageList;
+    bool buttonIconOwned;
 
     // Thread management
     bool isProcessing;
     bool isRecovering;
+
+    void DrawCreateButton(LPDRAWITEMSTRUCT drawInfo);
 };
 
 #endif // MAINWINDOW_H

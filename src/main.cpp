@@ -9,6 +9,7 @@
 #include <memory>
 #include <cwctype>
 #include "views/mainwindow.h"
+#include "resource.h"
 #include "controllers/ProcessController.h"
 #include "models/EventManager.h"
 #include "services/partitionmanager.h"
@@ -166,12 +167,20 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
     wc.cbClsExtra = 0;
     wc.cbWndExtra = 0;
     wc.hInstance = hInstance;
-    wc.hIcon = LoadIcon(NULL, IDI_APPLICATION);
+    HICON appIcon = static_cast<HICON>(LoadImageW(hInstance, MAKEINTRESOURCEW(IDI_APP_ICON), IMAGE_ICON, 0, 0, LR_DEFAULTSIZE));
+    if (!appIcon) {
+        appIcon = LoadIcon(NULL, IDI_APPLICATION);
+    }
+    wc.hIcon = appIcon;
     wc.hCursor = LoadCursor(NULL, IDC_ARROW);
     wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
     wc.lpszMenuName = NULL;
     wc.lpszClassName = L"BootThatISOClass";
-    wc.hIconSm = LoadIcon(NULL, IDI_APPLICATION);
+    HICON appIconSmall = static_cast<HICON>(LoadImageW(hInstance, MAKEINTRESOURCEW(IDI_APP_ICON), IMAGE_ICON, 16, 16, 0));
+    if (!appIconSmall) {
+        appIconSmall = LoadIcon(NULL, IDI_APPLICATION);
+    }
+    wc.hIconSm = appIconSmall;
 
     if (!RegisterClassExW(&wc))
     {
@@ -236,6 +245,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             mainWindow->HandleCommand(msg, wParam, lParam);
         }
         return 0;
+    case WM_DRAWITEM:
+        if (mainWindow)
+        {
+            mainWindow->HandleCommand(msg, wParam, lParam);
+        }
+        return TRUE;
     case WM_CLOSE:
         if (mainWindow && mainWindow->IsProcessing())
         {

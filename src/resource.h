@@ -9,6 +9,6 @@
 #define IDR_LOGO_T 103
 #define IDR_EN_US 104
 #define IDR_ES_CR 105
+#define IDI_APP_ICON 106
 
 #endif // RESOURCE_H
-

@@ -25,8 +25,10 @@
 namespace {
 constexpr int LOGO_TARGET_WIDTH = 56;
 constexpr int LOGO_TARGET_HEIGHT = 56;
-constexpr int BUTTON_ICON_WIDTH = 48;
-constexpr int BUTTON_ICON_HEIGHT = 48;
+constexpr int BUTTON_ICON_WIDTH = 160;
+constexpr int BUTTON_ICON_HEIGHT = 160;
+constexpr int BUTTON_ICON_LEFT_MARGIN = 6;
+constexpr int BUTTON_ICON_TEXT_GAP = 12;
 }
 
 struct DetailedProgressData {
@@ -94,7 +96,7 @@ Gdiplus::Bitmap* ResizeBitmap(Gdiplus::Bitmap* source, int targetWidth, int targ
 }
 
 MainWindow::MainWindow(HWND parent)
-    : hInst(GetModuleHandle(NULL)), hWndParent(parent), selectedFormat("NTFS"), selectedBootModeKey(AppKeys::BootModeExtract), isProcessing(false), isRecovering(false), skipIntegrityCheck(true), logoBitmap(nullptr), buttonIcon(nullptr), logoHIcon(nullptr), buttonHIcon(nullptr), buttonImageList(nullptr)
+    : hInst(GetModuleHandle(NULL)), hWndParent(parent), selectedFormat("NTFS"), selectedBootModeKey(AppKeys::BootModeExtract), isProcessing(false), isRecovering(false), skipIntegrityCheck(true), logoBitmap(nullptr), logoHIcon(nullptr), buttonHIcon(nullptr), buttonIconOwned(false)
 {
     partitionManager = &PartitionManager::getInstance();
     isoCopyManager = &ISOCopyManager::getInstance();
@@ -112,10 +114,8 @@ MainWindow::MainWindow(HWND parent)
 MainWindow::~MainWindow()
 {
     if (logoBitmap) delete logoBitmap;
-    if (buttonIcon) delete buttonIcon;
     if (logoHIcon) DestroyIcon(logoHIcon);
-    if (buttonHIcon) DestroyIcon(buttonHIcon);
-    if (buttonImageList) ImageList_Destroy(buttonImageList);
+    if (buttonIconOwned && buttonHIcon) DestroyIcon(buttonHIcon);
 }
 
 void MainWindow::requestCancel()
@@ -157,17 +157,20 @@ void MainWindow::SetupUI(HWND parent)
 {
     LoadTexts();
     logoBitmap = LoadBitmapFromResource(IDR_AG_LOGO);
-    buttonIcon = LoadBitmapFromResource(IDR_LOGO_T);
     if (logoBitmap) {
         if (Gdiplus::Bitmap* resizedLogo = ResizeBitmap(logoBitmap, LOGO_TARGET_WIDTH, LOGO_TARGET_HEIGHT)) {
             delete logoBitmap;
             logoBitmap = resizedLogo;
         }
     }
-    if (buttonIcon) {
-        if (Gdiplus::Bitmap* resizedButton = ResizeBitmap(buttonIcon, BUTTON_ICON_WIDTH, BUTTON_ICON_HEIGHT)) {
-            delete buttonIcon;
-            buttonIcon = resizedButton;
+    buttonHIcon = static_cast<HICON>(LoadImageW(hInst, MAKEINTRESOURCEW(IDI_APP_ICON), IMAGE_ICON, BUTTON_ICON_WIDTH, BUTTON_ICON_HEIGHT, LR_CREATEDIBSECTION));
+    if (buttonHIcon) {
+        buttonIconOwned = true;
+    } else {
+        HICON sharedIcon = static_cast<HICON>(LoadImageW(hInst, MAKEINTRESOURCEW(IDI_APP_ICON), IMAGE_ICON, 0, 0, LR_DEFAULTSIZE | LR_SHARED));
+        if (sharedIcon) {
+            buttonHIcon = CopyIcon(sharedIcon);
+            buttonIconOwned = (buttonHIcon != nullptr);
         }
     }
     CreateControls(parent);
@@ -239,30 +242,13 @@ void MainWindow::CreateControls(HWND parent)
 
     detailedProgressBar = CreateWindowW(PROGRESS_CLASSW, NULL, WS_CHILD | WS_VISIBLE, 10, 290, 760, 20, parent, NULL, hInst, NULL);
 
-    DWORD createButtonStyle = WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | BS_MULTILINE | BS_CENTER | BS_VCENTER;
-    createPartitionButton = CreateWindowW(L"BUTTON", createButtonText.c_str(), createButtonStyle, 10, 320, 400, 110, parent, (HMENU)IDC_CREATE_PARTITION_BUTTON, hInst, NULL);
-    if (buttonIcon && buttonIcon->GetHICON(&buttonHIcon) == Gdiplus::Ok) {
-        if (!buttonImageList) {
-            buttonImageList = ImageList_Create(buttonIcon->GetWidth(), buttonIcon->GetHeight(), ILC_COLOR32 | ILC_MASK, 1, 1);
-        }
-        if (buttonImageList) {
-            ImageList_RemoveAll(buttonImageList);
-            ImageList_AddIcon(buttonImageList, buttonHIcon);
-            BUTTON_IMAGELIST imageListInfo = {};
-            imageListInfo.himl = buttonImageList;
-            imageListInfo.uAlign = BUTTON_IMAGELIST_ALIGN_LEFT;
-            imageListInfo.margin.left = 12;
-            imageListInfo.margin.right = 8;
-            imageListInfo.margin.top = 12;
-            imageListInfo.margin.bottom = 12;
-            SendMessage(createPartitionButton, BCM_SETIMAGELIST, 0, reinterpret_cast<LPARAM>(&imageListInfo));
-        }
-    }
+    DWORD createButtonStyle = WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON | BS_MULTILINE | BS_CENTER | BS_VCENTER | BS_OWNERDRAW;
+    createPartitionButton = CreateWindowW(L"BUTTON", createButtonText.c_str(), createButtonStyle, 140, 320, 520, 160, parent, (HMENU)IDC_CREATE_PARTITION_BUTTON, hInst, NULL);
     SendMessage(createPartitionButton, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    progressBar = CreateWindowW(PROGRESS_CLASSW, NULL, WS_CHILD | WS_VISIBLE, 10, 430, 760, 20, parent, NULL, hInst, NULL);
+    progressBar = CreateWindowW(PROGRESS_CLASSW, NULL, WS_CHILD | WS_VISIBLE, 10, 500, 760, 20, parent, NULL, hInst, NULL);
 
-    logTextEdit = CreateWindowW(L"EDIT", L"", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_MULTILINE | ES_AUTOVSCROLL | WS_VSCROLL, 10, 460, 760, 190, parent, NULL, hInst, NULL);
+    logTextEdit = CreateWindowW(L"EDIT", L"", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_MULTILINE | ES_AUTOVSCROLL | WS_VSCROLL, 10, 530, 760, 120, parent, NULL, hInst, NULL);
     SendMessage(logTextEdit, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
     footerLabel = CreateWindowW(L"STATIC", versionText.c_str(), WS_CHILD | WS_VISIBLE, 10, 655, 140, 20, parent, NULL, hInst, NULL);
@@ -364,6 +350,13 @@ void MainWindow::HandleCommand(UINT msg, WPARAM wParam, LPARAM lParam)
             break;
         }
         break;
+    case WM_DRAWITEM:
+        if (wParam == IDC_CREATE_PARTITION_BUTTON) {
+            auto* drawInfo = reinterpret_cast<LPDRAWITEMSTRUCT>(lParam);
+            DrawCreateButton(drawInfo);
+            return;
+        }
+        break;
     case WM_UPDATE_PROGRESS:
         SendMessage(progressBar, PBM_SETPOS, wParam, 0);
         break;
@@ -418,6 +411,72 @@ void MainWindow::HandleCommand(UINT msg, WPARAM wParam, LPARAM lParam)
             }
         }
         break;
+    }
+}
+
+void MainWindow::DrawCreateButton(LPDRAWITEMSTRUCT drawInfo)
+{
+    if (!drawInfo) {
+        return;
+    }
+
+    HDC hdc = drawInfo->hDC;
+    const RECT originalRect = drawInfo->rcItem;
+
+    const bool isDisabled = (drawInfo->itemState & ODS_DISABLED) != 0;
+    const bool isPressed = (drawInfo->itemState & ODS_SELECTED) != 0;
+    const bool isFocused = (drawInfo->itemState & ODS_FOCUS) != 0;
+
+    const int pressOffset = isPressed ? 1 : 0;
+
+    // Paint background.
+    FillRect(hdc, &drawInfo->rcItem, GetSysColorBrush(COLOR_BTNFACE));
+    RECT borderRect = originalRect;
+    DrawEdge(hdc, &borderRect, isPressed ? EDGE_SUNKEN : EDGE_RAISED, BF_RECT);
+
+    RECT innerRect = originalRect;
+    InflateRect(&innerRect, -2, 0);
+    OffsetRect(&innerRect, pressOffset, pressOffset);
+
+    int iconSize = innerRect.bottom - innerRect.top;
+    int maxIconWidth = innerRect.right - innerRect.left - BUTTON_ICON_LEFT_MARGIN;
+    if (iconSize > maxIconWidth) {
+        iconSize = maxIconWidth;
+    }
+    if (iconSize < 0) {
+        iconSize = 0;
+    }
+
+    int iconX = innerRect.left + BUTTON_ICON_LEFT_MARGIN;
+    int iconY = innerRect.top;
+
+    if (buttonHIcon && iconSize > 0) {
+        DrawIconEx(hdc, iconX, iconY, buttonHIcon, iconSize, iconSize, 0, nullptr, DI_NORMAL);
+    }
+
+    RECT textRect = innerRect;
+    textRect.left = iconX + iconSize + BUTTON_ICON_TEXT_GAP;
+    textRect.right -= BUTTON_ICON_LEFT_MARGIN;
+
+    HFONT buttonFont = reinterpret_cast<HFONT>(SendMessage(drawInfo->hwndItem, WM_GETFONT, 0, 0));
+    HFONT oldFont = nullptr;
+    if (buttonFont) {
+        oldFont = static_cast<HFONT>(SelectObject(hdc, buttonFont));
+    }
+
+    SetBkMode(hdc, TRANSPARENT);
+    SetTextColor(hdc, GetSysColor(isDisabled ? COLOR_GRAYTEXT : COLOR_BTNTEXT));
+
+    DrawTextW(hdc, createButtonText.c_str(), -1, &textRect, DT_LEFT | DT_VCENTER | DT_WORDBREAK);
+
+    if (oldFont) {
+        SelectObject(hdc, oldFont);
+    }
+
+    if (isFocused && !isDisabled) {
+        RECT focusRect = innerRect;
+        InflateRect(&focusRect, -2, -2);
+        DrawFocusRect(hdc, &focusRect);
     }
 }
 
