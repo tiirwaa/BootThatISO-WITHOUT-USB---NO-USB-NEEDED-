@@ -1,0 +1,42 @@
+name: Attach exe and lang to Release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  package-and-upload:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Create release-assets directory
+        run: mkdir release-assets
+        shell: powershell
+
+      - name: Create zip with exe and lang folder
+        run: |
+          $exe = 'build/Release/BootThatISO!.exe'
+          Write-Host "Looking for exe at: $exe"
+          if (Test-Path $exe) {
+            Compress-Archive -Path $exe,'lang' -DestinationPath 'release-assets/BootThatISO-windows.zip' -Force
+            Write-Host "Created release-assets/BootThatISO-windows.zip (exe + lang)"
+          } else {
+            Write-Host "Exe not found at $exe. Listing build/Release contents:"
+            Get-ChildItem -Path 'build/Release' -Recurse | ForEach-Object { Write-Host $_.FullName }
+            # Fallback: include only lang folder
+            Compress-Archive -Path 'lang' -DestinationPath 'release-assets/BootThatISO-windows.zip' -Force
+            Write-Host "Created release-assets/BootThatISO-windows.zip (lang only)"
+          }
+        shell: powershell
+
+      - name: Upload zip to release
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: release-assets/BootThatISO-windows.zip
+          asset_name: BootThatISO-windows.zip
+          asset_content_type: application/zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
