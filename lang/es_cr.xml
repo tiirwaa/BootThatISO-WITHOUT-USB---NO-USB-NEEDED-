@@ -35,6 +35,7 @@
     <string id="message.operationInProgress">Un proceso está en ejecución. ¿Desea cancelar la operación y cerrar la aplicación?</string>
     <string id="message.processCompleteRestart">Proceso terminado. ¿Desea reiniciar el sistema ahora?</string>
     <string id="message.recoverSpaceFailed">Error al recuperar espacio. Revisa los registros para más detalles.</string>
+    <string id="message.recoveringSpace">Borrando las particiones creadas por BootThatISO!, por favor no cancele este proceso, el espacio liberado será asignado a Windows y las entradadas BCD ISOBOOT y ISOBOOT_RAM están siendo removidas.</string>
     <string id="message.restartFailed">Error al reiniciar el sistema.</string>
     <string id="message.selectIsoFirst">Por favor, seleccione un archivo ISO primero.</string>
     <string id="message.windowCreationFailed">¡Error al crear la ventana!</string>
@@ -56,4 +57,4 @@
     <string id="unit.gb">GB</string>
 </language>
     <string id="button.perform.hint">Clic para Bootear el ISO</string>
-    <string id="mainwindow.developedBy">Software desarrollado por una empresa Costarricense</string>
+    <string id="mainwindow.developedBy">Desarrollado por una empresa Costarricense</string>

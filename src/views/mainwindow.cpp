@@ -97,7 +97,7 @@ Gdiplus::Bitmap* ResizeBitmap(Gdiplus::Bitmap* source, int targetWidth, int targ
 }
 
 MainWindow::MainWindow(HWND parent)
-    : hInst(GetModuleHandle(NULL)), hWndParent(parent), selectedFormat("NTFS"), selectedBootModeKey(AppKeys::BootModeExtract), isProcessing(false), isRecovering(false), skipIntegrityCheck(true), logoBitmap(nullptr), logoHIcon(nullptr), buttonHIcon(nullptr), buttonIconOwned(false), performHintLabel(nullptr), developedByLabel(nullptr)
+    : hInst(GetModuleHandle(NULL)), hWndParent(parent), selectedFormat("NTFS"), selectedBootModeKey(AppKeys::BootModeExtract), isProcessing(false), isRecovering(false), skipIntegrityCheck(true), logoBitmap(nullptr), logoHIcon(nullptr), buttonHIcon(nullptr), buttonIconOwned(false), hRecoverDialog(nullptr), performHintLabel(nullptr), developedByLabel(nullptr)
 {
     partitionManager = &PartitionManager::getInstance();
     isoCopyManager = &ISOCopyManager::getInstance();
@@ -114,6 +114,7 @@ MainWindow::MainWindow(HWND parent)
 
 MainWindow::~MainWindow()
 {
+    HideRecoverDialog();
     if (logoBitmap) delete logoBitmap;
     if (logoHIcon) DestroyIcon(logoHIcon);
     if (buttonIconOwned && buttonHIcon) DestroyIcon(buttonHIcon);
@@ -150,8 +151,9 @@ void MainWindow::LoadTexts()
     integrityText = LocalizedOrW("mainwindow.integrityCheck", L"Realizar verificacion de la integridad del disco");
     createButtonText = LocalizedOrW("mainwindow.createButton", L"Realizar proceso y Bootear ISO seleccionado");
     versionText = LocalizedFormatW("mainwindow.versionLabel", { Utils::utf8_to_wstring(APP_VERSION) }, L"Version {0}");
-    servicesText = LocalizedOrW("mainwindow.servicesButton", L"Servicios");
-    recoverText = LocalizedOrW("mainwindow.recoverButton", L"Recuperar mi espacio");
+    servicesText = LocalizedOrW("mainwindow.servicesButton", L"Services");
+    recoverText = LocalizedOrW("mainwindow.recoverButton", L"Recover my space");
+    recoverMessageText = LocalizedOrW("message.recoveringSpace", L"Deleting partitions created by BootThatISO!, please do not cancel this process, the freed space will be assigned to Windows and the BCD entries ISOBOOT and ISOBOOT_RAM are being removed.");
 }
 
 void MainWindow::SetupUI(HWND parent)
@@ -350,6 +352,7 @@ void MainWindow::HandleCommand(UINT msg, WPARAM wParam, LPARAM lParam)
                       isRecovering = true;
                       EnableWindow(recoverButton, FALSE);
                       LogMessage(LocalizedOrUtf8("log.recovery.started", "Recuperacion de espacio iniciada en segundo plano.\r\n"));
+                      ShowRecoverDialog();
                   } else {
                       LogMessage(LocalizedOrUtf8("log.recovery.startFailed", "No se pudo iniciar la recuperacion de espacio. Verifica si ya esta en curso.\r\n"));
                   }
@@ -437,6 +440,7 @@ void MainWindow::HandleCommand(UINT msg, WPARAM wParam, LPARAM lParam)
             bool success = (wParam != 0);
             isRecovering = false;
             EnableWindow(recoverButton, TRUE);
+            HideRecoverDialog();
             if (success) {
                 LogMessage("Recuperacion de espacio finalizada correctamente.\r\n");
                 WCHAR exePath[MAX_PATH];
@@ -726,6 +730,31 @@ void MainWindow::onAskRestart() {
 void MainWindow::onError(const std::string& message) {
     std::string* msg = new std::string(message);
     PostMessage(hWndParent, WM_UPDATE_ERROR, 0, (LPARAM)msg);
+}
+
+void MainWindow::ShowRecoverDialog() {
+    if (hRecoverDialog) return;
+    hRecoverDialog = CreateWindowW(L"STATIC", recoverMessageText.c_str(), WS_VISIBLE | WS_POPUP | WS_BORDER | SS_CENTER, 300, 200, 500, 120, hWndParent, NULL, hInst, NULL);
+    if (!hRecoverDialog) return;
+    // Create progress bar
+    HWND recoverProgressBar = CreateWindowW(PROGRESS_CLASSW, NULL, WS_VISIBLE | WS_CHILD | PBS_MARQUEE, 10, 70, 480, 20, hRecoverDialog, NULL, hInst, NULL);
+    SendMessage(recoverProgressBar, PBM_SETMARQUEE, TRUE, 50);
+    // Disable main window
+    EnableWindow(hWndParent, FALSE);
+    // Ensure the dialog is on top and focused
+    SetWindowPos(hRecoverDialog, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE);
+    SetFocus(hRecoverDialog);
+    BringWindowToTop(hRecoverDialog);
+    UpdateWindow(hRecoverDialog);
+    InvalidateRect(hRecoverDialog, NULL, TRUE);
+}
+
+void MainWindow::HideRecoverDialog() {
+    if (hRecoverDialog) {
+        DestroyWindow(hRecoverDialog);
+        hRecoverDialog = NULL;
+        EnableWindow(hWndParent, TRUE);
+    }
 }
 
 

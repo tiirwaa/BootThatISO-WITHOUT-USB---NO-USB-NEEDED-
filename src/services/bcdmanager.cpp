@@ -513,29 +513,51 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
 bool BCDManager::restoreBCD()
 {
     const std::string BCD_CMD = "C:\\Windows\\System32\\bcdedit.exe";
-    std::string output = Utils::exec((BCD_CMD + " /enum").c_str());
-    auto lines = split(output, '\n');
-    std::string guid;
-    for (size_t i = 0; i < lines.size(); ++i) {
-        if (lines[i].find("description") != std::string::npos && lines[i].find("ISOBOOT") != std::string::npos) {
-            if (i > 0 && lines[i-1].find("identifier") != std::string::npos) {
-                size_t pos = lines[i-1].find("{");
-                if (pos != std::string::npos) {
-                    size_t end = lines[i-1].find("}", pos);
-                    if (end != std::string::npos) {
-                        guid = lines[i-1].substr(pos, end - pos + 1);
-                    }
-                }
+    std::string output = Utils::exec((BCD_CMD + " /enum all").c_str());
+    auto blocks = split(output, '\n');
+    // Parse into blocks separated by empty lines
+    std::vector<std::string> entryBlocks;
+    std::string currentBlock;
+    for (const auto& line : blocks) {
+        if (line.find_first_not_of(" \t\r\n") == std::string::npos) {
+            if (!currentBlock.empty()) {
+                entryBlocks.push_back(currentBlock);
+                currentBlock.clear();
             }
-            break;
+        } else {
+            currentBlock += line + "\n";
         }
     }
-    if (!guid.empty()) {
-        std::string cmd1 = BCD_CMD + " /delete " + guid;
-        Utils::exec(cmd1.c_str());
+    if (!currentBlock.empty()) entryBlocks.push_back(currentBlock);
+
+    auto icontains = [](const std::string& hay, const std::string& needle) {
+        std::string h = hay;
+        std::string n = needle;
+        std::transform(h.begin(), h.end(), h.begin(), ::tolower);
+        std::transform(n.begin(), n.end(), n.begin(), ::tolower);
+        return h.find(n) != std::string::npos;
+    };
+
+    std::string labelToFind = "ISOBOOT";
+    bool deletedAny = false;
+    for (const auto& blk : entryBlocks) {
+        if (icontains(blk, labelToFind)) {
+            // find GUID in block
+            size_t pos = blk.find('{');
+            if (pos != std::string::npos) {
+                size_t end = blk.find('}', pos);
+                if (end != std::string::npos) {
+                    std::string guid = blk.substr(pos, end - pos + 1);
+                    std::string deleteCmd = BCD_CMD + " /delete " + guid + " /f"; // force remove
+                    Utils::exec(deleteCmd.c_str());
+                    deletedAny = true;
+                }
+            }
+        }
+    }
+    if (deletedAny) {
         std::string cmd2 = BCD_CMD + " /default {current}";
         Utils::exec(cmd2.c_str());
-        return true;
     }
-    return false;
+    return deletedAny;
 }

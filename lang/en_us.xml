@@ -35,6 +35,7 @@
     <string id="message.operationInProgress">A process is running. Do you want to cancel the operation and close the application?</string>
     <string id="message.processCompleteRestart">Process completed. Do you want to restart the system now?</string>
     <string id="message.recoverSpaceFailed">Failed to recover space. Check the logs for details.</string>
+    <string id="message.recoveringSpace">Deleting partitions created by BootThatISO!, please do not cancel this process, the freed space will be assigned to Windows and the BCD entries ISOBOOT and ISOBOOT_RAM are being removed.</string>
     <string id="message.restartFailed">Failed to restart the system.</string>
     <string id="message.selectIsoFirst">Please select an ISO file first.</string>
     <string id="message.windowCreationFailed">Error creating the window!</string>

@@ -140,11 +140,17 @@ private:
     HICON buttonHIcon;
     bool buttonIconOwned;
 
+    // Recovery dialog
+    HWND hRecoverDialog;
+    std::wstring recoverMessageText;
+
     // Thread management
     bool isProcessing;
     bool isRecovering;
 
     void DrawCreateButton(LPDRAWITEMSTRUCT drawInfo);
+    void ShowRecoverDialog();
+    void HideRecoverDialog();
 };
 
 #endif // MAINWINDOW_H
