@@ -80,10 +80,11 @@ jobs:
         uses: actions/github-script@v6
         with:
           script: |
-            const releaseId = context.payload.release.id
+            const releaseId = process.env.RELEASE_ID
             const assetName = 'BootThatISO-windows.zip'
             const owner = context.repo.owner
             const repo = context.repo.repo
+            if (!releaseId) throw new Error('RELEASE_ID is not set')
             const { data: assets } = await github.rest.repos.listReleaseAssets({ owner, repo, release_id: releaseId })
             for (const a of assets) {
               if (a.name === assetName) {
@@ -93,6 +94,7 @@ jobs:
             }
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_ID: ${{ steps.resolve-release.outputs.release_id }}
 
       - name: Upload zip to release
         uses: actions/upload-release-asset@v1
