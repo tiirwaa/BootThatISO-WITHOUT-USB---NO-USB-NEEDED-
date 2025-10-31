@@ -1,4 +1,4 @@
-#include <mutex>
+﻿#include <mutex>
 #include <string>
 #include <fstream>
 #include <windows.h>
@@ -130,11 +130,11 @@ bool PartitionManager::createPartition(const std::string& format, bool skipInteg
     }
 
     // Show chkdsk result in UI log
-    if (eventManager) eventManager->notifyLogUpdate("Resultado de verificación de disco:\r\n" + Utils::ansi_to_utf8(output_chk) + "\r\n");
+    if (eventManager) eventManager->notifyLogUpdate("Resultado de verificaciÃ³n de disco:\r\n" + Utils::ansi_to_utf8(output_chk) + "\r\n");
 
     // If errors found, ask user if they want to repair
     if (exitCode_chk != 0) {
-        int result = MessageBoxA(NULL, "Se encontraron errores en el disco C:. ¿Desea reparar el disco y reiniciar el sistema?", "Reparar disco", MB_YESNO | MB_ICONQUESTION);
+        int result = MessageBoxA(NULL, "Se encontraron errores en el disco C:. Â¿Desea reparar el disco y reiniciar el sistema?", "Reparar disco", MB_YESNO | MB_ICONQUESTION);
         if (result != IDYES) {
             return false;
         }
@@ -224,7 +224,7 @@ bool PartitionManager::createPartition(const std::string& format, bool skipInteg
         GetExitCodeProcess(pi_f.hProcess, &exitCode_f);
 
         // Tracing: process ended
-        const std::string processEndMsg = "Chkdsk /f terminó con código: " + std::to_string(exitCode_f) + "\r\n";
+        const std::string processEndMsg = "Chkdsk /f terminÃ³ con cÃ³digo: " + std::to_string(exitCode_f) + "\r\n";
         if (eventManager) eventManager->notifyLogUpdate(processEndMsg);
         logToGeneral(processEndMsg);
 
@@ -267,7 +267,7 @@ bool PartitionManager::createPartition(const std::string& format, bool skipInteg
 
         // FINAL scheduling detection and restart logic (always runs after process ends)
         std::string utf8_output_f = Utils::ansi_to_utf8(output_f);
-        const std::string verifyMsg = "Verificando si se programó para el próximo reinicio...\r\n";
+        const std::string verifyMsg = "Verificando si se programÃ³ para el prÃ³ximo reinicio...\r\n";
         logToGeneral(verifyMsg);
         if (eventManager) eventManager->notifyLogUpdate(verifyMsg);
         Sleep(100);
@@ -299,12 +299,12 @@ bool PartitionManager::createPartition(const std::string& format, bool skipInteg
             std::string lower_utf8 = utf8_output_f;
             std::transform(lower_utf8.begin(), lower_utf8.end(), lower_utf8.begin(), [](unsigned char c){ return std::tolower(c); });
             const char* markers[] = {
-                "próxima vez",
+                "prÃ³xima vez",
                 "proxima vez",
-                "próximo arranque",
+                "prÃ³ximo arranque",
                 "proximo arranque",
                 "se comprobar",
-                "se comprobará",
+                "se comprobarÃ¡",
                 "se comprobara",
                 "este volumen",
                 "(s/n)",
@@ -323,8 +323,8 @@ bool PartitionManager::createPartition(const std::string& format, bool skipInteg
                 }
             }
         }
-        if (utf8_output_f.find("Este volumen se comprobará la próxima vez que se reinicie el sistema.") != std::string::npos ||
-            lower.find("este volumen se comprobará la próxima vez que se reinicie el sistema.") != std::string::npos) {
+        if (utf8_output_f.find("Este volumen se comprobarÃ¡ la prÃ³xima vez que se reinicie el sistema.") != std::string::npos ||
+            lower.find("este volumen se comprobarÃ¡ la prÃ³xima vez que se reinicie el sistema.") != std::string::npos) {
             scheduled = true;
             logToGeneral("Scheduled = true via exact match\n");
         }
@@ -332,14 +332,14 @@ bool PartitionManager::createPartition(const std::string& format, bool skipInteg
         logToGeneral("Final scheduled: " + std::string(scheduled ? "true" : "false") + "\n");
 
         if (scheduled) {
-            const std::string scheduledMsg = "Chkdsk ha programado una verificación para el próximo reinicio. Intentando reiniciar el sistema...\r\n";
+            const std::string scheduledMsg = "Chkdsk ha programado una verificaciÃ³n para el prÃ³ximo reinicio. Intentando reiniciar el sistema...\r\n";
             logToGeneral(scheduledMsg);
             if (eventManager) eventManager->notifyLogUpdate(scheduledMsg);
             Sleep(1000); // small pause before attempting restart
             bool restarted = RestartComputer();
             if (!restarted) {
                 DWORD lastErr = GetLastError();
-                const std::string failMsg = "RestartComputer() falló; código de error: " + std::to_string(lastErr) + ". Intentando comando de emergencia 'shutdown /r /t 0'...\r\n";
+                const std::string failMsg = "RestartComputer() fallÃ³; cÃ³digo de error: " + std::to_string(lastErr) + ". Intentando comando de emergencia 'shutdown /r /t 0'...\r\n";
                 logToGeneral(failMsg);
                 if (eventManager) eventManager->notifyLogUpdate(failMsg);
                 int ret = system("shutdown /r /t 0");
@@ -347,21 +347,21 @@ bool PartitionManager::createPartition(const std::string& format, bool skipInteg
                 logToGeneral(shutdownMsg);
                 if (eventManager) eventManager->notifyLogUpdate(shutdownMsg);
             }
-            logToGeneral("Fin de proceso de verificación/reinicio.\r\n");
+            logToGeneral("Fin de proceso de verificaciÃ³n/reinicio.\r\n");
             return false;
         } else {
-            const std::string notScheduledMsg = "No se detectó programación de chkdsk para el próximo reinicio. No se reiniciará automáticamente.\r\n";
+            const std::string notScheduledMsg = "No se detectÃ³ programaciÃ³n de chkdsk para el prÃ³ximo reinicio. No se reiniciarÃ¡ automÃ¡ticamente.\r\n";
             logToGeneral(notScheduledMsg);
             if (eventManager) eventManager->notifyLogUpdate(notScheduledMsg);
         }
-        logToGeneral("Fin de proceso de verificación/reinicio.\r\n");
+        logToGeneral("Fin de proceso de verificaciÃ³n/reinicio.\r\n");
         if (eventManager) {
-            eventManager->notifyLogUpdate("Fin de proceso de verificación/reinicio.\r\n");
+            eventManager->notifyLogUpdate("Fin de proceso de verificaciÃ³n/reinicio.\r\n");
             Sleep(100);
         }
 
         if (exitCode_f != 0) {
-            if (eventManager) eventManager->notifyLogUpdate("Error: Chkdsk /f falló.\r\n");
+            if (eventManager) eventManager->notifyLogUpdate("Error: Chkdsk /f fallÃ³.\r\n");
             return false;
         }
     }
@@ -459,7 +459,7 @@ bool PartitionManager::createPartition(const std::string& format, bool skipInteg
         if (exitCode == 0) {
             eventManager->notifyLogUpdate("Diskpart ejecutado exitosamente. Verificando particiones...\r\n");
         } else {
-            eventManager->notifyLogUpdate("Error: Diskpart falló con código de salida " + std::to_string(exitCode) + ".\r\n");
+            eventManager->notifyLogUpdate("Error: Diskpart fallÃ³ con cÃ³digo de salida " + std::to_string(exitCode) + ".\r\n");
         }
     }
 
@@ -514,7 +514,7 @@ bool PartitionManager::createPartition(const std::string& format, bool skipInteg
         if (eventManager) eventManager->notifyLogUpdate("Particiones creadas exitosamente.\r\n");
         return true;
     } else {
-        if (eventManager) eventManager->notifyLogUpdate("Error: Falló la creación de particiones.\r\n");
+        if (eventManager) eventManager->notifyLogUpdate("Error: FallÃ³ la creaciÃ³n de particiones.\r\n");
         return false;
     }
 }
@@ -865,7 +865,7 @@ std::string PartitionManager::getPartitionFileSystem()
 
 bool PartitionManager::reformatPartition(const std::string& format)
 {
-    if (eventManager) eventManager->notifyLogUpdate("Iniciando reformateo de partición...\r\n");
+    if (eventManager) eventManager->notifyLogUpdate("Iniciando reformateo de particiÃ³n...\r\n");
 
     std::string fsFormat;
     if (format == "EXFAT") {
@@ -1003,11 +1003,11 @@ bool PartitionManager::reformatPartition(const std::string& format)
     }
 
     if (volumeNumber == -1) {
-        if (eventManager) eventManager->notifyLogUpdate("Error: No se encontró el volumen con etiqueta " + std::string(VOLUME_LABEL) + ".\r\n");
+        if (eventManager) eventManager->notifyLogUpdate("Error: No se encontrÃ³ el volumen con etiqueta " + std::string(VOLUME_LABEL) + ".\r\n");
         return false;
     }
 
-    if (eventManager) eventManager->notifyLogUpdate("Volumen encontrado (número " + std::to_string(volumeNumber) + "). Creando script de formateo...\r\n");
+    if (eventManager) eventManager->notifyLogUpdate("Volumen encontrado (nÃºmero " + std::to_string(volumeNumber) + "). Creando script de formateo...\r\n");
 
     // Now, create script to select and format
     GetTempFileNameA(tempPath, "format", 0, tempFile);
@@ -1030,7 +1030,7 @@ bool PartitionManager::reformatPartition(const std::string& format)
         return false;
     }
 
-    if (eventManager) eventManager->notifyLogUpdate("Ejecutando formateo de partición...\r\n");
+    if (eventManager) eventManager->notifyLogUpdate("Ejecutando formateo de particiÃ³n...\r\n");
 
     WaitForSingleObject(pi.hProcess, 300000); // 5 minutes
 
@@ -1054,17 +1054,17 @@ bool PartitionManager::reformatPartition(const std::string& format)
     }
 
     if (exitCode == 0) {
-        if (eventManager) eventManager->notifyLogUpdate("Partición reformateada exitosamente.\r\n");
+        if (eventManager) eventManager->notifyLogUpdate("ParticiÃ³n reformateada exitosamente.\r\n");
         return true;
     } else {
-        if (eventManager) eventManager->notifyLogUpdate("Error: Falló el formateo de la partición (código " + std::to_string(exitCode) + ").\r\n");
+        if (eventManager) eventManager->notifyLogUpdate("Error: FallÃ³ el formateo de la particiÃ³n (cÃ³digo " + std::to_string(exitCode) + ").\r\n");
         return false;
     }
 }
 
 bool PartitionManager::reformatEfiPartition()
 {
-    if (eventManager) eventManager->notifyLogUpdate("Iniciando reformateo de partición EFI...\r\n");
+    if (eventManager) eventManager->notifyLogUpdate("Iniciando reformateo de particiÃ³n EFI...\r\n");
 
     // First, find the volume number by running diskpart list volume
     char tempPath[MAX_PATH];
@@ -1189,11 +1189,11 @@ bool PartitionManager::reformatEfiPartition()
     }
 
     if (volumeNumber == -1) {
-        if (eventManager) eventManager->notifyLogUpdate("Error: No se encontró el volumen EFI con etiqueta " + std::string(EFI_VOLUME_LABEL) + ".\r\n");
+        if (eventManager) eventManager->notifyLogUpdate("Error: No se encontrÃ³ el volumen EFI con etiqueta " + std::string(EFI_VOLUME_LABEL) + ".\r\n");
         return false;
     }
 
-    if (eventManager) eventManager->notifyLogUpdate("Volumen EFI encontrado (número " + std::to_string(volumeNumber) + "). Creando script de formateo...\r\n");
+    if (eventManager) eventManager->notifyLogUpdate("Volumen EFI encontrado (nÃºmero " + std::to_string(volumeNumber) + "). Creando script de formateo...\r\n");
 
     // Now, create script to select and format EFI
     GetTempFileNameA(tempPath, "format_efi", 0, tempFile);
@@ -1216,7 +1216,7 @@ bool PartitionManager::reformatEfiPartition()
         return false;
     }
 
-    if (eventManager) eventManager->notifyLogUpdate("Ejecutando formateo de partición EFI...\r\n");
+    if (eventManager) eventManager->notifyLogUpdate("Ejecutando formateo de particiÃ³n EFI...\r\n");
 
     WaitForSingleObject(pi.hProcess, 300000); // 5 minutes
 
@@ -1240,17 +1240,17 @@ bool PartitionManager::reformatEfiPartition()
     }
 
     if (exitCode == 0) {
-        if (eventManager) eventManager->notifyLogUpdate("Partición EFI reformateada exitosamente.\r\n");
+        if (eventManager) eventManager->notifyLogUpdate("ParticiÃ³n EFI reformateada exitosamente.\r\n");
         return true;
     } else {
-        if (eventManager) eventManager->notifyLogUpdate("Error: Falló el formateo de la partición EFI (código " + std::to_string(exitCode) + ").\r\n");
+        if (eventManager) eventManager->notifyLogUpdate("Error: FallÃ³ el formateo de la particiÃ³n EFI (cÃ³digo " + std::to_string(exitCode) + ").\r\n");
         return false;
     }
 }
 
 bool PartitionManager::recoverSpace()
 {
-    if (eventManager) eventManager->notifyLogUpdate("Iniciando recuperación de espacio...\r\n");
+    if (eventManager) eventManager->notifyLogUpdate("Iniciando recuperaciÃ³n de espacio...\r\n");
 
     // Create PowerShell script to recover space
     char tempPath[MAX_PATH];
@@ -1288,7 +1288,7 @@ bool PartitionManager::recoverSpace()
         logScriptFile << scriptContent;
         logScriptFile.close();
     }
-    if (eventManager) eventManager->notifyLogUpdate("Script de recuperación creado.\r\n");
+    if (eventManager) eventManager->notifyLogUpdate("Script de recuperaciÃ³n creado.\r\n");
 
     // Execute PowerShell script
     STARTUPINFOA si = { sizeof(si) };
@@ -1305,7 +1305,7 @@ bool PartitionManager::recoverSpace()
 
     if (!CreatePipe(&hRead, &hWrite, &sa, 0)) {
         DeleteFileA(psFile.c_str());
-        if (eventManager) eventManager->notifyLogUpdate("Error: No se pudo crear pipe para recuperación.\r\n");
+        if (eventManager) eventManager->notifyLogUpdate("Error: No se pudo crear pipe para recuperaciÃ³n.\r\n");
         return false;
     }
 
@@ -1319,16 +1319,42 @@ bool PartitionManager::recoverSpace()
         CloseHandle(hRead);
         CloseHandle(hWrite);
         DeleteFileA(psFile.c_str());
-        if (eventManager) eventManager->notifyLogUpdate("Error: No se pudo ejecutar PowerShell para recuperación.\r\n");
+        if (eventManager) eventManager->notifyLogUpdate("Error: No se pudo ejecutar PowerShell para recuperaciÃ³n.\r\n");
         return false;
     }
 
     CloseHandle(hWrite);
 
-    output = "";
+    if (eventManager) {
+        eventManager->notifyLogUpdate("Ejecutando script de PowerShell para recuperar espacio...\r\n");
+    }
+
+    output.clear();
+    std::string pendingLine;
     while (ReadFile(hRead, buffer, sizeof(buffer) - 1, &bytesRead, NULL) && bytesRead > 0) {
         buffer[bytesRead] = '\0';
-        output += buffer;
+        std::string chunk(buffer, bytesRead);
+        output += chunk;
+
+        if (eventManager) {
+            pendingLine += chunk;
+            std::size_t newlinePos;
+            while ((newlinePos = pendingLine.find('\n')) != std::string::npos) {
+                std::string line = pendingLine.substr(0, newlinePos + 1);
+                std::string utf8Line = Utils::ansi_to_utf8(line);
+                if (!utf8Line.empty()) {
+                    eventManager->notifyLogUpdate(utf8Line);
+                }
+                pendingLine.erase(0, newlinePos + 1);
+            }
+        }
+    }
+
+    if (eventManager && !pendingLine.empty()) {
+        std::string utf8Remainder = Utils::ansi_to_utf8(pendingLine);
+        if (!utf8Remainder.empty()) {
+            eventManager->notifyLogUpdate(utf8Remainder);
+        }
     }
 
     CloseHandle(hRead);
@@ -1355,7 +1381,7 @@ bool PartitionManager::recoverSpace()
         if (eventManager) eventManager->notifyLogUpdate("Espacio recuperado exitosamente.\r\n");
         return true;
     } else {
-        if (eventManager) eventManager->notifyLogUpdate("Error: Falló la recuperación de espacio (código " + std::to_string(exitCode) + ").\r\n");
+        if (eventManager) eventManager->notifyLogUpdate("Error: FallÃ³ la recuperaciÃ³n de espacio (cÃ³digo " + std::to_string(exitCode) + ").\r\n");
         return false;
     }
 }
@@ -1380,7 +1406,7 @@ bool PartitionManager::RestartComputer()
         return false;
     }
     if (GetLastError() != ERROR_SUCCESS) {
-        if (eventManager) eventManager->notifyLogUpdate("Error: Falló la verificación de privilegios.\r\n");
+        if (eventManager) eventManager->notifyLogUpdate("Error: FallÃ³ la verificaciÃ³n de privilegios.\r\n");
         CloseHandle(hToken);
         return false;
     }
@@ -1391,7 +1417,9 @@ bool PartitionManager::RestartComputer()
         return true;
     } else {
         DWORD error = GetLastError();
-        if (eventManager) eventManager->notifyLogUpdate("Error: No se pudo reiniciar el sistema. Código de error: " + std::to_string(error) + "\r\n");
+        if (eventManager) eventManager->notifyLogUpdate("Error: No se pudo reiniciar el sistema. CÃ³digo de error: " + std::to_string(error) + "\r\n");
         return false;
     }
 }
+
+

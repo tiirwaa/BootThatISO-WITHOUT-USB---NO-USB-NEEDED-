@@ -1,4 +1,4 @@
-#include "mainwindow.h"
+﻿#include "mainwindow.h"
 #include "../utils/constants.h"
 #include "../utils/Utils.h"
 #include "../models/BootStrategyFactory.h"
@@ -21,7 +21,7 @@ struct DetailedProgressData {
 };
 
 MainWindow::MainWindow(HWND parent)
-    : hInst(GetModuleHandle(NULL)), hWndParent(parent), selectedFormat("NTFS"), selectedBootMode("Instalación Completa"), workerThread(nullptr), isProcessing(false), skipIntegrityCheck(true)
+    : hInst(GetModuleHandle(NULL)), hWndParent(parent), selectedFormat("NTFS"), selectedBootMode("InstalaciÃ³n Completa"), workerThread(nullptr), isProcessing(false), isRecovering(false), skipIntegrityCheck(true)
 {
     partitionManager = &PartitionManager::getInstance();
     isoCopyManager = &ISOCopyManager::getInstance();
@@ -50,11 +50,15 @@ MainWindow::~MainWindow()
 
 void MainWindow::requestCancel()
 {
+    if (isRecovering) {
+        LogMessage("La recuperación de espacio está en curso y no se puede cancelar. Espera a que finalice.\r\n");
+        return;
+    }
     // Ask controller to cancel and wait for cleanup
     if (processController) {
-        LogMessage("Solicitud de cancelación enviada. Esperando limpieza...\r\n");
+        LogMessage("Solicitud de cancelaciÃ³n enviada. Esperando limpieza...\r\n");
         processController->requestCancel();
-        LogMessage("Operación cancelada y limpiada.\r\n");
+        LogMessage("OperaciÃ³n cancelada y limpiada.\r\n");
         onButtonEnable();
     }
 }
@@ -68,7 +72,7 @@ void MainWindow::SetupUI(HWND parent)
     titleLabel = CreateWindowW(L"STATIC", L"BOOT THAT ISO!", WS_CHILD | WS_VISIBLE, 75, 10, 300, 30, parent, NULL, hInst, NULL);
     SendMessage(titleLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    subtitleLabel = CreateWindowW(L"STATIC", L"Configuración de Particiones Bootables EFI", WS_CHILD | WS_VISIBLE, 75, 40, 300, 20, parent, NULL, hInst, NULL);
+    subtitleLabel = CreateWindowW(L"STATIC", L"ConfiguraciÃ³n de Particiones Bootables EFI", WS_CHILD | WS_VISIBLE, 75, 40, 300, 20, parent, NULL, hInst, NULL);
     SendMessage(subtitleLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
     isoPathLabel = CreateWindowW(L"STATIC", L"Ruta del archivo ISO:", WS_CHILD | WS_VISIBLE, 10, 80, 200, 20, parent, NULL, hInst, NULL);
@@ -83,10 +87,10 @@ void MainWindow::SetupUI(HWND parent)
     formatLabel = CreateWindowW(L"STATIC", L"Formato del sistema de archivos:", WS_CHILD | WS_VISIBLE, 10, 135, 200, 20, parent, NULL, hInst, NULL);
     SendMessage(formatLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    fat32Radio = CreateWindowW(L"BUTTON", L"FAT32 (Recomendado - Máxima compatibilidad EFI)", WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON | WS_GROUP, 10, 155, 350, 20, parent, (HMENU)IDC_FAT32_RADIO, hInst, NULL);
+    fat32Radio = CreateWindowW(L"BUTTON", L"FAT32 (Recomendado - MÃ¡xima compatibilidad EFI)", WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON | WS_GROUP, 10, 155, 350, 20, parent, (HMENU)IDC_FAT32_RADIO, hInst, NULL);
     SendMessage(fat32Radio, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    exfatRadio = CreateWindowW(L"BUTTON", L"exFAT (Sin límite de 4GB por archivo)", WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON, 10, 175, 300, 20, parent, (HMENU)IDC_EXFAT_RADIO, hInst, NULL);
+    exfatRadio = CreateWindowW(L"BUTTON", L"exFAT (Sin lÃ­mite de 4GB por archivo)", WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON, 10, 175, 300, 20, parent, (HMENU)IDC_EXFAT_RADIO, hInst, NULL);
     SendMessage(exfatRadio, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
     ntfsRadio = CreateWindowW(L"BUTTON", L"NTFS (Soporte completo de Windows)", WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON, 10, 195, 300, 20, parent, (HMENU)IDC_NTFS_RADIO, hInst, NULL);
@@ -97,14 +101,14 @@ void MainWindow::SetupUI(HWND parent)
     bootModeLabel = CreateWindowW(L"STATIC", L"Modo de arranque:", WS_CHILD | WS_VISIBLE, 330, 135, 150, 20, parent, NULL, hInst, NULL);
     SendMessage(bootModeLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    bootRamdiskRadio = CreateWindowW(L"BUTTON", L"Boot desde Memoria (cargar ISO completo en RAM para arranque rápido)", WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON | WS_GROUP, 330, 155, 420, 20, parent, (HMENU)IDC_BOOTMODE_RAMDISK, hInst, NULL);
+    bootRamdiskRadio = CreateWindowW(L"BUTTON", L"Boot desde Memoria (cargar ISO completo en RAM para arranque rÃ¡pido)", WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON | WS_GROUP, 330, 155, 420, 20, parent, (HMENU)IDC_BOOTMODE_RAMDISK, hInst, NULL);
     SendMessage(bootRamdiskRadio, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    bootExtractedRadio = CreateWindowW(L"BUTTON", L"Instalación Completa (extraer contenido del ISO al disco para arranque estándar)", WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON, 330, 175, 420, 40, parent, (HMENU)IDC_BOOTMODE_EXTRACTED, hInst, NULL);
+    bootExtractedRadio = CreateWindowW(L"BUTTON", L"InstalaciÃ³n Completa (extraer contenido del ISO al disco para arranque estÃ¡ndar)", WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON, 330, 175, 420, 40, parent, (HMENU)IDC_BOOTMODE_EXTRACTED, hInst, NULL);
     SendMessage(bootExtractedRadio, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
     SendMessage(bootExtractedRadio, BM_SETCHECK, BST_CHECKED, 0); // default: Extracted
 
-    integrityCheckBox = CreateWindowW(L"BUTTON", L"Realizar verificación de la integridad del disco", WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX, 10, 220, 350, 20, parent, (HMENU)IDC_INTEGRITY_CHECKBOX, hInst, NULL);
+    integrityCheckBox = CreateWindowW(L"BUTTON", L"Realizar verificaciÃ³n de la integridad del disco", WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX, 10, 220, 350, 20, parent, (HMENU)IDC_INTEGRITY_CHECKBOX, hInst, NULL);
     SendMessage(integrityCheckBox, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
     // Por defecto unchecked
 
@@ -123,7 +127,7 @@ void MainWindow::SetupUI(HWND parent)
     logTextEdit = CreateWindowW(L"EDIT", L"", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_MULTILINE | ES_AUTOVSCROLL, 10, 390, 760, 230, parent, NULL, hInst, NULL);
     SendMessage(logTextEdit, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    footerLabel = CreateWindowW(L"STATIC", L"Versión 1.0", WS_CHILD | WS_VISIBLE, 10, 640, 100, 20, parent, NULL, hInst, NULL);
+    footerLabel = CreateWindowW(L"STATIC", L"VersiÃ³n 1.0", WS_CHILD | WS_VISIBLE, 10, 640, 100, 20, parent, NULL, hInst, NULL);
     SendMessage(footerLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
     servicesButton = CreateWindowW(L"BUTTON", L"Servicios", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 650, 640, 100, 20, parent, (HMENU)IDC_SERVICES_BUTTON, hInst, NULL);
     SendMessage(servicesButton, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
@@ -154,14 +158,19 @@ void MainWindow::HandleCommand(UINT msg, WPARAM wParam, LPARAM lParam)
         case IDC_SERVICES_BUTTON:
             OnOpenServicesPage();
             break;
-        case IDC_RECOVER_BUTTON:
-            if (processController->recoverSpace()) {
-                WCHAR exePath[MAX_PATH];
-                GetModuleFileNameW(NULL, exePath, MAX_PATH);
-                ShellExecuteW(NULL, L"open", exePath, NULL, NULL, SW_SHOWNORMAL);
-                PostQuitMessage(0);
-            }
-            break;
+          case IDC_RECOVER_BUTTON:
+              if (!isRecovering) {
+                  if (processController->recoverSpace()) {
+                      isRecovering = true;
+                      EnableWindow(recoverButton, FALSE);
+                      LogMessage("Recuperacion de espacio iniciada en segundo plano.\r\n");
+                  } else {
+                      LogMessage("No se pudo iniciar la recuperacion de espacio. Verifica si ya esta en curso.\r\n");
+                  }
+              } else {
+                  LogMessage("La recuperacion de espacio ya esta en progreso.\r\n");
+              }
+              break;
         case IDC_FAT32_RADIO:
             if (HIWORD(wParam) == BN_CLICKED) {
                 selectedFormat = "FAT32";
@@ -184,7 +193,7 @@ void MainWindow::HandleCommand(UINT msg, WPARAM wParam, LPARAM lParam)
             break;
         case IDC_BOOTMODE_EXTRACTED:
             if (HIWORD(wParam) == BN_CLICKED) {
-                selectedBootMode = "Instalación Completa";
+                selectedBootMode = "InstalaciÃ³n Completa";
             }
             break;
         case IDC_INTEGRITY_CHECKBOX:
@@ -224,6 +233,23 @@ void MainWindow::HandleCommand(UINT msg, WPARAM wParam, LPARAM lParam)
             MultiByteToWideChar(CP_UTF8, 0, errorMsg->c_str(), -1, &wmsg[0], wlen);
             MessageBoxW(hWndParent, wmsg.c_str(), L"Error", MB_OK | MB_ICONERROR);
             delete errorMsg;
+        }
+        break;
+    case WM_RECOVER_COMPLETE:
+        {
+            bool success = (wParam != 0);
+            isRecovering = false;
+            EnableWindow(recoverButton, TRUE);
+            if (success) {
+                LogMessage("Recuperacion de espacio finalizada correctamente.\r\n");
+                WCHAR exePath[MAX_PATH];
+                GetModuleFileNameW(NULL, exePath, MAX_PATH);
+                ShellExecuteW(NULL, L"open", exePath, NULL, NULL, SW_SHOWNORMAL);
+                PostQuitMessage(0);
+            } else {
+                LogMessage("Recuperacion de espacio fallida. Revisa los detalles en los registros.\r\n");
+                MessageBoxW(hWndParent, L"Error al recuperar espacio. Revisa los registros para mas detalles.", L"Error", MB_OK | MB_ICONERROR);
+            }
         }
         break;
     }
@@ -277,10 +303,10 @@ void MainWindow::OnCreatePartition()
             return;
         }
 
-        if (MessageBoxW(NULL, L"Esta operación modificará el disco del sistema, reduciendo su tamaño en 10.5 GB para crear dos particiones bootables: una ESP FAT32 de 500MB (ISOEFI) y una partición de datos de 10GB (ISOBOOT). ¿Desea continuar?", L"Confirmación de Operación", MB_YESNO) != IDYES)
+        if (MessageBoxW(NULL, L"Esta operaciÃ³n modificarÃ¡ el disco del sistema, reduciendo su tamaÃ±o en 10.5 GB para crear dos particiones bootables: una ESP FAT32 de 500MB (ISOEFI) y una particiÃ³n de datos de 10GB (ISOBOOT). Â¿Desea continuar?", L"ConfirmaciÃ³n de OperaciÃ³n", MB_YESNO) != IDYES)
             return;
 
-        if (MessageBoxW(NULL, L"Esta es la segunda confirmación. La operación de modificación del disco es irreversible y puede causar pérdida de datos si no se realiza correctamente. ¿Está completamente seguro de que desea proceder?", L"Segunda Confirmación", MB_YESNO) != IDYES)
+        if (MessageBoxW(NULL, L"Esta es la segunda confirmaciÃ³n. La operaciÃ³n de modificaciÃ³n del disco es irreversible y puede causar pÃ©rdida de datos si no se realiza correctamente. Â¿EstÃ¡ completamente seguro de que desea proceder?", L"Segunda ConfirmaciÃ³n", MB_YESNO) != IDYES)
             return;
     }
 
@@ -384,6 +410,11 @@ void MainWindow::onDetailedProgress(long long copied, long long total, const std
     PostMessage(hWndParent, WM_UPDATE_DETAILED_PROGRESS, 0, (LPARAM)data);
 }
 
+void MainWindow::onRecoverComplete(bool success)
+{
+    PostMessage(hWndParent, WM_RECOVER_COMPLETE, success ? 1 : 0, 0);
+}
+
 void MainWindow::UpdateDetailedProgressLabel(long long copied, long long total, const std::string& operation) {
     if (total == 0) {
         SetWindowTextW(detailedProgressLabel, L"");
@@ -406,7 +437,7 @@ void MainWindow::UpdateDetailedProgressLabel(long long copied, long long total, 
 }
 
 void MainWindow::onAskRestart() {
-    if (MessageBoxW(hWndParent, L"Proceso terminado. ¿Desea reiniciar el sistema ahora?", L"Reiniciar", MB_YESNO) == IDYES) {
+    if (MessageBoxW(hWndParent, L"Proceso terminado. Â¿Desea reiniciar el sistema ahora?", L"Reiniciar", MB_YESNO) == IDYES) {
         if (!RestartSystem()) {
             MessageBoxW(hWndParent, L"Error al reiniciar el sistema.", L"Error", MB_OK);
         }
@@ -417,3 +448,25 @@ void MainWindow::onError(const std::string& message) {
     std::string* msg = new std::string(message);
     PostMessage(hWndParent, WM_UPDATE_ERROR, 0, (LPARAM)msg);
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

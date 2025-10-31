@@ -1,8 +1,8 @@
-#include "ProcessController.h"
+﻿#include "ProcessController.h"
 #include <memory>
 
 ProcessController::ProcessController(EventManager& eventManager)
-    : eventManager(eventManager), workerThread(nullptr)
+    : eventManager(eventManager), workerThread(nullptr), recoveryThread(nullptr)
 {
     partitionManager = &PartitionManager::getInstance();
     partitionManager->setEventManager(&eventManager);
@@ -16,6 +16,14 @@ ProcessController::~ProcessController()
     if (workerThread && workerThread->joinable()) {
         workerThread->join();
         delete workerThread;
+        workerThread = nullptr;
+    }
+    if (recoveryThread) {
+        if (recoveryThread->joinable()) {
+            recoveryThread->join();
+        }
+        delete recoveryThread;
+        recoveryThread = nullptr;
     }
 }
 
@@ -27,6 +35,9 @@ void ProcessController::requestCancel()
         workerThread->join();
         delete workerThread;
         workerThread = nullptr;
+    }
+    if (recoveryInProgress.load()) {
+        eventManager.notifyLogUpdate("La recuperacion de espacio esta en curso y no admite cancelacion.\r\n");
     }
 }
 
@@ -150,7 +161,23 @@ void ProcessController::processInThread(const std::string& isoPath, const std::s
 
 bool ProcessController::recoverSpace()
 {
-    return partitionManager->recoverSpace();
+    if (recoveryInProgress.load()) {
+        eventManager.notifyLogUpdate("La recuperacion de espacio ya se esta ejecutando.\r\n");
+        return false;
+    }
+
+    if (recoveryThread) {
+        if (recoveryThread->joinable()) {
+            recoveryThread->join();
+        }
+        delete recoveryThread;
+        recoveryThread = nullptr;
+    }
+
+    eventManager.notifyLogUpdate("Iniciando recuperacion de espacio en segundo plano.\r\n");
+    recoveryInProgress.store(true);
+    recoveryThread = new std::thread(&ProcessController::recoverSpaceInThread, this);
+    return true;
 }
 
 bool ProcessController::copyISO(const std::string& isoPath, const std::string& destPath, const std::string& espPath, const std::string& mode)
@@ -204,3 +231,14 @@ void ProcessController::configureBCD(const std::string& driveLetter, const std::
         eventManager.notifyProgressUpdate(100);
     }
 }
+
+void ProcessController::recoverSpaceInThread()
+{
+    eventManager.notifyLogUpdate("Recuperando espacio. Esto puede tardar varios minutos...\r\n");
+    bool success = partitionManager->recoverSpace();
+    recoveryInProgress.store(false);
+    eventManager.notifyRecoverComplete(success);
+}
+
+
+

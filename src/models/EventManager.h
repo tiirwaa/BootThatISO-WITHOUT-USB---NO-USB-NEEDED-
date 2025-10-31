@@ -56,6 +56,12 @@ public:
         }
     }
 
+    void notifyRecoverComplete(bool success) {
+        for (auto observer : observers) {
+            observer->onRecoverComplete(success);
+        }
+    }
+
     // Cancellation control (thread-safe)
     void requestCancel() { cancelRequested.store(true); }
     void clearCancel() { cancelRequested.store(false); }

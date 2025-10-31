@@ -30,6 +30,7 @@
 #define WM_ASK_RESTART (WM_USER + 4)
 #define WM_UPDATE_DETAILED_PROGRESS (WM_USER + 5)
 #define WM_UPDATE_ERROR (WM_USER + 6)
+#define WM_RECOVER_COMPLETE (WM_USER + 7)
 
 class MainWindow : public EventObserver
 {
@@ -43,11 +44,12 @@ public:
     void onAskRestart() override;
     void onError(const std::string& message) override;
     void onDetailedProgress(long long copied, long long total, const std::string& operation) override;
+    void onRecoverComplete(bool success) override;
 
     // Request cancellation of running process
     void requestCancel();
 
-    bool IsProcessing() const { return isProcessing; }
+    bool IsProcessing() const { return isProcessing || isRecovering; }
 
     void HandleCommand(UINT msg, WPARAM wParam, LPARAM lParam);
 
@@ -110,6 +112,7 @@ private:
     // Thread management
     std::thread* workerThread;
     bool isProcessing;
+    bool isRecovering;
 
     // Log file
     std::ofstream generalLogFile;

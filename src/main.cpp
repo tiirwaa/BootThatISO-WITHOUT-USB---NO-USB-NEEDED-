@@ -1,4 +1,4 @@
-#include <windows.h>
+﻿#include <windows.h>
 #include <commctrl.h>
 #include <shellapi.h>
 #include <string>
@@ -76,7 +76,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
             } else if (arg.find(L"-mode=") == 0) {
                 mode = Utils::wstring_to_utf8(arg.substr(6));
                 if (mode == "RAM") mode = "Boot desde Memoria";
-                else if (mode == "EXTRACT") mode = "Instalación Completa";
+                else if (mode == "EXTRACT") mode = "InstalaciÃ³n Completa";
             } else if (arg.find(L"-format=") == 0) {
                 format = Utils::wstring_to_utf8(arg.substr(8));
             } else if (arg.find(L"-chkdsk=") == 0) {
@@ -126,7 +126,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
     HWND hwnd = CreateWindowExW(
         WS_EX_CLIENTEDGE,
         L"BootThatISOClass",
-        L"BootThatISO! - Configuración de Partición Bootable",
+        L"BootThatISO! - ConfiguraciÃ³n de ParticiÃ³n Bootable",
         WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
         CW_USEDEFAULT, CW_USEDEFAULT, 800, 720,
         NULL, NULL, hInstance, NULL);
@@ -179,7 +179,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
         if (mainWindow && mainWindow->IsProcessing())
         {
             // Ask user if they want to cancel the running operation
-            int res = MessageBoxW(hwnd, L"Un proceso está en ejecución. ¿Desea cancelar la operación y cerrar la aplicación?", L"Proceso en ejecución", MB_YESNO | MB_ICONQUESTION);
+            int res = MessageBoxW(hwnd, L"Un proceso estÃ¡ en ejecuciÃ³n. Â¿Desea cancelar la operaciÃ³n y cerrar la aplicaciÃ³n?", L"Proceso en ejecuciÃ³n", MB_YESNO | MB_ICONQUESTION);
             if (res == IDYES) {
                 // Request cancellation and wait for cleanup
                 mainWindow->requestCancel();
@@ -204,6 +204,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
     case WM_UPDATE_LOG:
     case WM_ENABLE_BUTTON:
     case WM_UPDATE_DETAILED_PROGRESS:
+    case WM_UPDATE_ERROR:
+    case WM_RECOVER_COMPLETE:
         if (mainWindow)
         {
             mainWindow->HandleCommand(msg, wParam, lParam);
@@ -221,3 +223,5 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
     }
     return 0;
 }
+
+

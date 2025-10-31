@@ -3,3 +3,4 @@ build/
 *.dll
 platforms/
 .iso
+isos/

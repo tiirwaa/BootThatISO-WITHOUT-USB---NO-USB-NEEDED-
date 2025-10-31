@@ -12,6 +12,7 @@ public:
     virtual void onAskRestart() = 0;
     virtual void onError(const std::string& message) = 0;
     virtual void onDetailedProgress(long long copied, long long total, const std::string& operation) = 0;
+    virtual void onRecoverComplete(bool success) = 0;
 };
 
 #endif // EVENTOBSERVER_H
