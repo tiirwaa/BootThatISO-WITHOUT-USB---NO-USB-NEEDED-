@@ -17,30 +17,28 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Resolve target release (by event or manual input)
-        id: resolve-release
+      - name: Resolve target tag
+        id: resolve-tag
         uses: actions/github-script@v6
         with:
           script: |
+            let tag
             if (context.eventName === 'release') {
-              core.setOutput('release_id', context.payload.release.id)
-              core.setOutput('tag', context.payload.release.tag_name)
-              core.setOutput('upload_url', context.payload.release.upload_url)
-              console.log(`Target release (event): ${context.payload.release.tag_name} (id=${context.payload.release.id})`)
+              tag = context.payload.release.tag_name
+              console.log(`Target tag (event): ${tag}`)
             } else {
-              const tag = core.getInput('tag') || 'v1.0.0'
-              const { data: rel } = await github.rest.repos.getReleaseByTag({ owner: context.repo.owner, repo: context.repo.repo, tag })
-              core.setOutput('release_id', rel.id)
-              core.setOutput('tag', tag)
-              core.setOutput('upload_url', rel.upload_url)
-              console.log(`Target release (manual): ${tag} (id=${rel.id})`)
+              tag = core.getInput('tag') || 'v1.0.0'
+              console.log(`Target tag (manual): ${tag}`)
             }
+            core.setOutput('tag', tag)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Create release-assets directory
-        run: New-Item -ItemType Directory -Path release-assets -Force
-        shell: powershell
+      - name: Delete existing release (if any)
+        run: |
+          gh release delete ${{ steps.resolve-tag.outputs.tag }} --yes || echo "Release does not exist or already deleted"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Configure and build (CMake + MSBuild)
         run: |
@@ -61,37 +59,24 @@ jobs:
             Write-Host "Found exe: $exe"
             Write-Output "exe_path=$exe" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
           } else {
-            Write-Host "No exe found in build folder. Will package only 'lang' folder."
-            Write-Output "exe_path=" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+            Write-Host "No exe found in build folder."
+            exit 1
           }
         shell: powershell
 
-      - name: Remove existing asset with same name (if any)
-        uses: actions/github-script@v6
-        with:
-          script: |
-            const releaseId = process.env.RELEASE_ID
-            const assetName = 'BootThatISO!.exe'
-            const owner = context.repo.owner
-            const repo = context.repo.repo
-            if (!releaseId) throw new Error('RELEASE_ID is not set')
-            const { data: assets } = await github.rest.repos.listReleaseAssets({ owner, repo, release_id: releaseId })
-            for (const a of assets) {
-              if (a.name === assetName) {
-                core.info(`Deleting existing asset ${a.name} (id=${a.id})`)
-                await github.rest.repos.deleteReleaseAsset({ owner, repo, asset_id: a.id })
-              }
-            }
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          RELEASE_ID: ${{ steps.resolve-release.outputs.release_id }}
+      - name: Create release notes
+        run: |
+          echo "## Requisitos del Sistema" > release_notes.md
+          echo "" >> release_notes.md
+          echo "- Windows 10 u 11 de 64 bits con privilegios de administrador." >> release_notes.md
+          echo "- Visual C++ Redistributable for Visual Studio 2022 (x64 o x86 según la arquitectura del sistema; descárgalos desde https://aka.ms/vs/17/release/vc_redist.x64.exe para x64 o https://aka.ms/vs/17/release/vc_redist.x86.exe para x86)." >> release_notes.md
+          echo "- PowerShell, DiskPart, bcdedit y herramientas de linea de comandos de Windows disponibles en el sistema." >> release_notes.md
+          echo "- Espacio libre minimo de 12 GB en la unidad C: para crear y formatear particiones." >> release_notes.md
+          echo "" >> release_notes.md
+          echo "## Descarga" >> release_notes.md
+          echo "Descarga el ejecutable desde los assets adjuntos." >> release_notes.md
 
-      - name: Upload exe to release
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ steps.resolve-release.outputs.upload_url }}
-          asset_path: ${{ steps.find-exe.outputs.exe_path }}
-          asset_name: BootThatISO!.exe
-          asset_content_type: application/octet-stream
+      - name: Create Release
+        run: gh release create ${{ steps.resolve-tag.outputs.tag }} --generate-notes --notes-file release_notes.md "${{ steps.find-exe.outputs.exe_path }}"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
