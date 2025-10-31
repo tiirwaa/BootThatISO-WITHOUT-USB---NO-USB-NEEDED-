@@ -22,7 +22,6 @@ jobs:
         uses: actions/github-script@v6
         with:
           script: |
-            const core = require('@actions/core')
             if (context.eventName === 'release') {
               core.setOutput('release_id', context.payload.release.id)
               core.setOutput('tag', context.payload.release.tag_name)
