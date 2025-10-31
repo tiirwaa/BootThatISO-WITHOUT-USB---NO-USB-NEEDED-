@@ -135,7 +135,7 @@ void ISOCopyManager::listDirectoryRecursive(std::ofstream& log, const std::strin
     FindClose(hFind);
 }
 
-bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::string& isoPath, const std::string& destPath, const std::string& espPath, bool extractContent, bool extractBootWim)
+bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::string& isoPath, const std::string& destPath, const std::string& espPath, bool extractContent, bool extractBootWim, bool copyInstallWim)
 {
     // Initialize managers with EventManager
     fileCopyManager = std::make_unique<FileCopyManager>(eventManager);
@@ -217,6 +217,9 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
 
     // Extract boot.wim if requested
     bool bootWimSuccess = true;
+    bool bootSdiSuccess = true;
+    bool installWimSuccess = true;
+    bool additionalBootFilesSuccess = true;
     if (extractBootWim) {
         std::string bootWimSrc = sourcePath + "sources\\boot.wim";
         std::string bootWimDestDir = destPath + "sources";
@@ -227,6 +230,45 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
         } else {
             logFile << getTimestamp() << "Failed to extract boot.wim" << std::endl;
             bootWimSuccess = false;
+        }
+
+        // Copy boot.sdi required for ramdisk boot
+        std::string bootSdiSrc = sourcePath + "boot\\boot.sdi";
+        std::string bootSdiDestDir = destPath + "boot";
+        CreateDirectoryA(bootSdiDestDir.c_str(), NULL);
+        std::string bootSdiDest = bootSdiDestDir + "\\boot.sdi";
+        if (GetFileAttributesA(bootSdiSrc.c_str()) != INVALID_FILE_ATTRIBUTES) {
+            if (copyFileUtf8(bootSdiSrc, bootSdiDest)) {
+                logFile << getTimestamp() << "boot.sdi copied successfully to " << bootSdiDest << std::endl;
+            } else {
+                logFile << getTimestamp() << "Failed to copy boot.sdi" << std::endl;
+                bootSdiSuccess = false;
+            }
+        } else {
+            logFile << getTimestamp() << "boot.sdi not found at " << bootSdiSrc << std::endl;
+            bootSdiSuccess = false;
+        }
+
+        if (copyInstallWim) {
+            std::string installWimSrc = sourcePath + "sources\\install.wim";
+            std::string installWimDestDir = destPath + "sources";
+            CreateDirectoryA(installWimDestDir.c_str(), NULL);
+            std::string installWimDest = installWimDestDir + "\\install.wim";
+            if (GetFileAttributesA(installWimSrc.c_str()) != INVALID_FILE_ATTRIBUTES) {
+                if (copyFileUtf8(installWimSrc, installWimDest)) {
+                    logFile << getTimestamp() << "install.wim extracted successfully to " << installWimDest << std::endl;
+                } else {
+                    logFile << getTimestamp() << "Failed to extract install.wim" << std::endl;
+                    installWimSuccess = false;
+                }
+            } else {
+                logFile << getTimestamp() << "install.wim not found, skipping copy" << std::endl;
+            }
+        }
+
+        if (!efiManager->extractBootFilesFromWIM(sourcePath, espPath, destPath, copiedSoFar, isoSize)) {
+            logFile << getTimestamp() << "Failed to extract additional boot files (winload/bootmgfw) from boot.wim" << std::endl;
+            additionalBootFilesSuccess = false;
         }
     }
 
@@ -243,6 +285,11 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
     logFile << getTimestamp() << "EFI extraction " << (efiSuccess ? "SUCCESS" : "FAILED") << std::endl;
     if (extractBootWim) {
         logFile << getTimestamp() << "boot.wim extraction " << (bootWimSuccess ? "SUCCESS" : "FAILED") << std::endl;
+        logFile << getTimestamp() << "boot.sdi copy " << (bootSdiSuccess ? "SUCCESS" : "FAILED") << std::endl;
+        if (copyInstallWim) {
+            logFile << getTimestamp() << "install.wim extraction " << (installWimSuccess ? "SUCCESS" : "FAILED") << std::endl;
+        }
+        logFile << getTimestamp() << "Additional boot files extraction " << (additionalBootFilesSuccess ? "SUCCESS" : "FAILED") << std::endl;
     }
     if (extractContent) {
         logFile << getTimestamp() << "Content extraction completed." << std::endl;
@@ -250,7 +297,7 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
     logFile.close();
     
     eventManager.notifyDetailedProgress(0, 0, "");
-    return efiSuccess && bootWimSuccess;
+    return efiSuccess && bootWimSuccess && bootSdiSuccess && installWimSuccess && additionalBootFilesSuccess;
 }
 
 bool ISOCopyManager::copyISOFile(EventManager& eventManager, const std::string& isoPath, const std::string& destPath)

@@ -23,7 +23,7 @@ private:
 public:
     static ISOCopyManager& getInstance();
 
-    bool extractISOContents(EventManager& eventManager, const std::string& isoPath, const std::string& destPath, const std::string& espPath, bool extractContent = true, bool extractBootWim = false);
+    bool extractISOContents(EventManager& eventManager, const std::string& isoPath, const std::string& destPath, const std::string& espPath, bool extractContent = true, bool extractBootWim = false, bool copyInstallWim = false);
     bool copyISOFile(EventManager& eventManager, const std::string& isoPath, const std::string& destPath);
 
     bool getIsWindowsISO() const;

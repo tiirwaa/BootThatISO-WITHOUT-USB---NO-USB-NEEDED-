@@ -429,16 +429,31 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
         }
         logFile << "SDI file verified: " << sdiPath << std::endl;
     } else if (bcdLabel == "ISOBOOT_RAM") {
-        // For ramdisk mode, verify ISO file exists (SDI is inside the ISO)
-        std::string isoPath = driveLetter + "\\iso.iso";
-        if (GetFileAttributesA(isoPath.c_str()) == INVALID_FILE_ATTRIBUTES) {
-            std::string errorMsg = "Error: Archivo ISO no encontrado en " + isoPath + "\r\n";
+        // For ramdisk mode, verify boot.wim and boot.sdi were staged on the data partition
+        std::string bootWimPath = driveLetter + "\\sources\\boot.wim";
+        std::string bootSdiPath = driveLetter + "\\boot\\boot.sdi";
+        bool bootWimExists = GetFileAttributesA(bootWimPath.c_str()) != INVALID_FILE_ATTRIBUTES;
+        bool bootSdiExists = GetFileAttributesA(bootSdiPath.c_str()) != INVALID_FILE_ATTRIBUTES;
+
+        if (!bootWimExists || !bootSdiExists) {
+            std::string errorMsg = "Error: Faltan archivos requeridos para RAM disk: ";
+            bool first = true;
+            if (!bootWimExists) {
+                errorMsg += "boot.wim (" + bootWimPath + ")";
+                first = false;
+            }
+            if (!bootSdiExists) {
+                if (!first) errorMsg += ", ";
+                errorMsg += "boot.sdi (" + bootSdiPath + ")";
+            }
+            errorMsg += "\r\n";
             if (eventManager) eventManager->notifyLogUpdate(errorMsg);
             logFile << errorMsg;
             logFile.close();
-            return "Archivo ISO no encontrado para ramdisk boot";
+            return "Archivos necesarios para RAM disk incompletos";
         }
-        logFile << "ISO file verified: " << isoPath << std::endl;
+        logFile << "boot.wim verificado: " << bootWimPath << std::endl;
+        logFile << "boot.sdi verificado: " << bootSdiPath << std::endl;
     }
 
     // Pass simple drive letters (e.g., "Z:") to strategies so they can use partition= syntax
@@ -448,10 +463,12 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
     logFile << "Strategy configuration completed. Proceeding with final BCD setup...\n";
 
     // Remove systemroot for EFI booting (ignore error if it doesn't exist - normal for OSLOADER entries)
-    std::string cmd4 = BCD_CMD + " /deletevalue " + guid + " systemroot";
-    std::string result4 = Utils::exec(cmd4.c_str());
-    logFile << "Remove systemroot command: " << cmd4 << "\nResult: " << result4 << "\n";
-    // Note: This may fail for OSLOADER entries that don't have systemroot - that's OK
+    if (bcdLabel != "ISOBOOT_RAM") {
+        std::string cmd4 = BCD_CMD + " /deletevalue " + guid + " systemroot";
+        std::string result4 = Utils::exec(cmd4.c_str());
+        logFile << "Remove systemroot command: " << cmd4 << "\nResult: " << result4 << "\n";
+        // Note: This may fail for OSLOADER entries that don't have systemroot - that's OK
+    }
 
     std::string cmd6 = BCD_CMD + " /default " + guid;
     std::string result6 = Utils::exec(cmd6.c_str());

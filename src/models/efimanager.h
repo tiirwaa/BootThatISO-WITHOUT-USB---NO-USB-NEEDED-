@@ -12,6 +12,7 @@ public:
     ~EFIManager();
 
     bool extractEFI(const std::string& sourcePath, const std::string& espPath, bool isWindowsISO, long long& copiedSoFar, long long isoSize);
+    bool extractBootFilesFromWIM(const std::string& sourcePath, const std::string& espPath, const std::string& dataPath, long long& copiedSoFar, long long isoSize);
 
 private:
     EventManager& eventManager;
@@ -19,7 +20,6 @@ private:
 
     // Helper methods
     bool extractEFIDirectory(const std::string& sourcePath, const std::string& espPath, long long& copiedSoFar, long long isoSize);
-    bool extractBootFilesFromWIM(const std::string& sourcePath, const std::string& espPath, long long& copiedSoFar, long long isoSize);
     bool copyBootmgrForNonWindows(const std::string& sourcePath, const std::string& espPath);
     bool validateAndFixEFIFiles(const std::string& efiDestPath, std::ofstream& logFile);
     bool ensureBootFileExists(const std::string& espPath);
