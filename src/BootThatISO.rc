@@ -1,1 +1,15 @@
+#include <windows.h>
+#include "resource.h"
+
 1 RT_MANIFEST "BootThatISO.manifest"
+
+IDD_LANGUAGE_DIALOG DIALOGEX 0, 0, 260, 120
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Select Language"
+FONT 9, "Segoe UI", 0, 0, 0x0
+BEGIN
+    LTEXT           "Choose your language:", IDC_LANGUAGE_LABEL, 10, 10, 240, 12
+    COMBOBOX        IDC_LANGUAGE_COMBO, 10, 28, 240, 64, CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
+    DEFPUSHBUTTON   "OK", IDOK, 90, 80, 60, 14
+    PUSHBUTTON      "Cancel", IDCANCEL, 160, 80, 60, 14
+END

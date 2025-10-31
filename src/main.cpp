@@ -1,10 +1,12 @@
-﻿#include <windows.h>
+#include <windows.h>
 #include <commctrl.h>
 #include <shellapi.h>
 #include <string>
 #include <vector>
 #include <iostream>
 #include <fstream>
+#include <algorithm>
+#include <cwctype>
 #include "views/mainwindow.h"
 #include "controllers/ProcessController.h"
 #include "models/EventManager.h"
@@ -13,6 +15,9 @@
 #include "services/bcdmanager.h"
 #include "utils/Utils.h"
 #include "utils/constants.h"
+#include "utils/LocalizationManager.h"
+#include "utils/LocalizationHelpers.h"
+#include "utils/AppKeys.h"
 
 BOOL IsRunAsAdmin()
 {
@@ -49,61 +54,103 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nCmdShow)
 {
-    if (!IsRunAsAdmin())
-    {
-        MessageBoxW(NULL, L"Este programa requiere privilegios de administrador.", L"Error", MB_ICONERROR | MB_OK);
+    LocalizationManager& localization = LocalizationManager::getInstance();
+    std::wstring exeDir = Utils::utf8_to_wstring(Utils::getExeDirectory());
+    std::wstring langDir = exeDir + L"lang";
+    if (!localization.initialize(langDir) || !localization.hasLanguages()) {
+        std::wstring noLangMessage = LocalizedOrW("message.noLanguagesFound", L"No language files were found in the 'lang' directory.");
+        std::wstring errorTitle = LocalizedOrW("title.error", L"Error");
+        MessageBoxW(NULL, noLangMessage.c_str(), errorTitle.c_str(), MB_ICONERROR | MB_OK);
         return 1;
     }
+    localization.loadLanguageByIndex(0);
 
-    // Clear logs at startup
-    ClearLogs();
-
-    // Parse command line arguments
-    int argc;
+    int argc = 0;
     LPWSTR* argv = CommandLineToArgvW(lpCmdLine, &argc);
     bool unattended = false;
-    std::string isoPath, mode, format;
+    std::string isoPath;
+    std::string modeKey;
+    std::string format;
     bool chkdsk = false;
     bool autoreboot = false;
+    std::wstring languageCodeArg;
 
     if (argv) {
         for (int i = 0; i < argc; ++i) {
             std::wstring arg = argv[i];
             if (arg == L"-unattended") {
                 unattended = true;
-            } else if (arg.find(L"-iso=") == 0) {
+            } else if (arg.rfind(L"-iso=", 0) == 0) {
                 isoPath = Utils::wstring_to_utf8(arg.substr(5));
-            } else if (arg.find(L"-mode=") == 0) {
-                mode = Utils::wstring_to_utf8(arg.substr(6));
-                if (mode == "RAM") mode = "Boot desde Memoria";
-                else if (mode == "EXTRACT") mode = "Instalación Completa";
-            } else if (arg.find(L"-format=") == 0) {
+            } else if (arg.rfind(L"-mode=", 0) == 0) {
+                std::wstring value = arg.substr(6);
+                std::wstring lowerValue = value;
+                std::transform(lowerValue.begin(), lowerValue.end(), lowerValue.begin(), ::towlower);
+                std::string modeCandidate = Utils::wstring_to_utf8(lowerValue);
+                if (modeCandidate == "ram") {
+                    modeKey = AppKeys::BootModeRam;
+                } else if (modeCandidate == "extract" || modeCandidate == "extracted") {
+                    modeKey = AppKeys::BootModeExtract;
+                } else {
+                    modeKey = modeCandidate;
+                }
+            } else if (arg.rfind(L"-format=", 0) == 0) {
                 format = Utils::wstring_to_utf8(arg.substr(8));
-            } else if (arg.find(L"-chkdsk=") == 0) {
-                chkdsk = (arg.substr(8) == L"TRUE");
-            } else if (arg.find(L"-autoreboot=") == 0) {
-                autoreboot = (arg.substr(12) == L"y");
+            } else if (arg.rfind(L"-chkdsk=", 0) == 0) {
+                std::wstring value = arg.substr(8);
+                std::transform(value.begin(), value.end(), value.begin(), ::towlower);
+                chkdsk = (value == L"true" || value == L"1" || value == L"s" || value == L"y");
+            } else if (arg.rfind(L"-autoreboot=", 0) == 0) {
+                std::wstring value = arg.substr(12);
+                std::transform(value.begin(), value.end(), value.begin(), ::towlower);
+                autoreboot = (value == L"true" || value == L"1" || value == L"s" || value == L"y");
+            } else if (arg.rfind(L"-lang=", 0) == 0) {
+                languageCodeArg = arg.substr(6);
             }
         }
         LocalFree(argv);
     }
 
+    if (!languageCodeArg.empty()) {
+        if (!localization.loadLanguageByCode(languageCodeArg)) {
+            std::wstring languageError = LocalizedOrW("message.languageLoadFailed", L"The requested language could not be loaded.");
+        std::wstring errorTitle = LocalizedOrW("title.error", L"Error");
+        MessageBoxW(NULL, languageError.c_str(), errorTitle.c_str(), MB_ICONWARNING | MB_OK);
+        }
+    }
+
+    if (!unattended) {
+        if (!localization.promptForLanguageSelection(hInstance)) {
+            return 0;
+        }
+    }
+
+    if (!IsRunAsAdmin())
+    {
+        std::wstring message = LocalizedOrW("message.adminRequired", L"Este programa requiere privilegios de administrador.");
+        std::wstring title = LocalizedOrW("title.error", L"Error");
+        MessageBoxW(NULL, message.c_str(), title.c_str(), MB_ICONERROR | MB_OK);
+        return 1;
+    }
+
+    ClearLogs();
+
     if (unattended) {
-        // Log to file for debugging
         std::string debugLogPath = Utils::getExeDirectory() + "logs\\unattended_debug.log";
         std::ofstream debugLog(debugLogPath.c_str());
         debugLog << "Unattended mode started\n";
         debugLog << "isoPath: " << isoPath << "\n";
         debugLog << "format: " << format << "\n";
-        debugLog << "mode: " << mode << "\n";
+        debugLog << "mode: " << modeKey << "\n";
         debugLog << "chkdsk: " << chkdsk << "\n";
         debugLog << "autoreboot: " << autoreboot << "\n";
         debugLog.close();
 
-        // Run unattended mode synchronously
         EventManager eventManager;
         ProcessController processController(eventManager);
-        processController.startProcess(isoPath, format, mode, !chkdsk, true);
+        std::string unattendedFallback = modeKey.empty() ? "" : (modeKey == AppKeys::BootModeRam ? "Boot desde Memoria" : "Boot desde Disco");
+        std::string unattendedLabel = LocalizedOrUtf8("bootMode." + modeKey, unattendedFallback.empty() ? modeKey.c_str() : unattendedFallback.c_str());
+        processController.startProcess(isoPath, format, modeKey, unattendedLabel, !chkdsk, true);
         return 0;
     }
 
@@ -128,25 +175,29 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 
     if (!RegisterClassExW(&wc))
     {
-        MessageBoxW(NULL, L"Window Registration Failed!", L"Error!", MB_ICONEXCLAMATION | MB_OK);
+        std::wstring message = LocalizedOrW("message.windowRegistrationFailed", L"Window Registration Failed!");
+        std::wstring title = LocalizedOrW("title.error", L"Error");
+        MessageBoxW(NULL, message.c_str(), title.c_str(), MB_ICONEXCLAMATION | MB_OK);
         return 0;
     }
 
+    std::wstring windowTitle = LocalizedOrW("app.windowTitle", L"BootThatISO! - Bootear ISO sin una USB");
     HWND hwnd = CreateWindowExW(
         WS_EX_CLIENTEDGE,
         L"BootThatISOClass",
-        L"BootThatISO! - Bootear ISO sin una USB",
+        windowTitle.c_str(),
         WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
         CW_USEDEFAULT, CW_USEDEFAULT, 800, 720,
         NULL, NULL, hInstance, NULL);
 
     if (hwnd == NULL)
     {
-        MessageBoxW(NULL, L"Window Creation Failed!", L"Error!", MB_ICONEXCLAMATION | MB_OK);
+        std::wstring message = LocalizedOrW("message.windowCreationFailed", L"Window Creation Failed!");
+        std::wstring title = LocalizedOrW("title.error", L"Error");
+        MessageBoxW(NULL, message.c_str(), title.c_str(), MB_ICONEXCLAMATION | MB_OK);
         return 0;
     }
 
-    // Center the window
     RECT rect;
     GetWindowRect(hwnd, &rect);
     int width = rect.right - rect.left;
@@ -166,7 +217,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
         TranslateMessage(&msg);
         DispatchMessage(&msg);
     }
-    return msg.wParam;
+    return static_cast<int>(msg.wParam);
 }
 
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
@@ -187,12 +238,11 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
     case WM_CLOSE:
         if (mainWindow && mainWindow->IsProcessing())
         {
-            // Ask user if they want to cancel the running operation
-            int res = MessageBoxW(hwnd, L"Un proceso está en ejecución. ¿Desea cancelar la operación y cerrar la aplicación?", L"Proceso en ejecución", MB_YESNO | MB_ICONQUESTION);
+            std::wstring prompt = LocalizedOrW("message.operationInProgress", L"Un proceso está en ejecución. ¿Desea cancelar la operación y cerrar la aplicación?");
+            std::wstring title = LocalizedOrW("title.operationInProgress", L"Proceso en ejecución");
+            int res = MessageBoxW(hwnd, prompt.c_str(), title.c_str(), MB_YESNO | MB_ICONQUESTION);
             if (res == IDYES) {
-                // Request cancellation and wait for cleanup
                 mainWindow->requestCancel();
-                // Proceed to close
                 if (mainWindow) {
                     delete mainWindow;
                     mainWindow = nullptr;
@@ -200,15 +250,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
                 PostQuitMessage(0);
                 return 0;
             } else {
-                // User chose not to cancel; keep running
                 return 0;
             }
         } else {
-            // No processing running, destroy window to trigger cleanup
             DestroyWindow(hwnd);
             return 0;
         }
-        break;
     case WM_UPDATE_PROGRESS:
     case WM_UPDATE_LOG:
     case WM_ENABLE_BUTTON:
@@ -232,5 +279,3 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
     }
     return 0;
 }
-
-

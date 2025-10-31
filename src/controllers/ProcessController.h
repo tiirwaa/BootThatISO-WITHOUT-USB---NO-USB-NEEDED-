@@ -15,16 +15,16 @@ public:
     ProcessController(EventManager& eventManager);
     ~ProcessController();
 
-    void startProcess(const std::string& isoPath, const std::string& selectedFormat, const std::string& selectedBootMode, bool skipIntegrityCheck = false, bool synchronous = false);
+    void startProcess(const std::string& isoPath, const std::string& selectedFormat, const std::string& selectedBootModeKey, const std::string& selectedBootModeLabel, bool skipIntegrityCheck = false, bool synchronous = false);
     // Request cancellation of the running process and wait for cleanup
     void requestCancel();
     bool recoverSpace();
 
 private:
-    void processInThread(const std::string& isoPath, const std::string& selectedFormat, const std::string& selectedBootMode, bool skipIntegrityCheck);
+    void processInThread(const std::string& isoPath, const std::string& selectedFormat, const std::string& selectedBootModeKey, const std::string& selectedBootModeLabel, bool skipIntegrityCheck);
     void recoverSpaceInThread();
-    bool copyISO(const std::string& isoPath, const std::string& destPath, const std::string& espPath, const std::string& mode, const std::string& format);
-    void configureBCD(const std::string& driveLetter, const std::string& espDriveLetter, const std::string& mode);
+    bool copyISO(const std::string& isoPath, const std::string& destPath, const std::string& espPath, const std::string& modeKey, const std::string& modeLabel, const std::string& format);
+    void configureBCD(const std::string& driveLetter, const std::string& espDriveLetter, const std::string& modeKey);
 
     PartitionManager* partitionManager;
     ISOCopyManager* isoCopyManager;

@@ -49,3 +49,7 @@ target_link_libraries(BootThatISO comctl32)
 set(CMAKE_MFC_FLAG 1)
 
 set_target_properties(BootThatISO PROPERTIES OUTPUT_NAME "BootThatISO!")
+
+if(MSVC)
+    target_link_options(BootThatISO PRIVATE "/MANIFEST:NO")
+endif()

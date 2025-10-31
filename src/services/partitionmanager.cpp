@@ -6,6 +6,8 @@
 #include "partitionmanager.h"
 #include "../utils/constants.h"
 #include "../utils/Utils.h"
+#include "../utils/LocalizationManager.h"
+#include "../utils/LocalizationHelpers.h"
 
 // Helper to append and flush to general_log.log
 void logToGeneral(const std::string& msg) {
@@ -145,7 +147,9 @@ bool PartitionManager::createPartition(const std::string& format, bool skipInteg
 
     // If errors found, ask user if they want to repair
     if (exitCode_chk != 0) {
-        int result = MessageBoxA(NULL, "Se encontraron errores en el disco C:. ¿Desea reparar el disco y reiniciar el sistema?", "Reparar disco", MB_YESNO | MB_ICONQUESTION);
+        std::wstring repairPrompt = LocalizedOrW("message.diskErrorsFoundPrompt", L"Se encontraron errores en el disco C:. ?Desea reparar el disco y reiniciar el sistema?");
+        std::wstring repairTitle = LocalizedOrW("title.repairDisk", L"Reparar disco");
+        int result = MessageBoxW(NULL, repairPrompt.c_str(), repairTitle.c_str(), MB_YESNO | MB_ICONQUESTION);
         if (result != IDYES) {
             return false;
         }

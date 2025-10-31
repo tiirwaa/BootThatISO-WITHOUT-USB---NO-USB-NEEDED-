@@ -4,6 +4,9 @@
 #include <fstream>
 #include "../utils/constants.h"
 #include "../utils/Utils.h"
+#include "../utils/LocalizationManager.h"
+#include "../utils/LocalizationHelpers.h"
+#include "../utils/AppKeys.h"
 
 // Struct for hash info
 struct HashInfo {
@@ -64,7 +67,7 @@ void ProcessController::requestCancel()
     }
 }
 
-void ProcessController::startProcess(const std::string& isoPath, const std::string& selectedFormat, const std::string& selectedBootMode, bool skipIntegrityCheck, bool synchronous)
+void ProcessController::startProcess(const std::string& isoPath, const std::string& selectedFormat, const std::string& selectedBootModeKey, const std::string& selectedBootModeLabel, bool skipIntegrityCheck, bool synchronous)
 {
     // Clear logs at start of process
     std::string logDir = Utils::getExeDirectory() + "logs";
@@ -99,7 +102,7 @@ void ProcessController::startProcess(const std::string& isoPath, const std::stri
         return;
     }
 
-    eventManager.notifyLogUpdate("Iniciando proceso con ISO: " + trimmedIsoPath + ", formato: " + selectedFormat + ", modo: " + selectedBootMode + "\r\n");
+    eventManager.notifyLogUpdate("Iniciando proceso con ISO: " + trimmedIsoPath + ", formato: " + selectedFormat + ", modo: " + selectedBootModeLabel + "\r\n");
 
     bool partitionExists = partitionManager->partitionExists();
     if (!partitionExists) {
@@ -114,14 +117,14 @@ void ProcessController::startProcess(const std::string& isoPath, const std::stri
 
     if (synchronous) {
         // Run synchronously
-        processInThread(trimmedIsoPath, selectedFormat, selectedBootMode, skipIntegrityCheck);
+        processInThread(trimmedIsoPath, selectedFormat, selectedBootModeKey, selectedBootModeLabel, skipIntegrityCheck);
     } else {
         // Iniciar hilo
-        workerThread = new std::thread(&ProcessController::processInThread, this, trimmedIsoPath, selectedFormat, selectedBootMode, skipIntegrityCheck);
+        workerThread = new std::thread(&ProcessController::processInThread, this, trimmedIsoPath, selectedFormat, selectedBootModeKey, selectedBootModeLabel, skipIntegrityCheck);
     }
 }
 
-void ProcessController::processInThread(const std::string& isoPath, const std::string& selectedFormat, const std::string& selectedBootMode, bool skipIntegrityCheck)
+void ProcessController::processInThread(const std::string& isoPath, const std::string& selectedFormat, const std::string& selectedBootModeKey, const std::string& selectedBootModeLabel, bool skipIntegrityCheck)
 {
     eventManager.notifyLogUpdate("Verificando estado de particiones...\r\n");
     bool partitionExists = partitionManager->partitionExists();
@@ -133,7 +136,7 @@ void ProcessController::processInThread(const std::string& isoPath, const std::s
             std::string hashFilePath = partitionDrive + "\\ISOBOOTHASH";
             std::string md5 = Utils::calculateMD5(isoPath);
             HashInfo existing = readHashInfo(hashFilePath);
-            if (existing.hash == md5 && existing.mode == selectedBootMode && existing.format == selectedFormat && !existing.hash.empty()) {
+            if (existing.hash == md5 && ((existing.mode == selectedBootModeKey) || (existing.mode == selectedBootModeLabel)) && existing.format == selectedFormat && !existing.hash.empty()) {
                 eventManager.notifyLogUpdate("Hash, modo y formato coinciden. Omitiendo formateo.\r\n");
                 skipFormat = true;
             } else {
@@ -204,11 +207,11 @@ void ProcessController::processInThread(const std::string& isoPath, const std::s
     }
 
     eventManager.notifyLogUpdate("Iniciando preparacion de archivos del ISO...\r\n");
-    if (copyISO(isoPath, partitionDrive, espDrive, selectedBootMode, selectedFormat)) {
+    if (copyISO(isoPath, partitionDrive, espDrive, selectedBootModeKey, selectedBootModeLabel, selectedFormat)) {
         eventManager.notifyLogUpdate("Archivos preparados. Configurando BCD...\r\n");
         // Configure BCD for Windows ISOs or for RAM boot mode (even non-Windows can use ramdisk)
-        if (isoCopyManager->getIsWindowsISO() || selectedBootMode == "Boot desde Memoria") {
-            configureBCD(partitionDrive, espDrive, selectedBootMode);
+        if (isoCopyManager->getIsWindowsISO() || selectedBootModeKey == AppKeys::BootModeRam) {
+            configureBCD(partitionDrive, espDrive, selectedBootModeKey);
         } else {
             eventManager.notifyLogUpdate("ISO no-Windows detectado: omitiendo configuracion BCD, usando arranque EFI directo desde ESP.\r\n");
             eventManager.notifyProgressUpdate(100);
@@ -244,7 +247,7 @@ bool ProcessController::recoverSpace()
     return true;
 }
 
-bool ProcessController::copyISO(const std::string& isoPath, const std::string& destPath, const std::string& espPath, const std::string& mode, const std::string& format)
+bool ProcessController::copyISO(const std::string& isoPath, const std::string& destPath, const std::string& espPath, const std::string& modeKey, const std::string& modeLabel, const std::string& format)
 {
     eventManager.notifyLogUpdate("Montando imagen ISO...\r\n");
     eventManager.notifyProgressUpdate(40);
@@ -252,18 +255,18 @@ bool ProcessController::copyISO(const std::string& isoPath, const std::string& d
     std::string drive = destPath;
     std::string espDrive = espPath;
 
-    if (mode == "Boot desde Memoria") {
-        eventManager.notifyLogUpdate("Modo Boot desde Memoria seleccionado: extrayendo EFI y recursos para RAMDisk...\r\n");
-        if (isoCopyManager->extractISOContents(eventManager, isoPath, drive, espDrive, false, true, true, mode, format)) {
+    if (modeKey == AppKeys::BootModeRam) {
+        eventManager.notifyLogUpdate("Modo " + modeLabel + " seleccionado: extrayendo EFI y recursos para RAMDisk...\r\n");
+        if (isoCopyManager->extractISOContents(eventManager, isoPath, drive, espDrive, false, true, true, modeKey, format)) {
             eventManager.notifyLogUpdate("EFI y recursos de arranque preparados exitosamente (boot.wim/boot.sdi).\r\n");
             eventManager.notifyProgressUpdate(70);
         } else {
-            eventManager.notifyLogUpdate("Error: Fallo la preparacion de archivos para modo Boot desde Memoria.\r\n");
+            eventManager.notifyLogUpdate("Error: Fallo la preparacion de archivos para modo " + modeLabel + ".\r\n");
             return false;
         }
     } else {
-        eventManager.notifyLogUpdate("Modo " + mode + " seleccionado: extrayendo contenido completo del ISO...\r\n");
-        if (isoCopyManager->extractISOContents(eventManager, isoPath, drive, espDrive, true, true, true, mode, format)) {
+        eventManager.notifyLogUpdate("Modo " + modeLabel + " seleccionado: extrayendo contenido completo del ISO...\r\n");
+        if (isoCopyManager->extractISOContents(eventManager, isoPath, drive, espDrive, true, true, true, modeKey, format)) {
             eventManager.notifyLogUpdate("Contenido del ISO extraido exitosamente.\r\n");
             eventManager.notifyProgressUpdate(70);
         } else {
@@ -274,18 +277,25 @@ bool ProcessController::copyISO(const std::string& isoPath, const std::string& d
     return true;
 }
 
-void ProcessController::configureBCD(const std::string& driveLetter, const std::string& espDriveLetter, const std::string& mode)
+
+
+void ProcessController::configureBCD(const std::string& driveLetter, const std::string& espDriveLetter, const std::string& modeKey)
 {
     eventManager.notifyLogUpdate("Configurando Boot Configuration Data (BCD)...\r\n");
     eventManager.notifyProgressUpdate(80);
 
-    auto strategy = BootStrategyFactory::createStrategy(mode);
+    auto strategy = BootStrategyFactory::createStrategy(modeKey);
+    std::string modeLabel = LocalizationManager::getInstance().getUtf8String("bootMode." + modeKey);
+    if (modeLabel.empty()) {
+        modeLabel = modeKey;
+    }
+
     if (!strategy) {
-        eventManager.notifyLogUpdate("Error: Modo de boot '" + mode + "' no vAlido.\r\n");
+        eventManager.notifyLogUpdate("Error: Modo de boot '" + modeLabel + "' no valido.\r\n");
         return;
     }
 
-    eventManager.notifyLogUpdate("Aplicando estrategia de configuracion BCD para modo " + mode + "...\r\n");
+    eventManager.notifyLogUpdate("Aplicando estrategia de configuracion BCD para modo " + modeLabel + "...\r\n");
     std::string error = bcdManager->configureBCD(driveLetter.substr(0, 2), espDriveLetter.substr(0, 2), *strategy);
     if (!error.empty()) {
         eventManager.notifyLogUpdate("Error en configuracion BCD: " + error + "\r\n");
@@ -295,6 +305,8 @@ void ProcessController::configureBCD(const std::string& driveLetter, const std::
         eventManager.notifyProgressUpdate(100);
     }
 }
+
+
 
 void ProcessController::recoverSpaceInThread()
 {

@@ -1,0 +1,9 @@
+#ifndef RESOURCE_H
+#define RESOURCE_H
+
+#define IDD_LANGUAGE_DIALOG 101
+#define IDC_LANGUAGE_LABEL 1000
+#define IDC_LANGUAGE_COMBO 1001
+
+#endif // RESOURCE_H
+

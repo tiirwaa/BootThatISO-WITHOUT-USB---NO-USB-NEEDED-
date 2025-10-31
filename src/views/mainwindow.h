@@ -74,8 +74,8 @@ private:
 
     // File system format selection
     std::string selectedFormat;
-    // Boot mode selection: "RAMDISK" or "EXTRACTED"
-    std::string selectedBootMode;
+    // Boot mode selection stored as key (e.g., "ram", "extract")
+    std::string selectedBootModeKey;
     // Skip integrity check
     bool skipIntegrityCheck;
 

@@ -1,6 +1,9 @@
 ﻿#include "mainwindow.h"
 #include "../utils/constants.h"
 #include "../utils/Utils.h"
+#include "../utils/LocalizationManager.h"
+#include "../utils/LocalizationHelpers.h"
+#include "../utils/AppKeys.h"
 #include "../models/BootStrategyFactory.h"
 #include "version.h"
 #include <commdlg.h>
@@ -22,7 +25,7 @@ struct DetailedProgressData {
 };
 
 MainWindow::MainWindow(HWND parent)
-    : hInst(GetModuleHandle(NULL)), hWndParent(parent), selectedFormat("NTFS"), selectedBootMode("Instalación Completa"), workerThread(nullptr), isProcessing(false), isRecovering(false), skipIntegrityCheck(true)
+    : hInst(GetModuleHandle(NULL)), hWndParent(parent), selectedFormat("NTFS"), selectedBootModeKey(AppKeys::BootModeExtract), workerThread(nullptr), isProcessing(false), isRecovering(false), skipIntegrityCheck(true)
 {
     partitionManager = &PartitionManager::getInstance();
     isoCopyManager = &ISOCopyManager::getInstance();
@@ -52,66 +55,75 @@ MainWindow::~MainWindow()
 void MainWindow::requestCancel()
 {
     if (isRecovering) {
-        LogMessage("La recuperación de espacio está en curso y no se puede cancelar. Espera a que finalice.\r\n");
+        LogMessage(LocalizedOrUtf8("log.recovery.cannotCancel", "La recuperaci?n de espacio est? en curso y no se puede cancelar. Espera a que finalice.\r\n"));
         return;
     }
-    // Ask controller to cancel and wait for cleanup
     if (processController) {
-        LogMessage("Solicitud de cancelación enviada. Esperando limpieza...\r\n");
+        LogMessage(LocalizedOrUtf8("log.cancel.requested", "Solicitud de cancelaci?n enviada. Esperando limpieza...\r\n"));
         processController->requestCancel();
-        LogMessage("Operación cancelada y limpiada.\r\n");
+        LogMessage(LocalizedOrUtf8("log.cancel.completed", "Operaci?n cancelada y limpiada.\r\n"));
         onButtonEnable();
     }
 }
 
 void MainWindow::SetupUI(HWND parent)
 {
-    // Create controls
-    logoLabel = CreateWindowW(L"STATIC", L"LOGO", WS_CHILD | WS_VISIBLE | SS_CENTER, 10, 10, 65, 65, parent, NULL, hInst, NULL);
+    std::wstring logoText = LocalizedOrW("mainwindow.logoPlaceholder", L"LOGO");
+    logoLabel = CreateWindowW(L"STATIC", logoText.c_str(), WS_CHILD | WS_VISIBLE | SS_CENTER, 10, 10, 65, 65, parent, NULL, hInst, NULL);
     SendMessage(logoLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    titleLabel = CreateWindowW(L"STATIC", L"BOOT THAT ISO!", WS_CHILD | WS_VISIBLE, 75, 10, 300, 30, parent, NULL, hInst, NULL);
+    std::wstring titleText = LocalizedOrW("mainwindow.title", L"BOOT THAT ISO!");
+    titleLabel = CreateWindowW(L"STATIC", titleText.c_str(), WS_CHILD | WS_VISIBLE, 75, 10, 300, 30, parent, NULL, hInst, NULL);
     SendMessage(titleLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    subtitleLabel = CreateWindowW(L"STATIC", L"Configuración de Particiones Bootables EFI", WS_CHILD | WS_VISIBLE, 75, 40, 300, 20, parent, NULL, hInst, NULL);
+    std::wstring subtitleText = LocalizedOrW("mainwindow.subtitle", L"Configuracion de Particiones Bootables EFI");
+    subtitleLabel = CreateWindowW(L"STATIC", subtitleText.c_str(), WS_CHILD | WS_VISIBLE, 75, 40, 300, 20, parent, NULL, hInst, NULL);
     SendMessage(subtitleLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    isoPathLabel = CreateWindowW(L"STATIC", L"Ruta del archivo ISO:", WS_CHILD | WS_VISIBLE, 10, 80, 200, 20, parent, NULL, hInst, NULL);
+    std::wstring isoLabelText = LocalizedOrW("mainwindow.isoPathLabel", L"Ruta del archivo ISO:");
+    isoPathLabel = CreateWindowW(L"STATIC", isoLabelText.c_str(), WS_CHILD | WS_VISIBLE, 10, 80, 200, 20, parent, NULL, hInst, NULL);
     SendMessage(isoPathLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
     isoPathEdit = CreateWindowW(L"EDIT", L"", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_READONLY, 10, 100, 600, 25, parent, NULL, hInst, NULL);
     SendMessage(isoPathEdit, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    browseButton = CreateWindowW(L"BUTTON", L"Buscar", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 620, 100, 80, 25, parent, (HMENU)IDC_BROWSE_BUTTON, hInst, NULL);
+    std::wstring browseText = LocalizedOrW("mainwindow.browseButton", L"Buscar");
+    browseButton = CreateWindowW(L"BUTTON", browseText.c_str(), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 620, 100, 80, 25, parent, (HMENU)IDC_BROWSE_BUTTON, hInst, NULL);
     SendMessage(browseButton, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    formatLabel = CreateWindowW(L"STATIC", L"Formato del sistema de archivos:", WS_CHILD | WS_VISIBLE, 10, 135, 200, 20, parent, NULL, hInst, NULL);
+    std::wstring formatText = LocalizedOrW("mainwindow.formatLabel", L"Formato del sistema de archivos:");
+    formatLabel = CreateWindowW(L"STATIC", formatText.c_str(), WS_CHILD | WS_VISIBLE, 10, 135, 200, 20, parent, NULL, hInst, NULL);
     SendMessage(formatLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    fat32Radio = CreateWindowW(L"BUTTON", L"FAT32 (Recomendado - Máxima compatibilidad EFI)", WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON | WS_GROUP, 10, 155, 350, 20, parent, (HMENU)IDC_FAT32_RADIO, hInst, NULL);
+    std::wstring fat32Text = LocalizedOrW("mainwindow.format.fat32", L"FAT32 (Recomendado - Maxima compatibilidad EFI)");
+    fat32Radio = CreateWindowW(L"BUTTON", fat32Text.c_str(), WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON | WS_GROUP, 10, 155, 350, 20, parent, (HMENU)IDC_FAT32_RADIO, hInst, NULL);
     SendMessage(fat32Radio, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    exfatRadio = CreateWindowW(L"BUTTON", L"exFAT (Sin límite de 4GB por archivo)", WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON, 10, 175, 300, 20, parent, (HMENU)IDC_EXFAT_RADIO, hInst, NULL);
+    std::wstring exfatText = LocalizedOrW("mainwindow.format.exfat", L"exFAT (Sin limite de 4GB por archivo)");
+    exfatRadio = CreateWindowW(L"BUTTON", exfatText.c_str(), WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON, 10, 175, 300, 20, parent, (HMENU)IDC_EXFAT_RADIO, hInst, NULL);
     SendMessage(exfatRadio, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    ntfsRadio = CreateWindowW(L"BUTTON", L"NTFS (Soporte completo de Windows)", WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON, 10, 195, 300, 20, parent, (HMENU)IDC_NTFS_RADIO, hInst, NULL);
+    std::wstring ntfsText = LocalizedOrW("mainwindow.format.ntfs", L"NTFS (Soporte completo de Windows)");
+    ntfsRadio = CreateWindowW(L"BUTTON", ntfsText.c_str(), WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON, 10, 195, 300, 20, parent, (HMENU)IDC_NTFS_RADIO, hInst, NULL);
     SendMessage(ntfsRadio, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
-    SendMessage(ntfsRadio, BM_SETCHECK, BST_CHECKED, 0); // NTFS selected by default
+    SendMessage(ntfsRadio, BM_SETCHECK, BST_CHECKED, 0);
 
-    // Boot mode selection: RAMDISK or Extracted
-    bootModeLabel = CreateWindowW(L"STATIC", L"Modo de arranque:", WS_CHILD | WS_VISIBLE, 330, 135, 150, 20, parent, NULL, hInst, NULL);
+    std::wstring bootModeText = LocalizedOrW("mainwindow.bootModeLabel", L"Modo de arranque:");
+    bootModeLabel = CreateWindowW(L"STATIC", bootModeText.c_str(), WS_CHILD | WS_VISIBLE, 330, 135, 150, 20, parent, NULL, hInst, NULL);
     SendMessage(bootModeLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    bootRamdiskRadio = CreateWindowW(L"BUTTON", L"Boot desde RAM", WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON | WS_GROUP, 330, 155, 420, 20, parent, (HMENU)IDC_BOOTMODE_RAMDISK, hInst, NULL);
+    std::wstring bootRamText = LocalizedOrW("bootMode.ram", L"Boot desde RAM");
+    bootRamdiskRadio = CreateWindowW(L"BUTTON", bootRamText.c_str(), WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON | WS_GROUP, 330, 155, 420, 20, parent, (HMENU)IDC_BOOTMODE_RAMDISK, hInst, NULL);
     SendMessage(bootRamdiskRadio, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    bootExtractedRadio = CreateWindowW(L"BUTTON", L"Boot desde Disco", WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON, 330, 175, 420, 40, parent, (HMENU)IDC_BOOTMODE_EXTRACTED, hInst, NULL);
+    std::wstring bootDiskText = LocalizedOrW("bootMode.extract", L"Boot desde Disco");
+    bootExtractedRadio = CreateWindowW(L"BUTTON", bootDiskText.c_str(), WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON, 330, 175, 420, 40, parent, (HMENU)IDC_BOOTMODE_EXTRACTED, hInst, NULL);
     SendMessage(bootExtractedRadio, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
-    SendMessage(bootExtractedRadio, BM_SETCHECK, BST_CHECKED, 0); // default: Extracted
+    SendMessage(bootExtractedRadio, BM_SETCHECK, BST_CHECKED, 0);
 
-    integrityCheckBox = CreateWindowW(L"BUTTON", L"Realizar verificación de la integridad del disco", WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX, 10, 220, 350, 20, parent, (HMENU)IDC_INTEGRITY_CHECKBOX, hInst, NULL);
+    std::wstring integrityText = LocalizedOrW("mainwindow.integrityCheck", L"Realizar verificacion de la integridad del disco");
+    integrityCheckBox = CreateWindowW(L"BUTTON", integrityText.c_str(), WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX, 10, 220, 350, 20, parent, (HMENU)IDC_INTEGRITY_CHECKBOX, hInst, NULL);
     SendMessage(integrityCheckBox, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
-    // Por defecto unchecked
 
     diskSpaceLabel = CreateWindowW(L"STATIC", L"", WS_CHILD | WS_VISIBLE, 10, 240, 700, 20, parent, NULL, hInst, NULL);
     SendMessage(diskSpaceLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
@@ -121,22 +133,25 @@ void MainWindow::SetupUI(HWND parent)
 
     detailedProgressBar = CreateWindowW(PROGRESS_CLASSW, NULL, WS_CHILD | WS_VISIBLE, 10, 290, 760, 20, parent, NULL, hInst, NULL);
 
-    createPartitionButton = CreateWindowW(L"BUTTON", L"Realizar proceso y Bootear ISO seleccionado", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 10, 320, 400, 40, parent, (HMENU)IDC_CREATE_PARTITION_BUTTON, hInst, NULL);
+    std::wstring createButtonText = LocalizedOrW("mainwindow.createButton", L"Realizar proceso y Bootear ISO seleccionado");
+    createPartitionButton = CreateWindowW(L"BUTTON", createButtonText.c_str(), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 10, 320, 400, 40, parent, (HMENU)IDC_CREATE_PARTITION_BUTTON, hInst, NULL);
     SendMessage(createPartitionButton, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
+
     progressBar = CreateWindowW(PROGRESS_CLASSW, NULL, WS_CHILD | WS_VISIBLE, 10, 360, 760, 20, parent, NULL, hInst, NULL);
 
     logTextEdit = CreateWindowW(L"EDIT", L"", WS_CHILD | WS_VISIBLE | WS_BORDER | ES_MULTILINE | ES_AUTOVSCROLL, 10, 390, 760, 230, parent, NULL, hInst, NULL);
     SendMessage(logTextEdit, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    std::string versionStr = "Versión " + std::string(APP_VERSION);
-    int wlen = MultiByteToWideChar(CP_UTF8, 0, versionStr.c_str(), -1, NULL, 0);
-    std::wstring wversion(wlen, L'\0');
-    MultiByteToWideChar(CP_UTF8, 0, versionStr.c_str(), -1, &wversion[0], wlen);
-    footerLabel = CreateWindowW(L"STATIC", wversion.c_str(), WS_CHILD | WS_VISIBLE, 10, 640, 100, 20, parent, NULL, hInst, NULL);
+    std::wstring versionText = LocalizedFormatW("mainwindow.versionLabel", { Utils::utf8_to_wstring(APP_VERSION) }, L"Version {0}");
+    footerLabel = CreateWindowW(L"STATIC", versionText.c_str(), WS_CHILD | WS_VISIBLE, 10, 640, 140, 20, parent, NULL, hInst, NULL);
     SendMessage(footerLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
-    servicesButton = CreateWindowW(L"BUTTON", L"Servicios", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 650, 640, 100, 20, parent, (HMENU)IDC_SERVICES_BUTTON, hInst, NULL);
+
+    std::wstring servicesText = LocalizedOrW("mainwindow.servicesButton", L"Servicios");
+    servicesButton = CreateWindowW(L"BUTTON", servicesText.c_str(), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 650, 640, 100, 20, parent, (HMENU)IDC_SERVICES_BUTTON, hInst, NULL);
     SendMessage(servicesButton, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
-    recoverButton = CreateWindowW(L"BUTTON", L"Recuperar mi espacio", WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 500, 640, 140, 20, parent, (HMENU)IDC_RECOVER_BUTTON, hInst, NULL);
+
+    std::wstring recoverText = LocalizedOrW("mainwindow.recoverButton", L"Recuperar mi espacio");
+    recoverButton = CreateWindowW(L"BUTTON", recoverText.c_str(), WS_CHILD | WS_VISIBLE | BS_PUSHBUTTON, 500, 640, 140, 20, parent, (HMENU)IDC_RECOVER_BUTTON, hInst, NULL);
     SendMessage(recoverButton, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 }
 
@@ -168,12 +183,12 @@ void MainWindow::HandleCommand(UINT msg, WPARAM wParam, LPARAM lParam)
                   if (processController->recoverSpace()) {
                       isRecovering = true;
                       EnableWindow(recoverButton, FALSE);
-                      LogMessage("Recuperacion de espacio iniciada en segundo plano.\r\n");
+                      LogMessage(LocalizedOrUtf8("log.recovery.started", "Recuperacion de espacio iniciada en segundo plano.\r\n"));
                   } else {
-                      LogMessage("No se pudo iniciar la recuperacion de espacio. Verifica si ya esta en curso.\r\n");
+                      LogMessage(LocalizedOrUtf8("log.recovery.startFailed", "No se pudo iniciar la recuperacion de espacio. Verifica si ya esta en curso.\r\n"));
                   }
               } else {
-                  LogMessage("La recuperacion de espacio ya esta en progreso.\r\n");
+                  LogMessage(LocalizedOrUtf8("log.recovery.alreadyRunning", "La recuperacion de espacio ya esta en progreso.\r\n"));
               }
               break;
         case IDC_FAT32_RADIO:
@@ -193,12 +208,12 @@ void MainWindow::HandleCommand(UINT msg, WPARAM wParam, LPARAM lParam)
             break;
         case IDC_BOOTMODE_RAMDISK:
             if (HIWORD(wParam) == BN_CLICKED) {
-                selectedBootMode = "Boot desde Memoria";
+                selectedBootModeKey = AppKeys::BootModeRam;
             }
             break;
         case IDC_BOOTMODE_EXTRACTED:
             if (HIWORD(wParam) == BN_CLICKED) {
-                selectedBootMode = "Instalación Completa";
+                selectedBootModeKey = AppKeys::BootModeExtract;
             }
             break;
         case IDC_INTEGRITY_CHECKBOX:
@@ -236,7 +251,8 @@ void MainWindow::HandleCommand(UINT msg, WPARAM wParam, LPARAM lParam)
             int wlen = MultiByteToWideChar(CP_UTF8, 0, errorMsg->c_str(), -1, NULL, 0);
             std::wstring wmsg(wlen, L'\0');
             MultiByteToWideChar(CP_UTF8, 0, errorMsg->c_str(), -1, &wmsg[0], wlen);
-            MessageBoxW(hWndParent, wmsg.c_str(), L"Error", MB_OK | MB_ICONERROR);
+            std::wstring errorTitle = LocalizedOrW("title.error", L"Error");
+            MessageBoxW(hWndParent, wmsg.c_str(), errorTitle.c_str(), MB_OK | MB_ICONERROR);
             delete errorMsg;
         }
         break;
@@ -253,7 +269,9 @@ void MainWindow::HandleCommand(UINT msg, WPARAM wParam, LPARAM lParam)
                 PostQuitMessage(0);
             } else {
                 LogMessage("Recuperacion de espacio fallida. Revisa los detalles en los registros.\r\n");
-                MessageBoxW(hWndParent, L"Error al recuperar espacio. Revisa los registros para mas detalles.", L"Error", MB_OK | MB_ICONERROR);
+                std::wstring recoverErrorTitle = LocalizedOrW("title.error", L"Error");
+                std::wstring recoverErrorMessage = LocalizedOrW("message.recoverSpaceFailed", L"Error al recuperar espacio. Revisa los registros para mas detalles.");
+                MessageBoxW(hWndParent, recoverErrorMessage.c_str(), recoverErrorTitle.c_str(), MB_OK | MB_ICONERROR);
             }
         }
         break;
@@ -269,7 +287,13 @@ void MainWindow::OnSelectISO()
     ofn.hwndOwner = NULL; // or parent
     ofn.lpstrFile = szFile;
     ofn.nMaxFile = sizeof(szFile) / sizeof(WCHAR);
-    ofn.lpstrFilter = L"Archivos ISO (*.iso)\0*.iso\0";
+    std::wstring filterDescription = LocalizedOrW("dialog.openIso.filter", L"Archivos ISO (*.iso)");
+    std::wstring filter = filterDescription;
+    filter.push_back(L'\0');
+    filter.append(L"*.iso");
+    filter.push_back(L'\0');
+    filter.push_back(L'\0');
+    ofn.lpstrFilter = filter.c_str();
     ofn.nFilterIndex = 1;
     ofn.lpstrFileTitle = NULL;
     ofn.nMaxFileTitle = 0;
@@ -288,13 +312,15 @@ void MainWindow::OnCreatePartition()
     SendMessage(progressBar, PBM_SETPOS, 0, 0);
     SendMessage(detailedProgressBar, PBM_SETRANGE, 0, MAKELPARAM(0, 100));
     SendMessage(detailedProgressBar, PBM_SETPOS, 0, 0);
-    LogMessage("Iniciando proceso...\r\n");
+    LogMessage(LocalizedOrUtf8("log.process.starting", "Iniciando proceso...\r\n"));
 
     WCHAR isoPath[260];
     GetWindowTextW(isoPathEdit, isoPath, sizeof(isoPath) / sizeof(WCHAR));
     if (wcslen(isoPath) == 0)
     {
-        MessageBoxW(NULL, L"Por favor, seleccione un archivo ISO primero.", L"Archivo ISO", MB_OK);
+        std::wstring selectIsoMessage = LocalizedOrW("message.selectIsoFirst", L"Por favor, seleccione un archivo ISO primero.");
+        std::wstring isoDialogTitle = LocalizedOrW("title.isoFile", L"Archivo ISO");
+        MessageBoxW(NULL, selectIsoMessage.c_str(), isoDialogTitle.c_str(), MB_OK);
         return;
     }
 
@@ -304,14 +330,19 @@ void MainWindow::OnCreatePartition()
         if (!validation.isValid) {
             WCHAR errorMsg[256];
             MultiByteToWideChar(CP_UTF8, 0, validation.errorMessage.c_str(), -1, errorMsg, 256);
-            MessageBoxW(NULL, errorMsg, L"Espacio Insuficiente", MB_OK);
+            std::wstring insufficientTitle = LocalizedOrW("title.spaceInsufficient", L"Espacio Insuficiente");
+            MessageBoxW(NULL, errorMsg, insufficientTitle.c_str(), MB_OK);
             return;
         }
 
-        if (MessageBoxW(NULL, L"Esta operación modificará el disco del sistema, reduciendo su tamaño en 10.5 GB para crear dos particiones bootables: una ESP FAT32 de 500MB (ISOEFI) y una partición de datos de 10GB (ISOBOOT). ¿Desea continuar?", L"Confirmación de Operación", MB_YESNO) != IDYES)
+        std::wstring confirmStepOneMessage = LocalizedOrW("message.diskModifyConfirmPrimary", L"Esta operacion modificara el disco del sistema, reduciendo su tamano en 10.5 GB para crear dos particiones bootables: una ESP FAT32 de 500MB (ISOEFI) y una particion de datos de 10GB (ISOBOOT). Desea continuar?");
+        std::wstring confirmStepOneTitle = LocalizedOrW("title.operationConfirmation", L"Confirmacion de Operacion");
+        if (MessageBoxW(NULL, confirmStepOneMessage.c_str(), confirmStepOneTitle.c_str(), MB_YESNO) != IDYES)
             return;
 
-        if (MessageBoxW(NULL, L"Esta es la segunda confirmación. La operación de modificación del disco es irreversible y puede causar pérdida de datos si no se realiza correctamente. ¿Está completamente seguro de que desea proceder?", L"Segunda Confirmación", MB_YESNO) != IDYES)
+        std::wstring confirmStepTwoMessage = LocalizedOrW("message.diskModifyConfirmSecondary", L"Esta es la segunda confirmacion. La operacion de modificacion del disco es irreversible y puede causar perdida de datos si no se realiza correctamente. Esta completamente seguro de que desea proceder?");
+        std::wstring confirmStepTwoTitle = LocalizedOrW("title.secondConfirmation", L"Segunda Confirmacion");
+        if (MessageBoxW(NULL, confirmStepTwoMessage.c_str(), confirmStepTwoTitle.c_str(), MB_YESNO) != IDYES)
             return;
     }
 
@@ -321,7 +352,9 @@ void MainWindow::OnCreatePartition()
     int len = WideCharToMultiByte(CP_UTF8, 0, isoPath, -1, NULL, 0, NULL, NULL);
     std::string isoPathStr(len, '\0');
     WideCharToMultiByte(CP_UTF8, 0, isoPath, -1, &isoPathStr[0], len, NULL, NULL);
-    processController->startProcess(isoPathStr, selectedFormat, selectedBootMode, skipIntegrityCheck);
+    std::string bootModeFallback = (selectedBootModeKey == AppKeys::BootModeRam) ? "Boot desde Memoria" : "Boot desde Disco";
+    std::string bootModeLabel = LocalizedOrUtf8("bootMode." + selectedBootModeKey, bootModeFallback.c_str());
+    processController->startProcess(isoPathStr, selectedFormat, selectedBootModeKey, bootModeLabel, skipIntegrityCheck);
 }
 
 void MainWindow::OnOpenServicesPage()
@@ -334,11 +367,19 @@ void MainWindow::UpdateDiskSpaceInfo()
     long long availableGB = partitionManager->getAvailableSpaceGB();
     bool partitionExists = partitionManager->partitionExists();
     bool efiPartitionExists = !partitionManager->getEfiPartitionDriveLetter().empty();
-    const WCHAR* existsStr = partitionExists ? L"Si" : L"No";
-    const WCHAR* efiExistsStr = efiPartitionExists ? L"Si" : L"No";
-    WCHAR text[200];
-    swprintf(text, 200, L"Espacio disponible en C: %lld GB | ISOBOOT: %s | ISOEFI: %s", availableGB, existsStr, efiExistsStr);
-    SetWindowTextW(diskSpaceLabel, text);
+
+    std::wstring yesText = LocalizedOrW("common.yes", L"Si");
+    std::wstring noText = LocalizedOrW("common.no", L"No");
+    const std::wstring& existsStr = partitionExists ? yesText : noText;
+    const std::wstring& efiExistsStr = efiPartitionExists ? yesText : noText;
+
+    std::wstring availableStr = Utils::utf8_to_wstring(std::to_string(availableGB));
+    std::wstring infoText = LocalizedFormatW(
+        "mainwindow.diskSpaceInfo",
+        { availableStr, existsStr, efiExistsStr },
+        L"Espacio disponible en C: {0} GB | ISOBOOT: {1} | ISOEFI: {2}");
+
+    SetWindowTextW(diskSpaceLabel, infoText.c_str());
 }
 
 void MainWindow::LogMessage(const std::string& msg)
@@ -348,8 +389,23 @@ void MainWindow::LogMessage(const std::string& msg)
     std::tm localTime;
     localtime_s(&localTime, &now);
     std::stringstream timeStream;
-    timeStream << std::put_time(&localTime, "[%Y-%m-%d %H:%M:%S] ");
-    std::string timestampedMsg = timeStream.str() + msg;
+    timeStream << std::put_time(&localTime, "[%Y-%m-%d %H:%M:%S] " );
+
+    std::string normalizedMsg = msg;
+    auto hasTrailingCRLF = [&normalizedMsg]() -> bool {
+        return normalizedMsg.size() >= 2 &&
+               normalizedMsg[normalizedMsg.size() - 2] == '\r' &&
+               normalizedMsg.back() == '\n';
+    };
+    if (!hasTrailingCRLF()) {
+        while (!normalizedMsg.empty() &&
+               (normalizedMsg.back() == '\n' || normalizedMsg.back() == '\r')) {
+            normalizedMsg.pop_back();
+        }
+        normalizedMsg += "\r\n";
+    }
+
+    std::string timestampedMsg = timeStream.str() + normalizedMsg;
 
     if (generalLogFile.is_open()) {
         generalLogFile << timestampedMsg;
@@ -390,8 +446,23 @@ void MainWindow::onLogUpdate(const std::string& message) {
     std::tm localTime;
     localtime_s(&localTime, &now);
     std::stringstream timeStream;
-    timeStream << std::put_time(&localTime, "[%Y-%m-%d %H:%M:%S] ");
-    std::string timestampedMsg = timeStream.str() + message;
+    timeStream << std::put_time(&localTime, "[%Y-%m-%d %H:%M:%S] " );
+
+    std::string normalizedMsg = message;
+    auto hasTrailingCRLF = [&normalizedMsg]() -> bool {
+        return normalizedMsg.size() >= 2 &&
+               normalizedMsg[normalizedMsg.size() - 2] == '\r' &&
+               normalizedMsg.back() == '\n';
+    };
+    if (!hasTrailingCRLF()) {
+        while (!normalizedMsg.empty() &&
+               (normalizedMsg.back() == '\n' || normalizedMsg.back() == '\r')) {
+            normalizedMsg.pop_back();
+        }
+        normalizedMsg += "\r\n";
+    }
+
+    std::string timestampedMsg = timeStream.str() + normalizedMsg;
 
     int wlen = MultiByteToWideChar(CP_UTF8, 0, timestampedMsg.c_str(), -1, NULL, 0);
     std::wstring wmsg(wlen, L'\0');
@@ -429,22 +500,33 @@ void MainWindow::UpdateDetailedProgressLabel(long long copied, long long total, 
     int percent = static_cast<int>((copied * 100) / total);
     double copiedMB = copied / (1024.0 * 1024.0);
     double totalMB = total / (1024.0 * 1024.0);
-    std::string unit = "MB";
+
+    std::wstring unitText = LocalizedOrW("unit.mb", L"MB");
     if (totalMB >= 1024) {
         copiedMB /= 1024;
         totalMB /= 1024;
-        unit = "GB";
+        unitText = LocalizedOrW("unit.gb", L"GB");
     }
+
+    std::wstring operationText = Utils::utf8_to_wstring(operation);
+
     std::wstringstream ss;
-    ss << operation.c_str() << L": " << percent << L"% (" << std::fixed << std::setprecision(1) << copiedMB << L" " << unit.c_str() << L" / " << totalMB << L" " << unit.c_str() << L")";
+    ss << operationText << L": " << percent << L"% (" << std::fixed << std::setprecision(1)
+       << copiedMB << L" " << unitText.c_str() << L" / " << totalMB << L" " << unitText.c_str() << L")";
     SetWindowTextW(detailedProgressLabel, ss.str().c_str());
     SendMessage(detailedProgressBar, PBM_SETPOS, percent, 0);
 }
 
+
+
 void MainWindow::onAskRestart() {
-    if (MessageBoxW(hWndParent, L"Proceso terminado. ¿Desea reiniciar el sistema ahora?", L"Reiniciar", MB_YESNO) == IDYES) {
+    std::wstring restartPrompt = LocalizedOrW("message.processCompleteRestart", L"Proceso terminado. Desea reiniciar el sistema ahora?");
+    std::wstring restartTitle = LocalizedOrW("title.restart", L"Reiniciar");
+    if (MessageBoxW(hWndParent, restartPrompt.c_str(), restartTitle.c_str(), MB_YESNO) == IDYES) {
         if (!RestartSystem()) {
-            MessageBoxW(hWndParent, L"Error al reiniciar el sistema.", L"Error", MB_OK);
+            std::wstring restartError = LocalizedOrW("message.restartFailed", L"Error al reiniciar el sistema.");
+            std::wstring errorTitle = LocalizedOrW("title.error", L"Error");
+            MessageBoxW(hWndParent, restartError.c_str(), errorTitle.c_str(), MB_OK);
         }
     }
 }

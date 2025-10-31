@@ -6,12 +6,16 @@
 #include "ExtractedBootStrategy.h"
 #include <memory>
 #include <string>
+#include "../utils/AppKeys.h"
 
 class BootStrategyFactory {
 public:
-    static std::unique_ptr<BootStrategy> createStrategy(const std::string& mode) {
-        if (mode == "Boot desde Memoria" || mode == "Instalación Completa") {
+    static std::unique_ptr<BootStrategy> createStrategy(const std::string& modeKey) {
+        if (modeKey == AppKeys::BootModeRam) {
             return std::make_unique<RamdiskBootStrategy>();
+        }
+        if (modeKey == AppKeys::BootModeExtract) {
+            return std::make_unique<ExtractedBootStrategy>();
         }
         return nullptr;
     }

@@ -11,6 +11,9 @@
 #include <iomanip>
 #include <memory>
 #include "../utils/Utils.h"
+#include "../utils/LocalizationManager.h"
+#include "../utils/LocalizationHelpers.h"
+#include "../utils/AppKeys.h"
 #include "isotypedetector.h"
 #include "../models/efimanager.h"
 #include "../models/isomounter.h"
@@ -149,6 +152,17 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
     fileCopyManager = std::make_unique<FileCopyManager>(eventManager);
     efiManager = std::make_unique<EFIManager>(eventManager, *fileCopyManager);
 
+    std::string modeLabel = LocalizationManager::getInstance().getUtf8String("bootMode." + mode);
+    if (modeLabel.empty()) {
+        if (mode == AppKeys::BootModeRam) {
+            modeLabel = "Boot desde Memoria";
+        } else if (mode == AppKeys::BootModeExtract) {
+            modeLabel = "Boot desde Disco";
+        } else {
+            modeLabel = mode;
+        }
+    }
+
     std::string logDir = Utils::getExeDirectory() + "logs";
     CreateDirectoryA(logDir.c_str(), NULL);
     // Create log file for debugging
@@ -230,7 +244,7 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
             return false;
         }
     } else {
-        logFile << getTimestamp() << "Skipping content extraction (Boot desde Memoria mode)" << std::endl;
+        logFile << getTimestamp() << "Skipping content extraction (" << modeLabel << " mode)" << std::endl;
     }
 
     // Extract boot.wim if requested

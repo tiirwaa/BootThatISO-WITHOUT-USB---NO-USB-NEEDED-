@@ -1,6 +1,8 @@
 #include "bcdmanager.h"
 #include "../utils/constants.h"
 #include "../utils/Utils.h"
+#include "../utils/LocalizationManager.h"
+#include "../utils/LocalizationHelpers.h"
 #include <windows.h>
 #include <winnt.h>
 #include <string>
@@ -333,8 +335,10 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
         std::wstring wmsg = L"Se encontraron EFI de ambas arquitecturas en la ESP:\n\n";
         wmsg += Utils::utf8_to_wstring(std::string("x64: ") + amdPath) + L"\n";
         wmsg += Utils::utf8_to_wstring(std::string("x86: ") + i386Path) + L"\n\n";
-        wmsg += L"¿Cuál desea usar? Seleccione Sí para x64, No para x86.";
-        int res = MessageBoxW(NULL, wmsg.c_str(), L"Seleccionar arquitectura EFI", MB_YESNO | MB_ICONQUESTION);
+        std::wstring selectionPrompt = LocalizedOrW("message.selectEfiArchitecturePrompt", L"?Cu?l desea usar? Seleccione S? para x64, No para x86.");
+        wmsg += selectionPrompt;
+        std::wstring selectionTitle = LocalizedOrW("title.selectEfiArchitecture", L"Seleccionar arquitectura EFI");
+        int res = MessageBoxW(NULL, wmsg.c_str(), selectionTitle.c_str(), MB_YESNO | MB_ICONQUESTION);
         if (res == IDYES) {
             bestIndex = firstAmd64Index;
         } else {
