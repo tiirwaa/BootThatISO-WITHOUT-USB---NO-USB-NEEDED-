@@ -114,7 +114,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
     wc.hCursor = LoadCursor(NULL, IDC_ARROW);
     wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
     wc.lpszMenuName = NULL;
-    wc.lpszClassName = L"EasyISOBootClass";
+    wc.lpszClassName = L"BootThatISOClass";
     wc.hIconSm = LoadIcon(NULL, IDI_APPLICATION);
 
     if (!RegisterClassExW(&wc))
@@ -125,8 +125,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 
     HWND hwnd = CreateWindowExW(
         WS_EX_CLIENTEDGE,
-        L"EasyISOBootClass",
-        L"Easy ISOBoot - Configuración de Partición Bootable",
+        L"BootThatISOClass",
+        L"BootThatISO! - Configuración de Partición Bootable",
         WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX,
         CW_USEDEFAULT, CW_USEDEFAULT, 800, 720,
         NULL, NULL, hInstance, NULL);

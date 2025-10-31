@@ -578,7 +578,7 @@ std::string PartitionManager::getPartitionDriveLetter()
     std::string logDir = Utils::getExeDirectory() + "logs";
     CreateDirectoryA(logDir.c_str(), NULL);
     std::ofstream debugLog((logDir + "\\" + DEBUG_DRIVES_LOG_FILE).c_str());
-    debugLog << "Searching for EASYISOBOOT partition...\n";
+    debugLog << "Searching for BOOTTHATISO partition...\n";
 
     char* drive = drives;
     while (*drive) {
@@ -953,7 +953,7 @@ bool PartitionManager::reformatPartition(const std::string& format)
         return false;
     }
 
-    // Parse output to find volume number for EASYISOBOOT
+    // Parse output to find volume number for BOOTTHATISO
     std::istringstream iss(output);
     std::string line;
     int volumeNumber = -1;

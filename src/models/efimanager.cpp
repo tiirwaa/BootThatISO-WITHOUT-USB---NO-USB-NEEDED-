@@ -122,7 +122,7 @@ bool EFIManager::extractBootFilesFromWIM(const std::string& sourcePath, const st
 
     char tempPath[MAX_PATH];
     GetTempPathA(MAX_PATH, tempPath);
-    std::string tempDir = std::string(tempPath) + "EasyISOBoot_WimMount\\";
+    std::string tempDir = std::string(tempPath) + "BootThatISO_WimMount\\";
 
     ensureTempDirectoryClean(tempDir);
 

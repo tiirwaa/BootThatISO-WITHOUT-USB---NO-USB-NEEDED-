@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(EasyISOBoot)
+project(BootThatISO)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
@@ -19,11 +19,13 @@ include_directories(include)
 
 # Source files
 file(GLOB_RECURSE SOURCES "src/*.cpp")
-set(SOURCES ${SOURCES} src/EasyISOBoot.rc)
+set(SOURCES ${SOURCES} src/BootThatISO.rc)
 
 # Executable
-add_executable(EasyISOBoot WIN32 ${SOURCES} src/EasyISOBoot.rc)
+add_executable(BootThatISO WIN32 ${SOURCES} src/BootThatISO.rc)
 
 # Link necessary libraries (MFC is included via CMAKE_MFC_FLAG)
-target_link_libraries(EasyISOBoot comctl32)
+target_link_libraries(BootThatISO comctl32)
 set(CMAKE_MFC_FLAG 1)
+
+set_target_properties(BootThatISO PROPERTIES OUTPUT_NAME "BootThatISO!")
