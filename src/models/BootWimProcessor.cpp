@@ -142,6 +142,21 @@ bool BootWimProcessor::mountAndProcessWim(const std::string& bootWimDest, const 
         // Copy and configure .ini files
         eventManager_.notifyDetailedProgress(50, 100, "Copiando y reconfigurando archivos .ini");
         IniConfigurator iniConfigurator;
+        // First, reconfigure any existing .ini files in the mounted boot.wim
+        WIN32_FIND_DATAA findDataExisting;
+        HANDLE hFindExisting = FindFirstFileA((mountDir + "\\*.ini").c_str(), &findDataExisting);
+        if (hFindExisting != INVALID_HANDLE_VALUE) {
+            bool moreFilesExisting = true;
+            while (moreFilesExisting) {
+                std::string iniNameExisting = findDataExisting.cFileName;
+                std::string iniPathExisting = mountDir + "\\" + iniNameExisting;
+                iniConfigurator.configureIniFile(iniPathExisting);
+                logFile << ISOCopyManager::getTimestamp() << "Existing " << iniNameExisting << " in boot.wim reconfigured" << std::endl;
+                moreFilesExisting = FindNextFileA(hFindExisting, &findDataExisting);
+            }
+            FindClose(hFindExisting);
+        }
+        // Then copy and configure .ini files from ISO
         WIN32_FIND_DATAA findData;
         HANDLE hFind = FindFirstFileA((sourcePath + "*.ini").c_str(), &findData);
         if (hFind != INVALID_HANDLE_VALUE) {
@@ -169,6 +184,12 @@ bool BootWimProcessor::mountAndProcessWim(const std::string& bootWimDest, const 
         logFile << ISOCopyManager::getTimestamp() << "Unmounting boot.wim: " << dismUnmountCmd << std::endl;
         std::string unmountOutput = Utils::exec(dismUnmountCmd.c_str());
         logFile << ISOCopyManager::getTimestamp() << "Unmount output: " << unmountOutput << std::endl;
+        if (unmountOutput.find("correctamente") == std::string::npos && unmountOutput.find("successfully") == std::string::npos && !unmountOutput.empty()) {
+            logFile << ISOCopyManager::getTimestamp() << "Failed to unmount boot.wim, changes not saved" << std::endl;
+            eventManager_.notifyLogUpdate("Error al desmontar boot.wim, cambios no guardados.\r\n");
+            RemoveDirectoryA(mountDir.c_str());
+            return false;
+        }
         eventManager_.notifyLogUpdate("boot.wim actualizado correctamente.\r\n");
         eventManager_.notifyDetailedProgress(0, 0, "");
     } else {
