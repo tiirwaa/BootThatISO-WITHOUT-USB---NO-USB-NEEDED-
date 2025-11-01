@@ -168,11 +168,12 @@ if(CLANG_FORMAT_EXE)
         src/views/mainwindow.h
         src/utils/Logger.h
         src/utils/Utils.h
-        src/utils/LocalizationManager.h\n        include/models/HashInfo.h
+        src/utils/LocalizationManager.h
+        include/models/HashInfo.h
         tests/utils_tests.cpp
     )
     add_custom_target(check-format
-        COMMAND ${CLANG_FORMAT_EXE} --dry-run --Werror ${FORMAT_FILES}
+        COMMAND cd ${CMAKE_SOURCE_DIR} && ${CLANG_FORMAT_EXE} --dry-run --Werror ${FORMAT_FILES}
         COMMENT "Checking source formatting with clang-format"
         VERBATIM
     )
