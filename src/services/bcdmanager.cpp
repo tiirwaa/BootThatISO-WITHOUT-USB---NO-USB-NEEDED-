@@ -642,6 +642,17 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
         return "Error al configurar displayorder: " + resultDisplay;
     }
 
+    // Set timeout to allow boot selection
+    std::string cmdTimeout = BCD_CMD + " /set {bootmgr} timeout 30";
+    std::string resultTimeout = Utils::exec(cmdTimeout.c_str());
+    logFile << "Set timeout command: " << cmdTimeout << "\nResult: " << resultTimeout << "\n";
+    if (resultTimeout.find("error") != std::string::npos || resultTimeout.find("Error") != std::string::npos) {
+        if (eventManager) eventManager->notifyLogUpdate("Error al configurar timeout: " + resultTimeout + "\r\n");
+        logFile << "ERROR: Failed to set timeout. Result: " << resultTimeout << "\n";
+        logFile.close();
+        return "Error al configurar timeout: " + resultTimeout;
+    }
+
     logFile << "BCD configuration completed successfully\n";
 
     // For extracted mode, export the configured BCD to ESP so bootmgfw.efi can find it
