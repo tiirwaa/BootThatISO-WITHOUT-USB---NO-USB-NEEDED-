@@ -26,7 +26,7 @@ private:
     bool ensureSecureBootCompatibleBootloader(const std::string& espPath);
 
     // Utility functions
-    std::string exec(const char* cmd);
+    std::string exec(const char* cmd, EventManager* eventManager = nullptr);
     const char* getTimestamp();
     bool isValidPE(const std::string& path);
     uint16_t getPEMachine(const std::string& path);

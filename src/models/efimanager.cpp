@@ -122,7 +122,8 @@ bool EFIManager::extractBootFilesFromWIM(const std::string& sourcePath, const st
 
     char tempPath[MAX_PATH];
     GetTempPathA(MAX_PATH, tempPath);
-    std::string tempDir = std::string(tempPath) + "BootThatISO_WimMount\\";
+    std::string uniqueId = std::to_string(GetTickCount()); // Simple unique ID
+    std::string tempDir = std::string(tempPath) + "BootThatISO_WimMount_" + uniqueId + "\\";
 
     ensureTempDirectoryClean(tempDir);
 
@@ -139,7 +140,7 @@ bool EFIManager::extractBootFilesFromWIM(const std::string& sourcePath, const st
 
     std::string mountCmd = "cmd /c dism /Mount-Wim /WimFile:\"" + bootWimPath + "\" /index:1 /MountDir:\"" + tempDir.substr(0, tempDir.size()-1) + "\" /ReadOnly";
     logFile << getTimestamp() << "Mount command: " << mountCmd << std::endl;
-    std::string mountResult = exec(mountCmd.c_str());
+    std::string mountResult = exec(mountCmd.c_str(), &eventManager);
     bool mountSuccessWim = mountResult.find("The operation completed successfully") != std::string::npos;
     logFile << getTimestamp() << "Mount WIM " << (mountSuccessWim ? "successful" : "failed") << std::endl;
 
@@ -168,8 +169,8 @@ bool EFIManager::extractBootFilesFromWIM(const std::string& sourcePath, const st
         std::string src = tempDir + filePair.first;
         std::string dst = filePair.second;
         if (GetFileAttributesA(src.c_str()) == INVALID_FILE_ATTRIBUTES) {
-            logFile << getTimestamp() << "File not found in boot.wim: " << filePair.first << std::endl;
-            overallSuccess = false;
+            logFile << getTimestamp() << "File not found in boot.wim: " << filePair.first << " (this may be normal for PE images)" << std::endl;
+            // Don't set overallSuccess = false for missing files, as they may not exist in PE
             continue;
         }
 
@@ -209,7 +210,7 @@ bool EFIManager::extractBootFilesFromWIM(const std::string& sourcePath, const st
 
     std::string unmountCmd = "cmd /c dism /Unmount-Wim /MountDir:\"" + tempDir.substr(0, tempDir.size()-1) + "\" /discard";
     logFile << getTimestamp() << "Unmount command: " << unmountCmd << std::endl;
-    std::string unmountResult = exec(unmountCmd.c_str());
+    std::string unmountResult = exec(unmountCmd.c_str(), &eventManager);
     bool unmountSuccess = unmountResult.find("The operation completed successfully") != std::string::npos;
     logFile << getTimestamp() << "Unmount WIM " << (unmountSuccess ? "successful" : "failed") << std::endl;
     if (!unmountSuccess) {
@@ -246,7 +247,7 @@ bool EFIManager::copyBootmgrForNonWindows(const std::string& sourcePath, const s
             logFile << getTimestamp() << "Failed to copy bootmgr.efi to ESP, error: " << GetLastError() << std::endl;
             // Try cmd copy
             std::string cmdCopy = "cmd /c copy \"" + bootmgrSource + "\" \"" + bootmgrDest + "\" >nul 2>&1";
-            std::string copyResult = exec(cmdCopy.c_str());
+            std::string copyResult = exec(cmdCopy.c_str(), &eventManager);
             if (GetFileAttributesA(bootmgrDest.c_str()) != INVALID_FILE_ATTRIBUTES) {
                 logFile << getTimestamp() << "Copied bootmgr.efi to ESP using cmd" << std::endl;
                 bootmgrCopied = true;
@@ -356,8 +357,7 @@ bool EFIManager::validateAndFixEFIFiles(const std::string& efiDestPath, std::ofs
     return bootFileExists;
 }
 
-// Utility functions
-std::string EFIManager::exec(const char* cmd) {
+std::string EFIManager::exec(const char* cmd, EventManager* eventManager) {
     HANDLE hRead, hWrite;
     SECURITY_ATTRIBUTES sa = { sizeof(SECURITY_ATTRIBUTES), NULL, TRUE };
     if (!CreatePipe(&hRead, &hWrite, &sa, 0)) return "";
@@ -380,13 +380,37 @@ std::string EFIManager::exec(const char* cmd) {
     char buffer[128];
     std::string result = "";
     DWORD bytesRead;
-    while (ReadFile(hRead, buffer, sizeof(buffer) - 1, &bytesRead, NULL) && bytesRead > 0) {
-        buffer[bytesRead] = '\0';
-        result += buffer;
+    HANDLE handles[2] = { hRead, pi.hProcess };
+    DWORD waitResult;
+
+    while ((waitResult = WaitForMultipleObjects(2, handles, FALSE, 100)) != WAIT_OBJECT_0 + 1) {
+        if (eventManager && eventManager->isCancelRequested()) {
+            // Terminate the process if cancellation is requested
+            TerminateProcess(pi.hProcess, 1);
+            CloseHandle(hRead);
+            CloseHandle(pi.hProcess);
+            CloseHandle(pi.hThread);
+            return "";
+        }
+        if (waitResult == WAIT_OBJECT_0) {
+            // Data available in pipe
+            if (!ReadFile(hRead, buffer, sizeof(buffer) - 1, &bytesRead, NULL) || bytesRead == 0) {
+                break;
+            }
+            buffer[bytesRead] = '\0';
+            result += buffer;
+        } else if (waitResult == WAIT_TIMEOUT) {
+            // Continue waiting
+        } else {
+            break;
+        }
     }
 
     CloseHandle(hRead);
-    WaitForSingleObject(pi.hProcess, INFINITE);
+    if (waitResult == WAIT_OBJECT_0 + 1) {
+        // Process finished
+        WaitForSingleObject(pi.hProcess, INFINITE);
+    }
     CloseHandle(pi.hProcess);
     CloseHandle(pi.hThread);
     return result;
@@ -440,7 +464,7 @@ void EFIManager::ensureTempDirectoryClean(const std::string& tempDir) {
     // First try to unmount any existing WIM mount
     std::string mountDir = tempDir.substr(0, tempDir.size() - 1); // Remove trailing backslash
     std::string unmountCmd = "cmd /c dism /Unmount-Wim /MountDir:\"" + mountDir + "\" /discard 2>nul";
-    exec(unmountCmd.c_str());
+    exec(unmountCmd.c_str(), &eventManager);
 
     // Wait a moment for unmount to complete
     Sleep(1000);
@@ -450,7 +474,7 @@ void EFIManager::ensureTempDirectoryClean(const std::string& tempDir) {
 
     // Approach 1: Use rd command
     std::string rdCmd = "cmd /c rd /s /q \"" + mountDir + "\" 2>nul";
-    exec(rdCmd.c_str());
+    exec(rdCmd.c_str(), &eventManager);
     if (GetFileAttributesA(tempDir.c_str()) == INVALID_FILE_ATTRIBUTES) {
         removed = true;
     }
@@ -458,7 +482,7 @@ void EFIManager::ensureTempDirectoryClean(const std::string& tempDir) {
     // Approach 2: If still exists, try rmdir
     if (!removed) {
         std::string rmdirCmd = "cmd /c rmdir /s /q \"" + mountDir + "\" 2>nul";
-        exec(rmdirCmd.c_str());
+        exec(rmdirCmd.c_str(), &eventManager);
         if (GetFileAttributesA(tempDir.c_str()) == INVALID_FILE_ATTRIBUTES) {
             removed = true;
         }
@@ -467,7 +491,7 @@ void EFIManager::ensureTempDirectoryClean(const std::string& tempDir) {
     // Approach 3: If still exists, try PowerShell
     if (!removed) {
         std::string psCmd = "powershell -Command \"if (Test-Path '" + mountDir + "') { Remove-Item -Path '" + mountDir + "' -Recurse -Force -ErrorAction SilentlyContinue }\"";
-        exec(psCmd.c_str());
+        exec(psCmd.c_str(), &eventManager);
         if (GetFileAttributesA(tempDir.c_str()) == INVALID_FILE_ATTRIBUTES) {
             removed = true;
         }

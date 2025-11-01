@@ -36,7 +36,7 @@ private:
     std::unique_ptr<FileCopyManager> fileCopyManager;
     bool isWindowsISODetected;
 
-    std::string exec(const char* cmd);
+    std::string exec(const char* cmd, EventManager* eventManager = nullptr);
     long long getDirectorySize(const std::string& path);
     void listDirectoryRecursive(std::ofstream& log, const std::string& path, int depth, int maxDepth, EventManager& eventManager, long long& fileCount);
 };

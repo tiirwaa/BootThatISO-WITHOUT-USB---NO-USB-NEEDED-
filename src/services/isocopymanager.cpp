@@ -59,7 +59,7 @@ const char* ISOCopyManager::getTimestamp() {
     return buffer;
 }
 
-std::string ISOCopyManager::exec(const char* cmd) {
+std::string ISOCopyManager::exec(const char* cmd, EventManager* eventManager) {
     HANDLE hRead, hWrite;
     SECURITY_ATTRIBUTES sa = { sizeof(SECURITY_ATTRIBUTES), NULL, TRUE };
     if (!CreatePipe(&hRead, &hWrite, &sa, 0)) return "";
@@ -82,13 +82,37 @@ std::string ISOCopyManager::exec(const char* cmd) {
     char buffer[128];
     std::string result = "";
     DWORD bytesRead;
-    while (ReadFile(hRead, buffer, sizeof(buffer) - 1, &bytesRead, NULL) && bytesRead > 0) {
-        buffer[bytesRead] = '\0';
-        result += buffer;
+    HANDLE handles[2] = { hRead, pi.hProcess };
+    DWORD waitResult;
+
+    while ((waitResult = WaitForMultipleObjects(2, handles, FALSE, 100)) != WAIT_OBJECT_0 + 1) {
+        if (eventManager && eventManager->isCancelRequested()) {
+            // Terminate the process if cancellation is requested
+            TerminateProcess(pi.hProcess, 1);
+            CloseHandle(hRead);
+            CloseHandle(pi.hProcess);
+            CloseHandle(pi.hThread);
+            return "";
+        }
+        if (waitResult == WAIT_OBJECT_0) {
+            // Data available in pipe
+            if (!ReadFile(hRead, buffer, sizeof(buffer) - 1, &bytesRead, NULL) || bytesRead == 0) {
+                break;
+            }
+            buffer[bytesRead] = '\0';
+            result += buffer;
+        } else if (waitResult == WAIT_TIMEOUT) {
+            // Continue waiting
+        } else {
+            break;
+        }
     }
 
     CloseHandle(hRead);
-    WaitForSingleObject(pi.hProcess, INFINITE);
+    if (waitResult == WAIT_OBJECT_0 + 1) {
+        // Process finished
+        WaitForSingleObject(pi.hProcess, INFINITE);
+    }
     CloseHandle(pi.hProcess);
     CloseHandle(pi.hThread);
     return result;
@@ -365,12 +389,20 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
         // Integrate Programs into boot.wim for RAM mode
         if (integratePrograms && bootWimSuccess) {
             std::string mountDir = destPath + "temp_mount";
+            // Ensure mount directory is clean
+            if (GetFileAttributesA(mountDir.c_str()) != INVALID_FILE_ATTRIBUTES) {
+                // Try to remove it recursively
+                std::string rdCmd = "cmd /c rd /s /q \"" + mountDir + "\" 2>nul";
+                Utils::exec(rdCmd.c_str());
+            }
             CreateDirectoryA(mountDir.c_str(), NULL);
+            // Ensure boot.wim is writable
+            SetFileAttributesA(bootWimDest.c_str(), FILE_ATTRIBUTE_NORMAL);
             std::string dismMountCmd = "dism /Mount-Wim /WimFile:\"" + bootWimDest + "\" /index:1 /MountDir:\"" + mountDir + "\"";
             logFile << getTimestamp() << "Mounting boot.wim: " << dismMountCmd << std::endl;
-            std::string mountOutput = exec(dismMountCmd.c_str());
+            std::string mountOutput = Utils::exec(dismMountCmd.c_str());
             logFile << getTimestamp() << "Mount output: " << mountOutput << std::endl;
-            if (mountOutput.find("successfully") != std::string::npos || mountOutput.empty()) {
+            if (mountOutput.find("correctamente") != std::string::npos || mountOutput.find("successfully") != std::string::npos || mountOutput.empty()) {
                 eventManager.notifyLogUpdate("Integrando Programs en boot.wim...\r\n");
                 eventManager.notifyDetailedProgress(0, 0, "Integrando Programs en boot.wim...");
                 std::string programsDest = mountDir + "\\Programs";
@@ -382,14 +414,47 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
                     logFile << getTimestamp() << "Failed to integrate Programs into boot.wim" << std::endl;
                     eventManager.notifyLogUpdate("Error al integrar Programs en boot.wim.\r\n");
                 }
+                // Copy all .ini files from root and reconfigure paths
+                WIN32_FIND_DATAA findData;
+                HANDLE hFind = FindFirstFileA((sourcePath + "*.ini").c_str(), &findData);
+                if (hFind != INVALID_HANDLE_VALUE) {
+                    bool moreFiles = true;
+                    while (moreFiles) {
+                        std::string iniName = findData.cFileName;
+                        std::string iniSrc = sourcePath + iniName;
+                        std::string iniDest = mountDir + "\\" + iniName;
+                        if (copyFileUtf8(iniSrc, iniDest)) {
+                            logFile << getTimestamp() << iniName << " copied to boot.wim successfully" << std::endl;
+                            std::ifstream iniFile(iniDest);
+                            std::stringstream buffer;
+                            buffer << iniFile.rdbuf();
+                            std::string iniContent = buffer.str();
+                            iniFile.close();
+                            size_t pos = 0;
+                            while ((pos = iniContent.find("Y:\\", pos)) != std::string::npos) {
+                                iniContent.replace(pos, 3, "X:\\");
+                                pos += 3;
+                            }
+                            std::ofstream outIniFile(iniDest);
+                            outIniFile << iniContent;
+                            outIniFile.close();
+                            logFile << getTimestamp() << iniName << " reconfigured successfully" << std::endl;
+                        } else {
+                            logFile << getTimestamp() << "Failed to copy " << iniName << " to boot.wim" << std::endl;
+                        }
+                        moreFiles = FindNextFileA(hFind, &findData);
+                    }
+                    FindClose(hFind);
+                    eventManager.notifyLogUpdate("Archivos .ini integrados y reconfigurados en boot.wim correctamente.\r\n");
+                }
                 eventManager.notifyDetailedProgress(0, 0, "");
                 std::string dismUnmountCmd = "dism /Unmount-Wim /MountDir:\"" + mountDir + "\" /Commit";
                 logFile << getTimestamp() << "Unmounting boot.wim: " << dismUnmountCmd << std::endl;
-                std::string unmountOutput = exec(dismUnmountCmd.c_str());
+                std::string unmountOutput = Utils::exec(dismUnmountCmd.c_str());
                 logFile << getTimestamp() << "Unmount output: " << unmountOutput << std::endl;
             } else {
-                logFile << getTimestamp() << "Failed to mount boot.wim for Programs integration" << std::endl;
-                eventManager.notifyLogUpdate("Error al montar boot.wim para integrar Programs.\r\n");
+                logFile << getTimestamp() << "Failed to mount boot.wim for Programs integration. DISM output: " << mountOutput << std::endl;
+                eventManager.notifyLogUpdate("Error al montar boot.wim para integrar Programs. Verifique el archivo de log para mas detalles.\r\n");
             }
             // Clean up mount directory
             RemoveDirectoryA(mountDir.c_str());
