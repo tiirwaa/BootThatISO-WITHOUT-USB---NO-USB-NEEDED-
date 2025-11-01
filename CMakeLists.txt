@@ -47,6 +47,8 @@ configure_file(
     ${CMAKE_BINARY_DIR}/version.h
 )
 
+set(CMAKE_MFC_FLAG 2)
+
 add_executable(BootThatISO WIN32 ${SOURCE_FILES} ${RESOURCE_FILES})
 
 target_include_directories(BootThatISO
@@ -56,7 +58,7 @@ target_include_directories(BootThatISO
 )
 
 if(MSVC)
-    target_compile_options(BootThatISO PRIVATE /utf-8 /W4 /permissive- /EHsc /Zc:__cplusplus)
+    target_compile_options(BootThatISO PRIVATE /utf-8 /W4 /permissive- /EHsc /Zc:__cplusplus $<$<CONFIG:Release>:/MT> $<$<CONFIG:Debug>:/MTd>)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 else()
     target_compile_options(BootThatISO PRIVATE -Wall -Wextra -Wpedantic -Wconversion -Wshadow)
@@ -64,7 +66,6 @@ endif()
 
 # Link necessary libraries (MFC is included via CMAKE_MFC_FLAG)
 target_link_libraries(BootThatISO comctl32 gdiplus)
-set(CMAKE_MFC_FLAG 1)
 
 set_target_properties(BootThatISO PROPERTIES OUTPUT_NAME "BootThatISO!")
 
