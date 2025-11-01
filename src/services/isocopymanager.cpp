@@ -205,7 +205,7 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
     
     long long isoSize = Utils::getFileSize(isoPath);
     long long copiedSoFar = 0;
-    eventManager.notifyDetailedProgress(0, isoSize, "Montando ISO");
+    eventManager.notifyDetailedProgress(5, 100, "Montando ISO");
     
     // Mount the ISO
     std::string driveLetterStr;
@@ -233,7 +233,7 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
         return false;
     }
     
-    eventManager.notifyDetailedProgress(isoSize / 10, isoSize, "Analizando contenido ISO");
+    eventManager.notifyDetailedProgress(10, 100, "Analizando contenido ISO");
     
     // List all files and directories recursively in the ISO (up to 10 levels deep)
     std::ofstream contentLog(logDir + "\\" + ISO_CONTENT_LOG_FILE);
@@ -258,23 +258,21 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
     
     // Calculate MD5 of the ISO
     std::string md5 = Utils::calculateMD5(isoPath);
-    // Combine version and ISO hash for unique identification
-    std::string combinedHash = Utils::calculateMD5(APP_VERSION + md5);
     std::string hashFilePath = destPath + "\\ISOBOOTHASH";
     HashInfo existing = readHashInfo(hashFilePath);
-    bool skipCopy = (existing.hash == combinedHash && existing.mode == mode && existing.format == format && !existing.hash.empty());
+    bool skipCopy = (existing.hash == md5 && existing.version == APP_VERSION && existing.mode == mode && existing.format == format && !existing.hash.empty());
     if (skipCopy) {
-        logFile << getTimestamp() << "ISO hash, mode and format match existing, skipping content copy" << std::endl;
-        eventManager.notifyLogUpdate("Hash, modo y formato del ISO coinciden, omitiendo copia de contenido.\r\n");
+        logFile << getTimestamp() << "ISO hash, version, mode and format match existing, skipping content copy" << std::endl;
+        eventManager.notifyLogUpdate("Hash, versión, modo y formato del ISO coinciden, omitiendo copia de contenido.\r\n");
     }
     
     if (extractContent && !skipCopy) {
         // Provide feedback while copying the ISO payload
         eventManager.notifyLogUpdate("Copiando contenido del ISO hacia la particion ISOBOOT. Esto puede tardar varios minutos...\r\n");
         if (isoSize > 0) {
-            eventManager.notifyDetailedProgress(0, isoSize, "Copiando contenido del ISO");
+            eventManager.notifyDetailedProgress(15, 100, "Copiando contenido del ISO");
         } else {
-            eventManager.notifyDetailedProgress(0, 0, "Copiando contenido del ISO");
+            eventManager.notifyDetailedProgress(15, 100, "Copiando contenido del ISO");
         }
         // Extract all ISO contents to data partition, excluding EFI
         std::set<std::string> excludeDirs = {"efi", "EFI"};
@@ -286,6 +284,45 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
             return false;
         }
         eventManager.notifyLogUpdate("Contenido del ISO copiado correctamente.\r\n");
+
+        // Reconfigure .ini files in the destination directory
+        WIN32_FIND_DATAA findData;
+        HANDLE hFind = FindFirstFileA((destPath + "*.ini").c_str(), &findData);
+        if (hFind != INVALID_HANDLE_VALUE) {
+            bool moreFiles = true;
+            while (moreFiles) {
+                std::string iniName = findData.cFileName;
+                std::string iniPath = destPath + iniName;
+                std::ifstream iniFile(iniPath);
+                if (iniFile.is_open()) {
+                    std::stringstream buffer;
+                    buffer << iniFile.rdbuf();
+                    std::string iniContent = buffer.str();
+                    iniFile.close();
+                    size_t pos = 0;
+                    while ((pos = iniContent.find("Y:\\", pos)) != std::string::npos) {
+                        iniContent.replace(pos, 3, "X:\\");
+                        pos += 3;
+                    }
+                    // Additional reconfiguration for .ini files with ExtPrograms section
+                    size_t extPos = iniContent.find("_SUB ExtPrograms");
+                    if (extPos != std::string::npos) {
+                        size_t commentPos = iniContent.find("// EXEC X:\\Programs\\Sysinternals_Process_Monitor\\procmon.exe", extPos);
+                        if (commentPos != std::string::npos) {
+                            size_t insertPos = iniContent.find('\n', commentPos) + 1;
+                            std::string toInsert = "\t// Agrega aquí EXEC para programas de la carpeta Programs\n\t// Ejemplo: EXEC X:\\Programs\\TuPrograma.exe\n";
+                            iniContent.insert(insertPos, toInsert);
+                        }
+                    }
+                    std::ofstream outIniFile(iniPath);
+                    outIniFile << iniContent;
+                    outIniFile.close();
+                    logFile << getTimestamp() << iniName << " reconfigured in destination directory" << std::endl;
+                }
+                moreFiles = FindNextFileA(hFind, &findData);
+            }
+            FindClose(hFind);
+        }
     } else if (!extractContent && isWindowsISO && !skipCopy) {
         // For Windows ISOs in RAM mode, copy the Programs folder to have shortcuts available
         programsSrc = sourcePath + "Programs";
@@ -316,7 +353,8 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
     bool installWimSuccess = true;
     bool additionalBootFilesSuccess = true;
     std::string bootWimDest = destPath + "sources\\boot.wim";
-    if (extractBootWim) {
+    if (extractBootWim && !skipCopy) {
+        eventManager.notifyDetailedProgress(20, 100, "Preparando archivos de arranque del ISO");
         eventManager.notifyLogUpdate("Preparando archivos de arranque del ISO...\r\n");
         if (!skipCopy) {
             std::string bootWimSrc = sourcePath + "sources\\boot.wim";
@@ -326,6 +364,7 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
                 logFile << getTimestamp() << "boot.wim already exists at " << bootWimDest << std::endl;
                 bootWimSuccess = true;
             } else {
+                eventManager.notifyDetailedProgress(25, 100, "Extrayendo boot.wim hacia la particion de datos");
                 eventManager.notifyLogUpdate("Extrayendo boot.wim hacia la particion de datos...\r\n");
                 eventManager.notifyDetailedProgress(0, 0, "Copiando boot.wim...");
                 if (copyFileUtf8(bootWimSrc, bootWimDest)) {
@@ -348,6 +387,7 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
                 logFile << getTimestamp() << "boot.sdi already exists at " << bootSdiDest << std::endl;
                 bootSdiSuccess = true;
             } else if (GetFileAttributesA(bootSdiSrc.c_str()) != INVALID_FILE_ATTRIBUTES) {
+                eventManager.notifyDetailedProgress(30, 100, "Copiando boot.sdi requerido para arranque RAM");
                 eventManager.notifyLogUpdate("Copiando boot.sdi requerido para arranque RAM...\r\n");
                 eventManager.notifyDetailedProgress(0, 0, "Copiando boot.sdi...");
                 if (copyFileUtf8(bootSdiSrc, bootSdiDest)) {
@@ -371,6 +411,7 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
                 CreateDirectoryA(installWimDestDir.c_str(), NULL);
                 std::string installWimDest = installWimDestDir + "\\install.wim";
                 if (GetFileAttributesA(installWimSrc.c_str()) != INVALID_FILE_ATTRIBUTES) {
+                    eventManager.notifyDetailedProgress(35, 100, "Copiando install.wim completo al destino");
                     eventManager.notifyLogUpdate("Copiando install.wim completo al destino...\r\n");
                     eventManager.notifyDetailedProgress(0, 0, "Copiando install.wim...");
                     if (copyFileUtf8(installWimSrc, installWimDest)) {
@@ -407,6 +448,7 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
             logFile << getTimestamp() << "Mount output: " << mountOutput << std::endl;
             if (mountOutput.find("correctamente") != std::string::npos || mountOutput.find("successfully") != std::string::npos || mountOutput.empty()) {
                 if (integratePrograms) {
+                    eventManager.notifyDetailedProgress(40, 100, "Integrando Programs en boot.wim");
                     eventManager.notifyLogUpdate("Integrando Programs en boot.wim...\r\n");
                     eventManager.notifyDetailedProgress(0, 0, "Integrando Programs en boot.wim...");
                     std::string programsDest = mountDir + "\\Programs";
@@ -420,6 +462,7 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
                     }
                 }
                 // Copy all .ini files from root and reconfigure paths
+                eventManager.notifyDetailedProgress(50, 100, "Copiando y reconfigurando archivos .ini");
                 WIN32_FIND_DATAA findData;
                 HANDLE hFind = FindFirstFileA((sourcePath + "*.ini").c_str(), &findData);
                 if (hFind != INVALID_HANDLE_VALUE) {
@@ -475,6 +518,7 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
             RemoveDirectoryA(mountDir.c_str());
         }
 
+        eventManager.notifyDetailedProgress(60, 100, "Extrayendo archivos adicionales desde boot.wim");
         eventManager.notifyLogUpdate("Extrayendo archivos adicionales desde boot.wim...\r\n");
         eventManager.notifyDetailedProgress(0, 0, "Extrayendo archivos de boot.wim...");
         if (!efiManager->extractBootFilesFromWIM(sourcePath, espPath, destPath, copiedSoFar, isoSize)) {
@@ -488,10 +532,11 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
     }
 
     // Extract EFI
+    eventManager.notifyDetailedProgress(80, 100, "Extrayendo EFI");
     bool efiSuccess = efiManager->extractEFI(sourcePath, espPath, isWindowsISO, copiedSoFar, isoSize);
     
     // Dismount the ISO
-    eventManager.notifyDetailedProgress(isoSize * 9 / 10, isoSize, "Desmontando ISO");
+    eventManager.notifyDetailedProgress(90, 100, "Desmontando ISO");
     if (!isoMounter->unmountISO(isoPath)) {
         logFile << getTimestamp() << "Warning: Failed to unmount ISO" << std::endl;
     }
@@ -514,13 +559,14 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
     // Write the current ISO hash, mode and format to the file
     std::ofstream hashFile(hashFilePath);
     if (hashFile.is_open()) {
-        hashFile << combinedHash << std::endl;
+        hashFile << md5 << std::endl;
+        hashFile << APP_VERSION << std::endl;
         hashFile << mode << std::endl;
         hashFile << format << std::endl;
         hashFile.close();
     }
     
-    eventManager.notifyDetailedProgress(0, 0, "");
+    eventManager.notifyDetailedProgress(100, 100, "");
     return efiSuccess && bootWimSuccess && bootSdiSuccess && installWimSuccess && additionalBootFilesSuccess;
 }
 
@@ -587,10 +633,11 @@ static BOOL copyFileUtf8(const std::string& src, const std::string& dst) {
 
 // Helper function to read hash info from file
 static HashInfo readHashInfo(const std::string& path) {
-    HashInfo info = {"", "", ""};
+    HashInfo info = {"", "", "", ""};
     std::ifstream file(path);
     if (file.is_open()) {
         std::getline(file, info.hash);
+        std::getline(file, info.version);
         std::getline(file, info.mode);
         std::getline(file, info.format);
     }

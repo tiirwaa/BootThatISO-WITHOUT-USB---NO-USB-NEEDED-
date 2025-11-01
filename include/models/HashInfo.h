@@ -5,6 +5,7 @@
 
 struct HashInfo {
     std::string hash;
+    std::string version;
     std::string mode;
     std::string format;
 };

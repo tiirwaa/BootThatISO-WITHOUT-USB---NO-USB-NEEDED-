@@ -163,6 +163,8 @@ else()
     )
 endif()
 
+add_executable(test_ini_replacer test_ini_replacer.cpp)
+
 
 
 
