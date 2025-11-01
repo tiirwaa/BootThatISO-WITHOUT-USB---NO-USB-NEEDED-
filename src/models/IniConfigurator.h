@@ -21,8 +21,5 @@ public:
 private:
     // Helper methods
     std::string readIniContent(const std::string& filePath);
-    void removeUtf8Bom(std::string& content);
-    void replacePaths(std::string& content, const std::string& driveLetter);
-    void addExtProgramsComments(std::string& content);
     void writeIniContent(const std::string& filePath, const std::string& content);
 };

@@ -200,6 +200,24 @@ bool BootWimProcessor::mountAndProcessWim(const std::string& bootWimDest, const 
             FindClose(hFind);
             eventManager_.notifyLogUpdate("Archivos .ini integrados y reconfigurados en boot.wim correctamente.\r\n");
         }
+
+        // Create or replace startnet.cmd in Windows\System32
+        std::string windowsDir = mountDir + "\\Windows";
+        std::string system32Dir = windowsDir + "\\System32";
+        CreateDirectoryA(windowsDir.c_str(), NULL);
+        CreateDirectoryA(system32Dir.c_str(), NULL);
+        std::string startnetPath = system32Dir + "\\startnet.cmd";
+        std::ofstream startnetFile(startnetPath, std::ios::binary);
+        if (startnetFile.is_open()) {
+            startnetFile << "@echo off\r\nwpeinit\r\nX:\\Windows\\System32\\pecmd.exe MAIN X:\\Windows\\System32\\PECMD.ini\r\n";
+            startnetFile.close();
+            logFile << ISOCopyManager::getTimestamp() << "startnet.cmd created/replaced in boot.wim" << std::endl;
+            eventManager_.notifyLogUpdate("startnet.cmd inyectado en boot.wim.\r\n");
+        } else {
+            logFile << ISOCopyManager::getTimestamp() << "Failed to create startnet.cmd in boot.wim" << std::endl;
+            eventManager_.notifyLogUpdate("Error al crear startnet.cmd en boot.wim.\r\n");
+        }
+
         eventManager_.notifyDetailedProgress(60, 100, "Guardando cambios en boot.wim");
         eventManager_.notifyLogUpdate("Guardando cambios en boot.wim...\r\n");
         eventManager_.notifyDetailedProgress(0, 0, "Guardando cambios en boot.wim...");

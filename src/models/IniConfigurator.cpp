@@ -8,14 +8,7 @@ IniConfigurator::~IniConfigurator() {
 }
 
 bool IniConfigurator::configureIniFile(const std::string& filePath, const std::string& driveLetter) {
-    std::string content = readIniContent(filePath);
-    if (content.empty()) {
-        return false;
-    }
-    removeUtf8Bom(content);
-    replacePaths(content, driveLetter);
-    addExtProgramsComments(content);
-    writeIniContent(filePath, content);
+    // No modifications, just ensure the file exists or something, but since it's copy as is, maybe do nothing
     return true;
 }
 
@@ -24,9 +17,6 @@ bool IniConfigurator::processIniFile(const std::string& inputPath, const std::st
     if (content.empty()) {
         return false;
     }
-    removeUtf8Bom(content);
-    replacePaths(content, driveLetter);
-    addExtProgramsComments(content);
     writeIniContent(outputPath, content);
     return true;
 }
@@ -57,30 +47,6 @@ std::string IniConfigurator::readIniContent(const std::string& filePath) {
     buffer << iniFile.rdbuf();
     iniFile.close();
     return buffer.str();
-}
-
-void IniConfigurator::removeUtf8Bom(std::string& content) {
-    if (content.size() >= 3 && static_cast<unsigned char>(content[0]) == 0xEF &&
-        static_cast<unsigned char>(content[1]) == 0xBB && static_cast<unsigned char>(content[2]) == 0xBF) {
-        content = content.substr(3);
-    }
-}
-
-void IniConfigurator::replacePaths(std::string& content, const std::string& driveLetter) {
-    size_t pos = 0;
-    while ((pos = content.find("Y:\\", pos)) != std::string::npos) {
-        content.replace(pos, 3, "X:\\");
-        pos += 3;
-    }
-    pos = 0;
-    while ((pos = content.find("Y:/", pos)) != std::string::npos) {
-        content.replace(pos, 3, "X:/");
-        pos += 3;
-    }
-}
-
-void IniConfigurator::addExtProgramsComments(std::string& content) {
-    // No longer adding comments
 }
 
 void IniConfigurator::writeIniContent(const std::string& filePath, const std::string& content) {
