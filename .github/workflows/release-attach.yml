@@ -120,6 +120,6 @@ jobs:
           echo "Descarga el ejecutable desde los assets adjuntos." >> release_notes.md
 
       - name: Create Release
-        run: gh release create ${{ steps.resolve-tag.outputs.tag }} --generate-notes --notes-file release_notes.md "${{ steps.find-exe.outputs.exe_path }}"
+        run: gh release create ${{ steps.resolve-tag.outputs.tag }} --generate-notes --notes-file release_notes.md "${{ steps.find-exe.outputs.exe_path }}" screenshot.png
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
