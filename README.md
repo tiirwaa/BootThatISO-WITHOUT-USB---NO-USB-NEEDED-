@@ -32,9 +32,9 @@ Website: [English](https://agsoft.co.cr/en/software-and-services/) | [Spanish](h
 ## Tested ISOs
 
 ### RAM Mode (Boot from Memory)
-- ✅ HBCD_PE_x64.iso (CORRECT BOOT)
-- ✅ Win11_25H2_Spanish_x64.iso (CORRECT BOOT)
-- ✅ Windows10_22H2_X64.iso (CORRECT BOOT)
+- ✅ HBCD_PE_x64.iso
+- ✅ Win11_25H2_Spanish_x64.iso (BOOT, TESTING INSTALL)
+- ✅ Windows10_22H2_X64.iso (BOOT, TESTING INSTALL)
 
 ### EXTRACT Mode (Full Installation)
 - ✅ HBCD_PE_x64.iso (falls back to ISOBOOT_RAM)
@@ -167,9 +167,9 @@ Sitio web: [Inglés](https://agsoft.co.cr/en/software-and-services/) | [Español
 ## ISOs Testeadas
 
 ### Modo RAM (Boot desde Memoria)
-- ✅ HBCD_PE_x64.iso (ARRANQUE CORRECTO)
-- ✅ Win11_25H2_Spanish_x64.iso (ARRANQUE CORRECTO)
-- ✅ Windows10_22H2_X64.iso (ARRANQUE CORRECTO)
+- ✅ HBCD_PE_x64.iso 
+- ✅ Win11_25H2_Spanish_x64.iso (ARRANQUE, PROBANDO INSTALACION)
+- ✅ Windows10_22H2_X64.iso (ARRANQUE, PROBANDO INSTALACION)
 
 ### Modo EXTRACT (Instalación Completa)
 - ✅ HBCD_PE_x64.iso (hace fallback ISOBOOT_RAM)
