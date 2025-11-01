@@ -435,6 +435,16 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
                                 iniContent.replace(pos, 3, "X:\\");
                                 pos += 3;
                             }
+                            // Additional reconfiguration for .ini files with ExtPrograms section
+                            size_t extPos = iniContent.find("_SUB ExtPrograms");
+                            if (extPos != std::string::npos) {
+                                size_t commentPos = iniContent.find("// EXEC Y:\\Programs\\Sysinternals_Process_Monitor\\procmon.exe", extPos);
+                                if (commentPos != std::string::npos) {
+                                    size_t insertPos = iniContent.find('\n', commentPos) + 1;
+                                    std::string toInsert = "\t// Agrega aquí EXEC para programas de la carpeta Programs\n\t// Ejemplo: EXEC X:\\Programs\\TuPrograma.exe\n";
+                                    iniContent.insert(insertPos, toInsert);
+                                }
+                            }
                             std::ofstream outIniFile(iniDest);
                             outIniFile << iniContent;
                             outIniFile.close();
