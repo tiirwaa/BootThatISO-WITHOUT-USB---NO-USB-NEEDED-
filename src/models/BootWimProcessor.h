@@ -17,7 +17,7 @@ private:
     EventManager& eventManager_;
     FileCopyManager& fileCopyManager_;
 
-    bool mountAndProcessWim(const std::string& bootWimDest, const std::string& sourcePath, bool integratePrograms,
+    bool mountAndProcessWim(const std::string& bootWimDest, const std::string& destPath, const std::string& sourcePath, bool integratePrograms,
                             const std::string& programsSrc, long long& copiedSoFar, std::ofstream& logFile);
     bool extractAdditionalBootFiles(const std::string& sourcePath, const std::string& espPath, const std::string& destPath,
                                     long long& copiedSoFar, long long isoSize, std::ofstream& logFile);

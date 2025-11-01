@@ -32,7 +32,8 @@ bool ContentExtractor::extractContent(const std::string& sourcePath, const std::
 
     // Reconfigure .ini files in the destination directory
     IniConfigurator iniConfigurator;
-    iniConfigurator.configureIniFilesInDirectory(destPath, logFile, ISOCopyManager::getTimestamp);
+    std::string driveLetter = destPath.substr(0,2);
+    iniConfigurator.configureIniFilesInDirectory(destPath, logFile, ISOCopyManager::getTimestamp, driveLetter);
 
     return true;
 }

@@ -99,7 +99,7 @@ bool BootWimProcessor::processBootWim(const std::string& sourcePath, const std::
 
         // Mount and process boot.wim
         if (bootWimSuccess) {
-            bootWimSuccess = mountAndProcessWim(bootWimDest, sourcePath, integratePrograms, programsSrc, copiedSoFar, logFile);
+            bootWimSuccess = mountAndProcessWim(bootWimDest, destPath, sourcePath, integratePrograms, programsSrc, copiedSoFar, logFile);
         }
 
         // Extract additional boot files
@@ -109,8 +109,9 @@ bool BootWimProcessor::processBootWim(const std::string& sourcePath, const std::
     return bootWimSuccess && bootSdiSuccess && installWimSuccess && additionalBootFilesSuccess;
 }
 
-bool BootWimProcessor::mountAndProcessWim(const std::string& bootWimDest, const std::string& sourcePath, bool integratePrograms,
+bool BootWimProcessor::mountAndProcessWim(const std::string& bootWimDest, const std::string& destPath, const std::string& sourcePath, bool integratePrograms,
                                           const std::string& programsSrc, long long& copiedSoFar, std::ofstream& logFile) {
+    std::string driveLetter = destPath.substr(0,2);
     std::string mountDir = std::string(bootWimDest.begin(), bootWimDest.end() - std::string("sources\\boot.wim").length()) + "temp_mount";
     // Ensure mount directory is clean
     if (GetFileAttributesA(mountDir.c_str()) != INVALID_FILE_ATTRIBUTES) {
@@ -168,7 +169,7 @@ bool BootWimProcessor::mountAndProcessWim(const std::string& bootWimDest, const 
             while (moreFilesExisting) {
                 std::string iniNameExisting = findDataExisting.cFileName;
                 std::string iniPathExisting = mountDir + "\\" + iniNameExisting;
-                iniConfigurator.configureIniFile(iniPathExisting);
+                iniConfigurator.configureIniFile(iniPathExisting, driveLetter);
                 logFile << ISOCopyManager::getTimestamp() << "Existing " << iniNameExisting << " in boot.wim reconfigured" << std::endl;
                 moreFilesExisting = FindNextFileA(hFindExisting, &findDataExisting);
             }
@@ -183,12 +184,16 @@ bool BootWimProcessor::mountAndProcessWim(const std::string& bootWimDest, const 
                 std::string iniName = findData.cFileName;
                 std::string iniSrc = sourcePath + iniName;
                 std::string iniDest = mountDir + "\\" + iniName;
-                if (fileCopyManager_.copyFileUtf8(iniSrc, iniDest)) {
-                    logFile << ISOCopyManager::getTimestamp() << iniName << " copied to boot.wim successfully" << std::endl;
-                    iniConfigurator.configureIniFile(iniDest);
-                    logFile << ISOCopyManager::getTimestamp() << iniName << " reconfigured successfully" << std::endl;
+                // Process the .ini content outside the .wim and write directly to mountDir
+                if (iniConfigurator.processIniFile(iniSrc, iniDest, driveLetter)) {
+                    logFile << ISOCopyManager::getTimestamp() << iniName << " processed and copied to boot.wim successfully" << std::endl;
                 } else {
-                    logFile << ISOCopyManager::getTimestamp() << "Failed to copy " << iniName << " to boot.wim" << std::endl;
+                    // Fallback: copy without processing
+                    if (fileCopyManager_.copyFileUtf8(iniSrc, iniDest)) {
+                        logFile << ISOCopyManager::getTimestamp() << iniName << " copied to boot.wim successfully (fallback)" << std::endl;
+                    } else {
+                        logFile << ISOCopyManager::getTimestamp() << "Failed to copy " << iniName << " to boot.wim" << std::endl;
+                    }
                 }
                 moreFiles = FindNextFileA(hFind, &findData);
             }

@@ -7,19 +7,31 @@ IniConfigurator::IniConfigurator() {
 IniConfigurator::~IniConfigurator() {
 }
 
-bool IniConfigurator::configureIniFile(const std::string& filePath) {
+bool IniConfigurator::configureIniFile(const std::string& filePath, const std::string& driveLetter) {
     std::string content = readIniContent(filePath);
     if (content.empty()) {
         return false;
     }
     removeUtf8Bom(content);
-    replacePaths(content);
+    replacePaths(content, driveLetter);
     addExtProgramsComments(content);
     writeIniContent(filePath, content);
     return true;
 }
 
-void IniConfigurator::configureIniFilesInDirectory(const std::string& dirPath, std::ofstream& logFile, const char* timestampFunc()) {
+bool IniConfigurator::processIniFile(const std::string& inputPath, const std::string& outputPath, const std::string& driveLetter) {
+    std::string content = readIniContent(inputPath);
+    if (content.empty()) {
+        return false;
+    }
+    removeUtf8Bom(content);
+    replacePaths(content, driveLetter);
+    addExtProgramsComments(content);
+    writeIniContent(outputPath, content);
+    return true;
+}
+
+void IniConfigurator::configureIniFilesInDirectory(const std::string& dirPath, std::ofstream& logFile, const char* timestampFunc(), const std::string& driveLetter) {
     WIN32_FIND_DATAA findData;
     HANDLE hFind = FindFirstFileA((dirPath + "*.ini").c_str(), &findData);
     if (hFind != INVALID_HANDLE_VALUE) {
@@ -27,7 +39,7 @@ void IniConfigurator::configureIniFilesInDirectory(const std::string& dirPath, s
         while (moreFiles) {
             std::string iniName = findData.cFileName;
             std::string iniPath = dirPath + iniName;
-            if (configureIniFile(iniPath)) {
+            if (configureIniFile(iniPath, driveLetter)) {
                 logFile << timestampFunc() << iniName << " reconfigured in destination directory" << std::endl;
             }
             moreFiles = FindNextFileA(hFind, &findData);
@@ -54,7 +66,7 @@ void IniConfigurator::removeUtf8Bom(std::string& content) {
     }
 }
 
-void IniConfigurator::replacePaths(std::string& content) {
+void IniConfigurator::replacePaths(std::string& content, const std::string& driveLetter) {
     size_t pos = 0;
     while ((pos = content.find("Y:\\", pos)) != std::string::npos) {
         content.replace(pos, 3, "X:\\");
@@ -68,15 +80,7 @@ void IniConfigurator::replacePaths(std::string& content) {
 }
 
 void IniConfigurator::addExtProgramsComments(std::string& content) {
-    size_t extPos = content.find("_SUB ExtPrograms");
-    if (extPos != std::string::npos) {
-        size_t commentPos = content.find("// EXEC X:\\Programs\\Sysinternals_Process_Monitor\\procmon.exe", extPos);
-        if (commentPos != std::string::npos) {
-            size_t insertPos = content.find('\n', commentPos) + 1;
-            std::string toInsert = "\t// Agrega aquí EXEC para programas de la carpeta Programs\n\t// Ejemplo: EXEC X:\\Programs\\TuPrograma.exe\n";
-            content.insert(insertPos, toInsert);
-        }
-    }
+    // No longer adding comments
 }
 
 void IniConfigurator::writeIniContent(const std::string& filePath, const std::string& content) {
