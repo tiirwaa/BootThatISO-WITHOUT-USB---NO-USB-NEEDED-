@@ -33,24 +33,25 @@
 #define WM_UPDATE_ERROR (WM_USER + 6)
 #define WM_RECOVER_COMPLETE (WM_USER + 7)
 
-class MainWindow : public EventObserver
-{
+class MainWindow : public EventObserver {
 public:
     MainWindow(HWND parent);
     ~MainWindow();
 
     void onProgressUpdate(int progress) override;
-    void onLogUpdate(const std::string& message) override;
+    void onLogUpdate(const std::string &message) override;
     void onButtonEnable() override;
     void onAskRestart() override;
-    void onError(const std::string& message) override;
-    void onDetailedProgress(long long copied, long long total, const std::string& operation) override;
+    void onError(const std::string &message) override;
+    void onDetailedProgress(long long copied, long long total, const std::string &operation) override;
     void onRecoverComplete(bool success) override;
 
     // Request cancellation of running process
     void requestCancel();
 
-    bool IsProcessing() const { return isProcessing || isRecovering; }
+    bool IsProcessing() const {
+        return isProcessing || isRecovering;
+    }
 
     LRESULT HandleCommand(UINT msg, WPARAM wParam, LPARAM lParam);
 
@@ -60,8 +61,8 @@ private:
     void CreateControls(HWND parent);
     void ApplyStyles();
     void UpdateDiskSpaceInfo();
-    void LogMessage(const std::string& msg, bool persist = true);
-    void UpdateDetailedProgressLabel(long long copied, long long total, const std::string& operation);
+    void LogMessage(const std::string &msg, bool persist = true);
+    void UpdateDetailedProgressLabel(long long copied, long long total, const std::string &operation);
     void PromptRestart();
 
     void OnSelectISO();
@@ -72,10 +73,10 @@ private:
     void StartProcessingAnimation();
     void StopProcessingAnimation();
 
-    PartitionManager* partitionManager;
-    ISOCopyManager* isoCopyManager;
-    BCDManager* bcdManager;
-    EventManager eventManager;
+    PartitionManager                  *partitionManager;
+    ISOCopyManager                    *isoCopyManager;
+    BCDManager                        *bcdManager;
+    EventManager                       eventManager;
     std::unique_ptr<ProcessController> processController;
 
     // File system format selection
@@ -134,18 +135,18 @@ private:
     HWND developedByLabel;
 
     HINSTANCE hInst;
-    HWND hWndParent;
+    HWND      hWndParent;
 
     // Images
-    Gdiplus::Bitmap* logoBitmap;
-    HICON logoHIcon;
-    HICON buttonHIcon;
-    Gdiplus::Bitmap* buttonBitmap;
-    double buttonRotationAngle;
-    UINT_PTR buttonSpinTimerId;
+    Gdiplus::Bitmap *logoBitmap;
+    HICON            logoHIcon;
+    HICON            buttonHIcon;
+    Gdiplus::Bitmap *buttonBitmap;
+    double           buttonRotationAngle;
+    UINT_PTR         buttonSpinTimerId;
 
     // Recovery dialog
-    HWND hRecoverDialog;
+    HWND         hRecoverDialog;
     std::wstring recoverMessageText;
 
     // Thread management
@@ -158,6 +159,3 @@ private:
 };
 
 #endif // MAINWINDOW_H
-
-
-

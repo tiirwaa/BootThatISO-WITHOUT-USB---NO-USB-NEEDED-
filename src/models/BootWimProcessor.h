@@ -6,19 +6,21 @@
 
 class BootWimProcessor {
 public:
-    BootWimProcessor(EventManager& eventManager, FileCopyManager& fileCopyManager);
+    BootWimProcessor(EventManager &eventManager, FileCopyManager &fileCopyManager);
     ~BootWimProcessor();
 
-    bool processBootWim(const std::string& sourcePath, const std::string& destPath, const std::string& espPath,
-                        bool integratePrograms, const std::string& programsSrc, long long& copiedSoFar,
-                        bool extractBootWim, bool copyInstallWim, std::ofstream& logFile);
+    bool processBootWim(const std::string &sourcePath, const std::string &destPath, const std::string &espPath,
+                        bool integratePrograms, const std::string &programsSrc, long long &copiedSoFar,
+                        bool extractBootWim, bool copyInstallWim, std::ofstream &logFile);
 
 private:
-    EventManager& eventManager_;
-    FileCopyManager& fileCopyManager_;
+    EventManager    &eventManager_;
+    FileCopyManager &fileCopyManager_;
 
-    bool mountAndProcessWim(const std::string& bootWimDest, const std::string& destPath, const std::string& sourcePath, bool integratePrograms,
-                            const std::string& programsSrc, long long& copiedSoFar, std::ofstream& logFile);
-    bool extractAdditionalBootFiles(const std::string& sourcePath, const std::string& espPath, const std::string& destPath,
-                                    long long& copiedSoFar, long long isoSize, std::ofstream& logFile);
+    bool mountAndProcessWim(const std::string &bootWimDest, const std::string &destPath, const std::string &sourcePath,
+                            bool integratePrograms, const std::string &programsSrc, long long &copiedSoFar,
+                            std::ofstream &logFile);
+    bool extractAdditionalBootFiles(const std::string &sourcePath, const std::string &espPath,
+                                    const std::string &destPath, long long &copiedSoFar, long long isoSize,
+                                    std::ofstream &logFile);
 };

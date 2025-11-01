@@ -7,10 +7,12 @@ public:
     HashVerifier();
     ~HashVerifier();
 
-    bool shouldSkipCopy(const std::string& isoPath, const std::string& hashFilePath, const std::string& mode, const std::string& format);
-    void saveHashInfo(const std::string& hashFilePath, const std::string& md5, const std::string& mode, const std::string& format);
+    bool shouldSkipCopy(const std::string &isoPath, const std::string &hashFilePath, const std::string &mode,
+                        const std::string &format);
+    void saveHashInfo(const std::string &hashFilePath, const std::string &md5, const std::string &mode,
+                      const std::string &format);
 
 private:
-    HashInfo readHashInfo(const std::string& path);
-    std::string calculateMD5(const std::string& filePath);
+    HashInfo    readHashInfo(const std::string &path);
+    std::string calculateMD5(const std::string &filePath);
 };

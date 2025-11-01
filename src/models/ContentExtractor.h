@@ -6,13 +6,14 @@
 
 class ContentExtractor {
 public:
-    ContentExtractor(EventManager& eventManager, FileCopyManager& fileCopyManager);
+    ContentExtractor(EventManager &eventManager, FileCopyManager &fileCopyManager);
     ~ContentExtractor();
 
-    bool extractContent(const std::string& sourcePath, const std::string& destPath, long long isoSize, long long& copiedSoFar,
-                        bool extractContent, bool isWindowsISO, const std::string& mode, std::ofstream& logFile);
+    bool extractContent(const std::string &sourcePath, const std::string &destPath, long long isoSize,
+                        long long &copiedSoFar, bool extractContent, bool isWindowsISO, const std::string &mode,
+                        std::ofstream &logFile);
 
 private:
-    EventManager& eventManager_;
-    FileCopyManager& fileCopyManager_;
+    EventManager    &eventManager_;
+    FileCopyManager &fileCopyManager_;
 };
