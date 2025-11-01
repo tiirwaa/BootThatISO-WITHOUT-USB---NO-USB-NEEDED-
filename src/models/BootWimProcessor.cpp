@@ -139,8 +139,26 @@ bool BootWimProcessor::mountAndProcessWim(const std::string& bootWimDest, const 
                 eventManager_.notifyLogUpdate("Error al integrar Programs en boot.wim.\r\n");
             }
         }
+        // Integrate CustomDrivers if it exists
+        std::string customDriversSrc = sourcePath + "CustomDrivers";
+        if (GetFileAttributesA(customDriversSrc.c_str()) != INVALID_FILE_ATTRIBUTES) {
+            eventManager_.notifyDetailedProgress(45, 100, "Integrando CustomDrivers en boot.wim");
+            eventManager_.notifyLogUpdate("Integrando CustomDrivers en boot.wim...\r\n");
+            eventManager_.notifyDetailedProgress(0, 0, "Integrando CustomDrivers en boot.wim...");
+            long long customDriversSize = Utils::getDirectorySize(customDriversSrc);
+            std::string customDriversDest = mountDir + "\\CustomDrivers";
+            std::set<std::string> excludeDirs;
+            if (fileCopyManager_.copyDirectoryWithProgress(customDriversSrc, customDriversDest, customDriversSize, copiedSoFar, excludeDirs, "Integrando CustomDrivers en boot.wim")) {
+                logFile << ISOCopyManager::getTimestamp() << "CustomDrivers integrated into boot.wim successfully" << std::endl;
+                eventManager_.notifyLogUpdate("CustomDrivers integrado en boot.wim correctamente.\r\n");
+            } else {
+                logFile << ISOCopyManager::getTimestamp() << "Failed to integrate CustomDrivers into boot.wim" << std::endl;
+                eventManager_.notifyLogUpdate("Error al integrar CustomDrivers en boot.wim.\r\n");
+            }
+        }
+        eventManager_.notifyDetailedProgress(0, 0, "");
         // Copy and configure .ini files
-        eventManager_.notifyDetailedProgress(50, 100, "Copiando y reconfigurando archivos .ini");
+        eventManager_.notifyDetailedProgress(55, 100, "Copiando y reconfigurando archivos .ini");
         IniConfigurator iniConfigurator;
         // First, reconfigure any existing .ini files in the mounted boot.wim
         WIN32_FIND_DATAA findDataExisting;
@@ -177,7 +195,7 @@ bool BootWimProcessor::mountAndProcessWim(const std::string& bootWimDest, const 
             FindClose(hFind);
             eventManager_.notifyLogUpdate("Archivos .ini integrados y reconfigurados en boot.wim correctamente.\r\n");
         }
-        eventManager_.notifyDetailedProgress(55, 100, "Guardando cambios en boot.wim");
+        eventManager_.notifyDetailedProgress(60, 100, "Guardando cambios en boot.wim");
         eventManager_.notifyLogUpdate("Guardando cambios en boot.wim...\r\n");
         eventManager_.notifyDetailedProgress(0, 0, "Guardando cambios en boot.wim...");
         std::string dismUnmountCmd = "dism /Unmount-Wim /MountDir:\"" + mountDir + "\" /Commit";

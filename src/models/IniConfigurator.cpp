@@ -37,7 +37,7 @@ void IniConfigurator::configureIniFilesInDirectory(const std::string& dirPath, s
 }
 
 std::string IniConfigurator::readIniContent(const std::string& filePath) {
-    std::ifstream iniFile(filePath);
+    std::ifstream iniFile(filePath, std::ios::binary);
     if (!iniFile.is_open()) {
         return "";
     }
@@ -80,7 +80,7 @@ void IniConfigurator::addExtProgramsComments(std::string& content) {
 }
 
 void IniConfigurator::writeIniContent(const std::string& filePath, const std::string& content) {
-    std::ofstream outIniFile(filePath);
+    std::ofstream outIniFile(filePath, std::ios::binary);
     outIniFile << content;
     outIniFile.close();
 }
