@@ -27,11 +27,12 @@ set(SOURCE_FILES
     src/models/PartitionCreator.cpp
     src/services/bcdmanager.cpp
     src/services/isocopymanager.cpp
-    src/services/isotypedetector.cpp    src/services/partitionmanager.cpp
-        src/utils/Logger.cpp
-        src/utils/LocalizationManager.cpp
-        src/utils/Utils.cpp
-        src/views/mainwindow.cpp
+    src/services/isotypedetector.cpp
+    src/services/partitionmanager.cpp
+    src/utils/Logger.cpp
+    src/utils/LocalizationManager.cpp
+    src/utils/Utils.cpp
+    src/views/mainwindow.cpp
 )
 
 set(RESOURCE_FILES
