@@ -54,6 +54,27 @@ long long Utils::getFileSize(const std::string& filePath) {
     return size.QuadPart;
 }
 
+long long Utils::getDirectorySize(const std::string& dirPath) {
+    long long totalSize = 0;
+    WIN32_FIND_DATAA findData;
+    HANDLE hFind = FindFirstFileA((dirPath + "\\*").c_str(), &findData);
+    if (hFind == INVALID_HANDLE_VALUE) return 0;
+    do {
+        std::string name = findData.cFileName;
+        if (name != "." && name != "..") {
+            std::string fullPath = dirPath + "\\" + name;
+            if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+                totalSize += getDirectorySize(fullPath);
+            } else {
+                long long fileSize = ((long long)findData.nFileSizeHigh << 32) | findData.nFileSizeLow;
+                totalSize += fileSize;
+            }
+        }
+    } while (FindNextFileA(hFind, &findData));
+    FindClose(hFind);
+    return totalSize;
+}
+
 std::string Utils::getExeDirectory() {
     char buffer[MAX_PATH];
     GetModuleFileNameA(NULL, buffer, MAX_PATH);

@@ -2,8 +2,15 @@
 #define PARTITIONMANAGER_H
 
 #include <string>
+#include <memory>
 #include "../models/SpaceValidationResult.h"
 #include "../models/EventManager.h"
+#include "../models/DiskIntegrityChecker.h"
+#include "../models/VolumeDetector.h"
+#include "../models/SpaceManager.h"
+#include "../models/DiskpartExecutor.h"
+#include "../models/PartitionReformatter.h"
+#include "../models/PartitionCreator.h"
 
 class PartitionManager
 {
@@ -16,21 +23,20 @@ private:
     EventManager* eventManager;
     std::string monitoredDrive;
 
+    // New dependency-injected components
+    std::unique_ptr<DiskIntegrityChecker> diskIntegrityChecker;
+    std::unique_ptr<VolumeDetector> volumeDetector;
+    std::unique_ptr<SpaceManager> spaceManager;
+    std::unique_ptr<DiskpartExecutor> diskpartExecutor;
+    std::unique_ptr<PartitionReformatter> partitionReformatter;
+    std::unique_ptr<PartitionCreator> partitionCreator;
+
     bool RestartComputer();
-
-    bool isDiskGpt();
-
-    // Refactored methods for createPartition
-    bool performDiskIntegrityCheck();
-    bool performGptCheck();
-    bool performSpaceRecovery();
-    bool performDiskpartOperations(const std::string& format);
-    bool verifyPartitionsCreated();
 
 public:
     static PartitionManager& getInstance();
 
-    void setEventManager(EventManager* em) { eventManager = em; }
+    void setEventManager(EventManager* em);
     void setMonitoredDrive(const std::string& driveRoot);
     std::string getMonitoredDrive() const { return monitoredDrive; }
 

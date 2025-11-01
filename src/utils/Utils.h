@@ -6,6 +6,7 @@
 namespace Utils {
     std::string exec(const char* cmd);
     long long getFileSize(const std::string& filePath);
+    long long getDirectorySize(const std::string& dirPath);
     std::string getExeDirectory();
     std::wstring utf8_to_wstring(const std::string& utf8);
     std::string wstring_to_utf8(const std::wstring& wstr);

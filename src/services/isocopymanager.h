@@ -11,6 +11,10 @@ class ISOTypeDetector;
 class EFIManager;
 class ISOMounter;
 class FileCopyManager;
+class IniConfigurator;
+class BootWimProcessor;
+class ContentExtractor;
+class HashVerifier;
 
 class ISOCopyManager
 {
@@ -27,13 +31,17 @@ public:
     bool copyISOFile(EventManager& eventManager, const std::string& isoPath, const std::string& destPath);
 
     bool getIsWindowsISO() const;
-    const char* getTimestamp();
+    static const char* getTimestamp();
 
 private:
     std::unique_ptr<ISOTypeDetector> typeDetector;
     std::unique_ptr<EFIManager> efiManager;
     std::unique_ptr<ISOMounter> isoMounter;
     std::unique_ptr<FileCopyManager> fileCopyManager;
+    std::unique_ptr<IniConfigurator> iniConfigurator;
+    std::unique_ptr<BootWimProcessor> bootWimProcessor;
+    std::unique_ptr<ContentExtractor> contentExtractor;
+    std::unique_ptr<HashVerifier> hashVerifier;
     bool isWindowsISODetected;
 
     std::string exec(const char* cmd, EventManager* eventManager = nullptr);

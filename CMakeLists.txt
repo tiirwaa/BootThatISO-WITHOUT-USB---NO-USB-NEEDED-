@@ -15,6 +15,16 @@ set(SOURCE_FILES
     src/models/efimanager.cpp
     src/models/filecopymanager.cpp
     src/models/isomounter.cpp
+    src/models/IniConfigurator.cpp
+    src/models/BootWimProcessor.cpp
+    src/models/ContentExtractor.cpp
+    src/models/HashVerifier.cpp
+    src/models/DiskIntegrityChecker.cpp
+    src/models/VolumeDetector.cpp
+    src/models/SpaceManager.cpp
+    src/models/DiskpartExecutor.cpp
+    src/models/PartitionReformatter.cpp
+    src/models/PartitionCreator.cpp
     src/services/bcdmanager.cpp
     src/services/isocopymanager.cpp
     src/services/isotypedetector.cpp    src/services/partitionmanager.cpp
@@ -111,6 +121,12 @@ add_test(NAME UtilsTests COMMAND $<TARGET_FILE:UtilsTests>)
 add_executable(TestRecoverSpace
     tests/test_recover_space.cpp
     src/services/partitionmanager.cpp
+    src/models/DiskIntegrityChecker.cpp
+    src/models/VolumeDetector.cpp
+    src/models/SpaceManager.cpp
+    src/models/DiskpartExecutor.cpp
+    src/models/PartitionReformatter.cpp
+    src/models/PartitionCreator.cpp
     src/utils/Utils.cpp
     src/utils/LocalizationManager.cpp
     src/utils/Logger.cpp
@@ -145,6 +161,10 @@ if(CLANG_FORMAT_EXE)
         src/controllers/ProcessController.h
         src/models/EventManager.h
         src/models/EventObserver.h
+        src/models/IniConfigurator.h
+        src/models/BootWimProcessor.h
+        src/models/ContentExtractor.h
+        src/models/HashVerifier.h
         src/views/mainwindow.h
         src/utils/Logger.h
         src/utils/Utils.h
