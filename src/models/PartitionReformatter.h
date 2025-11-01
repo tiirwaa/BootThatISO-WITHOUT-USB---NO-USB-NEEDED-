@@ -5,12 +5,12 @@
 
 class PartitionReformatter {
 public:
-    explicit PartitionReformatter(EventManager* eventManager);
+    explicit PartitionReformatter(EventManager *eventManager);
     ~PartitionReformatter();
 
-    bool reformatPartition(const std::string& format);
+    bool reformatPartition(const std::string &format);
     bool reformatEfiPartition();
 
 private:
-    EventManager* eventManager_;
+    EventManager *eventManager_;
 };

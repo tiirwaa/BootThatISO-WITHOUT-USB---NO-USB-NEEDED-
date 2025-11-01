@@ -18,24 +18,25 @@ public:
         return "ramdisk";
     }
 
-    void configureBCD(const std::string& guid, const std::string& dataDevice, const std::string& espDevice, const std::string& efiPath) override {
-        const std::string BCD_CMD = "C:\\Windows\\System32\\bcdedit.exe";
+    void configureBCD(const std::string &guid, const std::string &dataDevice, const std::string &espDevice,
+                      const std::string &efiPath) override {
+        const std::string BCD_CMD          = "C:\\Windows\\System32\\bcdedit.exe";
         const std::string ramdiskOptionsId = "{ramdiskoptions}";
-        const std::string bootWimRelative = "\\sources\\boot.wim";
-        const std::string sdiRelative = "\\boot\\boot.sdi";
-        const std::string winloadPath = "\\Windows\\System32\\Boot\\winload.efi";
+        const std::string bootWimRelative  = "\\sources\\boot.wim";
+        const std::string sdiRelative      = "\\boot\\boot.sdi";
+        const std::string winloadPath      = "\\Windows\\System32\\Boot\\winload.efi";
 
         std::string ramdiskValue = "[" + dataDevice + "]" + bootWimRelative + "," + ramdiskOptionsId;
 
         std::string logDir = Utils::getExeDirectory() + "logs";
         CreateDirectoryA(logDir.c_str(), NULL);
-        std::string logFilePath = logDir + "\\" + BCD_CONFIG_LOG_FILE;
+        std::string   logFilePath = logDir + "\\" + BCD_CONFIG_LOG_FILE;
         std::ofstream logFile(logFilePath.c_str(), std::ios::app);
         if (logFile) {
             logFile << "Executing BCD commands for RamdiskBootStrategy (boot.wim ramdisk mode):" << std::endl;
         }
 
-        auto execAndLog = [&](const std::string& cmd, bool allowExists = false) {
+        auto execAndLog = [&](const std::string &cmd, bool allowExists = false) {
             if (logFile) {
                 logFile << "  " << cmd << std::endl;
             }
@@ -44,7 +45,8 @@ public:
                 logFile << "  Result: " << result << std::endl;
             }
             if (allowExists) {
-                if (result.find("already exists") != std::string::npos || result.find("ya existe") != std::string::npos) {
+                if (result.find("already exists") != std::string::npos ||
+                    result.find("ya existe") != std::string::npos) {
                     return result;
                 }
             }
@@ -64,7 +66,7 @@ public:
         execAndLog(BCD_CMD + " /set " + guid + " detecthal yes");
         execAndLog(BCD_CMD + " /set " + guid + " ems no");
 
-        std::string verifyCmd = BCD_CMD + " /enum " + guid;
+        std::string verifyCmd    = BCD_CMD + " /enum " + guid;
         std::string verifyResult = Utils::exec(verifyCmd.c_str());
         if (logFile) {
             logFile << "BCD entry verification after ramdisk setup:\n" << verifyResult << std::endl;
@@ -75,10 +77,12 @@ public:
             logFile << "Ramdisk options object state:\n" << verifyRamdiskOptions << std::endl;
         }
 
-        bool hasDevice = verifyResult.find("ramdisk=") != std::string::npos && verifyResult.find("boot.wim") != std::string::npos;
-        bool hasPath = verifyResult.find(winloadPath) != std::string::npos;
+        bool hasDevice =
+            verifyResult.find("ramdisk=") != std::string::npos && verifyResult.find("boot.wim") != std::string::npos;
+        bool hasPath              = verifyResult.find(winloadPath) != std::string::npos;
         bool hasRamdiskOptionsRef = verifyResult.find(ramdiskOptionsId) != std::string::npos;
-        bool hasSdi = verifyRamdiskOptions.find("ramdisksdipath") != std::string::npos && verifyRamdiskOptions.find("boot\\boot.sdi") != std::string::npos;
+        bool hasSdi               = verifyRamdiskOptions.find("ramdisksdipath") != std::string::npos &&
+                      verifyRamdiskOptions.find("boot\\boot.sdi") != std::string::npos;
 
         if (logFile) {
             if (hasDevice && hasPath && hasRamdiskOptionsRef && hasSdi) {
@@ -93,8 +97,6 @@ public:
             logFile.close();
         }
     }
-
 };
 
 #endif // RAMDISKBOOTSTRATEGY_H
-

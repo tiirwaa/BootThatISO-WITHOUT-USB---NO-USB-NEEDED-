@@ -7,14 +7,14 @@ class EventManager;
 
 class PartitionCreator {
 public:
-    explicit PartitionCreator(EventManager* eventManager);
+    explicit PartitionCreator(EventManager *eventManager);
     ~PartitionCreator() = default;
 
-    bool performDiskpartOperations(const std::string& format);
+    bool performDiskpartOperations(const std::string &format);
     bool verifyPartitionsCreated();
 
 private:
-    EventManager* eventManager;
+    EventManager *eventManager;
 };
 
 #endif // PARTITIONCREATOR_H

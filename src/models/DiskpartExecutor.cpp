@@ -5,20 +5,15 @@
 #include "../utils/Utils.h"
 #include "../utils/constants.h"
 
-DiskpartExecutor::DiskpartExecutor(EventManager* eventManager)
-    : eventManager_(eventManager)
-{
-}
+DiskpartExecutor::DiskpartExecutor(EventManager *eventManager) : eventManager_(eventManager) {}
 
-DiskpartExecutor::~DiskpartExecutor()
-{
-}
+DiskpartExecutor::~DiskpartExecutor() {}
 
-bool DiskpartExecutor::performDiskpartOperations(const std::string& format)
-{
+bool DiskpartExecutor::performDiskpartOperations(const std::string &format) {
     std::string logDir = Utils::getExeDirectory() + "logs";
     CreateDirectoryA(logDir.c_str(), NULL);
-    if (eventManager_) eventManager_->notifyLogUpdate("Creando script de diskpart para particiones...\r\n");
+    if (eventManager_)
+        eventManager_->notifyLogUpdate("Creando script de diskpart para particiones...\r\n");
     char tempPath[MAX_PATH];
     GetTempPathA(MAX_PATH, tempPath);
     char tempFile[MAX_PATH];
@@ -26,7 +21,8 @@ bool DiskpartExecutor::performDiskpartOperations(const std::string& format)
 
     std::ofstream scriptFile(tempFile);
     if (!scriptFile) {
-        if (eventManager_) eventManager_->notifyLogUpdate("Error: No se pudo crear el archivo de script de diskpart.\r\n");
+        if (eventManager_)
+            eventManager_->notifyLogUpdate("Error: No se pudo crear el archivo de script de diskpart.\r\n");
         return false;
     }
 
@@ -49,15 +45,16 @@ bool DiskpartExecutor::performDiskpartOperations(const std::string& format)
     scriptFile << "exit\n";
     scriptFile.close();
 
-    if (eventManager_) eventManager_->notifyLogUpdate("Ejecutando diskpart para crear particiones...\r\n");
+    if (eventManager_)
+        eventManager_->notifyLogUpdate("Ejecutando diskpart para crear particiones...\r\n");
 
     // Execute diskpart with the script and capture output
-    STARTUPINFOA si = { sizeof(si) };
+    STARTUPINFOA        si = {sizeof(si)};
     PROCESS_INFORMATION pi;
     SECURITY_ATTRIBUTES sa;
-    sa.nLength = sizeof(sa);
+    sa.nLength              = sizeof(sa);
     sa.lpSecurityDescriptor = NULL;
-    sa.bInheritHandle = TRUE;
+    sa.bInheritHandle       = TRUE;
 
     HANDLE hRead, hWrite;
     if (!CreatePipe(&hRead, &hWrite, &sa, 0)) {
@@ -65,13 +62,13 @@ bool DiskpartExecutor::performDiskpartOperations(const std::string& format)
         return false;
     }
 
-    si.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
-    si.hStdOutput = hWrite;
-    si.hStdError = hWrite;
+    si.dwFlags     = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
+    si.hStdOutput  = hWrite;
+    si.hStdError   = hWrite;
     si.wShowWindow = SW_HIDE;
 
     std::string cmd = "diskpart /s " + std::string(tempFile);
-    if (!CreateProcessA(NULL, const_cast<char*>(cmd.c_str()), NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi)) {
+    if (!CreateProcessA(NULL, const_cast<char *>(cmd.c_str()), NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi)) {
         CloseHandle(hRead);
         CloseHandle(hWrite);
         DeleteFileA(tempFile);
@@ -82,8 +79,8 @@ bool DiskpartExecutor::performDiskpartOperations(const std::string& format)
 
     // Read the output
     std::string output;
-    char buffer[1024];
-    DWORD bytesRead;
+    char        buffer[1024];
+    DWORD       bytesRead;
     while (ReadFile(hRead, buffer, sizeof(buffer) - 1, &bytesRead, NULL) && bytesRead > 0) {
         buffer[bytesRead] = '\0';
         output += buffer;
@@ -110,7 +107,8 @@ bool DiskpartExecutor::performDiskpartOperations(const std::string& format)
         if (exitCode == 0) {
             eventManager_->notifyLogUpdate("Diskpart ejecutado exitosamente. Verificando particiones...\r\n");
         } else {
-            eventManager_->notifyLogUpdate("Error: Diskpart falló con código de salida " + std::to_string(exitCode) + ".\r\n");
+            eventManager_->notifyLogUpdate("Error: Diskpart falló con código de salida " + std::to_string(exitCode) +
+                                           ".\r\n");
         }
     }
 
@@ -136,21 +134,22 @@ bool DiskpartExecutor::performDiskpartOperations(const std::string& format)
     DeleteFileA(tempFile);
 
     if (exitCode == 0) {
-        if (eventManager_) eventManager_->notifyLogUpdate("Particiones creadas exitosamente.\r\n");
+        if (eventManager_)
+            eventManager_->notifyLogUpdate("Particiones creadas exitosamente.\r\n");
         return true;
     } else {
-        if (eventManager_) eventManager_->notifyLogUpdate("Error: Falló la creación de particiones.\r\n");
+        if (eventManager_)
+            eventManager_->notifyLogUpdate("Error: Falló la creación de particiones.\r\n");
         return false;
     }
 }
 
-bool DiskpartExecutor::verifyPartitionsCreated()
-{
+bool DiskpartExecutor::verifyPartitionsCreated() {
     std::string logDir = Utils::getExeDirectory() + "logs";
     CreateDirectoryA(logDir.c_str(), NULL);
     // Quick check if partition is now detectable
-    bool partitionFound = false;
-    char volNameCheck[MAX_PATH];
+    bool   partitionFound = false;
+    char   volNameCheck[MAX_PATH];
     HANDLE hVolCheck = FindFirstVolumeA(volNameCheck, sizeof(volNameCheck));
     if (hVolCheck != INVALID_HANDLE_VALUE) {
         do {
@@ -158,12 +157,13 @@ bool DiskpartExecutor::verifyPartitionsCreated()
             if (len > 0 && volNameCheck[len - 1] == '\\') {
                 volNameCheck[len - 1] = '\0';
             }
-            
-            char volLabel[MAX_PATH] = {0};
-            char fsName[MAX_PATH] = {0};
-            DWORD serial, maxComp, flags;
+
+            char        volLabel[MAX_PATH] = {0};
+            char        fsName[MAX_PATH]   = {0};
+            DWORD       serial, maxComp, flags;
             std::string volPath = std::string(volNameCheck) + "\\";
-            if (GetVolumeInformationA(volPath.c_str(), volLabel, sizeof(volLabel), &serial, &maxComp, &flags, fsName, sizeof(fsName))) {
+            if (GetVolumeInformationA(volPath.c_str(), volLabel, sizeof(volLabel), &serial, &maxComp, &flags, fsName,
+                                      sizeof(fsName))) {
                 if (_stricmp(volLabel, VOLUME_LABEL) == 0) {
                     partitionFound = true;
                     break;
@@ -183,8 +183,7 @@ bool DiskpartExecutor::verifyPartitionsCreated()
     return partitionFound;
 }
 
-bool DiskpartExecutor::isDiskGpt()
-{
+bool DiskpartExecutor::isDiskGpt() {
     char tempPath[MAX_PATH];
     GetTempPathA(MAX_PATH, tempPath);
     char tempFile[MAX_PATH];
@@ -198,12 +197,12 @@ bool DiskpartExecutor::isDiskGpt()
     scriptFile << "exit\n";
     scriptFile.close();
 
-    STARTUPINFOA si = { sizeof(si) };
+    STARTUPINFOA        si = {sizeof(si)};
     PROCESS_INFORMATION pi;
     SECURITY_ATTRIBUTES sa;
-    sa.nLength = sizeof(sa);
+    sa.nLength              = sizeof(sa);
     sa.lpSecurityDescriptor = NULL;
-    sa.bInheritHandle = TRUE;
+    sa.bInheritHandle       = TRUE;
 
     HANDLE hRead, hWrite;
     if (!CreatePipe(&hRead, &hWrite, &sa, 0)) {
@@ -211,13 +210,13 @@ bool DiskpartExecutor::isDiskGpt()
         return false;
     }
 
-    si.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
-    si.hStdOutput = hWrite;
-    si.hStdError = hWrite;
+    si.dwFlags     = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
+    si.hStdOutput  = hWrite;
+    si.hStdError   = hWrite;
     si.wShowWindow = SW_HIDE;
 
     std::string cmd = "diskpart /s " + std::string(tempFile);
-    if (!CreateProcessA(NULL, const_cast<char*>(cmd.c_str()), NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi)) {
+    if (!CreateProcessA(NULL, const_cast<char *>(cmd.c_str()), NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi)) {
         CloseHandle(hRead);
         CloseHandle(hWrite);
         DeleteFileA(tempFile);
@@ -227,8 +226,8 @@ bool DiskpartExecutor::isDiskGpt()
     CloseHandle(hWrite);
 
     std::string output;
-    char buffer[1024];
-    DWORD bytesRead;
+    char        buffer[1024];
+    DWORD       bytesRead;
     while (ReadFile(hRead, buffer, sizeof(buffer) - 1, &bytesRead, NULL) && bytesRead > 0) {
         buffer[bytesRead] = '\0';
         output += buffer;
@@ -262,7 +261,7 @@ bool DiskpartExecutor::isDiskGpt()
 
     // Parse output to check if disk 0 is GPT
     std::istringstream iss(output);
-    std::string line;
+    std::string        line;
     while (std::getline(iss, line)) {
         if (line.find("Disco 0") != std::string::npos || line.find("Disk 0") != std::string::npos) {
             if (line.find("*") != std::string::npos) {

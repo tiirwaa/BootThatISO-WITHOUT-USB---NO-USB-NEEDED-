@@ -9,25 +9,25 @@
 class TestObserver : public EventObserver {
 public:
     void onProgressUpdate(int progress) override {}
-    void onLogUpdate(const std::string& message) override {
+    void onLogUpdate(const std::string &message) override {
         std::cout << message;
     }
     void onButtonEnable() override {}
     void onAskRestart() override {}
-    void onError(const std::string& message) override {
+    void onError(const std::string &message) override {
         std::cout << "ERROR: " << message << std::endl;
     }
-    void onDetailedProgress(long long copied, long long total, const std::string& operation) override {}
+    void onDetailedProgress(long long copied, long long total, const std::string &operation) override {}
     void onRecoverComplete(bool success) override {}
 };
 
 int main() {
     // Check if running as admin
-    BOOL isAdmin = FALSE;
-    HANDLE hToken = NULL;
+    BOOL   isAdmin = FALSE;
+    HANDLE hToken  = NULL;
     if (OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &hToken)) {
         TOKEN_ELEVATION elevation;
-        DWORD dwSize;
+        DWORD           dwSize;
         if (GetTokenInformation(hToken, TokenElevation, &elevation, sizeof(elevation), &dwSize)) {
             isAdmin = elevation.TokenIsElevated;
         }
@@ -45,7 +45,7 @@ int main() {
     TestObserver observer;
     eventManager.addObserver(&observer);
 
-    PartitionManager& pm = PartitionManager::getInstance();
+    PartitionManager &pm = PartitionManager::getInstance();
     pm.setEventManager(&eventManager);
 
     std::cout << "Calling recoverSpace()..." << std::endl;

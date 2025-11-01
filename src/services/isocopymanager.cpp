@@ -24,58 +24,48 @@
 #include "../models/BootWimProcessor.h"
 #include "../models/ContentExtractor.h"
 #include "../models/HashVerifier.h"
-static bool isValidPE(const std::string& path);
-static uint16_t getPEMachine(const std::string& path);
-static BOOL copyFileUtf8(const std::string& src, const std::string& dst);
-static HashInfo readHashInfo(const std::string& path);
+static bool     isValidPE(const std::string &path);
+static uint16_t getPEMachine(const std::string &path);
+static BOOL     copyFileUtf8(const std::string &src, const std::string &dst);
+static HashInfo readHashInfo(const std::string &path);
 
-ISOCopyManager& ISOCopyManager::getInstance() {
+ISOCopyManager &ISOCopyManager::getInstance() {
     static ISOCopyManager instance;
     return instance;
 }
 
 ISOCopyManager::ISOCopyManager()
-    : typeDetector(std::make_unique<ISOTypeDetector>()),
-      efiManager(nullptr),
-      isoMounter(std::make_unique<ISOMounter>()),
-      fileCopyManager(nullptr),
-      iniConfigurator(std::make_unique<IniConfigurator>()),
-      bootWimProcessor(nullptr),
-      contentExtractor(nullptr),
-      hashVerifier(std::make_unique<HashVerifier>()),
-      isWindowsISODetected(false)
-{
-}
+    : typeDetector(std::make_unique<ISOTypeDetector>()), efiManager(nullptr),
+      isoMounter(std::make_unique<ISOMounter>()), fileCopyManager(nullptr),
+      iniConfigurator(std::make_unique<IniConfigurator>()), bootWimProcessor(nullptr), contentExtractor(nullptr),
+      hashVerifier(std::make_unique<HashVerifier>()), isWindowsISODetected(false) {}
 
-ISOCopyManager::~ISOCopyManager()
-{
-}
+ISOCopyManager::~ISOCopyManager() {}
 
 bool ISOCopyManager::getIsWindowsISO() const {
     return isWindowsISODetected;
 }
 
-
-
-const char* ISOCopyManager::getTimestamp() {
+const char *ISOCopyManager::getTimestamp() {
     static char buffer[64];
     std::time_t now = std::time(nullptr);
-    std::tm localTime;
+    std::tm     localTime;
     localtime_s(&localTime, &now);
     std::strftime(buffer, sizeof(buffer), "[%Y-%m-%d %H:%M:%S] ", &localTime);
     return buffer;
 }
 
-std::string ISOCopyManager::exec(const char* cmd, EventManager* eventManager) {
-    HANDLE hRead, hWrite;
-    SECURITY_ATTRIBUTES sa = { sizeof(SECURITY_ATTRIBUTES), NULL, TRUE };
-    if (!CreatePipe(&hRead, &hWrite, &sa, 0)) return "";
+std::string ISOCopyManager::exec(const char *cmd, EventManager *eventManager) {
+    HANDLE              hRead, hWrite;
+    SECURITY_ATTRIBUTES sa = {sizeof(SECURITY_ATTRIBUTES), NULL, TRUE};
+    if (!CreatePipe(&hRead, &hWrite, &sa, 0))
+        return "";
 
-    STARTUPINFOA si = { sizeof(STARTUPINFOA) };
-    si.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
-    si.hStdOutput = hWrite;
-    si.hStdError = hWrite;
-    si.wShowWindow = SW_HIDE;
+    STARTUPINFOA si = {sizeof(STARTUPINFOA)};
+    si.dwFlags      = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
+    si.hStdOutput   = hWrite;
+    si.hStdError    = hWrite;
+    si.wShowWindow  = SW_HIDE;
 
     PROCESS_INFORMATION pi;
     if (!CreateProcessA(NULL, (LPSTR)cmd, NULL, NULL, TRUE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) {
@@ -86,11 +76,11 @@ std::string ISOCopyManager::exec(const char* cmd, EventManager* eventManager) {
 
     CloseHandle(hWrite);
 
-    char buffer[128];
+    char        buffer[128];
     std::string result = "";
-    DWORD bytesRead;
-    HANDLE handles[2] = { hRead, pi.hProcess };
-    DWORD waitResult;
+    DWORD       bytesRead;
+    HANDLE      handles[2] = {hRead, pi.hProcess};
+    DWORD       waitResult;
 
     while ((waitResult = WaitForMultipleObjects(2, handles, FALSE, 100)) != WAIT_OBJECT_0 + 1) {
         if (eventManager && eventManager->isCancelRequested()) {
@@ -125,47 +115,40 @@ std::string ISOCopyManager::exec(const char* cmd, EventManager* eventManager) {
     return result;
 }
 
-DWORD CALLBACK CopyProgressRoutine(
-    LARGE_INTEGER TotalFileSize,
-    LARGE_INTEGER TotalBytesTransferred,
-    LARGE_INTEGER StreamSize,
-    LARGE_INTEGER StreamBytesTransferred,
-    DWORD dwStreamNumber,
-    DWORD dwCallbackReason,
-    HANDLE hSourceFile,
-    HANDLE hDestinationFile,
-    LPVOID lpData
-) {
-    EventManager* eventManager = static_cast<EventManager*>(lpData);
+DWORD CALLBACK CopyProgressRoutine(LARGE_INTEGER TotalFileSize, LARGE_INTEGER TotalBytesTransferred,
+                                   LARGE_INTEGER StreamSize, LARGE_INTEGER StreamBytesTransferred, DWORD dwStreamNumber,
+                                   DWORD dwCallbackReason, HANDLE hSourceFile, HANDLE hDestinationFile, LPVOID lpData) {
+    EventManager *eventManager = static_cast<EventManager *>(lpData);
     if (eventManager) {
         if (eventManager->isCancelRequested()) {
             return PROGRESS_CANCEL;
         }
         if (TotalFileSize.QuadPart > 0) {
-            eventManager->notifyDetailedProgress(TotalBytesTransferred.QuadPart, TotalFileSize.QuadPart, "Copiando ISO");
+            eventManager->notifyDetailedProgress(TotalBytesTransferred.QuadPart, TotalFileSize.QuadPart,
+                                                 "Copiando ISO");
         }
     }
     return PROGRESS_CONTINUE;
 }
 
-void ISOCopyManager::listDirectoryRecursive(std::ofstream& log, const std::string& path, int depth, int maxDepth, EventManager& eventManager, long long& fileCount) {
-    if (depth >= maxDepth) return;
-    
+void ISOCopyManager::listDirectoryRecursive(std::ofstream &log, const std::string &path, int depth, int maxDepth,
+                                            EventManager &eventManager, long long &fileCount) {
+    if (depth >= maxDepth)
+        return;
+
     WIN32_FIND_DATAA findData;
-    HANDLE hFind = FindFirstFileA((path + "*").c_str(), &findData);
-    if (hFind == INVALID_HANDLE_VALUE) return;
-    
+    HANDLE           hFind = FindFirstFileA((path + "*").c_str(), &findData);
+    if (hFind == INVALID_HANDLE_VALUE)
+        return;
+
     do {
         std::string fileName = findData.cFileName;
         if (fileName != "." && fileName != "..") {
             fileCount++;
             // Update progress at the start and every 100 files to show activity
             if (fileCount == 1 || fileCount % 100 == 0) {
-                eventManager.notifyDetailedProgress(
-                    fileCount,
-                    0,
-                    "Analizando archivos del ISO (" + std::to_string(fileCount) + ")"
-                );
+                eventManager.notifyDetailedProgress(fileCount, 0,
+                                                    "Analizando archivos del ISO (" + std::to_string(fileCount) + ")");
             }
             std::string indent(depth * 2, ' ');
             log << indent << fileName;
@@ -180,11 +163,13 @@ void ISOCopyManager::listDirectoryRecursive(std::ofstream& log, const std::strin
     FindClose(hFind);
 }
 
-bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::string& isoPath, const std::string& destPath, const std::string& espPath, bool extractContent, bool extractBootWim, bool copyInstallWim, const std::string& mode, const std::string& format)
-{
+bool ISOCopyManager::extractISOContents(EventManager &eventManager, const std::string &isoPath,
+                                        const std::string &destPath, const std::string &espPath, bool extractContent,
+                                        bool extractBootWim, bool copyInstallWim, const std::string &mode,
+                                        const std::string &format) {
     // Initialize managers with EventManager
-    fileCopyManager = std::make_unique<FileCopyManager>(eventManager);
-    efiManager = std::make_unique<EFIManager>(eventManager, *fileCopyManager);
+    fileCopyManager  = std::make_unique<FileCopyManager>(eventManager);
+    efiManager       = std::make_unique<EFIManager>(eventManager, *fileCopyManager);
     bootWimProcessor = std::make_unique<BootWimProcessor>(eventManager, *fileCopyManager);
     contentExtractor = std::make_unique<ContentExtractor>(eventManager, *fileCopyManager);
 
@@ -207,14 +192,14 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
     logFile << getTimestamp() << "Destination (data): " << destPath << std::endl;
     logFile << getTimestamp() << "ESP path: " << espPath << std::endl;
     logFile << getTimestamp() << "Extract content: " << (extractContent ? "Yes" : "No") << std::endl;
-    
-    bool integratePrograms = false;
+
+    bool        integratePrograms = false;
     std::string programsSrc;
-    
-    long long isoSize = Utils::getFileSize(isoPath);
+
+    long long isoSize     = Utils::getFileSize(isoPath);
     long long copiedSoFar = 0;
     eventManager.notifyDetailedProgress(5, 100, "Montando ISO");
-    
+
     // Mount the ISO
     std::string driveLetterStr;
     if (!isoMounter->mountISO(isoPath, driveLetterStr)) {
@@ -223,12 +208,12 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
         eventManager.notifyLogUpdate("Error: Falló el montaje del ISO.\r\n");
         return false;
     }
-    
+
     eventManager.notifyLogUpdate("ISO montado exitosamente en " + driveLetterStr + ":.\r\n");
-    
+
     std::string sourcePath = driveLetterStr + ":\\";
     logFile << getTimestamp() << "Source path: " << sourcePath << std::endl;
-    
+
     // Add delay to allow the drive to be ready
     logFile << getTimestamp() << "Waiting 10 seconds for drive to be ready" << std::endl;
     Sleep(10000);
@@ -240,40 +225,43 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
         logFile.close();
         return false;
     }
-    
+
     eventManager.notifyDetailedProgress(10, 100, "Analizando contenido ISO");
-    
+
     // List all files and directories recursively in the ISO (up to 10 levels deep)
     std::ofstream contentLog(logDir + "\\" + ISO_CONTENT_LOG_FILE);
-    long long fileCount = 0;
+    long long     fileCount = 0;
     listDirectoryRecursive(contentLog, sourcePath, 0, 10, eventManager, fileCount);
     contentLog.close();
     logFile << getTimestamp() << "Total files analyzed: " << fileCount << std::endl;
-    
+
     eventManager.notifyLogUpdate("Analizando contenido del ISO...\r\n");
-    
+
     // Check if it's Windows ISO
     bool isWindowsISO = typeDetector->isWindowsISO(sourcePath);
     logFile << getTimestamp() << "Is Windows ISO: " << (isWindowsISO ? "Yes" : "No") << std::endl;
-    
+
     if (isWindowsISO) {
         eventManager.notifyLogUpdate("ISO de Windows detectado.\r\n");
     } else {
         eventManager.notifyLogUpdate("ISO no-Windows detectado.\r\n");
     }
-    
+
     isWindowsISODetected = isWindowsISO;
-    
+
     // Calculate MD5 of the ISO
     std::string hashFilePath = destPath + "\\ISOBOOTHASH";
-    bool skipCopy = hashVerifier->shouldSkipCopy(isoPath, hashFilePath, mode, format);
+    bool        skipCopy     = hashVerifier->shouldSkipCopy(isoPath, hashFilePath, mode, format);
     if (skipCopy) {
-        logFile << getTimestamp() << "ISO hash, version, mode and format match existing, skipping content copy" << std::endl;
-        eventManager.notifyLogUpdate("Hash, versión, modo y formato del ISO coinciden, omitiendo copia de contenido.\r\n");
+        logFile << getTimestamp() << "ISO hash, version, mode and format match existing, skipping content copy"
+                << std::endl;
+        eventManager.notifyLogUpdate(
+            "Hash, versión, modo y formato del ISO coinciden, omitiendo copia de contenido.\r\n");
     }
-    
+
     if (extractContent && !skipCopy) {
-        if (!contentExtractor->extractContent(sourcePath, destPath, isoSize, copiedSoFar, extractContent, isWindowsISO, mode, logFile)) {
+        if (!contentExtractor->extractContent(sourcePath, destPath, isoSize, copiedSoFar, extractContent, isWindowsISO,
+                                              mode, logFile)) {
             // Ensure ISO is dismounted
             isoMounter->unmountISO(isoPath);
             logFile.close();
@@ -281,7 +269,7 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
         }
     } else if (!extractContent && isWindowsISO && !skipCopy) {
         // For Windows ISOs in RAM mode, copy the Programs folder to have shortcuts available
-        programsSrc = sourcePath + "Programs";
+        programsSrc              = sourcePath + "Programs";
         std::string programsDest = destPath + "Programs";
         if (GetFileAttributesA(programsSrc.c_str()) != INVALID_FILE_ATTRIBUTES) {
             if (mode == AppKeys::BootModeRam) {
@@ -291,7 +279,8 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
             } else {
                 eventManager.notifyLogUpdate("Copiando carpeta Programs para accesos directos...\r\n");
                 std::set<std::string> excludeDirs; // No exclude for Programs
-                if (!fileCopyManager->copyDirectoryWithProgress(programsSrc, programsDest, 0, copiedSoFar, excludeDirs, "Copiando Programs")) {
+                if (!fileCopyManager->copyDirectoryWithProgress(programsSrc, programsDest, 0, copiedSoFar, excludeDirs,
+                                                                "Copiando Programs")) {
                     logFile << getTimestamp() << "Failed to copy Programs folder" << std::endl;
                     eventManager.notifyLogUpdate("Error al copiar carpeta Programs.\r\n");
                 } else {
@@ -304,19 +293,21 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
     }
 
     // Extract boot.wim if requested
-    bool bootWimSuccess = bootWimProcessor->processBootWim(sourcePath, destPath, espPath, integratePrograms, programsSrc, copiedSoFar, extractBootWim, copyInstallWim, logFile);
+    bool bootWimSuccess =
+        bootWimProcessor->processBootWim(sourcePath, destPath, espPath, integratePrograms, programsSrc, copiedSoFar,
+                                         extractBootWim, copyInstallWim, logFile);
 
     // Extract EFI
     eventManager.notifyDetailedProgress(80, 100, "Extrayendo EFI");
     bool efiSuccess = efiManager->extractEFI(sourcePath, espPath, isWindowsISO, copiedSoFar, isoSize);
-    
+
     // Dismount the ISO
     eventManager.notifyDetailedProgress(90, 100, "Desmontando ISO");
     if (!isoMounter->unmountISO(isoPath)) {
         logFile << getTimestamp() << "Warning: Failed to unmount ISO" << std::endl;
     }
     logFile << getTimestamp() << "Dismount ISO completed" << std::endl;
-    
+
     logFile << getTimestamp() << "EFI extraction " << (efiSuccess ? "SUCCESS" : "FAILED") << std::endl;
     if (extractBootWim) {
         logFile << getTimestamp() << "boot.wim processing " << (bootWimSuccess ? "SUCCESS" : "FAILED") << std::endl;
@@ -325,25 +316,24 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
         logFile << getTimestamp() << "Content extraction completed." << std::endl;
     }
     logFile.close();
-    
+
     // Write the current ISO hash, mode and format to the file
     hashVerifier->saveHashInfo(hashFilePath, Utils::calculateMD5(isoPath), mode, format);
-    
+
     eventManager.notifyDetailedProgress(100, 100, "");
     return efiSuccess && bootWimSuccess;
 }
 
-bool ISOCopyManager::copyISOFile(EventManager& eventManager, const std::string& isoPath, const std::string& destPath)
-{
+bool ISOCopyManager::copyISOFile(EventManager &eventManager, const std::string &isoPath, const std::string &destPath) {
     std::string logDir = Utils::getExeDirectory() + "logs";
     CreateDirectoryA(logDir.c_str(), NULL);
     std::string destFile = destPath + "iso.iso";
-    
+
     // Create log file for debugging
     std::ofstream logFile(logDir + "\\" + ISO_FILE_COPY_LOG_FILE);
     logFile << getTimestamp() << "Copying ISO file from: " << isoPath << std::endl;
     logFile << getTimestamp() << "To: " << destFile << std::endl;
-    
+
     BOOL result = CopyFileExA(isoPath.c_str(), destFile.c_str(), CopyProgressRoutine, &eventManager, NULL, 0);
     if (result) {
         logFile << getTimestamp() << "ISO file copied successfully." << std::endl;
@@ -352,51 +342,62 @@ bool ISOCopyManager::copyISOFile(EventManager& eventManager, const std::string& 
         logFile << getTimestamp() << "Failed to copy ISO file. Error: " << GetLastError() << std::endl;
     }
     logFile.close();
-    
+
     return result != FALSE;
 }
 
 // Quick validation for PE/EFI files: check for 'MZ' header
-static bool isValidPE(const std::string& path) {
+static bool isValidPE(const std::string &path) {
     std::wstring wpath = Utils::utf8_to_wstring(path);
-    HANDLE h = CreateFileW(wpath.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-    if (h == INVALID_HANDLE_VALUE) return false;
-    CHAR hdr[2] = {0};
-    DWORD read = 0;
-    BOOL ok = ReadFile(h, hdr, 2, &read, NULL);
+    HANDLE       h =
+        CreateFileW(wpath.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (h == INVALID_HANDLE_VALUE)
+        return false;
+    CHAR  hdr[2] = {0};
+    DWORD read   = 0;
+    BOOL  ok     = ReadFile(h, hdr, 2, &read, NULL);
     CloseHandle(h);
-    if (!ok || read < 2) return false;
+    if (!ok || read < 2)
+        return false;
     return hdr[0] == 'M' && hdr[1] == 'Z';
 }
 
 // Returns IMAGE_FILE_MACHINE_* value or 0 on failure
-static uint16_t getPEMachine(const std::string& path) {
+static uint16_t getPEMachine(const std::string &path) {
     std::wstring wpath = Utils::utf8_to_wstring(path);
-    HANDLE h = CreateFileW(wpath.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-    if (h == INVALID_HANDLE_VALUE) return 0;
-    DWORD read = 0;
+    HANDLE       h =
+        CreateFileW(wpath.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (h == INVALID_HANDLE_VALUE)
+        return 0;
+    DWORD read     = 0;
     DWORD e_lfanew = 0;
     // Read e_lfanew at offset 0x3C (DWORD)
     SetFilePointer(h, 0x3C, NULL, FILE_BEGIN);
-    if (!ReadFile(h, &e_lfanew, sizeof(DWORD), &read, NULL) || read != sizeof(DWORD)) { CloseHandle(h); return 0; }
+    if (!ReadFile(h, &e_lfanew, sizeof(DWORD), &read, NULL) || read != sizeof(DWORD)) {
+        CloseHandle(h);
+        return 0;
+    }
     // Seek to PE signature + Machine (e_lfanew + 4)
     DWORD machine = 0;
     SetFilePointer(h, e_lfanew + 4, NULL, FILE_BEGIN);
-    if (!ReadFile(h, &machine, sizeof(uint16_t), &read, NULL) || read != sizeof(uint16_t)) { CloseHandle(h); return 0; }
+    if (!ReadFile(h, &machine, sizeof(uint16_t), &read, NULL) || read != sizeof(uint16_t)) {
+        CloseHandle(h);
+        return 0;
+    }
     CloseHandle(h);
     return static_cast<uint16_t>(machine & 0xFFFF);
 }
 
 // Copy using wide APIs from UTF-8 input paths
-static BOOL copyFileUtf8(const std::string& src, const std::string& dst) {
+static BOOL copyFileUtf8(const std::string &src, const std::string &dst) {
     std::wstring wsrc = Utils::utf8_to_wstring(src);
     std::wstring wdst = Utils::utf8_to_wstring(dst);
     return CopyFileW(wsrc.c_str(), wdst.c_str(), FALSE);
 }
 
 // Helper function to read hash info from file
-static HashInfo readHashInfo(const std::string& path) {
-    HashInfo info = {"", "", "", ""};
+static HashInfo readHashInfo(const std::string &path) {
+    HashInfo      info = {"", "", "", ""};
     std::ifstream file(path);
     if (file.is_open()) {
         std::getline(file, info.hash);

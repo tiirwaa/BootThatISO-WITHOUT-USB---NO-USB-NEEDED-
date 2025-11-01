@@ -5,14 +5,14 @@
 
 class DiskIntegrityChecker {
 public:
-    explicit DiskIntegrityChecker(EventManager* eventManager);
+    explicit DiskIntegrityChecker(EventManager *eventManager);
     ~DiskIntegrityChecker();
 
     bool performDiskIntegrityCheck();
 
 private:
-    EventManager* eventManager_;
+    EventManager *eventManager_;
 
     bool RestartComputer();
-    void logToGeneral(const std::string& message);
+    void logToGeneral(const std::string &message);
 };

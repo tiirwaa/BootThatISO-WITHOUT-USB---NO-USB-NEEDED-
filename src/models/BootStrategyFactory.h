@@ -10,7 +10,7 @@
 
 class BootStrategyFactory {
 public:
-    static std::unique_ptr<BootStrategy> createStrategy(const std::string& modeKey) {
+    static std::unique_ptr<BootStrategy> createStrategy(const std::string &modeKey) {
         if (modeKey == AppKeys::BootModeRam) {
             return std::make_unique<RamdiskBootStrategy>();
         }

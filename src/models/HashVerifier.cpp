@@ -3,19 +3,20 @@
 #include "../../build/version.h"
 #include <fstream>
 
-HashVerifier::HashVerifier() {
+HashVerifier::HashVerifier() {}
+
+HashVerifier::~HashVerifier() {}
+
+bool HashVerifier::shouldSkipCopy(const std::string &isoPath, const std::string &hashFilePath, const std::string &mode,
+                                  const std::string &format) {
+    std::string md5      = calculateMD5(isoPath);
+    HashInfo    existing = readHashInfo(hashFilePath);
+    return (existing.hash == md5 && existing.version == APP_VERSION && existing.mode == mode &&
+            existing.format == format && !existing.hash.empty());
 }
 
-HashVerifier::~HashVerifier() {
-}
-
-bool HashVerifier::shouldSkipCopy(const std::string& isoPath, const std::string& hashFilePath, const std::string& mode, const std::string& format) {
-    std::string md5 = calculateMD5(isoPath);
-    HashInfo existing = readHashInfo(hashFilePath);
-    return (existing.hash == md5 && existing.version == APP_VERSION && existing.mode == mode && existing.format == format && !existing.hash.empty());
-}
-
-void HashVerifier::saveHashInfo(const std::string& hashFilePath, const std::string& md5, const std::string& mode, const std::string& format) {
+void HashVerifier::saveHashInfo(const std::string &hashFilePath, const std::string &md5, const std::string &mode,
+                                const std::string &format) {
     std::ofstream hashFile(hashFilePath);
     if (hashFile.is_open()) {
         hashFile << md5 << std::endl;
@@ -26,8 +27,8 @@ void HashVerifier::saveHashInfo(const std::string& hashFilePath, const std::stri
     }
 }
 
-HashInfo HashVerifier::readHashInfo(const std::string& path) {
-    HashInfo info = {"", "", "", ""};
+HashInfo HashVerifier::readHashInfo(const std::string &path) {
+    HashInfo      info = {"", "", "", ""};
     std::ifstream file(path);
     if (file.is_open()) {
         std::getline(file, info.hash);
@@ -38,6 +39,6 @@ HashInfo HashVerifier::readHashInfo(const std::string& path) {
     return info;
 }
 
-std::string HashVerifier::calculateMD5(const std::string& filePath) {
+std::string HashVerifier::calculateMD5(const std::string &filePath) {
     return Utils::calculateMD5(filePath);
 }

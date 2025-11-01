@@ -10,19 +10,16 @@
 #include "../utils/AppKeys.h"
 #include "../utils/Logger.h"
 
-ProcessController::ProcessController(EventManager& eventManager)
-    : eventManager(eventManager)
-{
+ProcessController::ProcessController(EventManager &eventManager) : eventManager(eventManager) {
     partitionManager = &PartitionManager::getInstance();
     partitionManager->setEventManager(&eventManager);
     isoCopyManager = &ISOCopyManager::getInstance();
-    bcdManager = &BCDManager::getInstance();
+    bcdManager     = &BCDManager::getInstance();
     bcdManager->setEventManager(&eventManager);
     processService = std::make_unique<ProcessService>(partitionManager, isoCopyManager, bcdManager, eventManager);
 }
 
-ProcessController::~ProcessController()
-{
+ProcessController::~ProcessController() {
     if (workerThread.joinable()) {
         workerThread.join();
     }
@@ -31,16 +28,16 @@ ProcessController::~ProcessController()
     }
 }
 
-void ProcessController::requestCancel()
-{
+void ProcessController::requestCancel() {
     eventManager.requestCancel();
     if (recoveryInProgress.load()) {
         eventManager.notifyLogUpdate("La recuperacion de espacio esta en curso y no admite cancelacion.\r\n");
     }
 }
 
-void ProcessController::startProcess(const std::string& isoPath, const std::string& selectedFormat, const std::string& selectedBootModeKey, const std::string& selectedBootModeLabel, bool skipIntegrityCheck, bool synchronous)
-{
+void ProcessController::startProcess(const std::string &isoPath, const std::string &selectedFormat,
+                                     const std::string &selectedBootModeKey, const std::string &selectedBootModeLabel,
+                                     bool skipIntegrityCheck, bool synchronous) {
     Logger::instance().resetProcessLogs();
     const std::string logDir = Logger::instance().logDirectory();
 
@@ -53,12 +50,14 @@ void ProcessController::startProcess(const std::string& isoPath, const std::stri
 
     // Trim the isoPath to remove leading/trailing whitespace, quotes and common invisible characters
     std::string trimmedIsoPath = isoPath;
-    auto isTrimChar = [](char c)->bool {
+    auto        isTrimChar     = [](char c) -> bool {
         unsigned char uc = static_cast<unsigned char>(c);
         return std::isspace(uc) || uc <= 32 || uc == 0xA0 || c == '"' || c == '\'' || c == '\0';
     };
-    while (!trimmedIsoPath.empty() && isTrimChar(trimmedIsoPath.front())) trimmedIsoPath.erase(trimmedIsoPath.begin());
-    while (!trimmedIsoPath.empty() && isTrimChar(trimmedIsoPath.back())) trimmedIsoPath.pop_back();
+    while (!trimmedIsoPath.empty() && isTrimChar(trimmedIsoPath.front()))
+        trimmedIsoPath.erase(trimmedIsoPath.begin());
+    while (!trimmedIsoPath.empty() && isTrimChar(trimmedIsoPath.back()))
+        trimmedIsoPath.pop_back();
 
     eventManager.notifyLogUpdate("ISO path after trimming: '" + trimmedIsoPath + "'\r\n");
 
@@ -67,7 +66,8 @@ void ProcessController::startProcess(const std::string& isoPath, const std::stri
         return;
     }
 
-    eventManager.notifyLogUpdate("Iniciando proceso con ISO: " + trimmedIsoPath + ", formato: " + selectedFormat + ", modo: " + selectedBootModeLabel + "\r\n");
+    eventManager.notifyLogUpdate("Iniciando proceso con ISO: " + trimmedIsoPath + ", formato: " + selectedFormat +
+                                 ", modo: " + selectedBootModeLabel + "\r\n");
 
     bool partitionExists = partitionManager->partitionExists();
     if (!partitionExists) {
@@ -86,12 +86,14 @@ void ProcessController::startProcess(const std::string& isoPath, const std::stri
         if (workerThread.joinable()) {
             workerThread.join();
         }
-        workerThread = std::thread(&ProcessController::processInThread, this, trimmedIsoPath, selectedFormat, selectedBootModeKey, selectedBootModeLabel, skipIntegrityCheck);
+        workerThread = std::thread(&ProcessController::processInThread, this, trimmedIsoPath, selectedFormat,
+                                   selectedBootModeKey, selectedBootModeLabel, skipIntegrityCheck);
     }
 }
 
-void ProcessController::processInThread(const std::string& isoPath, const std::string& selectedFormat, const std::string& selectedBootModeKey, const std::string& selectedBootModeLabel, bool skipIntegrityCheck)
-{
+void ProcessController::processInThread(const std::string &isoPath, const std::string &selectedFormat,
+                                        const std::string &selectedBootModeKey,
+                                        const std::string &selectedBootModeLabel, bool skipIntegrityCheck) {
     eventManager.notifyLogUpdate("Verificando estado de particiones...\r\n");
     eventManager.notifyProgressUpdate(10);
 
@@ -105,7 +107,8 @@ void ProcessController::processInThread(const std::string& isoPath, const std::s
     eventManager.notifyProgressUpdate(30);
 
     eventManager.notifyLogUpdate("Iniciando preparación de archivos del ISO...\r\n");
-    auto copyResult = processService->copyIsoContent(isoPath, selectedFormat, selectedBootModeKey, selectedBootModeLabel);
+    auto copyResult =
+        processService->copyIsoContent(isoPath, selectedFormat, selectedBootModeKey, selectedBootModeLabel);
     if (!copyResult.success) {
         eventManager.notifyLogUpdate("Error: " + copyResult.errorMessage + "\r\n");
         eventManager.notifyError("Error: " + copyResult.errorMessage);
@@ -129,8 +132,7 @@ void ProcessController::processInThread(const std::string& isoPath, const std::s
     eventManager.notifyButtonEnable();
 }
 
-bool ProcessController::recoverSpace()
-{
+bool ProcessController::recoverSpace() {
     if (recoveryInProgress.load()) {
         eventManager.notifyLogUpdate("La recuperacion de espacio ya se esta ejecutando.\r\n");
         return false;
@@ -146,8 +148,7 @@ bool ProcessController::recoverSpace()
     return true;
 }
 
-void ProcessController::recoverSpaceInThread()
-{
+void ProcessController::recoverSpaceInThread() {
     eventManager.notifyLogUpdate("Recuperando espacio. Esto puede tardar varios minutos...\r\n");
     bool success = partitionManager->recoverSpace();
     if (success) {
@@ -158,6 +159,3 @@ void ProcessController::recoverSpaceInThread()
     recoveryInProgress.store(false);
     eventManager.notifyRecoverComplete(success);
 }
-
-
-

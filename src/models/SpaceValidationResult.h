@@ -4,8 +4,8 @@
 #include <string>
 
 struct SpaceValidationResult {
-    bool isValid;
-    long long availableGB;
+    bool        isValid;
+    long long   availableGB;
     std::string errorMessage;
 };
 

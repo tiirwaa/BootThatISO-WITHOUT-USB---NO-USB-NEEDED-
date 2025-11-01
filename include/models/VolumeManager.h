@@ -12,9 +12,9 @@ class VolumeManager {
 private:
     class WmiStorageManager {
     private:
-        IWbemLocator* pLoc;
-        IWbemServices* pSvc;
-        bool comInitialized;
+        IWbemLocator  *pLoc;
+        IWbemServices *pSvc;
+        bool           comInitialized;
 
     public:
         WmiStorageManager() : pLoc(nullptr), pSvc(nullptr), comInitialized(false) {}
@@ -44,50 +44,37 @@ private:
                 return false;
             }
 
-            hr = CoInitializeSecurity(
-                NULL, -1, NULL, NULL,
-                RPC_C_AUTHN_LEVEL_DEFAULT,
-                RPC_C_IMP_LEVEL_IMPERSONATE,
-                NULL, EOAC_NONE, NULL);
+            hr = CoInitializeSecurity(NULL, -1, NULL, NULL, RPC_C_AUTHN_LEVEL_DEFAULT, RPC_C_IMP_LEVEL_IMPERSONATE,
+                                      NULL, EOAC_NONE, NULL);
             if (FAILED(hr) && hr != RPC_E_TOO_LATE) {
                 return false;
             }
 
-            hr = CoCreateInstance(
-                CLSID_WbemLocator, 0,
-                CLSCTX_INPROC_SERVER,
-                IID_IWbemLocator, (LPVOID*)&pLoc);
+            hr = CoCreateInstance(CLSID_WbemLocator, 0, CLSCTX_INPROC_SERVER, IID_IWbemLocator, (LPVOID *)&pLoc);
             if (FAILED(hr)) {
                 return false;
             }
 
-            hr = pLoc->ConnectServer(
-                _bstr_t(L"ROOT\\Microsoft\\Windows\\Storage"),
-                NULL, NULL, 0, NULL, 0, 0, &pSvc);
+            hr = pLoc->ConnectServer(_bstr_t(L"ROOT\\Microsoft\\Windows\\Storage"), NULL, NULL, 0, NULL, 0, 0, &pSvc);
             if (FAILED(hr)) {
                 return false;
             }
 
-            hr = CoSetProxyBlanket(
-                pSvc, RPC_C_AUTHN_WINNT, RPC_C_AUTHZ_NONE,
-                NULL, RPC_C_AUTHN_LEVEL_CALL,
-                RPC_C_IMP_LEVEL_IMPERSONATE, NULL, EOAC_NONE);
+            hr = CoSetProxyBlanket(pSvc, RPC_C_AUTHN_WINNT, RPC_C_AUTHZ_NONE, NULL, RPC_C_AUTHN_LEVEL_CALL,
+                                   RPC_C_IMP_LEVEL_IMPERSONATE, NULL, EOAC_NONE);
             if (FAILED(hr)) {
                 return false;
             }
             return true;
         }
 
-        IEnumWbemClassObject* ExecQuery(const wchar_t* query) {
-            if (!pSvc) return nullptr;
+        IEnumWbemClassObject *ExecQuery(const wchar_t *query) {
+            if (!pSvc)
+                return nullptr;
 
-            IEnumWbemClassObject* pEnum = nullptr;
-            HRESULT hr = pSvc->ExecQuery(
-                _bstr_t("WQL"),
-                _bstr_t(query),
-                WBEM_FLAG_FORWARD_ONLY | WBEM_FLAG_RETURN_IMMEDIATELY,
-                NULL,
-                &pEnum);
+            IEnumWbemClassObject *pEnum = nullptr;
+            HRESULT               hr    = pSvc->ExecQuery(_bstr_t("WQL"), _bstr_t(query),
+                                                          WBEM_FLAG_FORWARD_ONLY | WBEM_FLAG_RETURN_IMMEDIATELY, NULL, &pEnum);
 
             if (FAILED(hr)) {
                 return nullptr;
@@ -96,23 +83,26 @@ private:
             return pEnum;
         }
 
-        IWbemServices* GetServices() { return pSvc; }
+        IWbemServices *GetServices() {
+            return pSvc;
+        }
     };
 
 public:
     // Format a volume with specific file system and label
-    bool formatVolume(const std::string& volumeLabel, const std::string& fileSystem, std::string& errorMsg);
+    bool formatVolume(const std::string &volumeLabel, const std::string &fileSystem, std::string &errorMsg);
 
     // Assign a drive letter to a volume
-    bool assignDriveLetter(const std::string& volumeLabel, char driveLetter, std::string& errorMsg);
+    bool assignDriveLetter(const std::string &volumeLabel, char driveLetter, std::string &errorMsg);
 
     // Get volume information
-    bool getVolumeInfo(const std::string& volumeLabel, std::string& fileSystem, UINT64& sizeBytes, std::string& errorMsg);
+    bool getVolumeInfo(const std::string &volumeLabel, std::string &fileSystem, UINT64 &sizeBytes,
+                       std::string &errorMsg);
 
 private:
-    bool callWmiMethod(const std::string& className, const std::string& methodName,
-                      const std::vector<std::pair<std::string, VARIANT>>& params,
-                      IWbemClassObject** ppOutParams, std::string& errorMsg);
+    bool callWmiMethod(const std::string &className, const std::string &methodName,
+                       const std::vector<std::pair<std::string, VARIANT>> &params, IWbemClassObject **ppOutParams,
+                       std::string &errorMsg);
 };
 
 #endif // VOLUME_MANAGER_H

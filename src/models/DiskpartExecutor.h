@@ -5,13 +5,13 @@
 
 class DiskpartExecutor {
 public:
-    explicit DiskpartExecutor(EventManager* eventManager);
+    explicit DiskpartExecutor(EventManager *eventManager);
     ~DiskpartExecutor();
 
-    bool performDiskpartOperations(const std::string& format);
+    bool performDiskpartOperations(const std::string &format);
     bool verifyPartitionsCreated();
     bool isDiskGpt();
 
 private:
-    EventManager* eventManager_;
+    EventManager *eventManager_;
 };

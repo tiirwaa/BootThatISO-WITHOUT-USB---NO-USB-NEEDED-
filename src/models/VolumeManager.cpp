@@ -1,7 +1,7 @@
 #include "VolumeManager.h"
 #include "../utils/Utils.h"
 
-bool VolumeManager::formatVolume(const std::string& volumeLabel, const std::string& fileSystem, std::string& errorMsg) {
+bool VolumeManager::formatVolume(const std::string &volumeLabel, const std::string &fileSystem, std::string &errorMsg) {
     WmiStorageManager wmi;
     if (!wmi.Initialize()) {
         errorMsg = "Failed to initialize WMI";
@@ -9,17 +9,17 @@ bool VolumeManager::formatVolume(const std::string& volumeLabel, const std::stri
     }
 
     // Find the volume by label
-    std::string query = "SELECT * FROM MSFT_Volume WHERE FileSystemLabel = '" + volumeLabel + "'";
-    IEnumWbemClassObject* pEnum = wmi.ExecQuery(std::wstring(query.begin(), query.end()).c_str());
+    std::string           query = "SELECT * FROM MSFT_Volume WHERE FileSystemLabel = '" + volumeLabel + "'";
+    IEnumWbemClassObject *pEnum = wmi.ExecQuery(std::wstring(query.begin(), query.end()).c_str());
 
     if (!pEnum) {
         errorMsg = "Failed to query volumes";
         return false;
     }
 
-    IWbemClassObject* pVolume = nullptr;
-    ULONG uReturn = 0;
-    HRESULT hr = pEnum->Next(WBEM_INFINITE, 1, &pVolume, &uReturn);
+    IWbemClassObject *pVolume = nullptr;
+    ULONG             uReturn = 0;
+    HRESULT           hr      = pEnum->Next(WBEM_INFINITE, 1, &pVolume, &uReturn);
     pEnum->Release();
 
     if (FAILED(hr) || uReturn == 0) {
@@ -44,15 +44,15 @@ bool VolumeManager::formatVolume(const std::string& volumeLabel, const std::stri
     pVolume->Release();
 
     // Use Windows format command
-    std::string cmd = "format " + std::string(volumePath.begin(), volumePath.end()) +
-                     " /FS:" + fileSystem + " /V:" + volumeLabel + " /Q /Y";
+    std::string cmd = "format " + std::string(volumePath.begin(), volumePath.end()) + " /FS:" + fileSystem +
+                      " /V:" + volumeLabel + " /Q /Y";
 
-    STARTUPINFOA si = { sizeof(si) };
+    STARTUPINFOA        si = {sizeof(si)};
     PROCESS_INFORMATION pi;
-    si.dwFlags = STARTF_USESHOWWINDOW;
+    si.dwFlags     = STARTF_USESHOWWINDOW;
     si.wShowWindow = SW_HIDE;
 
-    if (!CreateProcessA(NULL, const_cast<char*>(cmd.c_str()), NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
+    if (!CreateProcessA(NULL, const_cast<char *>(cmd.c_str()), NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
         errorMsg = "Failed to start format process";
         return false;
     }
@@ -73,7 +73,7 @@ bool VolumeManager::formatVolume(const std::string& volumeLabel, const std::stri
     return true;
 }
 
-bool VolumeManager::assignDriveLetter(const std::string& volumeLabel, char driveLetter, std::string& errorMsg) {
+bool VolumeManager::assignDriveLetter(const std::string &volumeLabel, char driveLetter, std::string &errorMsg) {
     WmiStorageManager wmi;
     if (!wmi.Initialize()) {
         errorMsg = "Failed to initialize WMI";
@@ -81,17 +81,17 @@ bool VolumeManager::assignDriveLetter(const std::string& volumeLabel, char drive
     }
 
     // Find the volume by label
-    std::string query = "SELECT * FROM MSFT_Volume WHERE FileSystemLabel = '" + volumeLabel + "'";
-    IEnumWbemClassObject* pEnum = wmi.ExecQuery(std::wstring(query.begin(), query.end()).c_str());
+    std::string           query = "SELECT * FROM MSFT_Volume WHERE FileSystemLabel = '" + volumeLabel + "'";
+    IEnumWbemClassObject *pEnum = wmi.ExecQuery(std::wstring(query.begin(), query.end()).c_str());
 
     if (!pEnum) {
         errorMsg = "Failed to query volumes";
         return false;
     }
 
-    IWbemClassObject* pVolume = nullptr;
-    ULONG uReturn = 0;
-    HRESULT hr = pEnum->Next(WBEM_INFINITE, 1, &pVolume, &uReturn);
+    IWbemClassObject *pVolume = nullptr;
+    ULONG             uReturn = 0;
+    HRESULT           hr      = pEnum->Next(WBEM_INFINITE, 1, &pVolume, &uReturn);
     pEnum->Release();
 
     if (FAILED(hr) || uReturn == 0) {
@@ -101,14 +101,14 @@ bool VolumeManager::assignDriveLetter(const std::string& volumeLabel, char drive
 
     // Call AddAccessPath method
     std::vector<std::pair<std::string, VARIANT>> params;
-    VARIANT varAccessPath;
+    VARIANT                                      varAccessPath;
     VariantInit(&varAccessPath);
-    varAccessPath.vt = VT_BSTR;
+    varAccessPath.vt      = VT_BSTR;
     varAccessPath.bstrVal = SysAllocString(std::wstring(std::string(1, driveLetter) + ":").c_str());
     params.push_back({"AccessPath", varAccessPath});
 
-    IWbemClassObject* pOutParams = nullptr;
-    bool result = callWmiMethod("MSFT_Volume", "AddAccessPath", params, &pOutParams, errorMsg);
+    IWbemClassObject *pOutParams = nullptr;
+    bool              result     = callWmiMethod("MSFT_Volume", "AddAccessPath", params, &pOutParams, errorMsg);
 
     VariantClear(&varAccessPath);
     pVolume->Release();
@@ -120,7 +120,8 @@ bool VolumeManager::assignDriveLetter(const std::string& volumeLabel, char drive
     return result;
 }
 
-bool VolumeManager::getVolumeInfo(const std::string& volumeLabel, std::string& fileSystem, UINT64& sizeBytes, std::string& errorMsg) {
+bool VolumeManager::getVolumeInfo(const std::string &volumeLabel, std::string &fileSystem, UINT64 &sizeBytes,
+                                  std::string &errorMsg) {
     WmiStorageManager wmi;
     if (!wmi.Initialize()) {
         errorMsg = "Failed to initialize WMI";
@@ -128,17 +129,17 @@ bool VolumeManager::getVolumeInfo(const std::string& volumeLabel, std::string& f
     }
 
     // Find the volume by label
-    std::string query = "SELECT * FROM MSFT_Volume WHERE FileSystemLabel = '" + volumeLabel + "'";
-    IEnumWbemClassObject* pEnum = wmi.ExecQuery(std::wstring(query.begin(), query.end()).c_str());
+    std::string           query = "SELECT * FROM MSFT_Volume WHERE FileSystemLabel = '" + volumeLabel + "'";
+    IEnumWbemClassObject *pEnum = wmi.ExecQuery(std::wstring(query.begin(), query.end()).c_str());
 
     if (!pEnum) {
         errorMsg = "Failed to query volumes";
         return false;
     }
 
-    IWbemClassObject* pVolume = nullptr;
-    ULONG uReturn = 0;
-    HRESULT hr = pEnum->Next(WBEM_INFINITE, 1, &pVolume, &uReturn);
+    IWbemClassObject *pVolume = nullptr;
+    ULONG             uReturn = 0;
+    HRESULT           hr      = pEnum->Next(WBEM_INFINITE, 1, &pVolume, &uReturn);
     pEnum->Release();
 
     if (FAILED(hr) || uReturn == 0) {
@@ -169,32 +170,32 @@ bool VolumeManager::getVolumeInfo(const std::string& volumeLabel, std::string& f
     return true;
 }
 
-bool VolumeManager::callWmiMethod(const std::string& className, const std::string& methodName,
-                                 const std::vector<std::pair<std::string, VARIANT>>& params,
-                                 IWbemClassObject** ppOutParams, std::string& errorMsg) {
+bool VolumeManager::callWmiMethod(const std::string &className, const std::string &methodName,
+                                  const std::vector<std::pair<std::string, VARIANT>> &params,
+                                  IWbemClassObject **ppOutParams, std::string &errorMsg) {
     WmiStorageManager wmi;
     if (!wmi.Initialize()) {
         errorMsg = "Failed to initialize WMI";
         return false;
     }
 
-    IWbemServices* pSvc = wmi.GetServices();
+    IWbemServices *pSvc = wmi.GetServices();
     if (!pSvc) {
         errorMsg = "WMI services not available";
         return false;
     }
 
     // Get the class object
-    IWbemClassObject* pClass = nullptr;
-    HRESULT hr = pSvc->GetObject(_bstr_t(className.c_str()), 0, NULL, &pClass, NULL);
+    IWbemClassObject *pClass = nullptr;
+    HRESULT           hr     = pSvc->GetObject(_bstr_t(className.c_str()), 0, NULL, &pClass, NULL);
     if (FAILED(hr)) {
         errorMsg = "Failed to get class object";
         return false;
     }
 
     // Get the method
-    IWbemClassObject* pInParams = nullptr;
-    hr = pClass->GetMethod(_bstr_t(methodName.c_str()), 0, &pInParams, NULL);
+    IWbemClassObject *pInParams = nullptr;
+    hr                          = pClass->GetMethod(_bstr_t(methodName.c_str()), 0, &pInParams, NULL);
     if (FAILED(hr)) {
         pClass->Release();
         errorMsg = "Failed to get method";
@@ -202,7 +203,7 @@ bool VolumeManager::callWmiMethod(const std::string& className, const std::strin
     }
 
     // Set parameters
-    for (const auto& param : params) {
+    for (const auto &param : params) {
         hr = pInParams->Put(_bstr_t(param.first.c_str()), 0, &param.second, 0);
         if (FAILED(hr)) {
             pInParams->Release();
@@ -213,8 +214,8 @@ bool VolumeManager::callWmiMethod(const std::string& className, const std::strin
     }
 
     // Execute method
-    hr = pSvc->ExecMethod(_bstr_t(className.c_str()), _bstr_t(methodName.c_str()),
-                         0, NULL, pInParams, ppOutParams, NULL);
+    hr = pSvc->ExecMethod(_bstr_t(className.c_str()), _bstr_t(methodName.c_str()), 0, NULL, pInParams, ppOutParams,
+                          NULL);
 
     pInParams->Release();
     pClass->Release();

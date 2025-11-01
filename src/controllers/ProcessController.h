@@ -13,25 +13,29 @@
 
 class ProcessController {
 public:
-    ProcessController(EventManager& eventManager);
+    ProcessController(EventManager &eventManager);
     ~ProcessController();
 
-    void startProcess(const std::string& isoPath, const std::string& selectedFormat, const std::string& selectedBootModeKey, const std::string& selectedBootModeLabel, bool skipIntegrityCheck = false, bool synchronous = false);
+    void startProcess(const std::string &isoPath, const std::string &selectedFormat,
+                      const std::string &selectedBootModeKey, const std::string &selectedBootModeLabel,
+                      bool skipIntegrityCheck = false, bool synchronous = false);
     // Request cancellation of the running process and wait for cleanup
     void requestCancel();
     bool recoverSpace();
 
 private:
-    void processInThread(const std::string& isoPath, const std::string& selectedFormat, const std::string& selectedBootModeKey, const std::string& selectedBootModeLabel, bool skipIntegrityCheck);
+    void processInThread(const std::string &isoPath, const std::string &selectedFormat,
+                         const std::string &selectedBootModeKey, const std::string &selectedBootModeLabel,
+                         bool skipIntegrityCheck);
     void recoverSpaceInThread();
 
-    PartitionManager* partitionManager;
-    ISOCopyManager* isoCopyManager;
-    BCDManager* bcdManager;
-    EventManager& eventManager;
-    std::thread workerThread;
-    std::thread recoveryThread;
-    std::atomic<bool> recoveryInProgress{false};
+    PartitionManager               *partitionManager;
+    ISOCopyManager                 *isoCopyManager;
+    BCDManager                     *bcdManager;
+    EventManager                   &eventManager;
+    std::thread                     workerThread;
+    std::thread                     recoveryThread;
+    std::atomic<bool>               recoveryInProgress{false};
     std::unique_ptr<ProcessService> processService;
 };
 

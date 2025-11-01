@@ -16,7 +16,8 @@ public:
         return "extracted";
     }
 
-    void configureBCD(const std::string& guid, const std::string& dataDevice, const std::string& espDevice, const std::string& efiPath) override {
+    void configureBCD(const std::string &guid, const std::string &dataDevice, const std::string &espDevice,
+                      const std::string &efiPath) override {
         const std::string BCD_CMD = "C:\\Windows\\System32\\bcdedit.exe";
         // dataDevice and espDevice are expected to be drive letters like "Z:" and "Y:"
         std::string cmd1 = BCD_CMD + " /set " + guid + " device partition=" + dataDevice;
@@ -27,7 +28,7 @@ public:
         // Log commands for debugging
         std::string logDir = Utils::getExeDirectory() + "logs";
         CreateDirectoryA(logDir.c_str(), NULL);
-        std::string logFilePath = logDir + "\\" + BCD_CONFIG_LOG_FILE;
+        std::string   logFilePath = logDir + "\\" + BCD_CONFIG_LOG_FILE;
         std::ofstream logFile(logFilePath.c_str(), std::ios::app);
         if (logFile) {
             logFile << "Executing BCD commands for ExtractedBootStrategy:" << std::endl;

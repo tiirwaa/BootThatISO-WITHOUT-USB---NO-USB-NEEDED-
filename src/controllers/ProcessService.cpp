@@ -5,8 +5,8 @@
 #include <fstream>
 #include "../utils/constants.h"
 
-static HashInfo readHashInfo(const std::string& path) {
-    HashInfo info = {"", "", ""};
+static HashInfo readHashInfo(const std::string &path) {
+    HashInfo      info = {"", "", ""};
     std::ifstream file(path);
     if (file.is_open()) {
         std::getline(file, info.hash);
@@ -16,10 +16,11 @@ static HashInfo readHashInfo(const std::string& path) {
     return info;
 }
 
-ProcessService::ProcessService(PartitionManager* pm, ISOCopyManager* icm, BCDManager* bcm, EventManager& em)
+ProcessService::ProcessService(PartitionManager *pm, ISOCopyManager *icm, BCDManager *bcm, EventManager &em)
     : partitionManager(pm), isoCopyManager(icm), bcdManager(bcm), eventManager(em) {}
 
-ProcessService::ProcessResult ProcessService::validateAndPrepare(const std::string& isoPath, const std::string& format, bool skipIntegrityCheck) {
+ProcessService::ProcessResult ProcessService::validateAndPrepare(const std::string &isoPath, const std::string &format,
+                                                                 bool skipIntegrityCheck) {
     bool partitionExists = partitionManager->partitionExists();
     if (!partitionExists) {
         SpaceValidationResult validation = partitionManager->validateAvailableSpace();
@@ -32,8 +33,8 @@ ProcessService::ProcessResult ProcessService::validateAndPrepare(const std::stri
         std::string partDrive = partitionManager->getPartitionDriveLetter();
         if (!partDrive.empty()) {
             std::string hashFilePath = partDrive + "\\ISOBOOTHASH";
-            std::string md5 = Utils::calculateMD5(isoPath);
-            HashInfo existing = readHashInfo(hashFilePath);
+            std::string md5          = Utils::calculateMD5(isoPath);
+            HashInfo    existing     = readHashInfo(hashFilePath);
             if (existing.hash == md5 && existing.format == format && !existing.hash.empty()) {
                 // Skip format
             } else {
@@ -73,7 +74,8 @@ ProcessService::ProcessResult ProcessService::validateAndPrepare(const std::stri
     return {true, ""};
 }
 
-ProcessService::ProcessResult ProcessService::copyIsoContent(const std::string& isoPath, const std::string& format, const std::string& modeKey, const std::string& modeLabel) {
+ProcessService::ProcessResult ProcessService::copyIsoContent(const std::string &isoPath, const std::string &format,
+                                                             const std::string &modeKey, const std::string &modeLabel) {
     if (copyISO(isoPath, partitionDrive, espDrive, modeKey, modeLabel, format)) {
         return {true, ""};
     } else {
@@ -81,7 +83,7 @@ ProcessService::ProcessResult ProcessService::copyIsoContent(const std::string& 
     }
 }
 
-ProcessService::ProcessResult ProcessService::configureBoot(const std::string& modeKey) {
+ProcessService::ProcessResult ProcessService::configureBoot(const std::string &modeKey) {
     if (isoCopyManager->getIsWindowsISO() || modeKey == AppKeys::BootModeRam) {
         auto strategy = BootStrategyFactory::createStrategy(modeKey);
         if (!strategy) {
@@ -95,16 +97,19 @@ ProcessService::ProcessResult ProcessService::configureBoot(const std::string& m
     return {true, ""};
 }
 
-bool ProcessService::copyISO(const std::string& isoPath, const std::string& destPath, const std::string& espPath, const std::string& modeKey, const std::string& modeLabel, const std::string& format) {
-    std::string drive = destPath;
+bool ProcessService::copyISO(const std::string &isoPath, const std::string &destPath, const std::string &espPath,
+                             const std::string &modeKey, const std::string &modeLabel, const std::string &format) {
+    std::string drive         = destPath;
     std::string espDriveLocal = espPath;
 
     if (modeKey == AppKeys::BootModeRam) {
-        if (isoCopyManager->extractISOContents(eventManager, isoPath, drive, espDriveLocal, false, true, true, modeKey, format)) {
+        if (isoCopyManager->extractISOContents(eventManager, isoPath, drive, espDriveLocal, false, true, true, modeKey,
+                                               format)) {
             return true;
         }
     } else {
-        if (isoCopyManager->extractISOContents(eventManager, isoPath, drive, espDriveLocal, true, true, true, modeKey, format)) {
+        if (isoCopyManager->extractISOContents(eventManager, isoPath, drive, espDriveLocal, true, true, true, modeKey,
+                                               format)) {
             return true;
         }
     }

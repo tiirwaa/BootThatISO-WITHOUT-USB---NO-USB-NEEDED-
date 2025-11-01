@@ -18,10 +18,10 @@
 namespace {
 namespace fs = std::filesystem;
 
-constexpr const char* BCD_CMD_PATH = "C:\\Windows\\System32\\bcdedit.exe";
-constexpr const char* BOOTMGR_BACKUP_FILE = "bootmgr_backup.ini";
+constexpr const char *BCD_CMD_PATH        = "C:\\Windows\\System32\\bcdedit.exe";
+constexpr const char *BOOTMGR_BACKUP_FILE = "bootmgr_backup.ini";
 
-std::string trimString(const std::string& input) {
+std::string trimString(const std::string &input) {
     const auto start = input.find_first_not_of(" \t\r\n");
     if (start == std::string::npos) {
         return std::string();
@@ -31,17 +31,17 @@ std::string trimString(const std::string& input) {
 }
 
 struct BootmgrState {
-    std::string defaultId;
+    std::string                defaultId;
     std::optional<std::string> timeout;
 };
 
 std::optional<BootmgrState> queryBootmgrState() {
-    std::string output = Utils::exec((std::string(BCD_CMD_PATH) + " /enum {bootmgr}").c_str());
-    BootmgrState state;
-    bool foundDefault = false;
-    bool foundTimeout = false;
+    std::string        output = Utils::exec((std::string(BCD_CMD_PATH) + " /enum {bootmgr}").c_str());
+    BootmgrState       state;
+    bool               foundDefault = false;
+    bool               foundTimeout = false;
     std::istringstream stream(output);
-    std::string line;
+    std::string        line;
     while (std::getline(stream, line)) {
         std::string trimmed = trimString(line);
         if (trimmed.empty()) {
@@ -55,7 +55,7 @@ std::optional<BootmgrState> queryBootmgrState() {
                 std::string value = trimString(trimmed.substr(pos));
                 if (!value.empty()) {
                     state.defaultId = value;
-                    foundDefault = true;
+                    foundDefault    = true;
                 }
             }
         } else if (!foundTimeout && lower.rfind("timeout", 0) == 0) {
@@ -107,13 +107,13 @@ void captureBootmgrStateIfNeeded() {
 }
 
 std::optional<BootmgrState> loadBootmgrBackup() {
-    std::string path = bootmgrBackupPath();
+    std::string   path = bootmgrBackupPath();
     std::ifstream file(path);
     if (!file) {
         return std::nullopt;
     }
     BootmgrState state;
-    std::string line;
+    std::string  line;
     while (std::getline(file, line)) {
         std::string trimmed = trimString(line);
         if (trimmed.empty()) {
@@ -123,7 +123,7 @@ std::optional<BootmgrState> loadBootmgrBackup() {
         if (pos == std::string::npos) {
             continue;
         }
-        std::string key = trimString(trimmed.substr(0, pos));
+        std::string key   = trimString(trimmed.substr(0, pos));
         std::string value = trimString(trimmed.substr(pos + 1));
         if (key == "default") {
             state.defaultId = value;
@@ -141,51 +141,49 @@ std::optional<BootmgrState> loadBootmgrBackup() {
 }
 
 void deleteBootmgrBackup() {
-    std::string path = bootmgrBackupPath();
+    std::string     path = bootmgrBackupPath();
     std::error_code ec;
     fs::remove(path, ec);
 }
 
-bool restoreBootmgrStateIfPresent(EventManager* eventManager) {
+bool restoreBootmgrStateIfPresent(EventManager *eventManager) {
     std::optional<BootmgrState> stateOpt = loadBootmgrBackup();
     if (!stateOpt.has_value()) {
         return false;
     }
     if (eventManager) {
-        eventManager->notifyLogUpdate("Limpiando configuracion temporal del gestor de arranque guardada por BootThatISO...\r\n");
+        eventManager->notifyLogUpdate(
+            "Limpiando configuracion temporal del gestor de arranque guardada por BootThatISO...\r\n");
     }
     deleteBootmgrBackup();
     return true;
 }
-}
+} // namespace
 
-BCDManager& BCDManager::getInstance() {
+BCDManager &BCDManager::getInstance() {
     static BCDManager instance;
     return instance;
 }
 
-BCDManager::BCDManager()
-    : eventManager(nullptr)
-{
-}
+BCDManager::BCDManager() : eventManager(nullptr) {}
 
-BCDManager::~BCDManager()
-{
-}
+BCDManager::~BCDManager() {}
 
-std::vector<std::string> split(const std::string& s, char delim) {
+std::vector<std::string> split(const std::string &s, char delim) {
     std::vector<std::string> result;
-    std::stringstream ss(s);
-    std::string item;
+    std::stringstream        ss(s);
+    std::string              item;
     while (getline(ss, item, delim)) {
         result.push_back(item);
     }
     return result;
 }
 
-WORD BCDManager::GetMachineType(const std::string& filePath) {
-    HANDLE hFile = CreateFileA(filePath.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-    if (hFile == INVALID_HANDLE_VALUE) return 0;
+WORD BCDManager::GetMachineType(const std::string &filePath) {
+    HANDLE hFile =
+        CreateFileA(filePath.c_str(), GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (hFile == INVALID_HANDLE_VALUE)
+        return 0;
 
     HANDLE hMapping = CreateFileMapping(hFile, NULL, PAGE_READONLY, 0, 0, NULL);
     if (!hMapping) {
@@ -208,7 +206,7 @@ WORD BCDManager::GetMachineType(const std::string& filePath) {
         return 0;
     }
 
-    PIMAGE_NT_HEADERS ntHeader = (PIMAGE_NT_HEADERS)((BYTE*)lpBase + dosHeader->e_lfanew);
+    PIMAGE_NT_HEADERS ntHeader = (PIMAGE_NT_HEADERS)((BYTE *)lpBase + dosHeader->e_lfanew);
     if (ntHeader->Signature != IMAGE_NT_SIGNATURE) {
         UnmapViewOfFile(lpBase);
         CloseHandle(hMapping);
@@ -223,27 +221,29 @@ WORD BCDManager::GetMachineType(const std::string& filePath) {
     return machine;
 }
 
-std::string BCDManager::configureBCD(const std::string& driveLetter, const std::string& espDriveLetter, BootStrategy& strategy)
-{
+std::string BCDManager::configureBCD(const std::string &driveLetter, const std::string &espDriveLetter,
+                                     BootStrategy &strategy) {
     captureBootmgrStateIfNeeded();
     const std::string BCD_CMD = "C:\\Windows\\System32\\bcdedit.exe";
-    if (eventManager) eventManager->notifyLogUpdate("Configurando Boot Configuration Data (BCD)...\r\n");
+    if (eventManager)
+        eventManager->notifyLogUpdate("Configurando Boot Configuration Data (BCD)...\r\n");
 
     // Get volume GUID for data partition
-    WCHAR dataVolumeName[MAX_PATH];
+    WCHAR        dataVolumeName[MAX_PATH];
     std::wstring wDriveLetter = Utils::utf8_to_wstring(driveLetter);
-    if (wDriveLetter.empty() || wDriveLetter.back() != L'\\') wDriveLetter += L'\\';
+    if (wDriveLetter.empty() || wDriveLetter.back() != L'\\')
+        wDriveLetter += L'\\';
 
     // Try GetVolumeNameForVolumeMountPointW with a few retries (transient mount timing issues)
-    const int MAX_ATTEMPTS = 3;
-    BOOL gotVolumeName = FALSE;
-    DWORD lastErr = 0;
+    const int MAX_ATTEMPTS  = 3;
+    BOOL      gotVolumeName = FALSE;
+    DWORD     lastErr       = 0;
 
     // Prepare a small timestamp helper and a log file for detailed BCD config diagnostics
     auto getTS = []() -> std::string {
-        char buffer[64];
+        char        buffer[64];
         std::time_t now = std::time(nullptr);
-        std::tm localTime;
+        std::tm     localTime;
         localtime_s(&localTime, &now);
         std::strftime(buffer, sizeof(buffer), "[%Y-%m-%d %H:%M:%S] ", &localTime);
         return std::string(buffer);
@@ -253,74 +253,88 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
     std::string bcdLogDir = Utils::getExeDirectory() + "logs";
     CreateDirectoryA(bcdLogDir.c_str(), NULL);
     std::ofstream dbgLog((bcdLogDir + "\\" + BCD_CONFIG_LOG_FILE).c_str(), std::ios::app);
-    dbgLog << getTS() << "Attempting GetVolumeNameForVolumeMountPointW for: " << Utils::wstring_to_utf8(wDriveLetter) << std::endl;
+    dbgLog << getTS() << "Attempting GetVolumeNameForVolumeMountPointW for: " << Utils::wstring_to_utf8(wDriveLetter)
+           << std::endl;
 
     for (int attempt = 1; attempt <= MAX_ATTEMPTS; ++attempt) {
-            if (GetVolumeNameForVolumeMountPointW(wDriveLetter.c_str(), dataVolumeName, MAX_PATH)) {
+        if (GetVolumeNameForVolumeMountPointW(wDriveLetter.c_str(), dataVolumeName, MAX_PATH)) {
             gotVolumeName = TRUE;
             dbgLog << getTS() << "GetVolumeNameForVolumeMountPointW succeeded on attempt " << attempt << std::endl;
             break;
         } else {
             lastErr = GetLastError();
-            dbgLog << getTS() << "GetVolumeNameForVolumeMountPointW failed on attempt " << attempt << ", error=" << lastErr << std::endl;
+            dbgLog << getTS() << "GetVolumeNameForVolumeMountPointW failed on attempt " << attempt
+                   << ", error=" << lastErr << std::endl;
             // small delay before retry
             Sleep(500);
         }
     }
 
     if (!gotVolumeName) {
-        if (eventManager) eventManager->notifyLogUpdate("GetVolumeNameForVolumeMountPointW failed for " + driveLetter + ", trying fallback enumeration...\r\n");
-    dbgLog << getTS() << "Starting fallback volume enumeration to find mount point matching: " << Utils::wstring_to_utf8(wDriveLetter) << std::endl;
+        if (eventManager)
+            eventManager->notifyLogUpdate("GetVolumeNameForVolumeMountPointW failed for " + driveLetter +
+                                          ", trying fallback enumeration...\r\n");
+        dbgLog << getTS() << "Starting fallback volume enumeration to find mount point matching: "
+               << Utils::wstring_to_utf8(wDriveLetter) << std::endl;
 
-        BOOL found = FALSE;
-        WCHAR volName[MAX_PATH];
+        BOOL   found = FALSE;
+        WCHAR  volName[MAX_PATH];
         HANDLE hVol = FindFirstVolumeW(volName, MAX_PATH);
         if (hVol != INVALID_HANDLE_VALUE) {
             do {
                 // Ensure volume name ends with backslash for GetVolumePathNamesForVolumeNameW
                 std::wstring volNameStr = volName;
-                if (volNameStr.back() != L'\\') volNameStr.push_back(L'\\');
+                if (volNameStr.back() != L'\\')
+                    volNameStr.push_back(L'\\');
 
                 dbgLog << getTS() << "Enumerating volume: " << Utils::wstring_to_utf8(volNameStr) << std::endl;
 
                 // Get mount points for this volume
                 DWORD returnLen = 0;
-                BOOL got = GetVolumePathNamesForVolumeNameW(volNameStr.c_str(), NULL, 0, &returnLen);
-                DWORD gle = GetLastError();
-                dbgLog << getTS() << "  GetVolumePathNamesForVolumeNameW initial call returned " << got << " lastErr=" << gle << " needLen=" << returnLen << std::endl;
+                BOOL  got       = GetVolumePathNamesForVolumeNameW(volNameStr.c_str(), NULL, 0, &returnLen);
+                DWORD gle       = GetLastError();
+                dbgLog << getTS() << "  GetVolumePathNamesForVolumeNameW initial call returned " << got
+                       << " lastErr=" << gle << " needLen=" << returnLen << std::endl;
 
                 if (!got && gle == ERROR_MORE_DATA && returnLen > 0) {
                     std::vector<WCHAR> buf(returnLen);
                     if (GetVolumePathNamesForVolumeNameW(volNameStr.c_str(), buf.data(), returnLen, &returnLen)) {
                         // buffer contains multi-string of path names
-                        WCHAR* p = buf.data();
+                        WCHAR *p = buf.data();
                         while (*p) {
                             std::wstring mountPoint(p);
-                            if (mountPoint.back() != L'\\') mountPoint.push_back(L'\\');
-                            dbgLog << getTS() << "    Found mount point: " << Utils::wstring_to_utf8(mountPoint) << std::endl;
+                            if (mountPoint.back() != L'\\')
+                                mountPoint.push_back(L'\\');
+                            dbgLog << getTS() << "    Found mount point: " << Utils::wstring_to_utf8(mountPoint)
+                                   << std::endl;
                             if (mountPoint == wDriveLetter) {
                                 // Found matching volume
                                 wcsncpy_s(dataVolumeName, volName, MAX_PATH);
                                 found = TRUE;
-                                dbgLog << getTS() << "    -> MATCH for " << Utils::wstring_to_utf8(wDriveLetter) << std::endl;
+                                dbgLog << getTS() << "    -> MATCH for " << Utils::wstring_to_utf8(wDriveLetter)
+                                       << std::endl;
                                 break;
                             }
                             p += wcslen(p) + 1;
                         }
                     } else {
-                        dbgLog << getTS() << "    GetVolumePathNamesForVolumeNameW failed on populate, err=" << GetLastError() << std::endl;
+                        dbgLog << getTS()
+                               << "    GetVolumePathNamesForVolumeNameW failed on populate, err=" << GetLastError()
+                               << std::endl;
                     }
                 }
 
-                if (found) break;
+                if (found)
+                    break;
             } while (FindNextVolumeW(hVol, volName, MAX_PATH));
             FindVolumeClose(hVol);
-            } else {
+        } else {
             dbgLog << getTS() << "FindFirstVolumeW failed, err=" << GetLastError() << std::endl;
         }
 
         if (!found) {
-            dbgLog << getTS() << "Fallback enumeration did not find a matching mount point for " << Utils::wstring_to_utf8(wDriveLetter) << std::endl;
+            dbgLog << getTS() << "Fallback enumeration did not find a matching mount point for "
+                   << Utils::wstring_to_utf8(wDriveLetter) << std::endl;
             dbgLog.close();
             return "Error al obtener el nombre del volumen de datos";
         }
@@ -336,9 +350,10 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
     std::string dataDevice = narrowDataVolumeName;
 
     // Get volume GUID for ESP
-    WCHAR espVolumeName[MAX_PATH];
+    WCHAR        espVolumeName[MAX_PATH];
     std::wstring wEspDriveLetter = Utils::utf8_to_wstring(espDriveLetter);
-    if (wEspDriveLetter.empty() || wEspDriveLetter.back() != L'\\') wEspDriveLetter += L'\\';
+    if (wEspDriveLetter.empty() || wEspDriveLetter.back() != L'\\')
+        wEspDriveLetter += L'\\';
     if (!GetVolumeNameForVolumeMountPointW(wEspDriveLetter.c_str(), espVolumeName, MAX_PATH)) {
         return "Error al obtener el nombre del volumen ESP";
     }
@@ -352,11 +367,11 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
     // Delete any existing ISOBOOT entries to avoid duplicates
     // Use block parsing and case-insensitive search to handle localized bcdedit output
     std::string enumOutput = Utils::exec((BCD_CMD + " /enum all").c_str());
-    auto blocks = split(enumOutput, '\n');
+    auto        blocks     = split(enumOutput, '\n');
     // Parse into blocks separated by empty lines
     std::vector<std::string> entryBlocks;
-    std::string currentBlock;
-    for (const auto& line : blocks) {
+    std::string              currentBlock;
+    for (const auto &line : blocks) {
         if (line.find_first_not_of(" \t\r\n") == std::string::npos) {
             if (!currentBlock.empty()) {
                 entryBlocks.push_back(currentBlock);
@@ -366,9 +381,10 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
             currentBlock += line + "\n";
         }
     }
-    if (!currentBlock.empty()) entryBlocks.push_back(currentBlock);
+    if (!currentBlock.empty())
+        entryBlocks.push_back(currentBlock);
 
-    auto icontains = [](const std::string& hay, const std::string& needle) {
+    auto icontains = [](const std::string &hay, const std::string &needle) {
         std::string h = hay;
         std::string n = needle;
         std::transform(h.begin(), h.end(), h.begin(), ::tolower);
@@ -377,14 +393,14 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
     };
 
     std::string labelToFind = "ISOBOOT";
-    for (const auto& blk : entryBlocks) {
+    for (const auto &blk : entryBlocks) {
         if (icontains(blk, labelToFind)) {
             // find GUID in block
             size_t pos = blk.find('{');
             if (pos != std::string::npos) {
                 size_t end = blk.find('}', pos);
                 if (end != std::string::npos) {
-                    std::string guid = blk.substr(pos, end - pos + 1);
+                    std::string guid      = blk.substr(pos, end - pos + 1);
                     std::string deleteCmd = BCD_CMD + " /delete " + guid + " /f"; // force remove
                     Utils::exec(deleteCmd.c_str());
                 }
@@ -393,7 +409,7 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
     }
 
     std::string bcdLabel = strategy.getBCDLabel();
-    
+
     // Create appropriate BCD entry based on boot mode
     std::string output;
     if (strategy.getType() == "ramdisk") {
@@ -403,11 +419,13 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
         // For other modes, copy the default entry
         output = Utils::exec((BCD_CMD + " /copy {default} /d \"" + bcdLabel + "\"").c_str());
     }
-    
-    if (output.find("error") != std::string::npos || output.find("{") == std::string::npos) return "Error al crear/copiar entrada BCD";
+
+    if (output.find("error") != std::string::npos || output.find("{") == std::string::npos)
+        return "Error al crear/copiar entrada BCD";
     size_t pos = output.find("{");
     size_t end = output.find("}", pos);
-    if (end == std::string::npos) return "Error al extraer GUID de la nueva entrada";
+    if (end == std::string::npos)
+        return "Error al extraer GUID de la nueva entrada";
     std::string guid = output.substr(pos, end - pos + 1);
 
     // Find the EFI boot file in ESP - prioritize based on boot mode
@@ -417,75 +435,76 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
     std::vector<std::string> candidates;
     if (strategy.getType() == "extracted") {
         // Installation mode: prefer Microsoft bootmgfw first, then BOOTX64
-        candidates = {
-            espDriveLetter + "\\EFI\\Microsoft\\Boot\\bootmgfw.efi",
-            espDriveLetter + "\\EFI\\microsoft\\boot\\bootmgfw.efi",
-            espDriveLetter + "\\EFI\\BOOT\\BOOTX64.EFI",
-            espDriveLetter + "\\EFI\\boot\\BOOTX64.EFI",
-            espDriveLetter + "\\EFI\\boot\\bootx64.efi"
-        };
+        candidates = {espDriveLetter + "\\EFI\\Microsoft\\Boot\\bootmgfw.efi",
+                      espDriveLetter + "\\EFI\\microsoft\\boot\\bootmgfw.efi",
+                      espDriveLetter + "\\EFI\\BOOT\\BOOTX64.EFI", espDriveLetter + "\\EFI\\boot\\BOOTX64.EFI",
+                      espDriveLetter + "\\EFI\\boot\\bootx64.efi"};
     } else if (strategy.getType() == "ramdisk") {
         // Ramdisk mode: prefer Microsoft bootmgfw first, then BOOTX64
-        candidates = {
-            espDriveLetter + "\\EFI\\Microsoft\\Boot\\bootmgfw.efi",
-            espDriveLetter + "\\EFI\\microsoft\\boot\\bootmgfw.efi",
-            espDriveLetter + "\\EFI\\BOOT\\BOOTX64.EFI",
-            espDriveLetter + "\\EFI\\boot\\BOOTX64.EFI",
-            espDriveLetter + "\\EFI\\boot\\bootx64.efi"
-        };
+        candidates = {espDriveLetter + "\\EFI\\Microsoft\\Boot\\bootmgfw.efi",
+                      espDriveLetter + "\\EFI\\microsoft\\boot\\bootmgfw.efi",
+                      espDriveLetter + "\\EFI\\BOOT\\BOOTX64.EFI", espDriveLetter + "\\EFI\\boot\\BOOTX64.EFI",
+                      espDriveLetter + "\\EFI\\boot\\bootx64.efi"};
     } else {
-        candidates = {
-            espDriveLetter + "\\EFI\\BOOT\\BOOTX64.EFI",
-            espDriveLetter + "\\EFI\\boot\\BOOTX64.EFI",
-            espDriveLetter + "\\EFI\\boot\\bootx64.efi",
-            espDriveLetter + "\\EFI\\boot\\BOOTIA32.EFI",
-            espDriveLetter + "\\EFI\\boot\\bootia32.efi",
-            espDriveLetter + "\\EFI\\Microsoft\\Boot\\bootmgr.efi",
-            espDriveLetter + "\\EFI\\Microsoft\\Boot\\bootmgfw.efi",
-            espDriveLetter + "\\EFI\\microsoft\\boot\\bootmgfw.efi"
-        };
+        candidates = {espDriveLetter + "\\EFI\\BOOT\\BOOTX64.EFI",
+                      espDriveLetter + "\\EFI\\boot\\BOOTX64.EFI",
+                      espDriveLetter + "\\EFI\\boot\\bootx64.efi",
+                      espDriveLetter + "\\EFI\\boot\\BOOTIA32.EFI",
+                      espDriveLetter + "\\EFI\\boot\\bootia32.efi",
+                      espDriveLetter + "\\EFI\\Microsoft\\Boot\\bootmgr.efi",
+                      espDriveLetter + "\\EFI\\Microsoft\\Boot\\bootmgfw.efi",
+                      espDriveLetter + "\\EFI\\microsoft\\boot\\bootmgfw.efi"};
     }
 
     // Evaluate candidates: collect existing candidates and their architectures
-    int bestIndex = -1;
-    int bestScore = -1; // 2 = amd64, 1 = i386, 0 = exists
-    int firstAmd64Index = -1;
-    int firstI386Index = -1;
+    int              bestIndex       = -1;
+    int              bestScore       = -1; // 2 = amd64, 1 = i386, 0 = exists
+    int              firstAmd64Index = -1;
+    int              firstI386Index  = -1;
     std::vector<int> existingIndices;
     for (size_t i = 0; i < candidates.size(); ++i) {
-        const std::string& c = candidates[i];
-        if (GetFileAttributesA(c.c_str()) == INVALID_FILE_ATTRIBUTES) continue;
+        const std::string &c = candidates[i];
+        if (GetFileAttributesA(c.c_str()) == INVALID_FILE_ATTRIBUTES)
+            continue;
         existingIndices.push_back((int)i);
-        WORD m = GetMachineType(c);
-        int score = 0;
-        if (m == IMAGE_FILE_MACHINE_AMD64) score = 2;
-        else if (m == IMAGE_FILE_MACHINE_I386) score = 1;
-        else score = 0;
-        if (firstAmd64Index == -1 && m == IMAGE_FILE_MACHINE_AMD64) firstAmd64Index = (int)i;
-        if (firstI386Index == -1 && m == IMAGE_FILE_MACHINE_I386) firstI386Index = (int)i;
+        WORD m     = GetMachineType(c);
+        int  score = 0;
+        if (m == IMAGE_FILE_MACHINE_AMD64)
+            score = 2;
+        else if (m == IMAGE_FILE_MACHINE_I386)
+            score = 1;
+        else
+            score = 0;
+        if (firstAmd64Index == -1 && m == IMAGE_FILE_MACHINE_AMD64)
+            firstAmd64Index = (int)i;
+        if (firstI386Index == -1 && m == IMAGE_FILE_MACHINE_I386)
+            firstI386Index = (int)i;
         if (eventManager) {
             std::ostringstream oss;
             oss << std::hex << std::uppercase << m;
-            eventManager->notifyLogUpdate("Candidate EFI: " + c + ", machine=0x" + oss.str() + " score=" + std::to_string(score) + "\r\n");
+            eventManager->notifyLogUpdate("Candidate EFI: " + c + ", machine=0x" + oss.str() +
+                                          " score=" + std::to_string(score) + "\r\n");
         }
         if (score > bestScore) {
             bestScore = score;
             bestIndex = (int)i;
-            if (bestScore == 2) break; // best possible
+            if (bestScore == 2)
+                break; // best possible
         }
     }
 
     // If we found both architectures available, ask the user which one to use
     if (firstAmd64Index != -1 && firstI386Index != -1) {
-        std::string amdPath = candidates[firstAmd64Index];
-        std::string i386Path = candidates[firstI386Index];
-        std::wstring wmsg = L"Se encontraron EFI de ambas arquitecturas en la ESP:\n\n";
+        std::string  amdPath  = candidates[firstAmd64Index];
+        std::string  i386Path = candidates[firstI386Index];
+        std::wstring wmsg     = L"Se encontraron EFI de ambas arquitecturas en la ESP:\n\n";
         wmsg += Utils::utf8_to_wstring(std::string("x64: ") + amdPath) + L"\n";
         wmsg += Utils::utf8_to_wstring(std::string("x86: ") + i386Path) + L"\n\n";
-        std::wstring selectionPrompt = LocalizedOrW("message.selectEfiArchitecturePrompt", L"?Cu?l desea usar? Seleccione S? para x64, No para x86.");
+        std::wstring selectionPrompt = LocalizedOrW("message.selectEfiArchitecturePrompt",
+                                                    L"?Cu?l desea usar? Seleccione S? para x64, No para x86.");
         wmsg += selectionPrompt;
         std::wstring selectionTitle = LocalizedOrW("title.selectEfiArchitecture", L"Seleccionar arquitectura EFI");
-        int res = MessageBoxW(NULL, wmsg.c_str(), selectionTitle.c_str(), MB_YESNO | MB_ICONQUESTION);
+        int          res = MessageBoxW(NULL, wmsg.c_str(), selectionTitle.c_str(), MB_YESNO | MB_ICONQUESTION);
         if (res == IDYES) {
             bestIndex = firstAmd64Index;
         } else {
@@ -504,18 +523,22 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
 
     WORD machine = GetMachineType(efiBootFile);
     if (machine != IMAGE_FILE_MACHINE_AMD64 && machine != IMAGE_FILE_MACHINE_I386) {
-        if (eventManager) eventManager->notifyLogUpdate("Error: Arquitectura EFI no soportada.\r\n");
+        if (eventManager)
+            eventManager->notifyLogUpdate("Error: Arquitectura EFI no soportada.\r\n");
         return "Arquitectura EFI no soportada";
     }
 
     // Validate EFI architecture matches system architecture
     SYSTEM_INFO sysInfo;
     GetNativeSystemInfo(&sysInfo);
-    WORD sysArch = (sysInfo.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_AMD64) ? IMAGE_FILE_MACHINE_AMD64 :
-                   (sysInfo.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_INTEL) ? IMAGE_FILE_MACHINE_I386 : 0;
+    WORD sysArch = (sysInfo.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_AMD64)   ? IMAGE_FILE_MACHINE_AMD64
+                   : (sysInfo.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_INTEL) ? IMAGE_FILE_MACHINE_I386
+                                                                                      : 0;
     if (machine != sysArch) {
-        std::string errorMsg = "Error: Arquitectura EFI (0x" + std::to_string(machine) + ") no coincide con la del sistema (0x" + std::to_string(sysArch) + ").\r\n";
-        if (eventManager) eventManager->notifyLogUpdate(errorMsg);
+        std::string errorMsg = "Error: Arquitectura EFI (0x" + std::to_string(machine) +
+                               ") no coincide con la del sistema (0x" + std::to_string(sysArch) + ").\r\n";
+        if (eventManager)
+            eventManager->notifyLogUpdate(errorMsg);
         return "Arquitectura EFI no compatible con el sistema";
     }
 
@@ -532,35 +555,32 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
         logFile << "EFI file selection for extracted mode:" << std::endl;
         std::string candidates[] = {
             espDriveLetter + "\\EFI\\Microsoft\\Boot\\bootmgfw.efi",
-            espDriveLetter + "\\EFI\\microsoft\\boot\\bootmgfw.efi",
-            espDriveLetter + "\\EFI\\BOOT\\BOOTX64.EFI",
-            espDriveLetter + "\\EFI\\boot\\BOOTX64.EFI",
-            espDriveLetter + "\\EFI\\boot\\bootx64.efi"
-        };
-        for (const auto& candidate : candidates) {
+            espDriveLetter + "\\EFI\\microsoft\\boot\\bootmgfw.efi", espDriveLetter + "\\EFI\\BOOT\\BOOTX64.EFI",
+            espDriveLetter + "\\EFI\\boot\\BOOTX64.EFI", espDriveLetter + "\\EFI\\boot\\bootx64.efi"};
+        for (const auto &candidate : candidates) {
             bool exists = (GetFileAttributesA(candidate.c_str()) != INVALID_FILE_ATTRIBUTES);
             logFile << "  " << candidate << " - " << (exists ? "EXISTS" : "NOT FOUND");
-            if (candidate == efiBootFile) logFile << " [SELECTED]";
+            if (candidate == efiBootFile)
+                logFile << " [SELECTED]";
             logFile << std::endl;
         }
     } else if (strategy.getType() == "ramdisk") {
         logFile << "EFI file selection for ramdisk mode:" << std::endl;
         std::string candidates[] = {
-            espDriveLetter + "\\EFI\\BOOT\\BOOTX64.EFI",
-            espDriveLetter + "\\EFI\\boot\\BOOTX64.EFI",
-            espDriveLetter + "\\EFI\\boot\\bootx64.efi",
-            espDriveLetter + "\\EFI\\Microsoft\\Boot\\bootmgfw.efi",
-            espDriveLetter + "\\EFI\\microsoft\\boot\\bootmgfw.efi"
-        };
-        for (const auto& candidate : candidates) {
+            espDriveLetter + "\\EFI\\BOOT\\BOOTX64.EFI", espDriveLetter + "\\EFI\\boot\\BOOTX64.EFI",
+            espDriveLetter + "\\EFI\\boot\\bootx64.efi", espDriveLetter + "\\EFI\\Microsoft\\Boot\\bootmgfw.efi",
+            espDriveLetter + "\\EFI\\microsoft\\boot\\bootmgfw.efi"};
+        for (const auto &candidate : candidates) {
             bool exists = (GetFileAttributesA(candidate.c_str()) != INVALID_FILE_ATTRIBUTES);
             logFile << "  " << candidate << " - " << (exists ? "EXISTS" : "NOT FOUND");
-            if (candidate == efiBootFile) logFile << " [SELECTED]";
+            if (candidate == efiBootFile)
+                logFile << " [SELECTED]";
             logFile << std::endl;
         }
     }
 
-    if (eventManager) eventManager->notifyLogUpdate("Archivo EFI seleccionado: " + efiBootFile + "\r\n");
+    if (eventManager)
+        eventManager->notifyLogUpdate("Archivo EFI seleccionado: " + efiBootFile + "\r\n");
 
     // Compute the relative path for BCD
     std::string efiPath = efiBootFile.substr(espDriveLetter.length());
@@ -573,7 +593,8 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
         std::string sdiPath = driveLetter + "\\boot\\boot.sdi";
         if (GetFileAttributesA(sdiPath.c_str()) == INVALID_FILE_ATTRIBUTES) {
             std::string errorMsg = "Error: Archivo SDI no encontrado en " + sdiPath + "\r\n";
-            if (eventManager) eventManager->notifyLogUpdate(errorMsg);
+            if (eventManager)
+                eventManager->notifyLogUpdate(errorMsg);
             logFile << errorMsg;
             logFile.close();
             return "Archivo SDI no encontrado para extracted boot";
@@ -581,24 +602,26 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
         logFile << "SDI file verified: " << sdiPath << std::endl;
     } else if (strategy.getType() == "ramdisk") {
         // For ramdisk mode, verify boot.wim and boot.sdi were staged on the data partition
-        std::string bootWimPath = driveLetter + "\\sources\\boot.wim";
-        std::string bootSdiPath = driveLetter + "\\boot\\boot.sdi";
-        bool bootWimExists = GetFileAttributesA(bootWimPath.c_str()) != INVALID_FILE_ATTRIBUTES;
-        bool bootSdiExists = GetFileAttributesA(bootSdiPath.c_str()) != INVALID_FILE_ATTRIBUTES;
+        std::string bootWimPath   = driveLetter + "\\sources\\boot.wim";
+        std::string bootSdiPath   = driveLetter + "\\boot\\boot.sdi";
+        bool        bootWimExists = GetFileAttributesA(bootWimPath.c_str()) != INVALID_FILE_ATTRIBUTES;
+        bool        bootSdiExists = GetFileAttributesA(bootSdiPath.c_str()) != INVALID_FILE_ATTRIBUTES;
 
         if (!bootWimExists || !bootSdiExists) {
             std::string errorMsg = "Error: Faltan archivos requeridos para RAM disk: ";
-            bool first = true;
+            bool        first    = true;
             if (!bootWimExists) {
                 errorMsg += "boot.wim (" + bootWimPath + ")";
                 first = false;
             }
             if (!bootSdiExists) {
-                if (!first) errorMsg += ", ";
+                if (!first)
+                    errorMsg += ", ";
                 errorMsg += "boot.sdi (" + bootSdiPath + ")";
             }
             errorMsg += "\r\n";
-            if (eventManager) eventManager->notifyLogUpdate(errorMsg);
+            if (eventManager)
+                eventManager->notifyLogUpdate(errorMsg);
             logFile << errorMsg;
             logFile.close();
             return "Archivos necesarios para RAM disk incompletos";
@@ -615,39 +638,42 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
 
     // Remove systemroot for EFI booting (ignore error if it doesn't exist - normal for OSLOADER entries)
     if (strategy.getType() != "ramdisk") {
-        std::string cmd4 = BCD_CMD + " /deletevalue " + guid + " systemroot";
+        std::string cmd4    = BCD_CMD + " /deletevalue " + guid + " systemroot";
         std::string result4 = Utils::exec(cmd4.c_str());
         logFile << "Remove systemroot command: " << cmd4 << "\nResult: " << result4 << "\n";
         // Note: This may fail for OSLOADER entries that don't have systemroot - that's OK
     }
 
-    std::string cmd6 = BCD_CMD + " /default " + guid;
+    std::string cmd6    = BCD_CMD + " /default " + guid;
     std::string result6 = Utils::exec(cmd6.c_str());
     logFile << "Set default command: " << cmd6 << "\nResult: " << result6 << "\n";
     if (result6.find("error") != std::string::npos || result6.find("Error") != std::string::npos) {
-        if (eventManager) eventManager->notifyLogUpdate("Error al configurar default: " + result6 + "\r\n");
+        if (eventManager)
+            eventManager->notifyLogUpdate("Error al configurar default: " + result6 + "\r\n");
         logFile << "ERROR: Failed to set default boot entry. Result: " << result6 << "\n";
         logFile.close();
         return "Error al configurar default: " + result6;
     }
 
     // Add to display order so it appears in boot menu
-    std::string cmdDisplay = BCD_CMD + " /displayorder " + guid + " /addfirst";
+    std::string cmdDisplay    = BCD_CMD + " /displayorder " + guid + " /addfirst";
     std::string resultDisplay = Utils::exec(cmdDisplay.c_str());
     logFile << "Displayorder command: " << cmdDisplay << "\nResult: " << resultDisplay << "\n";
     if (resultDisplay.find("error") != std::string::npos || resultDisplay.find("Error") != std::string::npos) {
-        if (eventManager) eventManager->notifyLogUpdate("Error al configurar displayorder: " + resultDisplay + "\r\n");
+        if (eventManager)
+            eventManager->notifyLogUpdate("Error al configurar displayorder: " + resultDisplay + "\r\n");
         logFile << "ERROR: Failed to add to displayorder. Result: " << resultDisplay << "\n";
         logFile.close();
         return "Error al configurar displayorder: " + resultDisplay;
     }
 
     // Set timeout to allow boot selection
-    std::string cmdTimeout = BCD_CMD + " /set {bootmgr} timeout 30";
+    std::string cmdTimeout    = BCD_CMD + " /set {bootmgr} timeout 30";
     std::string resultTimeout = Utils::exec(cmdTimeout.c_str());
     logFile << "Set timeout command: " << cmdTimeout << "\nResult: " << resultTimeout << "\n";
     if (resultTimeout.find("error") != std::string::npos || resultTimeout.find("Error") != std::string::npos) {
-        if (eventManager) eventManager->notifyLogUpdate("Error al configurar timeout: " + resultTimeout + "\r\n");
+        if (eventManager)
+            eventManager->notifyLogUpdate("Error al configurar timeout: " + resultTimeout + "\r\n");
         logFile << "ERROR: Failed to set timeout. Result: " << resultTimeout << "\n";
         logFile.close();
         return "Error al configurar timeout: " + resultTimeout;
@@ -657,8 +683,8 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
 
     // For extracted mode, export the configured BCD to ESP so bootmgfw.efi can find it
     if (strategy.getType() == "extracted") {
-        std::string exportPath = espDriveLetter + "EFI\\Microsoft\\Boot\\BCD";
-        std::string exportCmd = BCD_CMD + " /export \"" + exportPath + "\"";
+        std::string exportPath   = espDriveLetter + "EFI\\Microsoft\\Boot\\BCD";
+        std::string exportCmd    = BCD_CMD + " /export \"" + exportPath + "\"";
         std::string exportResult = Utils::exec(exportCmd.c_str());
         logFile << "Export BCD to ESP command: " << exportCmd << "\nResult: " << exportResult << "\n";
     }
@@ -668,15 +694,14 @@ std::string BCDManager::configureBCD(const std::string& driveLetter, const std::
     return "";
 }
 
-bool BCDManager::restoreBCD()
-{
+bool BCDManager::restoreBCD() {
     const std::string BCD_CMD = "C:\\Windows\\System32\\bcdedit.exe";
-    std::string output = Utils::exec((BCD_CMD + " /enum all").c_str());
-    auto blocks = split(output, '\n');
+    std::string       output  = Utils::exec((BCD_CMD + " /enum all").c_str());
+    auto              blocks  = split(output, '\n');
     // Parse into blocks separated by empty lines
     std::vector<std::string> entryBlocks;
-    std::string currentBlock;
-    for (const auto& line : blocks) {
+    std::string              currentBlock;
+    for (const auto &line : blocks) {
         if (line.find_first_not_of(" \t\r\n") == std::string::npos) {
             if (!currentBlock.empty()) {
                 entryBlocks.push_back(currentBlock);
@@ -686,9 +711,10 @@ bool BCDManager::restoreBCD()
             currentBlock += line + "\n";
         }
     }
-    if (!currentBlock.empty()) entryBlocks.push_back(currentBlock);
+    if (!currentBlock.empty())
+        entryBlocks.push_back(currentBlock);
 
-    auto icontains = [](const std::string& hay, const std::string& needle) {
+    auto icontains = [](const std::string &hay, const std::string &needle) {
         std::string h = hay;
         std::string n = needle;
         std::transform(h.begin(), h.end(), h.begin(), ::tolower);
@@ -697,15 +723,15 @@ bool BCDManager::restoreBCD()
     };
 
     std::string labelToFind = "ISOBOOT";
-    bool deletedAny = false;
-    for (const auto& blk : entryBlocks) {
+    bool        deletedAny  = false;
+    for (const auto &blk : entryBlocks) {
         if (icontains(blk, labelToFind)) {
             // find GUID in block
             size_t pos = blk.find('{');
             if (pos != std::string::npos) {
                 size_t end = blk.find('}', pos);
                 if (end != std::string::npos) {
-                    std::string guid = blk.substr(pos, end - pos + 1);
+                    std::string guid      = blk.substr(pos, end - pos + 1);
                     std::string deleteCmd = BCD_CMD + " /delete " + guid + " /f"; // force remove
                     Utils::exec(deleteCmd.c_str());
                     deletedAny = true;
@@ -715,11 +741,12 @@ bool BCDManager::restoreBCD()
     }
 
     bool bootmgrStateRestored = restoreBootmgrStateIfPresent(eventManager);
-    bool shouldResetDefaults = deletedAny || bootmgrStateRestored;
+    bool shouldResetDefaults  = deletedAny || bootmgrStateRestored;
 
     if (shouldResetDefaults) {
         if (eventManager) {
-            eventManager->notifyLogUpdate("Estableciendo Windows como entrada predeterminada y ajustando el tiempo de espera a 0 segundos...\r\n");
+            eventManager->notifyLogUpdate("Estableciendo Windows como entrada predeterminada y ajustando el tiempo de "
+                                          "espera a 0 segundos...\r\n");
         }
         std::string defaultResult = Utils::exec((BCD_CMD + " /default {current}").c_str());
         std::string timeoutResult = Utils::exec((BCD_CMD + " /timeout 0").c_str());

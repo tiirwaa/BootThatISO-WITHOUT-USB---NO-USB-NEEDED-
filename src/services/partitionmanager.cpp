@@ -9,7 +9,7 @@
 #include "../utils/LocalizationHelpers.h"
 
 namespace {
-std::string normalizeDriveRoot(const std::string& drive) {
+std::string normalizeDriveRoot(const std::string &drive) {
     if (drive.empty()) {
         return "";
     }
@@ -27,13 +27,13 @@ std::string normalizeDriveRoot(const std::string& drive) {
 }
 
 std::string detectSystemDrive() {
-    char buffer[MAX_PATH] = {0};
-    DWORD length = GetEnvironmentVariableA("SystemDrive", buffer, MAX_PATH);
+    char  buffer[MAX_PATH] = {0};
+    DWORD length           = GetEnvironmentVariableA("SystemDrive", buffer, MAX_PATH);
     if (length >= 2 && buffer[1] == ':') {
         return normalizeDriveRoot(std::string(buffer, length));
     }
     char windowsDir[MAX_PATH] = {0};
-    UINT written = GetWindowsDirectoryA(windowsDir, MAX_PATH);
+    UINT written              = GetWindowsDirectoryA(windowsDir, MAX_PATH);
     if (written >= 2 && windowsDir[1] == ':') {
         return normalizeDriveRoot(std::string(windowsDir, windowsDir + 2));
     }
@@ -42,26 +42,26 @@ std::string detectSystemDrive() {
 
 constexpr DWORD DISKPART_DEVICE_IN_USE = 0x80042413;
 
-bool executeCommandHidden(const std::string& command, DWORD timeoutMs, std::string& output, DWORD& exitCode) {
-    STARTUPINFOA si = { sizeof(si) };
+bool executeCommandHidden(const std::string &command, DWORD timeoutMs, std::string &output, DWORD &exitCode) {
+    STARTUPINFOA        si = {sizeof(si)};
     PROCESS_INFORMATION pi{};
     SECURITY_ATTRIBUTES sa{};
-    sa.nLength = sizeof(sa);
-    sa.bInheritHandle = TRUE;
+    sa.nLength              = sizeof(sa);
+    sa.bInheritHandle       = TRUE;
     sa.lpSecurityDescriptor = NULL;
 
-    HANDLE hRead = NULL;
+    HANDLE hRead  = NULL;
     HANDLE hWrite = NULL;
     if (!CreatePipe(&hRead, &hWrite, &sa, 0)) {
         return false;
     }
 
-    si.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
-    si.hStdOutput = hWrite;
-    si.hStdError = hWrite;
+    si.dwFlags     = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
+    si.hStdOutput  = hWrite;
+    si.hStdError   = hWrite;
     si.wShowWindow = SW_HIDE;
 
-    if (!CreateProcessA(NULL, const_cast<char*>(command.c_str()), NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi)) {
+    if (!CreateProcessA(NULL, const_cast<char *>(command.c_str()), NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi)) {
         CloseHandle(hRead);
         CloseHandle(hWrite);
         return false;
@@ -70,7 +70,7 @@ bool executeCommandHidden(const std::string& command, DWORD timeoutMs, std::stri
     CloseHandle(hWrite);
 
     output.clear();
-    char buffer[1024];
+    char  buffer[1024];
     DWORD bytesRead = 0;
     while (ReadFile(hRead, buffer, sizeof(buffer) - 1, &bytesRead, NULL) && bytesRead > 0) {
         buffer[bytesRead] = '\0';
@@ -87,10 +87,8 @@ bool executeCommandHidden(const std::string& command, DWORD timeoutMs, std::stri
     return true;
 }
 
-bool formatVolumeWithPowerShell(const std::string& volumeLabel,
-                                const std::string& fsFormat,
-                                std::string& output,
-                                DWORD& exitCode) {
+bool formatVolumeWithPowerShell(const std::string &volumeLabel, const std::string &fsFormat, std::string &output,
+                                DWORD &exitCode) {
     char tempPath[MAX_PATH];
     if (!GetTempPathA(MAX_PATH, tempPath)) {
         return false;
@@ -113,9 +111,8 @@ bool formatVolumeWithPowerShell(const std::string& volumeLabel,
     scriptFile << "    exit 3\n";
     scriptFile << "}\n";
     scriptFile << "try {\n";
-    scriptFile << "    Format-Volume -InputObject $volume -FileSystem '" << fsFormat
-               << "' -NewFileSystemLabel '" << volumeLabel
-               << "' -Confirm:$false -Force -ErrorAction Stop | Out-Null\n";
+    scriptFile << "    Format-Volume -InputObject $volume -FileSystem '" << fsFormat << "' -NewFileSystemLabel '"
+               << volumeLabel << "' -Confirm:$false -Force -ErrorAction Stop | Out-Null\n";
     scriptFile << "    exit 0\n";
     scriptFile << "} catch {\n";
     scriptFile << "    Write-Output $_.Exception.Message\n";
@@ -124,17 +121,17 @@ bool formatVolumeWithPowerShell(const std::string& volumeLabel,
     scriptFile.close();
 
     std::string command = "powershell -NoProfile -ExecutionPolicy Bypass -File \"" + std::string(tempFile) + "\"";
-    bool ran = executeCommandHidden(command, 300000, output, exitCode);
+    bool        ran     = executeCommandHidden(command, 300000, output, exitCode);
 
     DeleteFileA(tempFile);
     return ran;
 }
-}
+} // namespace
 // Helper to append and flush to general_log.log
-void logToGeneral(const std::string& msg) {
-    static std::mutex logMutex;
+void logToGeneral(const std::string &msg) {
+    static std::mutex           logMutex;
     std::lock_guard<std::mutex> lock(logMutex);
-    std::string logDir = Utils::getExeDirectory() + "logs";
+    std::string                 logDir = Utils::getExeDirectory() + "logs";
     CreateDirectoryA(logDir.c_str(), NULL);
     std::ofstream logFile((logDir + "\\" + GENERAL_LOG_FILE).c_str(), std::ios::app);
     if (logFile) {
@@ -150,48 +147,36 @@ void logToGeneral(const std::string& msg) {
 #include <algorithm>
 #include <cctype>
 
-PartitionManager& PartitionManager::getInstance() {
+PartitionManager &PartitionManager::getInstance() {
     static PartitionManager instance;
     return instance;
 }
 
 PartitionManager::PartitionManager()
-    : eventManager(nullptr),
-      monitoredDrive(detectSystemDrive()),
-      diskIntegrityChecker(nullptr),
-      volumeDetector(nullptr),
-      spaceManager(nullptr),
-      diskpartExecutor(nullptr),
-      partitionReformatter(nullptr),
-      partitionCreator(nullptr)
-{
-}
-void PartitionManager::setEventManager(EventManager* em) { 
+    : eventManager(nullptr), monitoredDrive(detectSystemDrive()), diskIntegrityChecker(nullptr),
+      volumeDetector(nullptr), spaceManager(nullptr), diskpartExecutor(nullptr), partitionReformatter(nullptr),
+      partitionCreator(nullptr) {}
+void PartitionManager::setEventManager(EventManager *em) {
     eventManager = em;
     // Initialize components with the event manager
     diskIntegrityChecker = std::make_unique<DiskIntegrityChecker>(em);
-    volumeDetector = std::make_unique<VolumeDetector>(em);
-    spaceManager = std::make_unique<SpaceManager>(em);
-    diskpartExecutor = std::make_unique<DiskpartExecutor>(em);
+    volumeDetector       = std::make_unique<VolumeDetector>(em);
+    spaceManager         = std::make_unique<SpaceManager>(em);
+    diskpartExecutor     = std::make_unique<DiskpartExecutor>(em);
     partitionReformatter = std::make_unique<PartitionReformatter>(em);
-    partitionCreator = std::make_unique<PartitionCreator>(em);
+    partitionCreator     = std::make_unique<PartitionCreator>(em);
 }
-PartitionManager::~PartitionManager()
-{
-}
+PartitionManager::~PartitionManager() {}
 
-SpaceValidationResult PartitionManager::validateAvailableSpace()
-{
+SpaceValidationResult PartitionManager::validateAvailableSpace() {
     return spaceManager->validateAvailableSpace();
 }
 
-long long PartitionManager::getAvailableSpaceGB(const std::string& driveRoot)
-{
+long long PartitionManager::getAvailableSpaceGB(const std::string &driveRoot) {
     return spaceManager->getAvailableSpaceGB(driveRoot);
 }
 
-bool PartitionManager::createPartition(const std::string& format, bool skipIntegrityCheck)
-{
+bool PartitionManager::createPartition(const std::string &format, bool skipIntegrityCheck) {
     std::string logDir = Utils::getExeDirectory() + "logs";
     CreateDirectoryA(logDir.c_str(), NULL);
 
@@ -204,16 +189,22 @@ bool PartitionManager::createPartition(const std::string& format, bool skipInteg
 
     // Step 2: Verify disk is GPT
     if (!diskpartExecutor->isDiskGpt()) {
-        if (eventManager) eventManager->notifyLogUpdate("Error: El disco no es GPT. La aplicación requiere un disco GPT para crear particiones EFI.\r\n");
+        if (eventManager)
+            eventManager->notifyLogUpdate(
+                "Error: El disco no es GPT. La aplicación requiere un disco GPT para crear particiones EFI.\r\n");
         return false;
     } else {
-        if (eventManager) eventManager->notifyLogUpdate("Disco confirmado como GPT. Procediendo con la creación de particiones...\r\n");
+        if (eventManager)
+            eventManager->notifyLogUpdate(
+                "Disco confirmado como GPT. Procediendo con la creación de particiones...\r\n");
     }
 
     // Step 3: Recover space for partitions
-    if (eventManager) eventManager->notifyLogUpdate("Recuperando espacio para particiones...\r\n");
+    if (eventManager)
+        eventManager->notifyLogUpdate("Recuperando espacio para particiones...\r\n");
     if (!spaceManager->recoverSpace()) {
-        if (eventManager) eventManager->notifyLogUpdate("Error: Falló la recuperación de espacio.\r\n");
+        if (eventManager)
+            eventManager->notifyLogUpdate("Error: Falló la recuperación de espacio.\r\n");
         return false;
     }
 
@@ -224,87 +215,83 @@ bool PartitionManager::createPartition(const std::string& format, bool skipInteg
 
     // Step 5: Verify partitions were created successfully
     if (!partitionCreator->verifyPartitionsCreated()) {
-        if (eventManager) eventManager->notifyLogUpdate("Advertencia: No se pudo verificar la creación de particiones, pero diskpart reportó éxito.\r\n");
+        if (eventManager)
+            eventManager->notifyLogUpdate(
+                "Advertencia: No se pudo verificar la creación de particiones, pero diskpart reportó éxito.\r\n");
     }
 
     return true;
 }
 
-bool PartitionManager::partitionExists()
-{
+bool PartitionManager::partitionExists() {
     return volumeDetector->partitionExists();
 }
 
-bool PartitionManager::efiPartitionExists()
-{
+bool PartitionManager::efiPartitionExists() {
     return volumeDetector->efiPartitionExists();
 }
 
-std::string PartitionManager::getPartitionDriveLetter()
-{
+std::string PartitionManager::getPartitionDriveLetter() {
     return volumeDetector->getPartitionDriveLetter();
 }
 
-std::string PartitionManager::getEfiPartitionDriveLetter()
-{
+std::string PartitionManager::getEfiPartitionDriveLetter() {
     return volumeDetector->getEfiPartitionDriveLetter();
 }
 
-std::string PartitionManager::getPartitionFileSystem()
-{
+std::string PartitionManager::getPartitionFileSystem() {
     return volumeDetector->getPartitionFileSystem();
 }
 
-bool PartitionManager::reformatPartition(const std::string& format)
-{
+bool PartitionManager::reformatPartition(const std::string &format) {
     return partitionReformatter->reformatPartition(format);
 }
 
-bool PartitionManager::reformatEfiPartition()
-{
+bool PartitionManager::reformatEfiPartition() {
     return partitionReformatter->reformatEfiPartition();
 }
 
-bool PartitionManager::recoverSpace()
-{
+bool PartitionManager::recoverSpace() {
     return spaceManager->recoverSpace();
 }
 
-bool PartitionManager::RestartComputer()
-{
-    if (eventManager) eventManager->notifyLogUpdate("Intentando reiniciar el sistema...\r\n");
-    
+bool PartitionManager::RestartComputer() {
+    if (eventManager)
+        eventManager->notifyLogUpdate("Intentando reiniciar el sistema...\r\n");
+
     // Enable shutdown privilege
-    HANDLE hToken;
+    HANDLE           hToken;
     TOKEN_PRIVILEGES tkp;
     if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &hToken)) {
-        if (eventManager) eventManager->notifyLogUpdate("Error: No se pudo abrir el token del proceso.\r\n");
+        if (eventManager)
+            eventManager->notifyLogUpdate("Error: No se pudo abrir el token del proceso.\r\n");
         return false;
     }
     LookupPrivilegeValue(NULL, SE_SHUTDOWN_NAME, &tkp.Privileges[0].Luid);
-    tkp.PrivilegeCount = 1;
+    tkp.PrivilegeCount           = 1;
     tkp.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
     if (!AdjustTokenPrivileges(hToken, FALSE, &tkp, 0, (PTOKEN_PRIVILEGES)NULL, 0)) {
-        if (eventManager) eventManager->notifyLogUpdate("Error: No se pudo ajustar los privilegios.\r\n");
+        if (eventManager)
+            eventManager->notifyLogUpdate("Error: No se pudo ajustar los privilegios.\r\n");
         CloseHandle(hToken);
         return false;
     }
     if (GetLastError() != ERROR_SUCCESS) {
-        if (eventManager) eventManager->notifyLogUpdate("Error: Falló la verificación de privilegios.\r\n");
+        if (eventManager)
+            eventManager->notifyLogUpdate("Error: Falló la verificación de privilegios.\r\n");
         CloseHandle(hToken);
         return false;
     }
     CloseHandle(hToken);
-    
+
     // Attempt to restart the computer
     if (ExitWindowsEx(EWX_REBOOT, 0)) {
         return true;
     } else {
         DWORD error = GetLastError();
-        if (eventManager) eventManager->notifyLogUpdate("Error: No se pudo reiniciar el sistema. Código de error: " + std::to_string(error) + "\r\n");
+        if (eventManager)
+            eventManager->notifyLogUpdate(
+                "Error: No se pudo reiniciar el sistema. Código de error: " + std::to_string(error) + "\r\n");
         return false;
     }
 }
-
-
-

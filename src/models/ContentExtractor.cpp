@@ -4,27 +4,28 @@
 #include "../services/ISOCopyManager.h"
 #include <set>
 
-ContentExtractor::ContentExtractor(EventManager& eventManager, FileCopyManager& fileCopyManager)
-    : eventManager_(eventManager), fileCopyManager_(fileCopyManager) {
-}
+ContentExtractor::ContentExtractor(EventManager &eventManager, FileCopyManager &fileCopyManager)
+    : eventManager_(eventManager), fileCopyManager_(fileCopyManager) {}
 
-ContentExtractor::~ContentExtractor() {
-}
+ContentExtractor::~ContentExtractor() {}
 
-bool ContentExtractor::extractContent(const std::string& sourcePath, const std::string& destPath, long long isoSize, long long& copiedSoFar,
-                                      bool extractContent, bool isWindowsISO, const std::string& mode, std::ofstream& logFile) {
+bool ContentExtractor::extractContent(const std::string &sourcePath, const std::string &destPath, long long isoSize,
+                                      long long &copiedSoFar, bool extractContent, bool isWindowsISO,
+                                      const std::string &mode, std::ofstream &logFile) {
     if (!extractContent) {
         return true;
     }
 
-    eventManager_.notifyLogUpdate("Copiando contenido del ISO hacia la particion ISOBOOT. Esto puede tardar varios minutos...\r\n");
+    eventManager_.notifyLogUpdate(
+        "Copiando contenido del ISO hacia la particion ISOBOOT. Esto puede tardar varios minutos...\r\n");
     if (isoSize > 0) {
         eventManager_.notifyDetailedProgress(15, 100, "Copiando contenido del ISO");
     } else {
         eventManager_.notifyDetailedProgress(15, 100, "Copiando contenido del ISO");
     }
     std::set<std::string> excludeDirs = {"efi", "EFI"};
-    if (!fileCopyManager_.copyDirectoryWithProgress(sourcePath, destPath, isoSize, copiedSoFar, excludeDirs, "Copiando contenido del ISO")) {
+    if (!fileCopyManager_.copyDirectoryWithProgress(sourcePath, destPath, isoSize, copiedSoFar, excludeDirs,
+                                                    "Copiando contenido del ISO")) {
         logFile << ISOCopyManager::getTimestamp() << "Failed to copy content or cancelled" << std::endl;
         return false;
     }
@@ -32,7 +33,7 @@ bool ContentExtractor::extractContent(const std::string& sourcePath, const std::
 
     // Reconfigure .ini files in the destination directory
     IniConfigurator iniConfigurator;
-    std::string driveLetter = destPath.substr(0,2);
+    std::string     driveLetter = destPath.substr(0, 2);
     iniConfigurator.configureIniFilesInDirectory(destPath, logFile, ISOCopyManager::getTimestamp, driveLetter);
 
     return true;

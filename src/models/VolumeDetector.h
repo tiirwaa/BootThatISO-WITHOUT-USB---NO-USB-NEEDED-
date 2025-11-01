@@ -5,15 +5,15 @@
 
 class VolumeDetector {
 public:
-    explicit VolumeDetector(EventManager* eventManager);
+    explicit VolumeDetector(EventManager *eventManager);
     ~VolumeDetector();
 
-    bool partitionExists();
-    bool efiPartitionExists();
+    bool        partitionExists();
+    bool        efiPartitionExists();
     std::string getPartitionDriveLetter();
     std::string getEfiPartitionDriveLetter();
     std::string getPartitionFileSystem();
 
 private:
-    EventManager* eventManager_;
+    EventManager *eventManager_;
 };

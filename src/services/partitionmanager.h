@@ -12,45 +12,46 @@
 #include "../models/PartitionReformatter.h"
 #include "../models/PartitionCreator.h"
 
-class PartitionManager
-{
+class PartitionManager {
 private:
     PartitionManager();
     ~PartitionManager();
-    PartitionManager(const PartitionManager&) = delete;
-    PartitionManager& operator=(const PartitionManager&) = delete;
+    PartitionManager(const PartitionManager &)            = delete;
+    PartitionManager &operator=(const PartitionManager &) = delete;
 
-    EventManager* eventManager;
-    std::string monitoredDrive;
+    EventManager *eventManager;
+    std::string   monitoredDrive;
 
     // New dependency-injected components
     std::unique_ptr<DiskIntegrityChecker> diskIntegrityChecker;
-    std::unique_ptr<VolumeDetector> volumeDetector;
-    std::unique_ptr<SpaceManager> spaceManager;
-    std::unique_ptr<DiskpartExecutor> diskpartExecutor;
+    std::unique_ptr<VolumeDetector>       volumeDetector;
+    std::unique_ptr<SpaceManager>         spaceManager;
+    std::unique_ptr<DiskpartExecutor>     diskpartExecutor;
     std::unique_ptr<PartitionReformatter> partitionReformatter;
-    std::unique_ptr<PartitionCreator> partitionCreator;
+    std::unique_ptr<PartitionCreator>     partitionCreator;
 
     bool RestartComputer();
 
 public:
-    static PartitionManager& getInstance();
+    static PartitionManager &getInstance();
 
-    void setEventManager(EventManager* em);
-    void setMonitoredDrive(const std::string& driveRoot);
-    std::string getMonitoredDrive() const { return monitoredDrive; }
+    void        setEventManager(EventManager *em);
+    void        setMonitoredDrive(const std::string &driveRoot);
+    std::string getMonitoredDrive() const {
+        return monitoredDrive;
+    }
 
     SpaceValidationResult validateAvailableSpace();
-    long long getAvailableSpaceGB(const std::string& driveRoot = std::string());
-    bool createPartition(const std::string& format = "FAT32", bool skipIntegrityCheck = false);
-    bool partitionExists();
-    bool efiPartitionExists();
-    std::string getPartitionDriveLetter();
-    std::string getEfiPartitionDriveLetter();
-    std::string getPartitionFileSystem();
-    bool reformatPartition(const std::string& format);
-    bool reformatEfiPartition();
-    bool recoverSpace();
+    long long             getAvailableSpaceGB(const std::string &driveRoot = std::string());
+    bool                  createPartition(const std::string &format = "FAT32", bool skipIntegrityCheck = false);
+    bool                  partitionExists();
+    bool                  efiPartitionExists();
+    std::string           getPartitionDriveLetter();
+    std::string           getEfiPartitionDriveLetter();
+    std::string           getPartitionFileSystem();
+    bool                  reformatPartition(const std::string &format);
+    bool                  reformatEfiPartition();
+    bool                  recoverSpace();
 };
 
 #endif // PARTITIONMANAGER_H

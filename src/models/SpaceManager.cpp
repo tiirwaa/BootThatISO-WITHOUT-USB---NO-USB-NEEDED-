@@ -6,7 +6,7 @@
 #include "../utils/constants.h"
 
 namespace {
-std::string normalizeDriveRoot(const std::string& drive) {
+std::string normalizeDriveRoot(const std::string &drive) {
     if (drive.empty()) {
         return "";
     }
@@ -24,37 +24,32 @@ std::string normalizeDriveRoot(const std::string& drive) {
 }
 
 std::string detectSystemDrive() {
-    char buffer[MAX_PATH] = {0};
-    DWORD length = GetEnvironmentVariableA("SystemDrive", buffer, MAX_PATH);
+    char  buffer[MAX_PATH] = {0};
+    DWORD length           = GetEnvironmentVariableA("SystemDrive", buffer, MAX_PATH);
     if (length >= 2 && buffer[1] == ':') {
         return normalizeDriveRoot(std::string(buffer, length));
     }
     char windowsDir[MAX_PATH] = {0};
-    UINT written = GetWindowsDirectoryA(windowsDir, MAX_PATH);
+    UINT written              = GetWindowsDirectoryA(windowsDir, MAX_PATH);
     if (written >= 2 && windowsDir[1] == ':') {
         return normalizeDriveRoot(std::string(windowsDir, windowsDir + 2));
     }
     return "C:\\";
 }
-}
+} // namespace
 
-SpaceManager::SpaceManager(EventManager* eventManager)
-    : eventManager_(eventManager), monitoredDrive_(detectSystemDrive())
-{
-}
+SpaceManager::SpaceManager(EventManager *eventManager)
+    : eventManager_(eventManager), monitoredDrive_(detectSystemDrive()) {}
 
-SpaceManager::~SpaceManager()
-{
-}
+SpaceManager::~SpaceManager() {}
 
-SpaceValidationResult SpaceManager::validateAvailableSpace()
-{
+SpaceValidationResult SpaceManager::validateAvailableSpace() {
     long long availableGB = getAvailableSpaceGB();
-    
+
     SpaceValidationResult result;
     result.availableGB = availableGB;
-    result.isValid = availableGB >= 10;
-    
+    result.isValid     = availableGB >= 10;
+
     // Log to file
     std::string logDir = Utils::getExeDirectory() + "logs";
     CreateDirectoryA(logDir.c_str(), NULL);
@@ -64,21 +59,21 @@ SpaceValidationResult SpaceManager::validateAvailableSpace()
         logFile << "Is valid: " << (result.isValid ? "yes" : "no") << "\n";
         if (!result.isValid) {
             std::ostringstream oss;
-            oss << "No hay suficiente espacio disponible. Se requieren al menos 10 GB, pero solo hay " << availableGB << " GB disponibles.";
+            oss << "No hay suficiente espacio disponible. Se requieren al menos 10 GB, pero solo hay " << availableGB
+                << " GB disponibles.";
             result.errorMessage = oss.str();
             logFile << "Error: " << result.errorMessage << "\n";
         }
         logFile.close();
     }
-    
+
     return result;
 }
 
-long long SpaceManager::getAvailableSpaceGB(const std::string& driveRoot)
-{
+long long SpaceManager::getAvailableSpaceGB(const std::string &driveRoot) {
     std::string target = driveRoot.empty() ? monitoredDrive_ : normalizeDriveRoot(driveRoot);
     if (target.empty()) {
-        target = detectSystemDrive();
+        target          = detectSystemDrive();
         monitoredDrive_ = target;
     }
 
@@ -89,20 +84,21 @@ long long SpaceManager::getAvailableSpaceGB(const std::string& driveRoot)
     return 0;
 }
 
-bool SpaceManager::performSpaceRecovery()
-{
+bool SpaceManager::performSpaceRecovery() {
     // Always recover space to ensure clean state
-    if (eventManager_) eventManager_->notifyLogUpdate("Recuperando espacio para particiones...\r\n");
+    if (eventManager_)
+        eventManager_->notifyLogUpdate("Recuperando espacio para particiones...\r\n");
     if (!recoverSpace()) {
-        if (eventManager_) eventManager_->notifyLogUpdate("Error: Falló la recuperación de espacio.\r\n");
+        if (eventManager_)
+            eventManager_->notifyLogUpdate("Error: Falló la recuperación de espacio.\r\n");
         return false;
     }
     return true;
 }
 
-bool SpaceManager::recoverSpace()
-{
-    if (eventManager_) eventManager_->notifyLogUpdate("Iniciando recuperación de espacio...\r\n");
+bool SpaceManager::recoverSpace() {
+    if (eventManager_)
+        eventManager_->notifyLogUpdate("Iniciando recuperación de espacio...\r\n");
 
     // Create PowerShell script to recover space
     char tempPath[MAX_PATH];
@@ -115,19 +111,23 @@ bool SpaceManager::recoverSpace()
     if (!scriptFile) {
         return false;
     }
-    scriptFile << "$volumes = Get-Volume | Where-Object { $_.FileSystemLabel -eq '" << VOLUME_LABEL << "' -or $_.FileSystemLabel -eq '" << EFI_VOLUME_LABEL << "' }\n";
+    scriptFile << "$volumes = Get-Volume | Where-Object { $_.FileSystemLabel -eq '" << VOLUME_LABEL
+               << "' -or $_.FileSystemLabel -eq '" << EFI_VOLUME_LABEL << "' }\n";
     scriptFile << "foreach ($vol in $volumes) {\n";
     scriptFile << "    $part = Get-Partition | Where-Object { $_.AccessPaths -contains $vol.Path }\n";
     scriptFile << "    if ($part) {\n";
-    scriptFile << "        Remove-PartitionAccessPath -DiskNumber 0 -PartitionNumber $part.PartitionNumber -AccessPath $vol.Path -Confirm:$false\n";
+    scriptFile << "        Remove-PartitionAccessPath -DiskNumber 0 -PartitionNumber $part.PartitionNumber -AccessPath "
+                  "$vol.Path -Confirm:$false\n";
     scriptFile << "        Remove-Partition -DiskNumber 0 -PartitionNumber $part.PartitionNumber -Confirm:$false\n";
     scriptFile << "    }\n";
     scriptFile << "}\n";
     scriptFile << "$systemPartition = Get-Partition | Where-Object { $_.DriveLetter -eq 'C' }\n";
     scriptFile << "if ($systemPartition) {\n";
-    scriptFile << "    $supportedSize = Get-PartitionSupportedSize -DiskNumber 0 -PartitionNumber $systemPartition.PartitionNumber\n";
+    scriptFile << "    $supportedSize = Get-PartitionSupportedSize -DiskNumber 0 -PartitionNumber "
+                  "$systemPartition.PartitionNumber\n";
     scriptFile << "    if ($systemPartition.Size -lt $supportedSize.SizeMax) {\n";
-    scriptFile << "        Resize-Partition -DiskNumber 0 -PartitionNumber $systemPartition.PartitionNumber -Size $supportedSize.SizeMax -Confirm:$false\n";
+    scriptFile << "        Resize-Partition -DiskNumber 0 -PartitionNumber $systemPartition.PartitionNumber -Size "
+                  "$supportedSize.SizeMax -Confirm:$false\n";
     scriptFile << "    }\n";
     scriptFile << "}\n";
     scriptFile.close();
@@ -138,42 +138,45 @@ bool SpaceManager::recoverSpace()
     std::ofstream logScriptFile((logDir + "\\recover_script_log.txt").c_str());
     if (logScriptFile) {
         std::ifstream readScript(psFile);
-        std::string scriptContent((std::istreambuf_iterator<char>(readScript)), std::istreambuf_iterator<char>());
+        std::string   scriptContent((std::istreambuf_iterator<char>(readScript)), std::istreambuf_iterator<char>());
         logScriptFile << scriptContent;
         logScriptFile.close();
     }
-    if (eventManager_) eventManager_->notifyLogUpdate("Script de recuperación creado.\r\n");
+    if (eventManager_)
+        eventManager_->notifyLogUpdate("Script de recuperación creado.\r\n");
 
     // Execute PowerShell script
-    STARTUPINFOA si = { sizeof(si) };
+    STARTUPINFOA        si = {sizeof(si)};
     PROCESS_INFORMATION pi;
     SECURITY_ATTRIBUTES sa;
-    sa.nLength = sizeof(sa);
+    sa.nLength              = sizeof(sa);
     sa.lpSecurityDescriptor = NULL;
-    sa.bInheritHandle = TRUE;
-    HANDLE hRead, hWrite;
+    sa.bInheritHandle       = TRUE;
+    HANDLE      hRead, hWrite;
     std::string output;
-    char buffer[1024];
-    DWORD bytesRead;
-    DWORD exitCode;
+    char        buffer[1024];
+    DWORD       bytesRead;
+    DWORD       exitCode;
 
     if (!CreatePipe(&hRead, &hWrite, &sa, 0)) {
         DeleteFileA(psFile.c_str());
-        if (eventManager_) eventManager_->notifyLogUpdate("Error: No se pudo crear pipe para recuperación.\r\n");
+        if (eventManager_)
+            eventManager_->notifyLogUpdate("Error: No se pudo crear pipe para recuperación.\r\n");
         return false;
     }
 
-    si.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
-    si.hStdOutput = hWrite;
-    si.hStdError = hWrite;
+    si.dwFlags     = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
+    si.hStdOutput  = hWrite;
+    si.hStdError   = hWrite;
     si.wShowWindow = SW_HIDE;
 
     std::string cmd = "powershell -ExecutionPolicy Bypass -File \"" + psFile + "\"";
-    if (!CreateProcessA(NULL, const_cast<char*>(cmd.c_str()), NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi)) {
+    if (!CreateProcessA(NULL, const_cast<char *>(cmd.c_str()), NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi)) {
         CloseHandle(hRead);
         CloseHandle(hWrite);
         DeleteFileA(psFile.c_str());
-        if (eventManager_) eventManager_->notifyLogUpdate("Error: No se pudo ejecutar PowerShell para recuperación.\r\n");
+        if (eventManager_)
+            eventManager_->notifyLogUpdate("Error: No se pudo ejecutar PowerShell para recuperación.\r\n");
         return false;
     }
 
@@ -194,7 +197,7 @@ bool SpaceManager::recoverSpace()
             pendingLine += chunk;
             std::size_t newlinePos;
             while ((newlinePos = pendingLine.find('\n')) != std::string::npos) {
-                std::string line = pendingLine.substr(0, newlinePos + 1);
+                std::string line     = pendingLine.substr(0, newlinePos + 1);
                 std::string utf8Line = Utils::ansi_to_utf8(line);
                 if (!utf8Line.empty()) {
                     eventManager_->notifyLogUpdate(utf8Line);
@@ -232,10 +235,13 @@ bool SpaceManager::recoverSpace()
     DeleteFileA(psFile.c_str());
 
     if (exitCode == 0) {
-        if (eventManager_) eventManager_->notifyLogUpdate("Espacio recuperado exitosamente.\r\n");
+        if (eventManager_)
+            eventManager_->notifyLogUpdate("Espacio recuperado exitosamente.\r\n");
         return true;
     } else {
-        if (eventManager_) eventManager_->notifyLogUpdate("Error: Falló la recuperación de espacio (código " + std::to_string(exitCode) + ").\r\n");
+        if (eventManager_)
+            eventManager_->notifyLogUpdate("Error: Falló la recuperación de espacio (código " +
+                                           std::to_string(exitCode) + ").\r\n");
         return false;
     }
 }

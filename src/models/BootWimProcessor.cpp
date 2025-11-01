@@ -5,27 +5,26 @@
 #include "../services/ISOCopyManager.h"
 #include <set>
 
-BootWimProcessor::BootWimProcessor(EventManager& eventManager, FileCopyManager& fileCopyManager)
-    : eventManager_(eventManager), fileCopyManager_(fileCopyManager) {
-}
+BootWimProcessor::BootWimProcessor(EventManager &eventManager, FileCopyManager &fileCopyManager)
+    : eventManager_(eventManager), fileCopyManager_(fileCopyManager) {}
 
-BootWimProcessor::~BootWimProcessor() {
-}
+BootWimProcessor::~BootWimProcessor() {}
 
-bool BootWimProcessor::processBootWim(const std::string& sourcePath, const std::string& destPath, const std::string& espPath,
-                                      bool integratePrograms, const std::string& programsSrc, long long& copiedSoFar,
-                                      bool extractBootWim, bool copyInstallWim, std::ofstream& logFile) {
-    bool bootWimSuccess = true;
-    bool bootSdiSuccess = true;
-    bool installWimSuccess = true;
-    bool additionalBootFilesSuccess = true;
-    std::string bootWimDest = destPath + "sources\\boot.wim";
+bool BootWimProcessor::processBootWim(const std::string &sourcePath, const std::string &destPath,
+                                      const std::string &espPath, bool integratePrograms,
+                                      const std::string &programsSrc, long long &copiedSoFar, bool extractBootWim,
+                                      bool copyInstallWim, std::ofstream &logFile) {
+    bool        bootWimSuccess             = true;
+    bool        bootSdiSuccess             = true;
+    bool        installWimSuccess          = true;
+    bool        additionalBootFilesSuccess = true;
+    std::string bootWimDest                = destPath + "sources\\boot.wim";
 
     if (extractBootWim) {
         eventManager_.notifyDetailedProgress(20, 100, "Preparando archivos de arranque del ISO");
         eventManager_.notifyLogUpdate("Preparando archivos de arranque del ISO...\r\n");
 
-        std::string bootWimSrc = sourcePath + "sources\\boot.wim";
+        std::string bootWimSrc     = sourcePath + "sources\\boot.wim";
         std::string bootWimDestDir = destPath + "sources";
         CreateDirectoryA(bootWimDestDir.c_str(), NULL);
         if (GetFileAttributesA(bootWimDest.c_str()) != INVALID_FILE_ATTRIBUTES) {
@@ -36,7 +35,8 @@ bool BootWimProcessor::processBootWim(const std::string& sourcePath, const std::
             eventManager_.notifyLogUpdate("Extrayendo boot.wim hacia la particion de datos...\r\n");
             eventManager_.notifyDetailedProgress(0, 0, "Copiando boot.wim...");
             if (fileCopyManager_.copyFileUtf8(bootWimSrc, bootWimDest)) {
-                logFile << ISOCopyManager::getTimestamp() << "boot.wim extracted successfully to " << bootWimDest << std::endl;
+                logFile << ISOCopyManager::getTimestamp() << "boot.wim extracted successfully to " << bootWimDest
+                        << std::endl;
                 eventManager_.notifyLogUpdate("boot.wim copiado correctamente.\r\n");
             } else {
                 logFile << ISOCopyManager::getTimestamp() << "Failed to extract boot.wim" << std::endl;
@@ -47,7 +47,7 @@ bool BootWimProcessor::processBootWim(const std::string& sourcePath, const std::
         }
 
         // Copy boot.sdi
-        std::string bootSdiSrc = sourcePath + "boot\\boot.sdi";
+        std::string bootSdiSrc     = sourcePath + "boot\\boot.sdi";
         std::string bootSdiDestDir = destPath + "boot";
         CreateDirectoryA(bootSdiDestDir.c_str(), NULL);
         std::string bootSdiDest = bootSdiDestDir + "\\boot.sdi";
@@ -59,7 +59,8 @@ bool BootWimProcessor::processBootWim(const std::string& sourcePath, const std::
             eventManager_.notifyLogUpdate("Copiando boot.sdi requerido para arranque RAM...\r\n");
             eventManager_.notifyDetailedProgress(0, 0, "Copiando boot.sdi...");
             if (fileCopyManager_.copyFileUtf8(bootSdiSrc, bootSdiDest)) {
-                logFile << ISOCopyManager::getTimestamp() << "boot.sdi copied successfully to " << bootSdiDest << std::endl;
+                logFile << ISOCopyManager::getTimestamp() << "boot.sdi copied successfully to " << bootSdiDest
+                        << std::endl;
                 eventManager_.notifyLogUpdate("boot.sdi copiado correctamente.\r\n");
             } else {
                 logFile << ISOCopyManager::getTimestamp() << "Failed to copy boot.sdi" << std::endl;
@@ -70,11 +71,12 @@ bool BootWimProcessor::processBootWim(const std::string& sourcePath, const std::
         } else {
             logFile << ISOCopyManager::getTimestamp() << "boot.sdi not found at " << bootSdiSrc << std::endl;
             bootSdiSuccess = false;
-            eventManager_.notifyLogUpdate("boot.sdi no se encontro en el ISO. El arranque desde RAM podria fallar.\r\n");
+            eventManager_.notifyLogUpdate(
+                "boot.sdi no se encontro en el ISO. El arranque desde RAM podria fallar.\r\n");
         }
 
         if (copyInstallWim) {
-            std::string installWimSrc = sourcePath + "sources\\install.wim";
+            std::string installWimSrc     = sourcePath + "sources\\install.wim";
             std::string installWimDestDir = destPath + "sources";
             CreateDirectoryA(installWimDestDir.c_str(), NULL);
             std::string installWimDest = installWimDestDir + "\\install.wim";
@@ -83,7 +85,8 @@ bool BootWimProcessor::processBootWim(const std::string& sourcePath, const std::
                 eventManager_.notifyLogUpdate("Copiando install.wim completo al destino...\r\n");
                 eventManager_.notifyDetailedProgress(0, 0, "Copiando install.wim...");
                 if (fileCopyManager_.copyFileUtf8(installWimSrc, installWimDest)) {
-                    logFile << ISOCopyManager::getTimestamp() << "install.wim extracted successfully to " << installWimDest << std::endl;
+                    logFile << ISOCopyManager::getTimestamp() << "install.wim extracted successfully to "
+                            << installWimDest << std::endl;
                     eventManager_.notifyLogUpdate("install.wim copiado correctamente.\r\n");
                 } else {
                     logFile << ISOCopyManager::getTimestamp() << "Failed to extract install.wim" << std::endl;
@@ -99,20 +102,25 @@ bool BootWimProcessor::processBootWim(const std::string& sourcePath, const std::
 
         // Mount and process boot.wim
         if (bootWimSuccess) {
-            bootWimSuccess = mountAndProcessWim(bootWimDest, destPath, sourcePath, integratePrograms, programsSrc, copiedSoFar, logFile);
+            bootWimSuccess = mountAndProcessWim(bootWimDest, destPath, sourcePath, integratePrograms, programsSrc,
+                                                copiedSoFar, logFile);
         }
 
         // Extract additional boot files
-        additionalBootFilesSuccess = extractAdditionalBootFiles(sourcePath, espPath, destPath, copiedSoFar, 0, logFile); // isoSize not used here
+        additionalBootFilesSuccess =
+            extractAdditionalBootFiles(sourcePath, espPath, destPath, copiedSoFar, 0, logFile); // isoSize not used here
     }
 
     return bootWimSuccess && bootSdiSuccess && installWimSuccess && additionalBootFilesSuccess;
 }
 
-bool BootWimProcessor::mountAndProcessWim(const std::string& bootWimDest, const std::string& destPath, const std::string& sourcePath, bool integratePrograms,
-                                          const std::string& programsSrc, long long& copiedSoFar, std::ofstream& logFile) {
-    std::string driveLetter = destPath.substr(0,2);
-    std::string mountDir = std::string(bootWimDest.begin(), bootWimDest.end() - std::string("sources\\boot.wim").length()) + "temp_mount";
+bool BootWimProcessor::mountAndProcessWim(const std::string &bootWimDest, const std::string &destPath,
+                                          const std::string &sourcePath, bool integratePrograms,
+                                          const std::string &programsSrc, long long &copiedSoFar,
+                                          std::ofstream &logFile) {
+    std::string driveLetter = destPath.substr(0, 2);
+    std::string mountDir =
+        std::string(bootWimDest.begin(), bootWimDest.end() - std::string("sources\\boot.wim").length()) + "temp_mount";
     // Ensure mount directory is clean
     if (GetFileAttributesA(mountDir.c_str()) != INVALID_FILE_ATTRIBUTES) {
         std::string rdCmd = "cmd /c rd /s /q \"" + mountDir + "\" 2>nul";
@@ -120,20 +128,24 @@ bool BootWimProcessor::mountAndProcessWim(const std::string& bootWimDest, const 
     }
     CreateDirectoryA(mountDir.c_str(), NULL);
     SetFileAttributesA(bootWimDest.c_str(), FILE_ATTRIBUTE_NORMAL);
-    std::string dismMountCmd = "dism /Mount-Wim /WimFile:\"" + bootWimDest + "\" /index:1 /MountDir:\"" + mountDir + "\"";
+    std::string dismMountCmd =
+        "dism /Mount-Wim /WimFile:\"" + bootWimDest + "\" /index:1 /MountDir:\"" + mountDir + "\"";
     logFile << ISOCopyManager::getTimestamp() << "Mounting boot.wim: " << dismMountCmd << std::endl;
     std::string mountOutput = Utils::exec(dismMountCmd.c_str());
     logFile << ISOCopyManager::getTimestamp() << "Mount output: " << mountOutput << std::endl;
-    if (mountOutput.find("correctamente") != std::string::npos || mountOutput.find("successfully") != std::string::npos || mountOutput.empty()) {
+    if (mountOutput.find("correctamente") != std::string::npos ||
+        mountOutput.find("successfully") != std::string::npos || mountOutput.empty()) {
         if (integratePrograms) {
             eventManager_.notifyDetailedProgress(40, 100, "Integrando Programs en boot.wim");
             eventManager_.notifyLogUpdate("Integrando Programs en boot.wim...\r\n");
             eventManager_.notifyDetailedProgress(0, 0, "Integrando Programs en boot.wim...");
-            long long programsSize = Utils::getDirectorySize(programsSrc);
-            std::string programsDest = mountDir + "\\Programs";
+            long long             programsSize = Utils::getDirectorySize(programsSrc);
+            std::string           programsDest = mountDir + "\\Programs";
             std::set<std::string> excludeDirs;
-            if (fileCopyManager_.copyDirectoryWithProgress(programsSrc, programsDest, programsSize, copiedSoFar, excludeDirs, "Integrando Programs en boot.wim")) {
-                logFile << ISOCopyManager::getTimestamp() << "Programs integrated into boot.wim successfully" << std::endl;
+            if (fileCopyManager_.copyDirectoryWithProgress(programsSrc, programsDest, programsSize, copiedSoFar,
+                                                           excludeDirs, "Integrando Programs en boot.wim")) {
+                logFile << ISOCopyManager::getTimestamp() << "Programs integrated into boot.wim successfully"
+                        << std::endl;
                 eventManager_.notifyLogUpdate("Programs integrado en boot.wim correctamente.\r\n");
             } else {
                 logFile << ISOCopyManager::getTimestamp() << "Failed to integrate Programs into boot.wim" << std::endl;
@@ -146,14 +158,18 @@ bool BootWimProcessor::mountAndProcessWim(const std::string& bootWimDest, const 
             eventManager_.notifyDetailedProgress(45, 100, "Integrando CustomDrivers en boot.wim");
             eventManager_.notifyLogUpdate("Integrando CustomDrivers en boot.wim...\r\n");
             eventManager_.notifyDetailedProgress(0, 0, "Integrando CustomDrivers en boot.wim...");
-            long long customDriversSize = Utils::getDirectorySize(customDriversSrc);
-            std::string customDriversDest = mountDir + "\\CustomDrivers";
+            long long             customDriversSize = Utils::getDirectorySize(customDriversSrc);
+            std::string           customDriversDest = mountDir + "\\CustomDrivers";
             std::set<std::string> excludeDirs;
-            if (fileCopyManager_.copyDirectoryWithProgress(customDriversSrc, customDriversDest, customDriversSize, copiedSoFar, excludeDirs, "Integrando CustomDrivers en boot.wim")) {
-                logFile << ISOCopyManager::getTimestamp() << "CustomDrivers integrated into boot.wim successfully" << std::endl;
+            if (fileCopyManager_.copyDirectoryWithProgress(customDriversSrc, customDriversDest, customDriversSize,
+                                                           copiedSoFar, excludeDirs,
+                                                           "Integrando CustomDrivers en boot.wim")) {
+                logFile << ISOCopyManager::getTimestamp() << "CustomDrivers integrated into boot.wim successfully"
+                        << std::endl;
                 eventManager_.notifyLogUpdate("CustomDrivers integrado en boot.wim correctamente.\r\n");
             } else {
-                logFile << ISOCopyManager::getTimestamp() << "Failed to integrate CustomDrivers into boot.wim" << std::endl;
+                logFile << ISOCopyManager::getTimestamp() << "Failed to integrate CustomDrivers into boot.wim"
+                        << std::endl;
                 eventManager_.notifyLogUpdate("Error al integrar CustomDrivers en boot.wim.\r\n");
             }
         }
@@ -163,36 +179,40 @@ bool BootWimProcessor::mountAndProcessWim(const std::string& bootWimDest, const 
         IniConfigurator iniConfigurator;
         // First, reconfigure any existing .ini files in the mounted boot.wim
         WIN32_FIND_DATAA findDataExisting;
-        HANDLE hFindExisting = FindFirstFileA((mountDir + "\\*.ini").c_str(), &findDataExisting);
+        HANDLE           hFindExisting = FindFirstFileA((mountDir + "\\*.ini").c_str(), &findDataExisting);
         if (hFindExisting != INVALID_HANDLE_VALUE) {
             bool moreFilesExisting = true;
             while (moreFilesExisting) {
                 std::string iniNameExisting = findDataExisting.cFileName;
                 std::string iniPathExisting = mountDir + "\\" + iniNameExisting;
                 iniConfigurator.configureIniFile(iniPathExisting, driveLetter);
-                logFile << ISOCopyManager::getTimestamp() << "Existing " << iniNameExisting << " in boot.wim reconfigured" << std::endl;
+                logFile << ISOCopyManager::getTimestamp() << "Existing " << iniNameExisting
+                        << " in boot.wim reconfigured" << std::endl;
                 moreFilesExisting = FindNextFileA(hFindExisting, &findDataExisting);
             }
             FindClose(hFindExisting);
         }
         // Then copy and configure .ini files from ISO
         WIN32_FIND_DATAA findData;
-        HANDLE hFind = FindFirstFileA((sourcePath + "*.ini").c_str(), &findData);
+        HANDLE           hFind = FindFirstFileA((sourcePath + "*.ini").c_str(), &findData);
         if (hFind != INVALID_HANDLE_VALUE) {
             bool moreFiles = true;
             while (moreFiles) {
                 std::string iniName = findData.cFileName;
-                std::string iniSrc = sourcePath + iniName;
+                std::string iniSrc  = sourcePath + iniName;
                 std::string iniDest = mountDir + "\\" + iniName;
                 // Process the .ini content outside the .wim and write directly to mountDir
                 if (iniConfigurator.processIniFile(iniSrc, iniDest, driveLetter)) {
-                    logFile << ISOCopyManager::getTimestamp() << iniName << " processed and copied to boot.wim successfully" << std::endl;
+                    logFile << ISOCopyManager::getTimestamp() << iniName
+                            << " processed and copied to boot.wim successfully" << std::endl;
                 } else {
                     // Fallback: copy without processing
                     if (fileCopyManager_.copyFileUtf8(iniSrc, iniDest)) {
-                        logFile << ISOCopyManager::getTimestamp() << iniName << " copied to boot.wim successfully (fallback)" << std::endl;
+                        logFile << ISOCopyManager::getTimestamp() << iniName
+                                << " copied to boot.wim successfully (fallback)" << std::endl;
                     } else {
-                        logFile << ISOCopyManager::getTimestamp() << "Failed to copy " << iniName << " to boot.wim" << std::endl;
+                        logFile << ISOCopyManager::getTimestamp() << "Failed to copy " << iniName << " to boot.wim"
+                                << std::endl;
                     }
                 }
                 moreFiles = FindNextFileA(hFind, &findData);
@@ -202,14 +222,15 @@ bool BootWimProcessor::mountAndProcessWim(const std::string& bootWimDest, const 
         }
 
         // Create or replace startnet.cmd in Windows\System32
-        std::string windowsDir = mountDir + "\\Windows";
+        std::string windowsDir  = mountDir + "\\Windows";
         std::string system32Dir = windowsDir + "\\System32";
         CreateDirectoryA(windowsDir.c_str(), NULL);
         CreateDirectoryA(system32Dir.c_str(), NULL);
-        std::string startnetPath = system32Dir + "\\startnet.cmd";
+        std::string   startnetPath = system32Dir + "\\startnet.cmd";
         std::ofstream startnetFile(startnetPath, std::ios::binary);
         if (startnetFile.is_open()) {
-            startnetFile << "@echo off\r\nwpeinit\r\nX:\\Windows\\System32\\pecmd.exe MAIN X:\\Windows\\System32\\PECMD.ini\r\n";
+            startnetFile
+                << "@echo off\r\nwpeinit\r\nX:\\Windows\\System32\\pecmd.exe MAIN X:\\Windows\\System32\\PECMD.ini\r\n";
             startnetFile.close();
             logFile << ISOCopyManager::getTimestamp() << "startnet.cmd created/replaced in boot.wim" << std::endl;
             eventManager_.notifyLogUpdate("startnet.cmd inyectado en boot.wim.\r\n");
@@ -225,7 +246,8 @@ bool BootWimProcessor::mountAndProcessWim(const std::string& bootWimDest, const 
         logFile << ISOCopyManager::getTimestamp() << "Unmounting boot.wim: " << dismUnmountCmd << std::endl;
         std::string unmountOutput = Utils::exec(dismUnmountCmd.c_str());
         logFile << ISOCopyManager::getTimestamp() << "Unmount output: " << unmountOutput << std::endl;
-        if (unmountOutput.find("correctamente") == std::string::npos && unmountOutput.find("successfully") == std::string::npos && !unmountOutput.empty()) {
+        if (unmountOutput.find("correctamente") == std::string::npos &&
+            unmountOutput.find("successfully") == std::string::npos && !unmountOutput.empty()) {
             logFile << ISOCopyManager::getTimestamp() << "Failed to unmount boot.wim, changes not saved" << std::endl;
             eventManager_.notifyLogUpdate("Error al desmontar boot.wim, cambios no guardados.\r\n");
             RemoveDirectoryA(mountDir.c_str());
@@ -234,8 +256,10 @@ bool BootWimProcessor::mountAndProcessWim(const std::string& bootWimDest, const 
         eventManager_.notifyLogUpdate("boot.wim actualizado correctamente.\r\n");
         eventManager_.notifyDetailedProgress(0, 0, "");
     } else {
-        logFile << ISOCopyManager::getTimestamp() << "Failed to mount boot.wim for processing. DISM output: " << mountOutput << std::endl;
-        eventManager_.notifyLogUpdate("Error al montar boot.wim para procesamiento. Verifique el archivo de log para mas detalles.\r\n");
+        logFile << ISOCopyManager::getTimestamp()
+                << "Failed to mount boot.wim for processing. DISM output: " << mountOutput << std::endl;
+        eventManager_.notifyLogUpdate(
+            "Error al montar boot.wim para procesamiento. Verifique el archivo de log para mas detalles.\r\n");
         RemoveDirectoryA(mountDir.c_str());
         return false;
     }
@@ -243,8 +267,9 @@ bool BootWimProcessor::mountAndProcessWim(const std::string& bootWimDest, const 
     return true;
 }
 
-bool BootWimProcessor::extractAdditionalBootFiles(const std::string& sourcePath, const std::string& espPath, const std::string& destPath,
-                                                  long long& copiedSoFar, long long isoSize, std::ofstream& logFile) {
+bool BootWimProcessor::extractAdditionalBootFiles(const std::string &sourcePath, const std::string &espPath,
+                                                  const std::string &destPath, long long &copiedSoFar,
+                                                  long long isoSize, std::ofstream &logFile) {
     eventManager_.notifyDetailedProgress(60, 100, "Extrayendo archivos adicionales desde boot.wim");
     eventManager_.notifyLogUpdate("Extrayendo archivos adicionales desde boot.wim...\r\n");
     eventManager_.notifyDetailedProgress(0, 0, "Extrayendo archivos de boot.wim...");

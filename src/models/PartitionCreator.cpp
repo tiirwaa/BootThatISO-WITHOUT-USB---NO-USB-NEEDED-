@@ -6,16 +6,13 @@
 #include <fstream>
 #include <string>
 
-PartitionCreator::PartitionCreator(EventManager* eventManager)
-    : eventManager(eventManager)
-{
-}
+PartitionCreator::PartitionCreator(EventManager *eventManager) : eventManager(eventManager) {}
 
-bool PartitionCreator::performDiskpartOperations(const std::string& format)
-{
+bool PartitionCreator::performDiskpartOperations(const std::string &format) {
     std::string logDir = Utils::getExeDirectory() + "logs";
     CreateDirectoryA(logDir.c_str(), NULL);
-    if (eventManager) eventManager->notifyLogUpdate("Creando script de diskpart para particiones...\r\n");
+    if (eventManager)
+        eventManager->notifyLogUpdate("Creando script de diskpart para particiones...\r\n");
     char tempPath[MAX_PATH];
     GetTempPathA(MAX_PATH, tempPath);
     char tempFile[MAX_PATH];
@@ -23,7 +20,8 @@ bool PartitionCreator::performDiskpartOperations(const std::string& format)
 
     std::ofstream scriptFile(tempFile);
     if (!scriptFile) {
-        if (eventManager) eventManager->notifyLogUpdate("Error: No se pudo crear el archivo de script de diskpart.\r\n");
+        if (eventManager)
+            eventManager->notifyLogUpdate("Error: No se pudo crear el archivo de script de diskpart.\r\n");
         return false;
     }
 
@@ -46,15 +44,16 @@ bool PartitionCreator::performDiskpartOperations(const std::string& format)
     scriptFile << "exit\n";
     scriptFile.close();
 
-    if (eventManager) eventManager->notifyLogUpdate("Ejecutando diskpart para crear particiones...\r\n");
+    if (eventManager)
+        eventManager->notifyLogUpdate("Ejecutando diskpart para crear particiones...\r\n");
 
     // Execute diskpart with the script and capture output
-    STARTUPINFOA si = { sizeof(si) };
+    STARTUPINFOA        si = {sizeof(si)};
     PROCESS_INFORMATION pi;
     SECURITY_ATTRIBUTES sa;
-    sa.nLength = sizeof(sa);
+    sa.nLength              = sizeof(sa);
     sa.lpSecurityDescriptor = NULL;
-    sa.bInheritHandle = TRUE;
+    sa.bInheritHandle       = TRUE;
 
     HANDLE hRead, hWrite;
     if (!CreatePipe(&hRead, &hWrite, &sa, 0)) {
@@ -62,13 +61,13 @@ bool PartitionCreator::performDiskpartOperations(const std::string& format)
         return false;
     }
 
-    si.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
-    si.hStdOutput = hWrite;
-    si.hStdError = hWrite;
+    si.dwFlags     = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
+    si.hStdOutput  = hWrite;
+    si.hStdError   = hWrite;
     si.wShowWindow = SW_HIDE;
 
     std::string cmd = "diskpart /s " + std::string(tempFile);
-    if (!CreateProcessA(NULL, const_cast<char*>(cmd.c_str()), NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi)) {
+    if (!CreateProcessA(NULL, const_cast<char *>(cmd.c_str()), NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi)) {
         CloseHandle(hRead);
         CloseHandle(hWrite);
         DeleteFileA(tempFile);
@@ -79,8 +78,8 @@ bool PartitionCreator::performDiskpartOperations(const std::string& format)
 
     // Read the output
     std::string output;
-    char buffer[1024];
-    DWORD bytesRead;
+    char        buffer[1024];
+    DWORD       bytesRead;
     while (ReadFile(hRead, buffer, sizeof(buffer) - 1, &bytesRead, NULL) && bytesRead > 0) {
         buffer[bytesRead] = '\0';
         output += buffer;
@@ -107,7 +106,8 @@ bool PartitionCreator::performDiskpartOperations(const std::string& format)
         if (exitCode == 0) {
             eventManager->notifyLogUpdate("Diskpart ejecutado exitosamente. Verificando particiones...\r\n");
         } else {
-            eventManager->notifyLogUpdate("Error: Diskpart falló con código de salida " + std::to_string(exitCode) + ".\r\n");
+            eventManager->notifyLogUpdate("Error: Diskpart falló con código de salida " + std::to_string(exitCode) +
+                                          ".\r\n");
         }
     }
 
@@ -133,21 +133,22 @@ bool PartitionCreator::performDiskpartOperations(const std::string& format)
     DeleteFileA(tempFile);
 
     if (exitCode == 0) {
-        if (eventManager) eventManager->notifyLogUpdate("Particiones creadas exitosamente.\r\n");
+        if (eventManager)
+            eventManager->notifyLogUpdate("Particiones creadas exitosamente.\r\n");
         return true;
     } else {
-        if (eventManager) eventManager->notifyLogUpdate("Error: Falló la creación de particiones.\r\n");
+        if (eventManager)
+            eventManager->notifyLogUpdate("Error: Falló la creación de particiones.\r\n");
         return false;
     }
 }
 
-bool PartitionCreator::verifyPartitionsCreated()
-{
+bool PartitionCreator::verifyPartitionsCreated() {
     std::string logDir = Utils::getExeDirectory() + "logs";
     CreateDirectoryA(logDir.c_str(), NULL);
     // Quick check if partition is now detectable
-    bool partitionFound = false;
-    char volNameCheck[MAX_PATH];
+    bool   partitionFound = false;
+    char   volNameCheck[MAX_PATH];
     HANDLE hVolCheck = FindFirstVolumeA(volNameCheck, sizeof(volNameCheck));
     if (hVolCheck != INVALID_HANDLE_VALUE) {
         do {
@@ -155,12 +156,13 @@ bool PartitionCreator::verifyPartitionsCreated()
             if (len > 0 && volNameCheck[len - 1] == '\\') {
                 volNameCheck[len - 1] = '\0';
             }
-            
-            char volLabel[MAX_PATH] = {0};
-            char fsName[MAX_PATH] = {0};
-            DWORD serial, maxComp, flags;
+
+            char        volLabel[MAX_PATH] = {0};
+            char        fsName[MAX_PATH]   = {0};
+            DWORD       serial, maxComp, flags;
             std::string volPath = std::string(volNameCheck) + "\\";
-            if (GetVolumeInformationA(volPath.c_str(), volLabel, sizeof(volLabel), &serial, &maxComp, &flags, fsName, sizeof(fsName))) {
+            if (GetVolumeInformationA(volPath.c_str(), volLabel, sizeof(volLabel), &serial, &maxComp, &flags, fsName,
+                                      sizeof(fsName))) {
                 if (_stricmp(volLabel, VOLUME_LABEL) == 0) {
                     partitionFound = true;
                     break;

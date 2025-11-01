@@ -6,15 +6,15 @@
 #include <algorithm>
 #include <fstream>
 
-PartitionDetector::PartitionDetector() : pSvc(nullptr), pLoc(nullptr), comInitialized(false) {
-}
+PartitionDetector::PartitionDetector() : pSvc(nullptr), pLoc(nullptr), comInitialized(false) {}
 
 PartitionDetector::~PartitionDetector() {
     CleanupWMI();
 }
 
 bool PartitionDetector::InitializeWMI() {
-    if (pSvc) return true; // Already initialized
+    if (pSvc)
+        return true; // Already initialized
 
     // Initialize COM in MTA mode for this thread
     HRESULT hr = CoInitializeEx(NULL, COINIT_MULTITHREADED);
@@ -26,34 +26,24 @@ bool PartitionDetector::InitializeWMI() {
         return false;
     }
 
-    hr = CoInitializeSecurity(
-        NULL, -1, NULL, NULL,
-        RPC_C_AUTHN_LEVEL_DEFAULT,
-        RPC_C_IMP_LEVEL_IMPERSONATE,
-        NULL, EOAC_NONE, NULL);
+    hr = CoInitializeSecurity(NULL, -1, NULL, NULL, RPC_C_AUTHN_LEVEL_DEFAULT, RPC_C_IMP_LEVEL_IMPERSONATE, NULL,
+                              EOAC_NONE, NULL);
     if (FAILED(hr) && hr != RPC_E_TOO_LATE) {
         return false;
     }
 
-    hr = CoCreateInstance(
-        CLSID_WbemLocator, 0,
-        CLSCTX_INPROC_SERVER,
-        IID_IWbemLocator, (LPVOID*)&pLoc);
+    hr = CoCreateInstance(CLSID_WbemLocator, 0, CLSCTX_INPROC_SERVER, IID_IWbemLocator, (LPVOID *)&pLoc);
     if (FAILED(hr)) {
         return false;
     }
 
-    hr = pLoc->ConnectServer(
-        _bstr_t(L"ROOT\\Microsoft\\Windows\\Storage"),
-        NULL, NULL, 0, NULL, 0, 0, &pSvc);
+    hr = pLoc->ConnectServer(_bstr_t(L"ROOT\\Microsoft\\Windows\\Storage"), NULL, NULL, 0, NULL, 0, 0, &pSvc);
     if (FAILED(hr)) {
         return false;
     }
 
-    hr = CoSetProxyBlanket(
-        pSvc, RPC_C_AUTHN_WINNT, RPC_C_AUTHZ_NONE,
-        NULL, RPC_C_AUTHN_LEVEL_CALL,
-        RPC_C_IMP_LEVEL_IMPERSONATE, NULL, EOAC_NONE);
+    hr = CoSetProxyBlanket(pSvc, RPC_C_AUTHN_WINNT, RPC_C_AUTHZ_NONE, NULL, RPC_C_AUTHN_LEVEL_CALL,
+                           RPC_C_IMP_LEVEL_IMPERSONATE, NULL, EOAC_NONE);
     return SUCCEEDED(hr);
 }
 
@@ -72,7 +62,7 @@ void PartitionDetector::CleanupWMI() {
     }
 }
 
-std::vector<PartitionInfo> PartitionDetector::findPartitionsByLabels(const std::vector<std::string>& labels) {
+std::vector<PartitionInfo> PartitionDetector::findPartitionsByLabels(const std::vector<std::string> &labels) {
     std::vector<PartitionInfo> foundPartitions;
 
     if (!InitializeWMI()) {
@@ -83,8 +73,8 @@ std::vector<PartitionInfo> PartitionDetector::findPartitionsByLabels(const std::
     auto allPartitions = getAllPartitions();
 
     // Filter by labels
-    for (const auto& partition : allPartitions) {
-        for (const auto& label : labels) {
+    for (const auto &partition : allPartitions) {
+        for (const auto &label : labels) {
             if (_stricmp(partition.fileSystemLabel.c_str(), label.c_str()) == 0) {
                 foundPartitions.push_back(partition);
                 break; // Found match, no need to check other labels
@@ -106,7 +96,7 @@ std::vector<PartitionInfo> PartitionDetector::findPartitionsBySize(UINT64 minSiz
     auto allPartitions = getAllPartitions();
 
     // Filter by size range
-    for (const auto& partition : allPartitions) {
+    for (const auto &partition : allPartitions) {
         if (partition.sizeBytes >= minSizeBytes && partition.sizeBytes <= maxSizeBytes) {
             foundPartitions.push_back(partition);
         }
@@ -124,13 +114,12 @@ std::vector<PartitionInfo> PartitionDetector::getAllPartitions() {
         }
 
         // Query partition data
-        BSTR bstrQuery = SysAllocString(L"SELECT * FROM MSFT_Partition");
-        BSTR bstrLanguage = SysAllocString(L"WQL");
-        IEnumWbemClassObject* pEnumerator = nullptr;
+        BSTR                  bstrQuery    = SysAllocString(L"SELECT * FROM MSFT_Partition");
+        BSTR                  bstrLanguage = SysAllocString(L"WQL");
+        IEnumWbemClassObject *pEnumerator  = nullptr;
 
-        HRESULT hr = pSvc->ExecQuery(bstrLanguage, bstrQuery,
-                                    WBEM_FLAG_FORWARD_ONLY | WBEM_FLAG_RETURN_IMMEDIATELY,
-                                    NULL, &pEnumerator);
+        HRESULT hr = pSvc->ExecQuery(bstrLanguage, bstrQuery, WBEM_FLAG_FORWARD_ONLY | WBEM_FLAG_RETURN_IMMEDIATELY,
+                                     NULL, &pEnumerator);
 
         SysFreeString(bstrQuery);
         SysFreeString(bstrLanguage);
@@ -139,8 +128,8 @@ std::vector<PartitionInfo> PartitionDetector::getAllPartitions() {
             return partitions;
         }
 
-        IWbemClassObject* pPartition = nullptr;
-        ULONG uReturn = 0;
+        IWbemClassObject *pPartition = nullptr;
+        ULONG             uReturn    = 0;
 
         while (pEnumerator->Next(WBEM_INFINITE, 1, &pPartition, &uReturn) == S_OK) {
             PartitionInfo info = {};
@@ -181,7 +170,7 @@ std::vector<PartitionInfo> PartitionDetector::getAllPartitions() {
                     // Try to parse as string number
                     try {
                         std::string sizeStr = Utils::wstring_to_utf8(varSize.bstrVal);
-                        info.sizeBytes = std::stoull(sizeStr);
+                        info.sizeBytes      = std::stoull(sizeStr);
                     } catch (...) {
                         info.sizeBytes = 0;
                     }
@@ -199,7 +188,7 @@ std::vector<PartitionInfo> PartitionDetector::getAllPartitions() {
                     // Try to parse as string number
                     try {
                         std::string offsetStr = Utils::wstring_to_utf8(varOffset.bstrVal);
-                        info.offsetBytes = std::stoull(offsetStr);
+                        info.offsetBytes      = std::stoull(offsetStr);
                     } catch (...) {
                         info.offsetBytes = 0;
                     }
@@ -211,7 +200,8 @@ std::vector<PartitionInfo> PartitionDetector::getAllPartitions() {
             VARIANT varDriveLetter;
             VariantInit(&varDriveLetter);
             if (SUCCEEDED(pPartition->Get(L"DriveLetter", 0, &varDriveLetter, NULL, NULL))) {
-                if (varDriveLetter.vt == VT_BSTR && varDriveLetter.bstrVal && SysStringLen(varDriveLetter.bstrVal) > 0) {
+                if (varDriveLetter.vt == VT_BSTR && varDriveLetter.bstrVal &&
+                    SysStringLen(varDriveLetter.bstrVal) > 0) {
                     try {
                         info.driveLetter = Utils::wstring_to_utf8(varDriveLetter.bstrVal);
                     } catch (...) {
@@ -264,14 +254,13 @@ std::vector<PartitionInfo> PartitionDetector::getAllPartitions() {
 
             // Try to get volume label by checking associated volumes
             if (!info.driveLetter.empty()) {
-                char volumeName[MAX_PATH] = {0};
-                char fileSystem[MAX_PATH] = {0};
+                char  volumeName[MAX_PATH] = {0};
+                char  fileSystem[MAX_PATH] = {0};
                 DWORD serialNumber, maxComponentLen, fileSystemFlags;
 
                 std::string drivePath = info.driveLetter + ":\\";
-                if (GetVolumeInformationA(drivePath.c_str(), volumeName, sizeof(volumeName),
-                                        &serialNumber, &maxComponentLen, &fileSystemFlags,
-                                        fileSystem, sizeof(fileSystem))) {
+                if (GetVolumeInformationA(drivePath.c_str(), volumeName, sizeof(volumeName), &serialNumber,
+                                          &maxComponentLen, &fileSystemFlags, fileSystem, sizeof(fileSystem))) {
                     info.fileSystemLabel = volumeName;
                 }
             } else if (!partitionObjectId.empty()) {
@@ -284,7 +273,7 @@ std::vector<PartitionInfo> PartitionDetector::getAllPartitions() {
         }
 
         pEnumerator->Release();
-    } catch (const std::exception& e) {
+    } catch (const std::exception &e) {
         // Log exception but don't crash
         std::ofstream logFile((Utils::getExeDirectory() + "logs\\partition_detector_error.log").c_str(), std::ios::app);
         if (logFile) {
@@ -305,20 +294,19 @@ std::vector<PartitionInfo> PartitionDetector::getAllPartitions() {
     return partitions;
 }
 
-std::string PartitionDetector::getVolumeLabelByPartitionObjectId(const std::string& partitionObjectId) {
+std::string PartitionDetector::getVolumeLabelByPartitionObjectId(const std::string &partitionObjectId) {
     try {
         if (!InitializeWMI()) {
             return "";
         }
 
         // Query MSFT_Volume to find volumes
-        BSTR bstrQuery = SysAllocString(L"SELECT * FROM MSFT_Volume");
-        BSTR bstrLanguage = SysAllocString(L"WQL");
-        IEnumWbemClassObject* pEnumerator = nullptr;
+        BSTR                  bstrQuery    = SysAllocString(L"SELECT * FROM MSFT_Volume");
+        BSTR                  bstrLanguage = SysAllocString(L"WQL");
+        IEnumWbemClassObject *pEnumerator  = nullptr;
 
-        HRESULT hr = pSvc->ExecQuery(bstrLanguage, bstrQuery,
-                                    WBEM_FLAG_FORWARD_ONLY | WBEM_FLAG_RETURN_IMMEDIATELY,
-                                    NULL, &pEnumerator);
+        HRESULT hr = pSvc->ExecQuery(bstrLanguage, bstrQuery, WBEM_FLAG_FORWARD_ONLY | WBEM_FLAG_RETURN_IMMEDIATELY,
+                                     NULL, &pEnumerator);
 
         SysFreeString(bstrQuery);
         SysFreeString(bstrLanguage);
@@ -327,8 +315,8 @@ std::string PartitionDetector::getVolumeLabelByPartitionObjectId(const std::stri
             return "";
         }
 
-        IWbemClassObject* pVolume = nullptr;
-        ULONG uReturn = 0;
+        IWbemClassObject *pVolume = nullptr;
+        ULONG             uReturn = 0;
 
         while (pEnumerator->Next(WBEM_INFINITE, 1, &pVolume, &uReturn) == S_OK) {
             // Get FileSystemLabel
@@ -383,7 +371,7 @@ std::string PartitionDetector::getVolumeLabelByPartitionObjectId(const std::stri
 
 PartitionInfo PartitionDetector::getPartitionInfo(UINT32 diskNumber, UINT32 partitionNumber) {
     auto allPartitions = getAllPartitions();
-    for (const auto& partition : allPartitions) {
+    for (const auto &partition : allPartitions) {
         if (partition.diskNumber == diskNumber && partition.partitionNumber == partitionNumber) {
             return partition;
         }
