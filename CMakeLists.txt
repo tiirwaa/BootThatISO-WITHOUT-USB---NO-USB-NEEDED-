@@ -95,6 +95,31 @@ endif()
 
 add_test(NAME UtilsTests COMMAND $<TARGET_FILE:UtilsTests>)
 
+add_executable(TestRecoverSpace
+    tests/test_recover_space.cpp
+    src/services/partitionmanager.cpp
+    src/utils/Utils.cpp
+    src/utils/LocalizationManager.cpp
+    src/utils/Logger.cpp
+)
+
+target_include_directories(TestRecoverSpace
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_BINARY_DIR}
+)
+
+if(MSVC)
+    target_compile_options(TestRecoverSpace PRIVATE /utf-8 /W4 /permissive- /EHsc /Zc:__cplusplus)
+else()
+    target_compile_options(TestRecoverSpace PRIVATE -Wall -Wextra -Wpedantic -Wconversion -Wshadow)
+endif()
+
+if(WIN32)
+    target_link_libraries(TestRecoverSpace PRIVATE advapi32 comctl32 gdiplus)
+endif()
+
 find_program(CLANG_TIDY_EXE NAMES clang-tidy)
 if(CLANG_TIDY_EXE)
     set_target_properties(BootThatISO PROPERTIES CXX_CLANG_TIDY "${CLANG_TIDY_EXE};-warnings-as-errors=*")
