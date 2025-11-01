@@ -25,7 +25,7 @@ set(SOURCE_FILES
 )
 
 set(RESOURCE_FILES
-    src/BootThatISO.rc
+    ${CMAKE_BINARY_DIR}/BootThatISO.rc
 )
 
 # Get version from git tag
@@ -42,9 +42,20 @@ endif()
 # Remove 'v' prefix for display
 string(SUBSTRING ${GIT_TAG} 1 -1 APP_VERSION)
 
+# Parse version into components
+string(REPLACE "." ";" VERSION_LIST ${APP_VERSION})
+list(GET VERSION_LIST 0 VERSION_MAJOR)
+list(GET VERSION_LIST 1 VERSION_MINOR)
+list(GET VERSION_LIST 2 VERSION_PATCH)
+
 configure_file(
     ${CMAKE_SOURCE_DIR}/include/version.h.in
     ${CMAKE_BINARY_DIR}/version.h
+)
+
+configure_file(
+    ${CMAKE_SOURCE_DIR}/src/BootThatISO.rc.in
+    ${CMAKE_BINARY_DIR}/BootThatISO.rc
 )
 
 set(CMAKE_MFC_FLAG 2)
@@ -54,6 +65,7 @@ add_executable(BootThatISO WIN32 ${SOURCE_FILES} ${RESOURCE_FILES})
 target_include_directories(BootThatISO
     PRIVATE
         ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
         ${CMAKE_BINARY_DIR}
 )
 

@@ -19,6 +19,7 @@
 #include "../models/efimanager.h"
 #include "../models/isomounter.h"
 #include "../models/filecopymanager.h"
+#include "version.h"
 
 // Forward declarations for helper functions defined later in this file
 static bool isValidPE(const std::string& path);
@@ -257,9 +258,11 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
     
     // Calculate MD5 of the ISO
     std::string md5 = Utils::calculateMD5(isoPath);
+    // Combine version and ISO hash for unique identification
+    std::string combinedHash = Utils::calculateMD5(APP_VERSION + md5);
     std::string hashFilePath = destPath + "\\ISOBOOTHASH";
     HashInfo existing = readHashInfo(hashFilePath);
-    bool skipCopy = (existing.hash == md5 && existing.mode == mode && existing.format == format && !existing.hash.empty());
+    bool skipCopy = (existing.hash == combinedHash && existing.mode == mode && existing.format == format && !existing.hash.empty());
     if (skipCopy) {
         logFile << getTimestamp() << "ISO hash, mode and format match existing, skipping content copy" << std::endl;
         eventManager.notifyLogUpdate("Hash, modo y formato del ISO coinciden, omitiendo copia de contenido.\r\n");
@@ -387,7 +390,7 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
         }
 
         // Integrate Programs into boot.wim for RAM mode
-        if (integratePrograms && bootWimSuccess) {
+        if (bootWimSuccess) {
             std::string mountDir = destPath + "temp_mount";
             // Ensure mount directory is clean
             if (GetFileAttributesA(mountDir.c_str()) != INVALID_FILE_ATTRIBUTES) {
@@ -403,16 +406,18 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
             std::string mountOutput = Utils::exec(dismMountCmd.c_str());
             logFile << getTimestamp() << "Mount output: " << mountOutput << std::endl;
             if (mountOutput.find("correctamente") != std::string::npos || mountOutput.find("successfully") != std::string::npos || mountOutput.empty()) {
-                eventManager.notifyLogUpdate("Integrando Programs en boot.wim...\r\n");
-                eventManager.notifyDetailedProgress(0, 0, "Integrando Programs en boot.wim...");
-                std::string programsDest = mountDir + "\\Programs";
-                std::set<std::string> excludeDirs;
-                if (fileCopyManager->copyDirectoryWithProgress(programsSrc, programsDest, 0, copiedSoFar, excludeDirs, "Integrando Programs en boot.wim")) {
-                    logFile << getTimestamp() << "Programs integrated into boot.wim successfully" << std::endl;
-                    eventManager.notifyLogUpdate("Programs integrado en boot.wim correctamente.\r\n");
-                } else {
-                    logFile << getTimestamp() << "Failed to integrate Programs into boot.wim" << std::endl;
-                    eventManager.notifyLogUpdate("Error al integrar Programs en boot.wim.\r\n");
+                if (integratePrograms) {
+                    eventManager.notifyLogUpdate("Integrando Programs en boot.wim...\r\n");
+                    eventManager.notifyDetailedProgress(0, 0, "Integrando Programs en boot.wim...");
+                    std::string programsDest = mountDir + "\\Programs";
+                    std::set<std::string> excludeDirs;
+                    if (fileCopyManager->copyDirectoryWithProgress(programsSrc, programsDest, 0, copiedSoFar, excludeDirs, "Integrando Programs en boot.wim")) {
+                        logFile << getTimestamp() << "Programs integrated into boot.wim successfully" << std::endl;
+                        eventManager.notifyLogUpdate("Programs integrado en boot.wim correctamente.\r\n");
+                    } else {
+                        logFile << getTimestamp() << "Failed to integrate Programs into boot.wim" << std::endl;
+                        eventManager.notifyLogUpdate("Error al integrar Programs en boot.wim.\r\n");
+                    }
                 }
                 // Copy all .ini files from root and reconfigure paths
                 WIN32_FIND_DATAA findData;
@@ -438,7 +443,7 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
                             // Additional reconfiguration for .ini files with ExtPrograms section
                             size_t extPos = iniContent.find("_SUB ExtPrograms");
                             if (extPos != std::string::npos) {
-                                size_t commentPos = iniContent.find("// EXEC Y:\\Programs\\Sysinternals_Process_Monitor\\procmon.exe", extPos);
+                                size_t commentPos = iniContent.find("// EXEC X:\\Programs\\Sysinternals_Process_Monitor\\procmon.exe", extPos);
                                 if (commentPos != std::string::npos) {
                                     size_t insertPos = iniContent.find('\n', commentPos) + 1;
                                     std::string toInsert = "\t// Agrega aquí EXEC para programas de la carpeta Programs\n\t// Ejemplo: EXEC X:\\Programs\\TuPrograma.exe\n";
@@ -463,8 +468,8 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
                 std::string unmountOutput = Utils::exec(dismUnmountCmd.c_str());
                 logFile << getTimestamp() << "Unmount output: " << unmountOutput << std::endl;
             } else {
-                logFile << getTimestamp() << "Failed to mount boot.wim for Programs integration. DISM output: " << mountOutput << std::endl;
-                eventManager.notifyLogUpdate("Error al montar boot.wim para integrar Programs. Verifique el archivo de log para mas detalles.\r\n");
+                logFile << getTimestamp() << "Failed to mount boot.wim for processing. DISM output: " << mountOutput << std::endl;
+                eventManager.notifyLogUpdate("Error al montar boot.wim para procesamiento. Verifique el archivo de log para mas detalles.\r\n");
             }
             // Clean up mount directory
             RemoveDirectoryA(mountDir.c_str());
@@ -509,7 +514,7 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
     // Write the current ISO hash, mode and format to the file
     std::ofstream hashFile(hashFilePath);
     if (hashFile.is_open()) {
-        hashFile << md5 << std::endl;
+        hashFile << combinedHash << std::endl;
         hashFile << mode << std::endl;
         hashFile << format << std::endl;
         hashFile.close();
