@@ -39,6 +39,96 @@ std::string detectSystemDrive() {
     }
     return "C:\\";
 }
+
+constexpr DWORD DISKPART_DEVICE_IN_USE = 0x80042413;
+
+bool executeCommandHidden(const std::string& command, DWORD timeoutMs, std::string& output, DWORD& exitCode) {
+    STARTUPINFOA si = { sizeof(si) };
+    PROCESS_INFORMATION pi{};
+    SECURITY_ATTRIBUTES sa{};
+    sa.nLength = sizeof(sa);
+    sa.bInheritHandle = TRUE;
+    sa.lpSecurityDescriptor = NULL;
+
+    HANDLE hRead = NULL;
+    HANDLE hWrite = NULL;
+    if (!CreatePipe(&hRead, &hWrite, &sa, 0)) {
+        return false;
+    }
+
+    si.dwFlags = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
+    si.hStdOutput = hWrite;
+    si.hStdError = hWrite;
+    si.wShowWindow = SW_HIDE;
+
+    if (!CreateProcessA(NULL, const_cast<char*>(command.c_str()), NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi)) {
+        CloseHandle(hRead);
+        CloseHandle(hWrite);
+        return false;
+    }
+
+    CloseHandle(hWrite);
+
+    output.clear();
+    char buffer[1024];
+    DWORD bytesRead = 0;
+    while (ReadFile(hRead, buffer, sizeof(buffer) - 1, &bytesRead, NULL) && bytesRead > 0) {
+        buffer[bytesRead] = '\0';
+        output.append(buffer, bytesRead);
+    }
+
+    CloseHandle(hRead);
+
+    WaitForSingleObject(pi.hProcess, timeoutMs);
+    GetExitCodeProcess(pi.hProcess, &exitCode);
+
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
+    return true;
+}
+
+bool formatVolumeWithPowerShell(const std::string& volumeLabel,
+                                const std::string& fsFormat,
+                                std::string& output,
+                                DWORD& exitCode) {
+    char tempPath[MAX_PATH];
+    if (!GetTempPathA(MAX_PATH, tempPath)) {
+        return false;
+    }
+    char tempFile[MAX_PATH];
+    if (!GetTempFileNameA(tempPath, "fmtps", 0, tempFile)) {
+        return false;
+    }
+
+    std::ofstream scriptFile(tempFile);
+    if (!scriptFile) {
+        DeleteFileA(tempFile);
+        return false;
+    }
+
+    scriptFile << "$ErrorActionPreference = 'Stop'\n";
+    scriptFile << "$volume = Get-Volume | Where-Object { $_.FileSystemLabel -eq '" << volumeLabel << "' }\n";
+    scriptFile << "if (-not $volume) {\n";
+    scriptFile << "    Write-Output 'VolumeNotFound'\n";
+    scriptFile << "    exit 3\n";
+    scriptFile << "}\n";
+    scriptFile << "try {\n";
+    scriptFile << "    Format-Volume -InputObject $volume -FileSystem '" << fsFormat
+               << "' -NewFileSystemLabel '" << volumeLabel
+               << "' -Confirm:$false -Force -ErrorAction Stop | Out-Null\n";
+    scriptFile << "    exit 0\n";
+    scriptFile << "} catch {\n";
+    scriptFile << "    Write-Output $_.Exception.Message\n";
+    scriptFile << "    exit 4\n";
+    scriptFile << "}\n";
+    scriptFile.close();
+
+    std::string command = "powershell -NoProfile -ExecutionPolicy Bypass -File \"" + std::string(tempFile) + "\"";
+    bool ran = executeCommandHidden(command, 300000, output, exitCode);
+
+    DeleteFileA(tempFile);
+    return ran;
+}
 }
 // Helper to append and flush to general_log.log
 void logToGeneral(const std::string& msg) {
@@ -701,41 +791,36 @@ bool PartitionManager::reformatPartition(const std::string& format)
 
     // Now, create script to select and format
     GetTempFileNameA(tempPath, "format", 0, tempFile);
+    std::ostringstream formatScript;
+    formatScript << "select volume " << volumeNumber << "\n";
+    formatScript << "format fs=" << fsFormat << " quick label=\"" << VOLUME_LABEL << "\"\n";
+    formatScript << "exit\n";
     scriptFile.open(tempFile);
-    scriptFile << "select volume " << volumeNumber << "\n";
-    scriptFile << "format fs=" << fsFormat << " quick label=\"" << VOLUME_LABEL << "\"\n";
-    scriptFile << "exit\n";
+    scriptFile << formatScript.str();
     scriptFile.close();
 
-    // Execute the format script
-    si.dwFlags = STARTF_USESHOWWINDOW;
-    si.wShowWindow = SW_HIDE;
-    si.hStdOutput = NULL;
-    si.hStdError = NULL;
+    if (eventManager) eventManager->notifyLogUpdate("Ejecutando formateo de particion...\r\n");
 
-    cmd = "diskpart /s " + std::string(tempFile);
-    if (!CreateProcessA(NULL, const_cast<char*>(cmd.c_str()), NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
-        DeleteFileA(tempFile);
+    std::string formatOutput;
+    DWORD formatExitCode = 0;
+    std::string command = "diskpart /s \"" + std::string(tempFile) + "\"";
+    bool ranDiskpart = executeCommandHidden(command, 300000, formatOutput, formatExitCode);
+
+    DeleteFileA(tempFile);
+
+    std::ofstream formatLog((logDir + "\\" + REFORMAT_LOG_FILE).c_str(), std::ios::app);
+    if (formatLog) {
+        formatLog << "Diskpart format script:\n" << formatScript.str();
+        formatLog << "Diskpart format output:\n" << Utils::ansi_to_utf8(formatOutput) << "\n";
+        formatLog.close();
+    }
+
+    if (!ranDiskpart) {
         if (eventManager) eventManager->notifyLogUpdate("Error: No se pudo ejecutar diskpart para formateo.\r\n");
         return false;
     }
 
-    if (eventManager) eventManager->notifyLogUpdate("Ejecutando formateo de partición...\r\n");
-
-    WaitForSingleObject(pi.hProcess, 300000); // 5 minutes
-
-    GetExitCodeProcess(pi.hProcess, &exitCode);
-
-    CloseHandle(pi.hProcess);
-    CloseHandle(pi.hThread);
-
-    DeleteFileA(tempFile);
-
-    // Wait a bit for the system to recognize the changes
-    Sleep(5000);
-
-    // Refresh volume information
-    system("mountvol /r >nul 2>&1");
+    exitCode = formatExitCode;
 
     std::ofstream logFile2((logDir + "\\" + REFORMAT_EXIT_LOG_FILE).c_str(), std::ios::app);
     if (logFile2) {
@@ -744,12 +829,43 @@ bool PartitionManager::reformatPartition(const std::string& format)
     }
 
     if (exitCode == 0) {
-        if (eventManager) eventManager->notifyLogUpdate("Partición reformateada exitosamente.\r\n");
+        Sleep(5000);
+        system("mountvol /r >nul 2>&1");
+        if (eventManager) eventManager->notifyLogUpdate("Particion reformateada exitosamente.\r\n");
         return true;
-    } else {
-        if (eventManager) eventManager->notifyLogUpdate("Error: Falló el formateo de la partición (código " + std::to_string(exitCode) + ").\r\n");
+    }
+
+    if (exitCode == DISKPART_DEVICE_IN_USE) {
+        if (eventManager) eventManager->notifyLogUpdate("Aviso: Diskpart indico que la particion esta en uso. Intentando formateo alternativo...\r\n");
+        std::string psOutput;
+        DWORD psExitCode = 0;
+        bool ranFallback = formatVolumeWithPowerShell(VOLUME_LABEL, fsFormat, psOutput, psExitCode);
+
+        std::ofstream fallLog((logDir + "\\" + REFORMAT_LOG_FILE).c_str(), std::ios::app);
+        if (fallLog) {
+            fallLog << "PowerShell fallback exit code: " << psExitCode << "\n";
+            fallLog << "PowerShell fallback output:\n" << Utils::ansi_to_utf8(psOutput) << "\n";
+            fallLog.close();
+        }
+        std::ofstream fallExit((logDir + "\\" + REFORMAT_EXIT_LOG_FILE).c_str(), std::ios::app);
+        if (fallExit) {
+            fallExit << "PowerShell fallback exit code: " << psExitCode << "\n";
+            fallExit.close();
+        }
+
+        if (ranFallback && psExitCode == 0) {
+            Sleep(5000);
+            system("mountvol /r >nul 2>&1");
+            if (eventManager) eventManager->notifyLogUpdate("Particion reformateada exitosamente (metodo alternativo).\r\n");
+            return true;
+        }
+
+        if (eventManager) eventManager->notifyLogUpdate("Error: El formateo alternativo tambien fallo.\r\n");
         return false;
     }
+
+    if (eventManager) eventManager->notifyLogUpdate("Error: Fallo el formateo de la particion (codigo " + std::to_string(exitCode) + ").\r\n");
+    return false;
 }
 
 bool PartitionManager::reformatEfiPartition()
@@ -886,11 +1002,14 @@ bool PartitionManager::reformatEfiPartition()
     if (eventManager) eventManager->notifyLogUpdate("Volumen EFI encontrado (número " + std::to_string(volumeNumber) + "). Creando script de formateo...\r\n");
 
     // Now, create script to select and format EFI
+    const std::string fsFormat = "fat32";
     GetTempFileNameA(tempPath, "format_efi", 0, tempFile);
+    std::ostringstream formatScript;
+    formatScript << "select volume " << volumeNumber << "\n";
+    formatScript << "format fs=" << fsFormat << " quick label=\"" << EFI_VOLUME_LABEL << "\"\n";
+    formatScript << "exit\n";
     scriptFile.open(tempFile);
-    scriptFile << "select volume " << volumeNumber << "\n";
-    scriptFile << "format fs=fat32 quick label=\"" << EFI_VOLUME_LABEL << "\"\n";
-    scriptFile << "exit\n";
+    scriptFile << formatScript.str();
     scriptFile.close();
 
     // Execute the format script

@@ -36,13 +36,17 @@ bool ISOTypeDetector::isWindowsISO(const std::string& mountedIsoPath) {
     if (hasSources) {
         std::string installWimPath = mountedIsoPath + "sources\\install.wim";
         std::string installEsdPath = mountedIsoPath + "sources\\install.esd";
+        std::string bootWimPath = mountedIsoPath + "sources\\boot.wim";
         DWORD installWimAttrs = GetFileAttributesA(installWimPath.c_str());
         DWORD installEsdAttrs = GetFileAttributesA(installEsdPath.c_str());
+        DWORD bootWimAttrs = GetFileAttributesA(bootWimPath.c_str());
         bool hasInstallWim = (installWimAttrs != INVALID_FILE_ATTRIBUTES);
         bool hasInstallEsd = (installEsdAttrs != INVALID_FILE_ATTRIBUTES);
+        bool hasBootWim = (bootWimAttrs != INVALID_FILE_ATTRIBUTES);
         logFile << getTimestamp() << "install.wim '" << installWimPath << "' exists: " << (hasInstallWim ? "YES" : "NO") << " (attrs: " << installWimAttrs << ")" << std::endl;
         logFile << getTimestamp() << "install.esd '" << installEsdPath << "' exists: " << (hasInstallEsd ? "YES" : "NO") << " (attrs: " << installEsdAttrs << ")" << std::endl;
-        isWindowsISO = hasInstallWim || hasInstallEsd;
+        logFile << getTimestamp() << "boot.wim '" << bootWimPath << "' exists: " << (hasBootWim ? "YES" : "NO") << " (attrs: " << bootWimAttrs << ")" << std::endl;
+        isWindowsISO = hasInstallWim || hasInstallEsd || hasBootWim;
     }
     logFile << getTimestamp() << "Is Windows ISO: " << (isWindowsISO ? "YES" : "NO") << std::endl;
     logFile.close();

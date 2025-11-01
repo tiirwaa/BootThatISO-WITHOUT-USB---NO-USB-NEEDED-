@@ -272,11 +272,19 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
     case WM_UPDATE_ERROR:
     case WM_ASK_RESTART:
     case WM_RECOVER_COMPLETE:
+    case WM_TIMER:
         if (mainWindow)
         {
             mainWindow->HandleCommand(msg, wParam, lParam);
         }
         return 0;
+    case WM_SETCURSOR:
+        if (mainWindow)
+        {
+            LRESULT res = mainWindow->HandleCommand(msg, wParam, lParam);
+            if (res) return res;
+        }
+        return DefWindowProc(hwnd, msg, wParam, lParam);
     case WM_DESTROY:
         mainWindow.reset();
         PostQuitMessage(0);

@@ -28,6 +28,19 @@ static DWORD CALLBACK CopyFileProgressRoutine(
     if (ctx && ctx->eventManager && TotalFileSize.QuadPart > 0) {
         long long current = ctx->copiedSoFar + TotalBytesTransferred.QuadPart;
         ctx->eventManager->notifyDetailedProgress(current, ctx->totalSize, ctx->operation);
+        if (ctx->totalSize > 0) {
+            long long bounded = current;
+            if (bounded > ctx->totalSize) {
+                bounded = ctx->totalSize;
+            }
+            long long span = ctx->totalSize;
+            if (span > 0) {
+                int normalized = static_cast<int>(30 + (bounded * 40) / span);
+                if (normalized < 70) {
+                    ctx->eventManager->notifyProgressUpdate(normalized);
+                }
+            }
+        }
     }
     return PROGRESS_CONTINUE;
 }

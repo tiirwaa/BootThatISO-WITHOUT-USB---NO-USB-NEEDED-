@@ -703,20 +703,23 @@ bool BCDManager::restoreBCD()
         }
     }
 
-    restoreBootmgrStateIfPresent(eventManager);
+    bool bootmgrStateRestored = restoreBootmgrStateIfPresent(eventManager);
+    bool shouldResetDefaults = deletedAny || bootmgrStateRestored;
 
-    if (eventManager) {
-        eventManager->notifyLogUpdate("Estableciendo Windows como entrada predeterminada y ajustando el tiempo de espera a 0 segundos...\r\n");
-    }
-    std::string defaultResult = Utils::exec((BCD_CMD + " /default {current}").c_str());
-    std::string timeoutResult = Utils::exec((BCD_CMD + " /timeout 0").c_str());
-
-    if (eventManager) {
-        if (!defaultResult.empty()) {
-            eventManager->notifyLogUpdate("Resultado /default: " + Utils::ansi_to_utf8(defaultResult) + "\r\n");
+    if (shouldResetDefaults) {
+        if (eventManager) {
+            eventManager->notifyLogUpdate("Estableciendo Windows como entrada predeterminada y ajustando el tiempo de espera a 0 segundos...\r\n");
         }
-        if (!timeoutResult.empty()) {
-            eventManager->notifyLogUpdate("Resultado /timeout: " + Utils::ansi_to_utf8(timeoutResult) + "\r\n");
+        std::string defaultResult = Utils::exec((BCD_CMD + " /default {current}").c_str());
+        std::string timeoutResult = Utils::exec((BCD_CMD + " /timeout 0").c_str());
+
+        if (eventManager) {
+            if (!defaultResult.empty()) {
+                eventManager->notifyLogUpdate("Resultado /default: " + Utils::ansi_to_utf8(defaultResult) + "\r\n");
+            }
+            if (!timeoutResult.empty()) {
+                eventManager->notifyLogUpdate("Resultado /timeout: " + Utils::ansi_to_utf8(timeoutResult) + "\r\n");
+            }
         }
     }
 

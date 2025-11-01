@@ -52,7 +52,7 @@ public:
 
     bool IsProcessing() const { return isProcessing || isRecovering; }
 
-    void HandleCommand(UINT msg, WPARAM wParam, LPARAM lParam);
+    LRESULT HandleCommand(UINT msg, WPARAM wParam, LPARAM lParam);
 
 private:
     void SetupUI(HWND parent);
@@ -69,6 +69,8 @@ private:
     void OnOpenServicesPage();
 
     bool RestartSystem();
+    void StartProcessingAnimation();
+    void StopProcessingAnimation();
 
     PartitionManager* partitionManager;
     ISOCopyManager* isoCopyManager;
@@ -138,7 +140,9 @@ private:
     Gdiplus::Bitmap* logoBitmap;
     HICON logoHIcon;
     HICON buttonHIcon;
-    bool buttonIconOwned;
+    Gdiplus::Bitmap* buttonBitmap;
+    double buttonRotationAngle;
+    UINT_PTR buttonSpinTimerId;
 
     // Recovery dialog
     HWND hRecoverDialog;

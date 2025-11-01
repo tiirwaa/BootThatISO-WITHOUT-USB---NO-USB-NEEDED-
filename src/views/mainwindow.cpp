@@ -30,6 +30,9 @@ constexpr int BUTTON_ICON_WIDTH = 160;
 constexpr int BUTTON_ICON_HEIGHT = 160;
 constexpr int BUTTON_ICON_PADDING = 8;
 constexpr int CONTENT_OFFSET_X = BUTTON_ICON_WIDTH + 30; // button width plus spacing
+constexpr UINT_PTR BUTTON_SPIN_TIMER_ID = 1001;
+constexpr UINT BUTTON_SPIN_INTERVAL_MS = 50;
+constexpr double BUTTON_SPIN_INCREMENT_DEGREES = 12.0;
 }
 
 struct DetailedProgressData {
@@ -97,7 +100,7 @@ Gdiplus::Bitmap* ResizeBitmap(Gdiplus::Bitmap* source, int targetWidth, int targ
 }
 
 MainWindow::MainWindow(HWND parent)
-    : hInst(GetModuleHandle(NULL)), hWndParent(parent), selectedFormat("NTFS"), selectedBootModeKey(AppKeys::BootModeExtract), isProcessing(false), isRecovering(false), skipIntegrityCheck(true), logoBitmap(nullptr), logoHIcon(nullptr), buttonHIcon(nullptr), buttonIconOwned(false), hRecoverDialog(nullptr), performHintLabel(nullptr), developedByLabel(nullptr)
+    : hInst(GetModuleHandle(NULL)), hWndParent(parent), selectedFormat("NTFS"), selectedBootModeKey(AppKeys::BootModeExtract), isProcessing(false), isRecovering(false), skipIntegrityCheck(true), logoBitmap(nullptr), logoHIcon(nullptr), buttonHIcon(nullptr), buttonBitmap(nullptr), buttonRotationAngle(0.0), buttonSpinTimerId(0), hRecoverDialog(nullptr), performHintLabel(nullptr), developedByLabel(nullptr)
 {
     partitionManager = &PartitionManager::getInstance();
     isoCopyManager = &ISOCopyManager::getInstance();
@@ -115,9 +118,11 @@ MainWindow::MainWindow(HWND parent)
 MainWindow::~MainWindow()
 {
     HideRecoverDialog();
+    StopProcessingAnimation();
     if (logoBitmap) delete logoBitmap;
     if (logoHIcon) DestroyIcon(logoHIcon);
-    if (buttonIconOwned && buttonHIcon) DestroyIcon(buttonHIcon);
+    if (buttonHIcon) DestroyIcon(buttonHIcon);
+    if (buttonBitmap) delete buttonBitmap;
 }
 
 void MainWindow::requestCancel()
@@ -166,14 +171,14 @@ void MainWindow::SetupUI(HWND parent)
             logoBitmap = resizedLogo;
         }
     }
-    buttonHIcon = static_cast<HICON>(LoadImageW(hInst, MAKEINTRESOURCEW(IDI_APP_ICON), IMAGE_ICON, BUTTON_ICON_WIDTH, BUTTON_ICON_HEIGHT, LR_CREATEDIBSECTION));
-    if (buttonHIcon) {
-        buttonIconOwned = true;
-    } else {
-        HICON sharedIcon = static_cast<HICON>(LoadImageW(hInst, MAKEINTRESOURCEW(IDI_APP_ICON), IMAGE_ICON, 0, 0, LR_DEFAULTSIZE | LR_SHARED));
-        if (sharedIcon) {
-            buttonHIcon = CopyIcon(sharedIcon);
-            buttonIconOwned = (buttonHIcon != nullptr);
+    buttonBitmap = LoadBitmapFromResource(IDR_LOGO_T);
+    if (!buttonBitmap) {
+        buttonHIcon = static_cast<HICON>(LoadImageW(hInst, MAKEINTRESOURCEW(IDI_APP_ICON), IMAGE_ICON, BUTTON_ICON_WIDTH, BUTTON_ICON_HEIGHT, LR_CREATEDIBSECTION));
+        if (!buttonHIcon) {
+            HICON sharedIcon = static_cast<HICON>(LoadImageW(hInst, MAKEINTRESOURCEW(IDI_APP_ICON), IMAGE_ICON, 0, 0, LR_DEFAULTSIZE | LR_SHARED));
+            if (sharedIcon) {
+                buttonHIcon = CopyIcon(sharedIcon);
+            }
         }
     }
     CreateControls(parent);
@@ -328,7 +333,7 @@ void MainWindow::ApplyStyles()
     SendMessage(developedByLabel, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 }
 
-void MainWindow::HandleCommand(UINT msg, WPARAM wParam, LPARAM lParam)
+LRESULT MainWindow::HandleCommand(UINT msg, WPARAM wParam, LPARAM lParam)
 {
     switch (msg)
     {
@@ -393,11 +398,29 @@ void MainWindow::HandleCommand(UINT msg, WPARAM wParam, LPARAM lParam)
             break;
         }
         break;
+    case WM_SETCURSOR:
+        if (LOWORD(lParam) == HTCLIENT && (HWND)wParam == createPartitionButton) {
+            SetCursor(LoadCursor(NULL, IDC_HAND));
+            return TRUE;
+        }
+        break;
     case WM_DRAWITEM:
         if (wParam == IDC_CREATE_PARTITION_BUTTON) {
             auto* drawInfo = reinterpret_cast<LPDRAWITEMSTRUCT>(lParam);
             DrawCreateButton(drawInfo);
-            return;
+            return TRUE;
+        }
+        break;
+    case WM_TIMER:
+        if (wParam == BUTTON_SPIN_TIMER_ID) {
+            buttonRotationAngle += BUTTON_SPIN_INCREMENT_DEGREES;
+            if (buttonRotationAngle >= 360.0) {
+                buttonRotationAngle -= 360.0;
+            }
+            if (createPartitionButton) {
+                InvalidateRect(createPartitionButton, NULL, FALSE);
+            }
+            return 0;
         }
         break;
     case WM_UPDATE_PROGRESS:
@@ -413,6 +436,7 @@ void MainWindow::HandleCommand(UINT msg, WPARAM wParam, LPARAM lParam)
     case WM_ENABLE_BUTTON:
         EnableWindow(createPartitionButton, TRUE);
         isProcessing = false;
+        StopProcessingAnimation();
         break;
     case WM_UPDATE_DETAILED_PROGRESS:
         {
@@ -456,6 +480,7 @@ void MainWindow::HandleCommand(UINT msg, WPARAM wParam, LPARAM lParam)
         }
         break;
     }
+    return 0;
 }
 
 void MainWindow::DrawCreateButton(LPDRAWITEMSTRUCT drawInfo)
@@ -492,8 +517,19 @@ void MainWindow::DrawCreateButton(LPDRAWITEMSTRUCT drawInfo)
     int iconX = innerRect.left + (availableWidth - iconSize) / 2;
     int iconY = innerRect.top + (availableHeight - iconSize) / 2;
 
-    if (buttonHIcon && iconSize > 0) {
-        DrawIconEx(hdc, iconX, iconY, buttonHIcon, iconSize, iconSize, 0, nullptr, DI_NORMAL);
+    if (iconSize > 0) {
+        if (buttonBitmap) {
+            Gdiplus::Graphics graphics(hdc);
+            graphics.SetSmoothingMode(Gdiplus::SmoothingModeHighQuality);
+            graphics.SetInterpolationMode(Gdiplus::InterpolationModeHighQualityBicubic);
+            Gdiplus::PointF center(static_cast<Gdiplus::REAL>(iconX + iconSize / 2.0f), static_cast<Gdiplus::REAL>(iconY + iconSize / 2.0f));
+            graphics.TranslateTransform(center.X, center.Y);
+            graphics.RotateTransform(static_cast<Gdiplus::REAL>(buttonRotationAngle));
+            graphics.DrawImage(buttonBitmap, static_cast<Gdiplus::REAL>(-iconSize / 2.0f), static_cast<Gdiplus::REAL>(-iconSize / 2.0f), static_cast<Gdiplus::REAL>(iconSize), static_cast<Gdiplus::REAL>(iconSize));
+            graphics.ResetTransform();
+        } else if (buttonHIcon) {
+            DrawIconEx(hdc, iconX, iconY, buttonHIcon, iconSize, iconSize, 0, nullptr, DI_NORMAL);
+        }
     }
 
     if (isFocused && !isDisabled) {
@@ -574,6 +610,7 @@ void MainWindow::OnCreatePartition()
     // Disable button and start process
     EnableWindow(createPartitionButton, FALSE);
     isProcessing = true;
+    StartProcessingAnimation();
     int len = WideCharToMultiByte(CP_UTF8, 0, isoPath, -1, NULL, 0, NULL, NULL);
     std::string isoPathStr(len, '\0');
     WideCharToMultiByte(CP_UTF8, 0, isoPath, -1, &isoPathStr[0], len, NULL, NULL);
@@ -673,6 +710,32 @@ bool MainWindow::RestartSystem()
     return true;
 }
 
+void MainWindow::StartProcessingAnimation()
+{
+    if (!buttonBitmap || !createPartitionButton) {
+        return;
+    }
+    if (buttonSpinTimerId == 0) {
+        buttonRotationAngle = 0.0;
+        buttonSpinTimerId = SetTimer(hWndParent, BUTTON_SPIN_TIMER_ID, BUTTON_SPIN_INTERVAL_MS, NULL);
+    }
+    InvalidateRect(createPartitionButton, NULL, TRUE);
+}
+
+void MainWindow::StopProcessingAnimation()
+{
+    if (buttonSpinTimerId != 0) {
+        KillTimer(hWndParent, buttonSpinTimerId);
+        buttonSpinTimerId = 0;
+    }
+    if (buttonRotationAngle != 0.0) {
+        buttonRotationAngle = 0.0;
+    }
+    if (createPartitionButton) {
+        InvalidateRect(createPartitionButton, NULL, TRUE);
+    }
+}
+
 void MainWindow::onProgressUpdate(int progress) {
     PostMessage(hWndParent, WM_UPDATE_PROGRESS, static_cast<WPARAM>(progress), 0);
 }
@@ -697,8 +760,13 @@ void MainWindow::onRecoverComplete(bool success)
 }
 
 void MainWindow::UpdateDetailedProgressLabel(long long copied, long long total, const std::string& operation) {
-    if (total == 0) {
-        SetWindowTextW(detailedProgressLabel, L"");
+    if (total <= 0) {
+        if (operation.empty()) {
+            SetWindowTextW(detailedProgressLabel, L"");
+        } else {
+            std::wstring operationText = Utils::utf8_to_wstring(operation);
+            SetWindowTextW(detailedProgressLabel, operationText.c_str());
+        }
         SendMessage(detailedProgressBar, PBM_SETPOS, 0, 0);
         return;
     }
