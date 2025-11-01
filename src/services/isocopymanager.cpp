@@ -175,6 +175,9 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
     logFile << getTimestamp() << "ESP path: " << espPath << std::endl;
     logFile << getTimestamp() << "Extract content: " << (extractContent ? "Yes" : "No") << std::endl;
     
+    bool integratePrograms = false;
+    std::string programsSrc;
+    
     long long isoSize = Utils::getFileSize(isoPath);
     long long copiedSoFar = 0;
     eventManager.notifyDetailedProgress(0, isoSize, "Montando ISO");
@@ -258,16 +261,22 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
         eventManager.notifyLogUpdate("Contenido del ISO copiado correctamente.\r\n");
     } else if (!extractContent && isWindowsISO && !skipCopy) {
         // For Windows ISOs in RAM mode, copy the Programs folder to have shortcuts available
-        std::string programsSrc = sourcePath + "Programs";
+        programsSrc = sourcePath + "Programs";
         std::string programsDest = destPath + "Programs";
         if (GetFileAttributesA(programsSrc.c_str()) != INVALID_FILE_ATTRIBUTES) {
-            eventManager.notifyLogUpdate("Copiando carpeta Programs para accesos directos...\r\n");
-            std::set<std::string> excludeDirs; // No exclude for Programs
-            if (!fileCopyManager->copyDirectoryWithProgress(programsSrc, programsDest, 0, copiedSoFar, excludeDirs, "Copiando Programs")) {
-                logFile << getTimestamp() << "Failed to copy Programs folder" << std::endl;
-                eventManager.notifyLogUpdate("Error al copiar carpeta Programs.\r\n");
+            if (mode == AppKeys::BootModeRam) {
+                integratePrograms = true;
+                logFile << getTimestamp() << "Programs will be integrated into boot.wim for RAM boot" << std::endl;
+                eventManager.notifyLogUpdate("Programs sera integrado en boot.wim para arranque RAM.\r\n");
             } else {
-                eventManager.notifyLogUpdate("Carpeta Programs copiada correctamente.\r\n");
+                eventManager.notifyLogUpdate("Copiando carpeta Programs para accesos directos...\r\n");
+                std::set<std::string> excludeDirs; // No exclude for Programs
+                if (!fileCopyManager->copyDirectoryWithProgress(programsSrc, programsDest, 0, copiedSoFar, excludeDirs, "Copiando Programs")) {
+                    logFile << getTimestamp() << "Failed to copy Programs folder" << std::endl;
+                    eventManager.notifyLogUpdate("Error al copiar carpeta Programs.\r\n");
+                } else {
+                    eventManager.notifyLogUpdate("Carpeta Programs copiada correctamente.\r\n");
+                }
             }
         }
     } else {
@@ -279,13 +288,13 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
     bool bootSdiSuccess = true;
     bool installWimSuccess = true;
     bool additionalBootFilesSuccess = true;
+    std::string bootWimDest = destPath + "sources\\boot.wim";
     if (extractBootWim) {
         eventManager.notifyLogUpdate("Preparando archivos de arranque del ISO...\r\n");
         if (!skipCopy) {
             std::string bootWimSrc = sourcePath + "sources\\boot.wim";
             std::string bootWimDestDir = destPath + "sources";
             CreateDirectoryA(bootWimDestDir.c_str(), NULL);
-            std::string bootWimDest = bootWimDestDir + "\\boot.wim";
             if (GetFileAttributesA(bootWimDest.c_str()) != INVALID_FILE_ATTRIBUTES) {
                 logFile << getTimestamp() << "boot.wim already exists at " << bootWimDest << std::endl;
                 bootWimSuccess = true;
@@ -351,6 +360,39 @@ bool ISOCopyManager::extractISOContents(EventManager& eventManager, const std::s
                     eventManager.notifyLogUpdate("install.wim no se encontro en el ISO. Se omite la copia.\r\n");
                 }
             }
+        }
+
+        // Integrate Programs into boot.wim for RAM mode
+        if (integratePrograms && bootWimSuccess) {
+            std::string mountDir = destPath + "temp_mount";
+            CreateDirectoryA(mountDir.c_str(), NULL);
+            std::string dismMountCmd = "dism /Mount-Wim /WimFile:\"" + bootWimDest + "\" /index:1 /MountDir:\"" + mountDir + "\"";
+            logFile << getTimestamp() << "Mounting boot.wim: " << dismMountCmd << std::endl;
+            std::string mountOutput = exec(dismMountCmd.c_str());
+            logFile << getTimestamp() << "Mount output: " << mountOutput << std::endl;
+            if (mountOutput.find("successfully") != std::string::npos || mountOutput.empty()) {
+                eventManager.notifyLogUpdate("Integrando Programs en boot.wim...\r\n");
+                eventManager.notifyDetailedProgress(0, 0, "Integrando Programs en boot.wim...");
+                std::string programsDest = mountDir + "\\Programs";
+                std::set<std::string> excludeDirs;
+                if (fileCopyManager->copyDirectoryWithProgress(programsSrc, programsDest, 0, copiedSoFar, excludeDirs, "Integrando Programs en boot.wim")) {
+                    logFile << getTimestamp() << "Programs integrated into boot.wim successfully" << std::endl;
+                    eventManager.notifyLogUpdate("Programs integrado en boot.wim correctamente.\r\n");
+                } else {
+                    logFile << getTimestamp() << "Failed to integrate Programs into boot.wim" << std::endl;
+                    eventManager.notifyLogUpdate("Error al integrar Programs en boot.wim.\r\n");
+                }
+                eventManager.notifyDetailedProgress(0, 0, "");
+                std::string dismUnmountCmd = "dism /Unmount-Wim /MountDir:\"" + mountDir + "\" /Commit";
+                logFile << getTimestamp() << "Unmounting boot.wim: " << dismUnmountCmd << std::endl;
+                std::string unmountOutput = exec(dismUnmountCmd.c_str());
+                logFile << getTimestamp() << "Unmount output: " << unmountOutput << std::endl;
+            } else {
+                logFile << getTimestamp() << "Failed to mount boot.wim for Programs integration" << std::endl;
+                eventManager.notifyLogUpdate("Error al montar boot.wim para integrar Programs.\r\n");
+            }
+            // Clean up mount directory
+            RemoveDirectoryA(mountDir.c_str());
         }
 
         eventManager.notifyLogUpdate("Extrayendo archivos adicionales desde boot.wim...\r\n");

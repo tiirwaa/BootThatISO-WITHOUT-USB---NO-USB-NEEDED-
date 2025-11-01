@@ -100,7 +100,7 @@ Gdiplus::Bitmap* ResizeBitmap(Gdiplus::Bitmap* source, int targetWidth, int targ
 }
 
 MainWindow::MainWindow(HWND parent)
-    : hInst(GetModuleHandle(NULL)), hWndParent(parent), selectedFormat("NTFS"), selectedBootModeKey(AppKeys::BootModeExtract), isProcessing(false), isRecovering(false), skipIntegrityCheck(true), logoBitmap(nullptr), logoHIcon(nullptr), buttonHIcon(nullptr), buttonBitmap(nullptr), buttonRotationAngle(0.0), buttonSpinTimerId(0), hRecoverDialog(nullptr), performHintLabel(nullptr), developedByLabel(nullptr)
+    : hInst(GetModuleHandle(NULL)), hWndParent(parent), selectedFormat("NTFS"), selectedBootModeKey(AppKeys::BootModeRam), isProcessing(false), isRecovering(false), skipIntegrityCheck(true), logoBitmap(nullptr), logoHIcon(nullptr), buttonHIcon(nullptr), buttonBitmap(nullptr), buttonRotationAngle(0.0), buttonSpinTimerId(0), hRecoverDialog(nullptr), performHintLabel(nullptr), developedByLabel(nullptr)
 {
     partitionManager = &PartitionManager::getInstance();
     isoCopyManager = &ISOCopyManager::getInstance();
@@ -262,10 +262,10 @@ void MainWindow::CreateControls(HWND parent)
 
     bootRamdiskRadio = CreateWindowW(L"BUTTON", bootRamText.c_str(), WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON | WS_GROUP, contentLeft, 245, contentWidth, 20, parent, (HMENU)IDC_BOOTMODE_RAMDISK, hInst, NULL);
     SendMessage(bootRamdiskRadio, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
+    SendMessage(bootRamdiskRadio, BM_SETCHECK, BST_CHECKED, 0);
 
     bootExtractedRadio = CreateWindowW(L"BUTTON", bootDiskText.c_str(), WS_CHILD | WS_VISIBLE | BS_AUTORADIOBUTTON, contentLeft, 265, contentWidth, 40, parent, (HMENU)IDC_BOOTMODE_EXTRACTED, hInst, NULL);
     SendMessage(bootExtractedRadio, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
-    SendMessage(bootExtractedRadio, BM_SETCHECK, BST_CHECKED, 0);
 
     integrityCheckBox = CreateWindowW(L"BUTTON", integrityText.c_str(), WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX, contentLeft, 310, contentWidth, 20, parent, (HMENU)IDC_INTEGRITY_CHECKBOX, hInst, NULL);
     SendMessage(integrityCheckBox, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
@@ -498,10 +498,15 @@ void MainWindow::DrawCreateButton(LPDRAWITEMSTRUCT drawInfo)
 
     const int pressOffset = isPressed ? 1 : 0;
 
-    // Paint background.
-    FillRect(hdc, &drawInfo->rcItem, GetSysColorBrush(COLOR_BTNFACE));
+    // Create a memory DC for double buffering to reduce flicker
+    HDC memDC = CreateCompatibleDC(hdc);
+    HBITMAP memBitmap = CreateCompatibleBitmap(hdc, originalRect.right - originalRect.left, originalRect.bottom - originalRect.top);
+    HBITMAP oldBitmap = (HBITMAP)SelectObject(memDC, memBitmap);
+
+    // Paint background in memory DC
+    FillRect(memDC, &originalRect, GetSysColorBrush(COLOR_BTNFACE));
     RECT borderRect = originalRect;
-    DrawEdge(hdc, &borderRect, isPressed ? EDGE_SUNKEN : EDGE_RAISED, BF_RECT);
+    DrawEdge(memDC, &borderRect, isPressed ? EDGE_SUNKEN : EDGE_RAISED, BF_RECT);
 
     RECT innerRect = originalRect;
     InflateRect(&innerRect, -BUTTON_ICON_PADDING, -BUTTON_ICON_PADDING);
@@ -519,7 +524,7 @@ void MainWindow::DrawCreateButton(LPDRAWITEMSTRUCT drawInfo)
 
     if (iconSize > 0) {
         if (buttonBitmap) {
-            Gdiplus::Graphics graphics(hdc);
+            Gdiplus::Graphics graphics(memDC);
             graphics.SetSmoothingMode(Gdiplus::SmoothingModeHighQuality);
             graphics.SetInterpolationMode(Gdiplus::InterpolationModeHighQualityBicubic);
             Gdiplus::PointF center(static_cast<Gdiplus::REAL>(iconX + iconSize / 2.0f), static_cast<Gdiplus::REAL>(iconY + iconSize / 2.0f));
@@ -528,15 +533,23 @@ void MainWindow::DrawCreateButton(LPDRAWITEMSTRUCT drawInfo)
             graphics.DrawImage(buttonBitmap, static_cast<Gdiplus::REAL>(-iconSize / 2.0f), static_cast<Gdiplus::REAL>(-iconSize / 2.0f), static_cast<Gdiplus::REAL>(iconSize), static_cast<Gdiplus::REAL>(iconSize));
             graphics.ResetTransform();
         } else if (buttonHIcon) {
-            DrawIconEx(hdc, iconX, iconY, buttonHIcon, iconSize, iconSize, 0, nullptr, DI_NORMAL);
+            DrawIconEx(memDC, iconX, iconY, buttonHIcon, iconSize, iconSize, 0, nullptr, DI_NORMAL);
         }
     }
 
     if (isFocused && !isDisabled) {
         RECT focusRect = originalRect;
         InflateRect(&focusRect, -3, -3);
-        DrawFocusRect(hdc, &focusRect);
+        DrawFocusRect(memDC, &focusRect);
     }
+
+    // Copy the memory DC to the screen DC
+    BitBlt(hdc, 0, 0, originalRect.right - originalRect.left, originalRect.bottom - originalRect.top, memDC, 0, 0, SRCCOPY);
+
+    // Clean up
+    SelectObject(memDC, oldBitmap);
+    DeleteObject(memBitmap);
+    DeleteDC(memDC);
 }
 
 void MainWindow::OnSelectISO()
