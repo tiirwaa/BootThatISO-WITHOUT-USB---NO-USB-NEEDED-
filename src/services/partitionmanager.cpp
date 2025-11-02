@@ -61,7 +61,7 @@ bool executeCommandHidden(const std::string &command, DWORD timeoutMs, std::stri
     si.hStdError   = hWrite;
     si.wShowWindow = SW_HIDE;
 
-    if (!CreateProcessA(NULL, const_cast<char *>(command.c_str()), NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi)) {
+    if (!CreateProcessA(NULL, const_cast<char *>(command.c_str()), NULL, NULL, TRUE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) {
         CloseHandle(hRead);
         CloseHandle(hWrite);
         return false;

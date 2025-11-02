@@ -22,9 +22,18 @@ public:
                       const std::string &efiPath) override {
         const std::string BCD_CMD          = "C:\\Windows\\System32\\bcdedit.exe";
         const std::string ramdiskOptionsId = "{ramdiskoptions}";
-        const std::string bootWimRelative  = "\\sources\\boot.wim";
-        const std::string sdiRelative      = "\\boot\\boot.sdi";
-        const std::string winloadPath      = "\\Windows\\System32\\Boot\\winload.efi";
+    const std::string bootWimRelative  = "\\sources\\boot.wim";
+    const std::string sdiRelative      = "\\boot\\boot.sdi";
+
+    // Choose correct OS loader depending on firmware type
+    // - UEFI:   \Windows\System32\Boot\winload.efi
+    // - Legacy: \Windows\System32\winload.exe
+    std::string         winloadPath;
+    FIRMWARE_TYPE       fwType = FirmwareTypeUnknown;
+    BOOL                gotFw  = GetFirmwareType(&fwType);
+    bool                isUEFI = gotFw && (fwType == FirmwareTypeUefi);
+    winloadPath                 = isUEFI ? "\\Windows\\System32\\Boot\\winload.efi"
+                         : "\\Windows\\System32\\winload.exe";
 
         std::string ramdiskValue = "[" + dataDevice + "]" + bootWimRelative + "," + ramdiskOptionsId;
 
@@ -79,18 +88,20 @@ public:
 
         bool hasDevice =
             verifyResult.find("ramdisk=") != std::string::npos && verifyResult.find("boot.wim") != std::string::npos;
-        bool hasPath              = verifyResult.find(winloadPath) != std::string::npos;
+    bool hasPath              = verifyResult.find(winloadPath) != std::string::npos;
         bool hasRamdiskOptionsRef = verifyResult.find(ramdiskOptionsId) != std::string::npos;
         bool hasSdi               = verifyRamdiskOptions.find("ramdisksdipath") != std::string::npos &&
                       verifyRamdiskOptions.find("boot\\boot.sdi") != std::string::npos;
 
         if (logFile) {
             if (hasDevice && hasPath && hasRamdiskOptionsRef && hasSdi) {
-                logFile << "SUCCESS: Ramdisk BCD entry configured with boot.wim and winload.efi" << std::endl;
+        logFile << "SUCCESS: Ramdisk BCD entry configured with boot.wim and "
+            << (isUEFI ? "winload.efi" : "winload.exe") << std::endl;
             } else {
                 logFile << "WARNING: Ramdisk BCD entry may be missing critical parameters" << std::endl;
                 logFile << "  device includes boot.wim: " << (hasDevice ? "YES" : "NO") << std::endl;
-                logFile << "  path uses winload.efi: " << (hasPath ? "YES" : "NO") << std::endl;
+        logFile << "  path uses " << (isUEFI ? "winload.efi" : "winload.exe") << ": "
+            << (hasPath ? "YES" : "NO") << std::endl;
                 logFile << "  references {ramdiskoptions}: " << (hasRamdiskOptionsRef ? "YES" : "NO") << std::endl;
                 logFile << "  ramdisksdipath configured: " << (hasSdi ? "YES" : "NO") << std::endl;
             }

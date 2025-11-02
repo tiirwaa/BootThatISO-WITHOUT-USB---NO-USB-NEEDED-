@@ -7,11 +7,17 @@
 #include <filesystem>
 #include <algorithm>
 #include <fstream>
+#include <exception>
+#include <system_error>
+#include <cstdint>
 #include <sstream>
 #include <set>
 #include <vector>
 #include <cstring>
 #include <cctype>
+#include <thread>
+#include <atomic>
+#include <chrono>
 
 BootWimProcessor::BootWimProcessor(EventManager &eventManager, FileCopyManager &fileCopyManager)
     : eventManager_(eventManager), fileCopyManager_(fileCopyManager), isoReader_(std::make_unique<ISOReader>()) {}
@@ -76,10 +82,37 @@ bool BootWimProcessor::processBootWim(const std::string &sourcePath, const std::
             }
             eventManager_.notifyDetailedProgress(0, 0, "");
         } else {
-            logFile << ISOCopyManager::getTimestamp() << "boot.sdi not found inside ISO at path boot/boot.sdi" << std::endl;
-            bootSdiSuccess = false;
-            eventManager_.notifyLogUpdate(
-                "boot.sdi no se encontro en el ISO. El arranque desde RAM podria fallar.\r\n");
+            logFile << ISOCopyManager::getTimestamp()
+                    << "boot.sdi not found inside ISO at path boot/boot.sdi; attempting system fallback" << std::endl;
+            // Fallback to system boot.sdi if available
+            std::vector<std::string> systemSdiCandidates = {
+                std::string("C:\\Windows\\Boot\\DVD\\EFI\\boot.sdi"),
+                std::string("C:\\Windows\\Boot\\PCAT\\boot.sdi"),
+                std::string("C:\\Windows\\Boot\\EFI\\boot.sdi")
+            };
+            bool fallbackCopied = false;
+            for (const auto &cand : systemSdiCandidates) {
+                if (GetFileAttributesA(cand.c_str()) != INVALID_FILE_ATTRIBUTES) {
+                    // Ensure destination directory exists
+                    CreateDirectoryA(bootSdiDestDir.c_str(), NULL);
+                    if (CopyFileA(cand.c_str(), bootSdiDest.c_str(), FALSE)) {
+                        logFile << ISOCopyManager::getTimestamp() << "boot.sdi copied from system: " << cand
+                                << " -> " << bootSdiDest << std::endl;
+                        eventManager_.notifyLogUpdate(
+                            "boot.sdi no estaba en el ISO; se copio desde el sistema para habilitar RAM boot.\r\n");
+                        fallbackCopied = true;
+                        break;
+                    } else {
+                        logFile << ISOCopyManager::getTimestamp() << "Failed to copy system boot.sdi from " << cand
+                                << ", error=" << GetLastError() << std::endl;
+                    }
+                }
+            }
+            if (!fallbackCopied) {
+                bootSdiSuccess = false;
+                eventManager_.notifyLogUpdate(
+                    "boot.sdi no se encontro ni en el ISO ni en el sistema. El arranque RAM puede fallar.\r\n");
+            }
         }
 
         if (copyInstallWim) {
@@ -120,27 +153,95 @@ bool BootWimProcessor::mountAndProcessWim(const std::string &bootWimDest, const 
     CreateDirectoryA(mountDir.c_str(), NULL);
     SetFileAttributesA(bootWimDest.c_str(), FILE_ATTRIBUTE_NORMAL);
     
-    // Get the number of indices in boot.wim
+    // Get the number of indices in boot.wim and pick the best one to process
     std::string dismInfoCmd = "dism /Get-WimInfo /WimFile:\"" + bootWimDest + "\"";
     std::string infoOutput = Utils::exec(dismInfoCmd.c_str());
     logFile << ISOCopyManager::getTimestamp() << "WimInfo output:\n" << infoOutput << std::endl;
-    int indexCount = 0;
-    size_t pos = 0;
-    while ((pos = infoOutput.find("Index :", pos)) != std::string::npos) {
+
+    auto toLowerNoAccents = [](std::string s) {
+        std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return (char)std::tolower(c); });
+        // very light accent normalization for 'í' in "Índice" and 'ó' in "Descripción"
+        for (char &c : s) {
+            unsigned char uc = (unsigned char)c;
+            if (uc == 0xED || uc == 0xCD) c = 'i'; // í / Í
+            if (uc == 0xF3 || uc == 0xD3) c = 'o'; // ó / Ó
+        }
+        return s;
+    };
+
+    // Count indices (cover both English "Index :" and Spanish "Índice :")
+    int    indexCount = 0;
+    size_t pos        = 0;
+    std::string infoLower = toLowerNoAccents(infoOutput);
+    while ((pos = infoLower.find("index :", pos)) != std::string::npos) {
         indexCount++;
         pos += 7;
     }
-    int index = 1;  // Always mount index 1 (PE) for processing, even if more indices exist
-    logFile << ISOCopyManager::getTimestamp() << "Number of indices: " << indexCount << ", mounting index: " << index << std::endl;
+
+    // Prefer Windows Setup image (commonly index 2). Fallback to index 2 if >=2 images, else 1.
+    int index = 1;
+    // Try to detect the index whose name/description mentions "Windows Setup" (or localized variants)
+    // We'll scan blocks between "Index : X" markers.
+    int upperBound = (indexCount > 2 ? indexCount : 2);
+    for (int candidate = 1; candidate <= upperBound; ++candidate) {
+        std::string marker      = "Index : " + std::to_string(candidate);
+        std::string markerLower = toLowerNoAccents(marker);
+        size_t      start       = infoLower.find(markerLower);
+        if (start == std::string::npos) continue;
+        size_t next = infoLower.find("index :", start + markerLower.size());
+        std::string block = infoLower.substr(start, next == std::string::npos ? std::string::npos : next - start);
+    bool isSetup = (block.find("setup") != std::string::npos) ||
+               (block.find("instalacion") != std::string::npos);
+        if (isSetup) {
+            index = candidate;
+            break;
+        }
+        // If we didn't find explicit setup but candidate==2 and there are at least 2 images, choose 2
+        if (candidate == 2 && indexCount >= 2) {
+            index = 2;
+            // don't break yet in case a later block explicitly says setup, but typically there are max 2
+        }
+    }
+    logFile << ISOCopyManager::getTimestamp() << "Number of indices: " << indexCount
+            << ", selected index to mount: " << index << std::endl;
     
-    // Extract and display the selected index details on screen
+    // Extract and display only Index/Name/Description for the selected image
     std::string indexStr = "Index : " + std::to_string(index);
-    size_t startPos = infoOutput.find(indexStr);
+    size_t      startPos = infoOutput.find(indexStr);
     if (startPos != std::string::npos) {
-        size_t endPos = infoOutput.find("Index :", startPos + indexStr.length());
+        size_t      endPos       = infoOutput.find("Index :", startPos + indexStr.length());
         if (endPos == std::string::npos) endPos = infoOutput.length();
-        std::string indexDetails = infoOutput.substr(startPos, endPos - startPos);
-        eventManager_.notifyLogUpdate("Detalles del índice seleccionado:\r\n" + indexDetails + "\r\n");
+        std::string blockOrig    = infoOutput.substr(startPos, endPos - startPos);
+        std::string blockLower   = toLowerNoAccents(blockOrig);
+
+        auto extractLineByLabel = [&](const std::string &labelLower) -> std::string {
+            size_t p = blockLower.find(labelLower);
+            if (p == std::string::npos) return std::string();
+            // p is an offset valid for both lowercase and original blocks (same length)
+            size_t lineEnd = blockOrig.find_first_of("\r\n", p);
+            std::string line = (lineEnd == std::string::npos) ? blockOrig.substr(p)
+                                                               : blockOrig.substr(p, lineEnd - p);
+            // Trim any trailing CR characters
+            while (!line.empty() && (line.back() == '\r' || line.back() == '\n')) line.pop_back();
+            return line;
+        };
+
+        std::string outIndex = extractLineByLabel("index :");
+        // Support English/Spanish field names
+        std::string outName  = extractLineByLabel("name :");
+        if (outName.empty()) outName = extractLineByLabel("nombre :");
+        std::string outDesc  = extractLineByLabel("description :");
+        if (outDesc.empty()) outDesc = extractLineByLabel("descripcion :");
+
+        std::string minimal;
+        minimal.reserve(256);
+        if (!outIndex.empty()) minimal += outIndex + "\r\n";
+        if (!outName.empty())  minimal += outName  + "\r\n";
+        if (!outDesc.empty())  minimal += outDesc  + "\r\n";
+
+        if (!minimal.empty()) {
+            eventManager_.notifyLogUpdate("Detalles del índice seleccionado:\r\n" + minimal + "\r\n");
+        }
     }
     
     std::string dism = Utils::getDismPath();
@@ -151,60 +252,236 @@ bool BootWimProcessor::mountAndProcessWim(const std::string &bootWimDest, const 
     int         mountCode = Utils::execWithExitCode(dismMountCmd.c_str(), mountOutput);
     logFile << ISOCopyManager::getTimestamp() << "Mount output (code=" << mountCode << "): " << mountOutput
             << std::endl;
+    
+    // Detect if this is a PECMD-based PE (like Hiren's) BEFORE processing Programs
+    std::string system32Dir = mountDir + "\\Windows\\System32";
+    std::string pecmdExe = system32Dir + "\\pecmd.exe";
+    std::string pecmdIni = system32Dir + "\\pecmd.ini";
+    bool isPecmdPE = (GetFileAttributesA(pecmdExe.c_str()) != INVALID_FILE_ATTRIBUTES) &&
+                     (GetFileAttributesA(pecmdIni.c_str()) != INVALID_FILE_ATTRIBUTES);
+    
+    // For PECMD PEs (Hiren's), extract Programs and CustomDrivers to data partition, NOT to boot.wim
+    if (isPecmdPE) {
+        logFile << ISOCopyManager::getTimestamp() << "PECMD PE detected, extracting Programs and CustomDrivers to data partition" << std::endl;
+        eventManager_.notifyLogUpdate("PECMD PE detectado: extrayendo Programs y CustomDrivers a particion de datos...\r\n");
+        
+        // Extract Programs to data partition
+        std::string programsDataDest = destPath + "Programs";
+        if (GetFileAttributesA(programsDataDest.c_str()) == INVALID_FILE_ATTRIBUTES) {
+            eventManager_.notifyDetailedProgress(35, 100, "Extrayendo Programs a particion de datos");
+            if (isoReader_->extractDirectory(sourcePath, "Programs", programsDataDest)) {
+                logFile << ISOCopyManager::getTimestamp() << "Programs extracted to data partition: " << programsDataDest << std::endl;
+                eventManager_.notifyLogUpdate("Programs extraido a particion de datos (Y:\\Programs).\r\n");
+            } else {
+                logFile << ISOCopyManager::getTimestamp() << "Programs directory not found in ISO or extraction failed" << std::endl;
+                eventManager_.notifyLogUpdate("Advertencia: Programs no encontrado en ISO.\r\n");
+            }
+        } else {
+            logFile << ISOCopyManager::getTimestamp() << "Programs already exists on data partition" << std::endl;
+        }
+        
+        // Extract CustomDrivers to data partition
+        std::string customDriversDataDest = destPath + "CustomDrivers";
+        if (GetFileAttributesA(customDriversDataDest.c_str()) == INVALID_FILE_ATTRIBUTES) {
+            eventManager_.notifyDetailedProgress(38, 100, "Extrayendo CustomDrivers a particion de datos");
+            if (isoReader_->extractDirectory(sourcePath, "CustomDrivers", customDriversDataDest)) {
+                logFile << ISOCopyManager::getTimestamp() << "CustomDrivers extracted to data partition: " << customDriversDataDest << std::endl;
+                eventManager_.notifyLogUpdate("CustomDrivers extraido a particion de datos (Y:\\CustomDrivers).\r\n");
+            } else {
+                logFile << ISOCopyManager::getTimestamp() << "CustomDrivers directory not found in ISO or extraction failed" << std::endl;
+                eventManager_.notifyLogUpdate("Advertencia: CustomDrivers no encontrado en ISO.\r\n");
+            }
+        } else {
+            logFile << ISOCopyManager::getTimestamp() << "CustomDrivers already exists on data partition" << std::endl;
+        }
+    }
+    
     if (mountCode == 0) {
-        if (integratePrograms) {
+        // CRITICAL: For PECMD-based PEs like Hiren's, do NOT integrate Programs into boot.wim
+        // PECMD expects Programs to be on the Y: drive (data partition), not in the ramdisk
+        if (integratePrograms && !isPecmdPE) {
             eventManager_.notifyDetailedProgress(40, 100, "Integrando Programs en boot.wim");
             eventManager_.notifyLogUpdate("Integrando Programs en boot.wim...\r\n");
             eventManager_.notifyDetailedProgress(0, 0, "Integrando Programs en boot.wim...");
-            long long             programsSize = Utils::getDirectorySize(programsSrc);
             std::string           programsDest = mountDir + "\\Programs";
             std::set<std::string> excludeDirs;
-            if (fileCopyManager_.copyDirectoryWithProgress(programsSrc, programsDest, programsSize, copiedSoFar,
-                                                           excludeDirs, "Integrando Programs en boot.wim")) {
-                logFile << ISOCopyManager::getTimestamp() << "Programs integrated into boot.wim successfully"
-                        << std::endl;
-                eventManager_.notifyLogUpdate("Programs integrado en boot.wim correctamente.\r\n");
+
+            auto tryCopyPrograms = [&](const std::string &sourceDir) -> bool {
+                if (sourceDir.empty() || GetFileAttributesA(sourceDir.c_str()) == INVALID_FILE_ATTRIBUTES) {
+                    return false;
+                }
+                long long programsSize = Utils::getDirectorySize(sourceDir);
+                if (fileCopyManager_.copyDirectoryWithProgress(sourceDir, programsDest, programsSize, copiedSoFar,
+                                                               excludeDirs, "Integrando Programs en boot.wim")) {
+                    logFile << ISOCopyManager::getTimestamp()
+                            << "Programs integrated into boot.wim successfully from " << sourceDir << std::endl;
+                    eventManager_.notifyLogUpdate("Programs integrado en boot.wim correctamente.\r\n");
+                    return true;
+                }
+                logFile << ISOCopyManager::getTimestamp()
+                        << "Failed to integrate Programs into boot.wim from " << sourceDir << std::endl;
+                return false;
+            };
+
+            bool programsIntegrated = false;
+            if (tryCopyPrograms(programsSrc)) {
+                programsIntegrated = true;
             } else {
-                logFile << ISOCopyManager::getTimestamp() << "Failed to integrate Programs into boot.wim" << std::endl;
-                eventManager_.notifyLogUpdate("Error al integrar Programs en boot.wim.\r\n");
+                std::string destProgramsSrc = destPath + "Programs";
+                if (destProgramsSrc != programsSrc && tryCopyPrograms(destProgramsSrc)) {
+                    programsIntegrated = true;
+                }
             }
-        }
-        // Integrate CustomDrivers if it exists
-        std::string customDriversSrc = sourcePath + "CustomDrivers";
-        if (GetFileAttributesA(customDriversSrc.c_str()) != INVALID_FILE_ATTRIBUTES) {
-            eventManager_.notifyDetailedProgress(45, 100, "Integrando CustomDrivers en boot.wim");
-            eventManager_.notifyLogUpdate("Integrando CustomDrivers en boot.wim...\r\n");
-            eventManager_.notifyDetailedProgress(0, 0, "Integrando CustomDrivers en boot.wim...");
-            long long             customDriversSize = Utils::getDirectorySize(customDriversSrc);
-            std::string           customDriversDest = mountDir + "\\CustomDrivers";
-            std::set<std::string> excludeDirs;
-            if (fileCopyManager_.copyDirectoryWithProgress(customDriversSrc, customDriversDest, customDriversSize,
-                                                           copiedSoFar, excludeDirs,
-                                                           "Integrando CustomDrivers en boot.wim")) {
-                logFile << ISOCopyManager::getTimestamp() << "CustomDrivers integrated into boot.wim successfully"
-                        << std::endl;
-                eventManager_.notifyLogUpdate("CustomDrivers integrado en boot.wim correctamente.\r\n");
-            } else {
-                logFile << ISOCopyManager::getTimestamp() << "Failed to integrate CustomDrivers into boot.wim"
-                        << std::endl;
-                eventManager_.notifyLogUpdate("Error al integrar CustomDrivers en boot.wim.\r\n");
+
+            if (!programsIntegrated) {
+                std::error_code removeProgramsEc;
+                std::filesystem::remove_all(programsDest, removeProgramsEc);
+                if (isoReader_->extractDirectory(sourcePath, "Programs", programsDest)) {
+                    copiedSoFar += Utils::getDirectorySize(programsDest);
+                    logFile << ISOCopyManager::getTimestamp()
+                            << "Programs extracted from ISO and integrated into boot.wim" << std::endl;
+                    eventManager_.notifyLogUpdate("Programs integrado en boot.wim correctamente.\r\n");
+                    programsIntegrated = true;
+                } else {
+                    logFile << ISOCopyManager::getTimestamp()
+                            << "Programs directory not found in ISO or extraction failed" << std::endl;
+                }
             }
-        }
-        // Integrate critical system drivers from the current machine
-        eventManager_.notifyDetailedProgress(47, 100, "Integrando controladores locales en boot.wim");
-        if (integrateSystemDriversIntoMountedImage(mountDir, logFile)) {
-            eventManager_.notifyLogUpdate("Controladores del sistema integrados en boot.wim.\r\n");
-        } else {
+
+            if (!programsIntegrated) {
+                // If Programs is not present in source or ISO, just skip silently with an info message
+                eventManager_.notifyLogUpdate("Carpeta 'Programs' no encontrada; se omite su integracion.\r\n");
+            }
+        } else if (integratePrograms && isPecmdPE) {
+            // For PECMD-based PEs (Hiren's), Programs must stay on the data partition (Y:), not in boot.wim
+            logFile << ISOCopyManager::getTimestamp() 
+                    << "PECMD PE detected: skipping Programs injection into boot.wim (Programs must be on Y: drive)" 
+                    << std::endl;
             eventManager_.notifyLogUpdate(
-                "Advertencia: No se pudieron integrar todos los controladores locales en boot.wim.\r\n");
+                "PECMD detectado: Programs NO se integra en boot.wim (debe estar en partición de datos Y:).\r\n");
         }
-        eventManager_.notifyDetailedProgress(0, 0, "");
-        // Copy and configure .ini files
-        eventManager_.notifyDetailedProgress(55, 100, "Copiando y reconfigurando archivos .ini");
-        IniConfigurator iniConfigurator;
-        // First, reconfigure any existing .ini files in the mounted boot.wim
-        WIN32_FIND_DATAA findDataExisting;
-        HANDLE           hFindExisting = FindFirstFileA((mountDir + "\\*.ini").c_str(), &findDataExisting);
+        
+        // Integrate CustomDrivers - but NOT for PECMD-based PEs
+        // For Hiren's, CustomDrivers are loaded directly from Y:\CustomDrivers by PECMD
+        if (!isPecmdPE) {
+            // NOTE: Stage drivers OUTSIDE the mounted image and let DISM publish them into the image.
+            //       Keeping a raw "CustomDrivers" folder inside the image is not required and only adds size.
+            std::filesystem::path customDriversStage;
+            bool                  stageOk = true;
+            try {
+                std::ostringstream tmpName;
+                tmpName << "EasyISOBoot_CustomDrivers_" << reinterpret_cast<uintptr_t>(this);
+                customDriversStage = std::filesystem::temp_directory_path() / tmpName.str();
+                std::error_code mkEc; std::filesystem::create_directories(customDriversStage, mkEc);
+                if (mkEc) stageOk = false;
+            } catch (const std::exception &) {
+                stageOk = false;
+            }
+
+            std::set<std::string> customDriversExclude;
+            bool                  customDriversIntegrated = false;
+            bool                  customDriversError      = false;
+
+        auto tryCopyCustomDrivers = [&](const std::string &sourceDir) -> bool {
+            if (sourceDir.empty() || GetFileAttributesA(sourceDir.c_str()) == INVALID_FILE_ATTRIBUTES) {
+                return false;
+            }
+        if (!stageOk) return false;
+        long long customDriversSize = Utils::getDirectorySize(sourceDir);
+        if (fileCopyManager_.copyDirectoryWithProgress(sourceDir, customDriversStage.string(), customDriversSize, copiedSoFar,
+                                                           customDriversExclude,
+                                                           "Integrando CustomDrivers en boot.wim")) {
+                logFile << ISOCopyManager::getTimestamp()
+            << "CustomDrivers staged successfully from " << sourceDir << std::endl;
+                eventManager_.notifyLogUpdate("CustomDrivers integrado en boot.wim correctamente.\r\n");
+                return true;
+            }
+            logFile << ISOCopyManager::getTimestamp()
+            << "Failed to stage CustomDrivers from " << sourceDir << std::endl;
+            customDriversError = true;
+            return false;
+        };
+
+        if (!customDriversIntegrated && tryCopyCustomDrivers(destPath + "CustomDrivers")) {
+            customDriversIntegrated = true;
+        }
+
+        if (!customDriversIntegrated) {
+            if (stageOk && isoReader_->extractDirectory(sourcePath, "CustomDrivers", customDriversStage.string())) {
+                copiedSoFar += Utils::getDirectorySize(customDriversStage.string());
+                logFile << ISOCopyManager::getTimestamp()
+                        << "CustomDrivers extracted from ISO and staged" << std::endl;
+                eventManager_.notifyLogUpdate("CustomDrivers integrado en boot.wim correctamente.\r\n");
+                customDriversIntegrated = true;
+            } else {
+                logFile << ISOCopyManager::getTimestamp()
+                        << "CustomDrivers directory not found in ISO or extraction failed" << std::endl;
+            }
+        }
+
+    if (!customDriversIntegrated && customDriversError) {
+            eventManager_.notifyLogUpdate("Error al integrar CustomDrivers en boot.wim.\r\n");
+        }
+    // If CustomDrivers were staged, register them into PE with DISM so WinPE loads them
+    if (customDriversIntegrated && stageOk) {
+        std::string addCust = "\"" + dism + "\" /Image:\"" + mountDir + "\" /Add-Driver /Driver:\"" +
+                  customDriversStage.string() + "\" /Recurse";
+        logFile << ISOCopyManager::getTimestamp() << "Adding CustomDrivers with command: " << addCust
+            << std::endl;
+        std::string dismOutCust;
+        int         dismCodeCust = Utils::execWithExitCode(addCust.c_str(), dismOutCust);
+        logFile << ISOCopyManager::getTimestamp()
+            << "DISM add-driver (CustomDrivers) output (code=" << dismCodeCust << "): " << dismOutCust
+            << std::endl;
+        if (dismCodeCust != 0) {
+        std::string addCustForce = addCust + " /ForceUnsigned";
+        logFile << ISOCopyManager::getTimestamp()
+            << "Retrying CustomDrivers with /ForceUnsigned: " << addCustForce << std::endl;
+        std::string dismOutCust2;
+        int         dismCodeCust2 = Utils::execWithExitCode(addCustForce.c_str(), dismOutCust2);
+        logFile << ISOCopyManager::getTimestamp()
+            << "DISM add-driver (CustomDrivers force) output (code=" << dismCodeCust2 << "): "
+            << dismOutCust2 << std::endl;
+        if (dismCodeCust2 != 0) {
+            eventManager_.notifyLogUpdate(
+            "Advertencia: No se pudieron registrar algunos CustomDrivers en WinPE.\r\n");
+        }
+        }
+        // Cleanup staging folder
+        std::error_code rmStgEc; std::filesystem::remove_all(customDriversStage, rmStgEc);
+    }
+        } else {
+            // For PECMD-based PEs, do not integrate CustomDrivers into boot.wim
+            // PECMD loads them directly from Y:\CustomDrivers via pnputil commands in pecmd.ini
+            logFile << ISOCopyManager::getTimestamp() 
+                    << "PECMD PE detected: skipping CustomDrivers injection into boot.wim (loaded from Y: by PECMD)" 
+                    << std::endl;
+            eventManager_.notifyLogUpdate(
+                "PECMD detectado: CustomDrivers NO se integra en boot.wim (PECMD los carga desde Y:\\CustomDrivers).\r\n");
+        }
+        
+        // Integrate critical system drivers from the current machine (NOT for PECMD PEs)
+        if (!isPecmdPE) {
+            eventManager_.notifyDetailedProgress(47, 100, "Integrando controladores locales en boot.wim");
+            if (integrateSystemDriversIntoMountedImage(mountDir, logFile)) {
+                eventManager_.notifyLogUpdate("Controladores del sistema integrados en boot.wim.\r\n");
+            } else {
+                eventManager_.notifyLogUpdate(
+                    "Advertencia: No se pudieron integrar todos los controladores locales en boot.wim.\r\n");
+            }
+            eventManager_.notifyDetailedProgress(0, 0, "");
+        } else {
+            logFile << ISOCopyManager::getTimestamp() 
+                    << "PECMD PE detected: skipping system drivers integration (PECMD handles drivers)" << std::endl;
+        }
+        
+        // Copy and configure .ini files (but NOT for PECMD PEs - they have their own config)
+        if (!isPecmdPE) {
+            eventManager_.notifyDetailedProgress(55, 100, "Copiando y reconfigurando archivos .ini");
+            IniConfigurator iniConfigurator;
+            // First, reconfigure any existing .ini files in the mounted boot.wim
+            WIN32_FIND_DATAA findDataExisting;
+            HANDLE           hFindExisting = FindFirstFileA((mountDir + "\\*.ini").c_str(), &findDataExisting);
         if (hFindExisting != INVALID_HANDLE_VALUE) {
             bool moreFilesExisting = true;
             while (moreFilesExisting) {
@@ -218,67 +495,227 @@ bool BootWimProcessor::mountAndProcessWim(const std::string &bootWimDest, const 
             FindClose(hFindExisting);
         }
         // Then copy and configure .ini files from ISO
-        WIN32_FIND_DATAA findData;
-        HANDLE           hFind = FindFirstFileA((sourcePath + "*.ini").c_str(), &findData);
-        if (hFind != INVALID_HANDLE_VALUE) {
-            bool moreFiles = true;
-            while (moreFiles) {
-                std::string iniName = findData.cFileName;
-                std::string iniSrc  = sourcePath + iniName;
+        std::vector<std::string> isoIniFiles;
+        auto isoFileList = isoReader_->listFiles(sourcePath);
+        for (const auto &entry : isoFileList) {
+            std::string lower = Utils::toLower(entry);
+            bool hasSlash = entry.find('\\') != std::string::npos || entry.find('/') != std::string::npos;
+            if (lower.size() >= 4 && lower.substr(lower.size() - 4) == ".ini" && !hasSlash) {
+                isoIniFiles.push_back(entry);
+            }
+        }
+
+        if (!isoIniFiles.empty()) {
+            std::filesystem::path tempIniDir;
+            bool                  tempDirAvailable = true;
+            try {
+                std::ostringstream tempDirName;
+                tempDirName << "EasyISOBoot_ini_cache_" << reinterpret_cast<uintptr_t>(this);
+                tempIniDir = std::filesystem::temp_directory_path() / tempDirName.str();
+                std::error_code dirEc;
+                std::filesystem::create_directories(tempIniDir, dirEc);
+                if (dirEc) {
+                    tempDirAvailable = false;
+                }
+            } catch (const std::exception &) {
+                tempDirAvailable = false;
+            }
+
+            for (const auto &entry : isoIniFiles) {
+                std::string iniName = entry;
+                std::replace(iniName.begin(), iniName.end(), '\\', '/');
+                size_t slashPos = iniName.find_last_of('/');
+                if (slashPos != std::string::npos) {
+                    iniName = iniName.substr(slashPos + 1);
+                }
+
+                std::string isoPathInArchive = entry;
+                std::replace(isoPathInArchive.begin(), isoPathInArchive.end(), '\\', '/');
                 std::string iniDest = mountDir + "\\" + iniName;
-                // Process the .ini content outside the .wim and write directly to mountDir
-                if (iniConfigurator.processIniFile(iniSrc, iniDest, driveLetter)) {
-                    logFile << ISOCopyManager::getTimestamp() << iniName
-                            << " processed and copied to boot.wim successfully" << std::endl;
-                } else {
-                    // Fallback: copy without processing
-                    if (fileCopyManager_.copyFileUtf8(iniSrc, iniDest)) {
+                bool        processed = false;
+
+                if (tempDirAvailable) {
+                    std::filesystem::path tempIniPath = tempIniDir / iniName;
+                    std::error_code       remEc;
+                    std::filesystem::remove(tempIniPath, remEc);
+                    if (isoReader_->extractFile(sourcePath, isoPathInArchive, tempIniPath.u8string())) {
+                        if (iniConfigurator.processIniFile(tempIniPath.u8string(), iniDest, driveLetter)) {
+                            logFile << ISOCopyManager::getTimestamp() << iniName
+                                    << " processed and copied to boot.wim successfully" << std::endl;
+                            processed = true;
+                        }
+                    }
+                    std::error_code cleanupEc;
+                    std::filesystem::remove(tempIniPath, cleanupEc);
+                }
+
+                if (!processed) {
+                    if (isoReader_->extractFile(sourcePath, isoPathInArchive, iniDest)) {
                         logFile << ISOCopyManager::getTimestamp() << iniName
                                 << " copied to boot.wim successfully (fallback)" << std::endl;
                     } else {
-                        logFile << ISOCopyManager::getTimestamp() << "Failed to copy " << iniName << " to boot.wim"
-                                << std::endl;
+                        logFile << ISOCopyManager::getTimestamp() << "Failed to copy " << iniName
+                                << " to boot.wim" << std::endl;
                     }
                 }
-                moreFiles = FindNextFileA(hFind, &findData);
             }
-            FindClose(hFind);
+
+            if (tempDirAvailable) {
+                std::error_code cleanupDirEc;
+                std::filesystem::remove_all(tempIniDir, cleanupDirEc);
+            }
+
             eventManager_.notifyLogUpdate("Archivos .ini integrados y reconfigurados en boot.wim correctamente.\r\n");
         }
-
-        // Create or replace startnet.cmd in Windows\System32 only if it already exists
-        std::string windowsDir  = mountDir + "\\Windows";
-        std::string system32Dir = windowsDir + "\\System32";
-        CreateDirectoryA(windowsDir.c_str(), NULL);
-        CreateDirectoryA(system32Dir.c_str(), NULL);
-        std::string startnetPath = system32Dir + "\\startnet.cmd";
-        if (GetFileAttributesA(startnetPath.c_str()) != INVALID_FILE_ATTRIBUTES) {
-            // File exists, replace it
-            std::ofstream startnetFile(startnetPath, std::ios::binary);
-            if (startnetFile.is_open()) {
-                startnetFile
-                    << "@echo off\r\nwpeinit\r\nX:\\Windows\\System32\\pecmd.exe MAIN X:\\Windows\\System32\\PECMD.ini\r\n";
-                startnetFile.close();
-                logFile << ISOCopyManager::getTimestamp() << "startnet.cmd replaced in boot.wim" << std::endl;
-                eventManager_.notifyLogUpdate("startnet.cmd reemplazado en boot.wim.\r\n");
-            } else {
-                logFile << ISOCopyManager::getTimestamp() << "Failed to replace startnet.cmd in boot.wim" << std::endl;
-                eventManager_.notifyLogUpdate("Error al reemplazar startnet.cmd en boot.wim.\r\n");
-            }
         } else {
-            // File does not exist, skip injection
-            logFile << ISOCopyManager::getTimestamp() << "startnet.cmd does not exist in boot.wim, skipping injection" << std::endl;
-            eventManager_.notifyLogUpdate("startnet.cmd no existe en boot.wim, se omite la inyección.\r\n");
+            logFile << ISOCopyManager::getTimestamp() 
+                    << "PECMD PE detected: skipping .ini file injection (PECMD has its own configuration)" << std::endl;
+        }
+
+        // Ensure Windows\System32 exists and handle startnet.cmd content
+        std::string windowsDir  = mountDir + "\\Windows";
+        std::string system32DirPath = windowsDir + "\\System32";
+        CreateDirectoryA(windowsDir.c_str(), NULL);
+        CreateDirectoryA(system32DirPath.c_str(), NULL);
+        std::string startnetPath = system32DirPath + "\\startnet.cmd";
+
+        auto fileExists = [](const std::string &p) -> bool {
+            return GetFileAttributesA(p.c_str()) != INVALID_FILE_ATTRIBUTES;
+        };
+
+        auto trimCopy = [](std::string s) {
+            auto isspace2 = [](unsigned char c) { return std::isspace(c) != 0; };
+            s.erase(s.begin(), std::find_if(s.begin(), s.end(), [&](unsigned char c) { return !isspace2(c); }));
+            s.erase(std::find_if(s.rbegin(), s.rend(), [&](unsigned char c) { return !isspace2(c); }).base(), s.end());
+            return s;
+        };
+
+        // Detect Hiren's/PECMD-style PE by presence of pecmd.exe and pecmd.ini
+        // Reuse the pecmdExe and pecmdIni variables declared earlier
+        bool hasPecmd = fileExists(pecmdExe) && fileExists(pecmdIni);
+
+        // Log detection results for debugging
+        logFile << ISOCopyManager::getTimestamp() << "PECMD detection: pecmd.exe=" 
+                << (fileExists(pecmdExe) ? "FOUND" : "NOT FOUND") 
+                << ", pecmd.ini=" << (fileExists(pecmdIni) ? "FOUND" : "NOT FOUND") 
+                << ", hasPecmd=" << (hasPecmd ? "YES" : "NO") << std::endl;
+
+        // Check for Programs directory (commonly used by Hiren's)
+        std::string programsDir = mountDir + "\\Programs";
+        bool hasPrograms = GetFileAttributesA(programsDir.c_str()) != INVALID_FILE_ATTRIBUTES;
+        logFile << ISOCopyManager::getTimestamp() << "Programs directory in boot.wim: " 
+                << (hasPrograms ? "EXISTS" : "NOT FOUND") << std::endl;
+        
+        if (hasPecmd) {
+            eventManager_.notifyLogUpdate("Hiren's BootCD PE detectado (PECMD presente).\r\n");
+            
+            // For Hiren's BootCD PE: Copy HBCD_PE.ini from ISO root to System32 if it exists
+            // This file is used by LetterSwap.exe to map the data partition to Y:
+            std::string hbcdIniInISO = sourcePath;
+            // sourcePath is the ISO path, need to check if HBCD_PE.ini exists in root
+            std::vector<std::string> isoRootFiles;
+            if (isoReader_) {
+                isoRootFiles = isoReader_->listFiles(sourcePath);
+            }
+            
+            bool foundHBCDini = false;
+            for (const auto &file : isoRootFiles) {
+                std::string lower = Utils::toLower(file);
+                std::replace(lower.begin(), lower.end(), '\\', '/');
+                // Check if it's HBCD_PE.ini in root (no path separators)
+                if ((lower == "hbcd_pe.ini" || lower.find("/hbcd_pe.ini") != std::string::npos) &&
+                    lower.find_first_of("/\\") == lower.find_last_of("/\\")) {
+                    foundHBCDini = true;
+                    break;
+                }
+            }
+            
+            if (foundHBCDini) {
+                std::string hbcdIniDest = system32DirPath + "\\HBCD_PE.ini";
+                logFile << ISOCopyManager::getTimestamp() 
+                        << "Found HBCD_PE.ini in ISO root, extracting to System32..." << std::endl;
+                
+                if (isoReader_->extractFile(sourcePath, "HBCD_PE.ini", hbcdIniDest)) {
+                    logFile << ISOCopyManager::getTimestamp() 
+                            << "HBCD_PE.ini copied successfully to " << hbcdIniDest << std::endl;
+                    eventManager_.notifyLogUpdate("HBCD_PE.ini integrado en boot.wim para configuración de letra Y:.\r\n");
+                } else {
+                    logFile << ISOCopyManager::getTimestamp() 
+                            << "Failed to extract HBCD_PE.ini from ISO" << std::endl;
+                }
+            } else {
+                logFile << ISOCopyManager::getTimestamp() 
+                        << "HBCD_PE.ini not found in ISO root (normal for some PE variants)" << std::endl;
+            }
+            
+            // Important: Do NOT modify startnet.cmd for Hiren's PECMD-based PE
+            // PECMD.ini handles the entire boot process automatically via winpeshl.ini
+            logFile << ISOCopyManager::getTimestamp() 
+                    << "Hiren's/PECMD PE detected: preserving startnet.cmd and pecmd.ini without modification" 
+                    << std::endl;
+            eventManager_.notifyLogUpdate(
+                "PECMD detectado: configuración original preservada (PECMD maneja el arranque automáticamente).\r\n");
+        } else {
+            // For non-PECMD PEs, handle startnet.cmd normally
+            bool startnetExists = fileExists(startnetPath);
+            logFile << ISOCopyManager::getTimestamp() 
+                    << "Non-PECMD PE detected, startnet.cmd exists: " 
+                    << (startnetExists ? "YES" : "NO") << std::endl;
+            
+            if (startnetExists) {
+                // Preserve existing startnet.cmd
+                logFile << ISOCopyManager::getTimestamp() 
+                        << "startnet.cmd found: preserving without changes" << std::endl;
+                eventManager_.notifyLogUpdate("startnet.cmd detectado: se conserva sin cambios.\r\n");
+            } else {
+                // Create minimal startnet.cmd for non-PECMD WinPE
+                logFile << ISOCopyManager::getTimestamp() 
+                        << "startnet.cmd not present, creating minimal WinPE init" << std::endl;
+                std::string minimalContent = "@echo off\r\nwpeinit\r\n";
+                std::ofstream snOut(startnetPath, std::ios::out | std::ios::binary | std::ios::trunc);
+                if (snOut) {
+                    snOut.write(minimalContent.data(), (std::streamsize)minimalContent.size());
+                    snOut.flush();
+                    logFile << ISOCopyManager::getTimestamp() 
+                            << "Created minimal startnet.cmd for WinPE" << std::endl;
+                }
+            }
+        }
+
+        // IMPORTANT: Do NOT normalize pecmd.ini for Hiren's BootCD PE
+        // The original pecmd.ini is carefully configured and uses %WinDir% variables correctly
+        // Hiren's PECMD relies on proper environment variable expansion and LetterSwap.exe
+        // to map the data partition to Y: drive, which is where Programs and CustomDrivers live
+        if (hasPecmd) {
+            logFile << ISOCopyManager::getTimestamp() 
+                    << "Hiren's PECMD detected: pecmd.ini will be preserved without modification" << std::endl;
+            logFile << ISOCopyManager::getTimestamp() 
+                    << "Note: PECMD uses LetterSwap.exe to map data partition to Y: for Programs access" 
+                    << std::endl;
+            eventManager_.notifyLogUpdate(
+                "pecmd.ini preservado sin modificaciones (PECMD gestiona variables y letra Y: automáticamente).\r\n");
         }
 
         eventManager_.notifyDetailedProgress(60, 100, "Guardando cambios en boot.wim");
         eventManager_.notifyLogUpdate("Guardando cambios en boot.wim...\r\n");
-        eventManager_.notifyDetailedProgress(0, 0, "Guardando cambios en boot.wim...");
+        // Show a smooth advancing progress while DISM commits changes
+        std::atomic<bool> savingInProgress(true);
+        std::thread       savingProgressThread([this, &savingInProgress]() {
+            int percent = 60;
+            while (savingInProgress.load()) {
+                percent = (percent < 95) ? (percent + 1) : 90; // oscillate below 100% until finish
+                this->eventManager_.notifyDetailedProgress(percent, 100, "Guardando cambios en boot.wim");
+                std::this_thread::sleep_for(std::chrono::milliseconds(300));
+            }
+        });
         std::string dismUnmountCmd = "dism /Unmount-Wim /MountDir:\"" + mountDir + "\" /Commit";
         logFile << ISOCopyManager::getTimestamp() << "Unmounting boot.wim: " << dismUnmountCmd << std::endl;
     std::string unmountOutput;
     std::string dismUnmountCmdFull = "\"" + dism + "\" /Unmount-Wim /MountDir:\"" + mountDir + "\" /Commit";
     int         unmountCode        = Utils::execWithExitCode(dismUnmountCmdFull.c_str(), unmountOutput);
+        // Stop the progress animation
+        savingInProgress.store(false);
+        if (savingProgressThread.joinable()) savingProgressThread.join();
     logFile << ISOCopyManager::getTimestamp() << "Unmount output (code=" << unmountCode << "): "
         << unmountOutput << std::endl;
     if (unmountCode != 0) {
@@ -287,6 +724,8 @@ bool BootWimProcessor::mountAndProcessWim(const std::string &bootWimDest, const 
             RemoveDirectoryA(mountDir.c_str());
             return false;
         }
+        // Finalize progress to 100%
+        eventManager_.notifyDetailedProgress(100, 100, "Guardando cambios en boot.wim");
         eventManager_.notifyLogUpdate("boot.wim actualizado correctamente.\r\n");
         eventManager_.notifyDetailedProgress(0, 0, "");
     } else {
@@ -359,16 +798,12 @@ bool BootWimProcessor::integrateSystemDriversIntoMountedImage(const std::string 
 
     std::filesystem::path        stagingRoot(tempDirTemplate);
     const std::vector<std::string> storagePrefixes = {"storahci", "stornvme"};
+    const std::vector<std::string> storageTokens   = {"nvme", "ahci", "rst", "vmd", "raid", "scsi", "ide", "iastor"};
     const std::vector<std::string> usbPrefixes     = {"usb", "xhci"};
+    const std::vector<std::string> usbTokens       = {"iusb3", "usb3", "xhc", "xhci", "amdhub3", "amdxhc", "intelusb3"};
     const std::vector<std::string> networkPrefixes = {"net", "vwifi", "vwlan"};
     const std::vector<std::string> networkTokens   = {"wifi", "wlan", "wwan"};
 
-    auto startsWithIgnoreCase = [](const std::string &value, const std::string &prefix) {
-        if (value.size() < prefix.size()) {
-            return false;
-        }
-        return _strnicmp(value.c_str(), prefix.c_str(), static_cast<unsigned int>(prefix.size())) == 0;
-    };
     auto matchesAnyPrefix = [&](const std::string &dirLower, const std::vector<std::string> &list) -> bool {
         for (const auto &prefix : list) {
             if (dirLower.rfind(prefix, 0) == 0) {
@@ -413,16 +848,20 @@ bool BootWimProcessor::integrateSystemDriversIntoMountedImage(const std::string 
             std::ostringstream buffer;
             buffer << infFile.rdbuf();
             std::string content = buffer.str();
+            // Normalize: lowercase and remove non-alphanumeric characters for robust matching
             std::string normalized;
             normalized.reserve(content.size());
             for (char ch : content) {
-                if (!std::isspace(static_cast<unsigned char>(ch))) {
-                    normalized.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(ch))));
+                unsigned char uch = static_cast<unsigned char>(ch);
+                char lower = static_cast<char>(std::tolower(uch));
+                if ((lower >= 'a' && lower <= 'z') || (lower >= '0' && lower <= '9')) {
+                    normalized.push_back(lower);
                 }
             }
 
-            if (normalized.find("class=net") != std::string::npos ||
-                normalized.find("{4d36e972e32511cebfc108002be10318}") != std::string::npos) {
+            // Match either "class=net" (becomes "classnet") or the Net Class GUID without dashes
+            if (normalized.find("classnet") != std::string::npos ||
+                normalized.find("4d36e972e32511cebfc108002be10318") != std::string::npos) {
                 return true;
             }
         }
@@ -441,6 +880,7 @@ bool BootWimProcessor::integrateSystemDriversIntoMountedImage(const std::string 
         return false;
     }
 
+    int stagedStorage = 0, stagedUsb = 0, stagedNet = 0;
     for (; it != endIt; it.increment(ec)) {
         if (ec) {
             logFile << ISOCopyManager::getTimestamp()
@@ -458,11 +898,11 @@ bool BootWimProcessor::integrateSystemDriversIntoMountedImage(const std::string 
         std::transform(dirNameLower.begin(), dirNameLower.end(), dirNameLower.begin(),
                        [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
 
-        bool storageMatch = matchesAnyPrefix(dirNameLower, storagePrefixes);
-        bool usbMatch     = matchesAnyPrefix(dirNameLower, usbPrefixes);
-        bool netMatch     = matchesAnyPrefix(dirNameLower, networkPrefixes) ||
-                            containsAnyToken(dirNameLower, networkTokens) ||
-                            directoryContainsNetworkInf(entry.path());
+    bool storageMatch = matchesAnyPrefix(dirNameLower, storagePrefixes) || containsAnyToken(dirNameLower, storageTokens);
+    bool usbMatch     = matchesAnyPrefix(dirNameLower, usbPrefixes) || containsAnyToken(dirNameLower, usbTokens);
+    bool netMatch     = matchesAnyPrefix(dirNameLower, networkPrefixes) ||
+                containsAnyToken(dirNameLower, networkTokens) ||
+                directoryContainsNetworkInf(entry.path());
 
         if (!(storageMatch || usbMatch || netMatch)) {
             continue;
@@ -486,9 +926,18 @@ bool BootWimProcessor::integrateSystemDriversIntoMountedImage(const std::string 
             ec.clear();
             continue;
         }
-        logFile << ISOCopyManager::getTimestamp() << "Staged driver directory " << dirName
-                << (netMatch ? " (network)" : "") << std::endl;
+    if (storageMatch) stagedStorage++;
+    if (usbMatch) stagedUsb++;
+    if (netMatch) stagedNet++;
+    std::string cat = netMatch ? "network" : (storageMatch ? "storage" : (usbMatch ? "usb" : "other"));
+    logFile << ISOCopyManager::getTimestamp() << "Staged driver directory " << dirName
+        << " (" << cat << ")" << std::endl;
         copiedAny = true;
+    }
+
+    if (copiedAny) {
+    logFile << ISOCopyManager::getTimestamp() << "Staged driver directories: storage=" << stagedStorage
+        << ", usb=" << stagedUsb << ", network=" << stagedNet << std::endl;
     }
 
     if (!copiedAny) {
@@ -511,9 +960,20 @@ bool BootWimProcessor::integrateSystemDriversIntoMountedImage(const std::string 
     std::filesystem::remove_all(stagingRoot, ec);
 
     if (dismCode != 0) {
+        // Retry with /ForceUnsigned as a fallback for environments where some OEM drivers lack signatures in PE
+        std::string addDriverForce = addDriver + " /ForceUnsigned";
+        logFile << ISOCopyManager::getTimestamp() << "Retrying DISM add-driver with /ForceUnsigned: "
+                << addDriverForce << std::endl;
+        std::string dismOutput2;
+        int         dismCode2 = Utils::execWithExitCode(addDriverForce.c_str(), dismOutput2);
         logFile << ISOCopyManager::getTimestamp()
-                << "DISM add-driver reported failure while integrating local drivers." << std::endl;
-        return false;
+                << "DISM add-driver (force unsigned) output (code=" << dismCode2 << "): " << dismOutput2
+                << std::endl;
+        if (dismCode2 != 0) {
+            logFile << ISOCopyManager::getTimestamp()
+                    << "DISM add-driver reported failure while integrating local drivers." << std::endl;
+            return false;
+        }
     }
     return true;
 }

@@ -27,7 +27,7 @@ Website: [English](https://agsoft.co.cr/en/software-and-services/) | [Spanish](h
 - Detects Windows ISOs and automatically adjusts BCD configuration; non-Windows ISOs boot directly from the EFI partition.
 - Runs optional integrity checks (`chkdsk`), generates detailed logs, and allows cancellation or space recovery.
 - Provides unattended mode for script integrations via command-line arguments.
-- **ISOHASHBOOT Improvement**: Efficiency optimization that compares the MD5 hash of the ISO file, selected boot mode, and format against stored values in the existing partition. If they match, skips formatting and file copying, speeding up repetitive processes with the same ISO and configuration.
+- **ISO hash cache (ISOBOOTHASH)**: Compares the ISO MD5, selected boot mode, and format against values stored in the `ISOBOOTHASH` file on the target. If they match, it skips formatting and content copy to speed up repeated runs.
 
 ## Tested ISOs
 
@@ -42,19 +42,44 @@ Website: [English](https://agsoft.co.cr/en/software-and-services/) | [Spanish](h
 - ✅ Windows10_22H2_X64.iso (falls back to ISOBOOT_RAM)
 
 ## Requirements
-- Windows 10 or 11 64-bit with administrator privileges.
+ Espacio libre de al menos 12 GB en la unidad `C:` para crear y formatear particiones (la herramienta intenta reducir 12 GB).
 - PowerShell, DiskPart, bcdedit, and available Windows command-line tools.
-- Minimum 12 GB free space on C: drive for creating and formatting partitions.
+ Se generan varias utilidades de consola junto con la app para validar el comportamiento:
 - For compilation: Visual Studio 2022 with CMake. No external package manager required; the 7‑Zip SDK is vendored under `third-party/`.
-
+ build/Release/ListFormats.exe
 ## Compilation
-```powershell
-# Configure and build (VS 2022, x64)
-cmake -S . -B build -G "Visual Studio 17 2022" -A x64
-cmake --build build --config Release
-```
+ build/Release/TestISOReader.exe "C:\Users\Andrey\Documentos\EasyISOBoot\isos\Win11_25H2_Spanish_x64.iso"
+ build/Release/TestISOReader.exe "C:\Users\Andrey\Documentos\EasyISOBoot\isos\Windows10_22H2_X64.iso"
+ build/Release/TestISOReader.exe "C:\Users\Andrey\Documentos\EasyISOBoot\isos\HBCD_PE_x64.iso"
 
-The final executable is located at `build/Release/BootThatISO!.exe`. Also included is `compilar.bat` with equivalent steps.
+# Heurística de detección de ISO de Windows
+ build/Release/TestISODetection.exe "C:\ruta\a\alguna.iso"
+
+# Demostración de recuperación de espacio (mismas rutinas que la app)
+ build/Release/TestRecoverSpace.exe
+
+# Demostración del reemplazo de INI
+ build/Release/test_ini_replacer.exe
+cmake --build build --config Release
+ Ejecuta el binario con privilegios elevados y los siguientes argumentos:
+  -autoreboot=y|n ^
+  -lang=en_us|es_cr
+ - `-lang` establece el código de idioma según los archivos dentro de `lang/`.
+ 1. **Validacion y particiones** (`PartitionManager`): verifica espacio disponible, ejecuta `chkdsk` opcional, reduce `C:` ~12 GB, crea `ISOEFI` (500 MB FAT32) y `ISOBOOT` (10 GB) o reformatea las existentes, y expone metodos de recuperacion.
+./compilar.bat
+ ## Limitaciones
+ - Opera sobre el Disco 0 y reduce la unidad C: en 12 GB; otros layouts no están soportados por ahora.
+ - Requiere privilegios de administrador y disponibilidad de Windows PowerShell.
+ - Se requieren archivos de idioma en `lang/`; la app muestra un error si no los encuentra.
+ **Caché de hash del ISO (ISOBOOTHASH)**: Compara el MD5 del ISO, el modo de arranque y el formato con los valores guardados en el archivo `ISOBOOTHASH` del destino. Si coinciden, omite el formateo y la copia de contenidos para acelerar ejecuciones repetidas.
+
+Code signing:
+- To skip signing (useful on dev machines without a certificate):
+```powershell
+$env:SIGN_CERT_SHA1 = "skip"
+./compilar.bat
+```
+- To sign, set `SIGN_CERT_SHA1` to your certificate's SHA1 thumbprint or make sure `signtool.exe` can find a suitable certificate in your store.
 
 Note: The project now uses the 7‑Zip SDK (vendored) for ISO reading/extraction; no vcpkg or libarchive is required.
 
@@ -64,7 +89,7 @@ Note: The project now uses the 7‑Zip SDK (vendored) for ISO reading/extraction
 - Included handlers: UDF, ISO, Ext container, and MBR. The reader prefers UDF and can unwrap Ext to reach the inner UDF/ISO stream.
 
 ### Diagnostics and tests
-Two small console tools are built alongside the app to validate ISO handling:
+The following console utilities are built alongside the app to validate behavior:
 
 ```powershell
 # List supported handlers and try opening via UDF/ISO
@@ -74,12 +99,27 @@ build/Release/ListFormats.exe
 build/Release/TestISOReader.exe "C:\Users\Andrey\Documentos\EasyISOBoot\isos\Win11_25H2_Spanish_x64.iso"
 build/Release/TestISOReader.exe "C:\Users\Andrey\Documentos\EasyISOBoot\isos\Windows10_22H2_X64.iso"
 build/Release/TestISOReader.exe "C:\Users\Andrey\Documentos\EasyISOBoot\isos\HBCD_PE_x64.iso"
+
+# Detect Windows ISO heuristics
+build/Release/TestISODetection.exe "C:\path\to\some.iso"
+
+# Space recovery demonstration (uses same routines as the app)
+build/Release/TestRecoverSpace.exe
+
+# INI replacer demo
+build/Release/test_ini_replacer.exe
 ```
 
 Notes:
 - The test preserves internal ISO paths when extracting (e.g., writes to %TEMP%\EasyISOBoot_iso_extract_test\sources\boot.wim).
 - Windows ISOs may use `install.wim` or `install.esd`; the test discovers and extracts all `.wim` and `.esd` files it finds.
 - Hybrid Windows ISOs expose few items via the ISO handler; opening through UDF yields the full file list (handled automatically).
+
+Run unit tests with CTest:
+```powershell
+cd build
+ctest -C Release --output-on-failure
+```
 
 ### Install image copy validation
 - When copying the Windows image from the ISO (`sources/install.wim` or `sources/install.esd`), the app now verifies:
@@ -109,18 +149,20 @@ BootThatISO!.exe ^
   -mode=RAM|EXTRACT ^
   -format=NTFS|FAT32|EXFAT ^
   -chkdsk=TRUE|FALSE ^
-  -autoreboot=y|n
+  -autoreboot=y|n ^
+  -lang=en_us|es_cr
 ```
 
 - `-mode=RAM` activates *Boot from Memory* mode and copies `boot.wim`/`boot.sdi`.
 - `-mode=EXTRACT` corresponds to *Full Installation*.
 - `-chkdsk=TRUE` forces disk verification (omitted by default).
+- `-lang` sets the language code matching files under `lang/`.
 - `-autoreboot` is available for future automations; currently just logs the preference.
 
 The process logs events and exits without showing the main window.
 
 ## Internal Flow Summary
-1. **Validation and Partitions** (`PartitionManager`): checks available space, runs optional `chkdsk`, reduces `C:` by ~10.5 GB, creates `ISOEFI` (500 MB FAT32) and `ISOBOOT` (10 GB), or reforms existing ones, and exposes recovery methods.
+1. **Validation and Partitions** (`PartitionManager`): checks available space, runs optional `chkdsk`, reduces `C:` by ~12 GB, creates `ISOEFI` (500 MB FAT32) and `ISOBOOT` (10 GB), or reforms existing ones, and exposes recovery methods.
 2. **Content Preparation** (`ISOCopyManager`): reads ISO content using the 7‑Zip SDK (ISO handler), classifies if Windows, lists content, copies files to target drives, and delegates EFI handling to `EFIManager`.
 3. **Copying and Progress** (`FileCopyManager`/`EventManager`): notifies granular progress, allows cancellation, and updates logs.
 4. **BCD Configuration** (`BCDManager` + strategies): creates WinPE entries (RAMDisk) or full installation, adjusts `{ramdiskoptions}`, and logs executed commands.
@@ -137,6 +179,10 @@ All operations generate files in `logs/` (created alongside the executable). Amo
 Review these logs when diagnosing failures or sharing reports.
 
 ## Security and Recovery
+## Limitations
+- Operates on Disk 0 and shrinks volume C: by 12 GB; other layouts are not currently supported.
+- Requires administrator privileges and Windows PowerShell availability.
+- Language files under `lang/` are required; the app shows an error if none are found.
 - The operation modifies the system disk; back up before executing the tool.
 - During the process, avoid closing the application from Task Manager; use the integrated cancel option.
 - Use the **Recover Space** button to remove `ISOBOOT`/`ISOEFI` partitions and restore the `C:` drive if you decide to revert the configuration.
@@ -233,6 +279,20 @@ El ejecutable final se ubica en `build/Release/BootThatISO!.exe`. Tambien se inc
 
 Nota: El proyecto ahora utiliza el SDK de 7‑Zip (incluido) para lectura/extracción de ISOs; no se requiere vcpkg ni libarchive.
 
+### Compilación rápida con compilar.bat (recomendado)
+```powershell
+# En la raíz del repositorio
+./compilar.bat
+```
+
+Firma de código:
+- Para omitir la firma (útil en equipos de desarrollo sin certificado):
+```powershell
+$env:SIGN_CERT_SHA1 = "skip"
+./compilar.bat
+```
+- Para firmar, define `SIGN_CERT_SHA1` con la huella SHA1 de tu certificado o asegúrate de que `signtool.exe` encuentre un certificado válido en tu almacén.
+
 ### Notas de compilación
 - En Release se vincula el runtime de MSVC de forma estática (/MT) para obtener un ejecutable autocontenido (no requiere VC++ Redistributable).
 - El SDK de 7‑Zip se compila como librería estática y se enlaza como "whole-archive" para conservar el registro de manejadores.
@@ -255,6 +315,12 @@ Notas:
 - La prueba preserva las rutas internas del ISO al extraer (por ejemplo, escribe en %TEMP%\EasyISOBoot_iso_extract_test\sources\boot.wim).
 - Las ISOs de Windows pueden usar `install.wim` o `install.esd`; la prueba detecta y extrae todos los `.wim` y `.esd` que encuentre.
 - Las ISOs híbridas de Windows muestran pocos elementos con el manejador ISO; al abrir vía UDF se obtiene el listado completo (se maneja automáticamente).
+
+Ejecutar pruebas con CTest:
+```powershell
+cd build
+ctest -C Release --output-on-failure
+```
 
 ### Validación de copia de la imagen de instalación
 - Al copiar la imagen de Windows desde el ISO (`sources/install.wim` o `sources/install.esd`), la app ahora verifica:
@@ -335,7 +401,6 @@ Desarrollado por **Andrey Rodríguez Araya** en 2025.
 
 ## Licencia
 Este proyecto está bajo la Licencia GPL 3.0. Ver el archivo `LICENSE` para más detalles.
-<<<<<<< HEAD
 
 ## Avisos de terceros
 - SDK de 7‑Zip: Este producto incluye partes del SDK de 7‑Zip de Igor Pavlov.
@@ -346,5 +411,3 @@ Este proyecto está bajo la Licencia GPL 3.0. Ver el archivo `LICENSE` para más
     - `CPP/7zip/Compress/Rar*` están bajo GNU LGPL con la “restricción de licencia unRAR”.
   - Incluimos un subconjunto mínimo (manejador ISO y utilidades comunes). Este proyecto no utiliza código RAR.
   - Textos completos: ver `third-party/DOC/License.txt`, `third-party/DOC/lzma.txt` y `third-party/DOC/unRarLicense.txt`.
-=======
->>>>>>> 834dfd94b74f1a69f10c705ba124500e648862f8

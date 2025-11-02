@@ -68,7 +68,7 @@ bool DiskpartExecutor::performDiskpartOperations(const std::string &format) {
     si.wShowWindow = SW_HIDE;
 
     std::string cmd = "diskpart /s " + std::string(tempFile);
-    if (!CreateProcessA(NULL, const_cast<char *>(cmd.c_str()), NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi)) {
+    if (!CreateProcessA(NULL, const_cast<char *>(cmd.c_str()), NULL, NULL, TRUE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) {
         CloseHandle(hRead);
         CloseHandle(hWrite);
         DeleteFileA(tempFile);
@@ -101,7 +101,7 @@ bool DiskpartExecutor::performDiskpartOperations(const std::string &format) {
     Sleep(10000); // Increased to 10 seconds
 
     // Refresh volume information
-    system("mountvol /r >nul 2>&1");
+    Utils::exec("mountvol /r");
 
     if (eventManager_) {
         if (exitCode == 0) {
@@ -216,7 +216,7 @@ bool DiskpartExecutor::isDiskGpt() {
     si.wShowWindow = SW_HIDE;
 
     std::string cmd = "diskpart /s " + std::string(tempFile);
-    if (!CreateProcessA(NULL, const_cast<char *>(cmd.c_str()), NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi)) {
+    if (!CreateProcessA(NULL, const_cast<char *>(cmd.c_str()), NULL, NULL, TRUE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) {
         CloseHandle(hRead);
         CloseHandle(hWrite);
         DeleteFileA(tempFile);

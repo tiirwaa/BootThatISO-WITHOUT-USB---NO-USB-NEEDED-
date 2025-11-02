@@ -328,7 +328,7 @@ std::string VolumeDetector::getEfiPartitionDriveLetter() {
                                 debugLog << "  Successfully assigned drive letter " << driveLetter << "\n";
                                 // Grant full permissions to ensure writability
                                 std::string permCmd = "icacls \"" + driveLetter + "\" /grant Everyone:F /T /C";
-                                system(permCmd.c_str());
+                                Utils::exec(permCmd.c_str());
                                 FindVolumeClose(hVolume);
                                 debugLog.close();
                                 return driveLetter + "\\";

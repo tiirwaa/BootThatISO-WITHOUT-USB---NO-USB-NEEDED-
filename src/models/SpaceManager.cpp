@@ -171,7 +171,7 @@ bool SpaceManager::recoverSpace() {
     si.wShowWindow = SW_HIDE;
 
     std::string cmd = "powershell -ExecutionPolicy Bypass -File \"" + psFile + "\"";
-    if (!CreateProcessA(NULL, const_cast<char *>(cmd.c_str()), NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi)) {
+    if (!CreateProcessA(NULL, const_cast<char *>(cmd.c_str()), NULL, NULL, TRUE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) {
         CloseHandle(hRead);
         CloseHandle(hWrite);
         DeleteFileA(psFile.c_str());

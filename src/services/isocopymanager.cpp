@@ -1,4 +1,4 @@
-﻿#include "isocopymanager.h"
+#include "isocopymanager.h"
 #include "../utils/constants.h"
 #include <windows.h>
 #include <string>
@@ -268,7 +268,7 @@ bool ISOCopyManager::extractISOContents(EventManager &eventManager, const std::s
         logFile << getTimestamp() << "ISO hash, version, mode and format match existing, skipping content copy"
                 << std::endl;
         eventManager.notifyLogUpdate(
-            "Hash, versión, modo y formato del ISO coinciden, omitiendo copia de contenido.\r\n");
+            "Hash, version, modo y formato del ISO coinciden, omitiendo copia de contenido.\r\n");
     }
 
     if (extractContent && !skipCopy) {
@@ -279,16 +279,14 @@ bool ISOCopyManager::extractISOContents(EventManager &eventManager, const std::s
         }
         copiedSoFar += isoSize;
     } else if (!extractContent && isWindowsISO && !skipCopy) {
-        // For Windows ISOs in RAM mode, extract the Programs folder
+        // For Windows ISOs in RAM mode, flag Programs integration without pre-extracting the folder
         if (mode == AppKeys::BootModeRam) {
             integratePrograms = true;
-            std::string programsDest = destPath + "Programs";
-            isoReader->extractDirectory(isoPath, "Programs", programsDest);
-            programsSrc = programsDest;
-            logFile << getTimestamp() << "Programs extracted for RAM boot" << std::endl;
-            eventManager.notifyLogUpdate("Programs extraído para arranque RAM.\r\n");
-        }
-    } else {
+            programsSrc       = destPath + "Programs";
+            logFile << getTimestamp()
+                    << "Programs integration scheduled for RAM boot (no pre-extraction)" << std::endl;
+                        eventManager.notifyLogUpdate("Integracion de Programs en boot.wim para arranque RAM.\r\n");
+        }    } else {
         logFile << getTimestamp() << "Skipping content extraction (" << modeLabel << " mode)" << std::endl;
     }
 
@@ -306,8 +304,8 @@ bool ISOCopyManager::extractISOContents(EventManager &eventManager, const std::s
         std::string installFile = esdPreferred ? "sources/install.esd" : "sources/install.wim";
         std::string installDest = destPath + "sources\\" + installFile.substr(installFile.find_last_of('/') + 1);
 
-        eventManager.notifyDetailedProgress(75, 100, "Copiando archivo de instalación");
-        eventManager.notifyLogUpdate("Copiando archivo de instalación...\r\n");
+    eventManager.notifyDetailedProgress(75, 100, "Copiando archivo de instalacion");
+    eventManager.notifyLogUpdate("Copiando archivo de instalacion...\r\n");
         bool extracted = isoReader->extractFile(isoPath, installFile, installDest);
         if (extracted) {
             auto validateInstall = [&](bool logOnWarn) -> bool {
@@ -324,7 +322,7 @@ bool ISOCopyManager::extractISOContents(EventManager &eventManager, const std::s
 
                 bool sizeOk = !haveSrc || (srcSize == dstSize);
                 if (!sizeOk && logOnWarn) {
-                    eventManager.notifyLogUpdate("Advertencia: tamaño de origen/destino no coincide para install.*.\r\n");
+                    eventManager.notifyLogUpdate("Advertencia: tamano de origen/destino no coincide para install.*.\r\n");
                 }
 
                 std::string infoCmd = std::string("\"") + Utils::getDismPath() + "\" /Get-WimInfo /WimFile:\"" + installDest + "\"";
@@ -337,7 +335,7 @@ bool ISOCopyManager::extractISOContents(EventManager &eventManager, const std::s
 
                 if (sizeOk && dismOk) {
                     logFile << getTimestamp() << "Install image validation: OK (indices=" << indexCount << ")" << std::endl;
-                    eventManager.notifyLogUpdate("Archivo de instalación copiado y validado correctamente.\r\n");
+                    eventManager.notifyLogUpdate("Archivo de instalacion copiado y validado correctamente.\r\n");
                     return true;
                 }
 
@@ -352,7 +350,7 @@ bool ISOCopyManager::extractISOContents(EventManager &eventManager, const std::s
 
             bool ok = validateInstall(true);
             if (!ok) {
-                eventManager.notifyLogUpdate("Reintentando extracción de install.*...\r\n");
+                eventManager.notifyLogUpdate("Reintentando extraccion de install.*...\r\n");
                 DeleteFileA(installDest.c_str());
                 if (isoReader->extractFile(isoPath, installFile, installDest)) {
                     validateInstall(false);
@@ -360,7 +358,7 @@ bool ISOCopyManager::extractISOContents(EventManager &eventManager, const std::s
             }
         } else {
             logFile << getTimestamp() << "Failed to extract install file" << std::endl;
-            eventManager.notifyLogUpdate("Error al copiar archivo de instalación.\r\n");
+            eventManager.notifyLogUpdate("Error al copiar archivo de instalacion.\r\n");
         }
         eventManager.notifyDetailedProgress(0, 0, "");
     }
@@ -471,3 +469,7 @@ static HashInfo readHashInfo(const std::string &path) {
     }
     return info;
 }
+
+
+
+
