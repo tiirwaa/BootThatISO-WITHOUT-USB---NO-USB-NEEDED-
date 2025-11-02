@@ -42,44 +42,39 @@ Website: [English](https://agsoft.co.cr/en/software-and-services/) | [Spanish](h
 - ✅ Windows10_22H2_X64.iso (falls back to ISOBOOT_RAM)
 
 ## Requirements
- Espacio libre de al menos 12 GB en la unidad `C:` para crear y formatear particiones (la herramienta intenta reducir 12 GB).
+- Windows 10 or 11 64-bit with administrator privileges.
+- At least 12 GB of free space on drive `C:` to create and format partitions (the tool attempts to shrink 12 GB).
 - PowerShell, DiskPart, bcdedit, and available Windows command-line tools.
- Se generan varias utilidades de consola junto con la app para validar el comportamiento:
 - For compilation: Visual Studio 2022 with CMake. No external package manager required; the 7‑Zip SDK is vendored under `third-party/`.
- build/Release/ListFormats.exe
+
 ## Compilation
- build/Release/TestISOReader.exe "C:\Users\Andrey\Documentos\EasyISOBoot\isos\Win11_25H2_Spanish_x64.iso"
- build/Release/TestISOReader.exe "C:\Users\Andrey\Documentos\EasyISOBoot\isos\Windows10_22H2_X64.iso"
- build/Release/TestISOReader.exe "C:\Users\Andrey\Documentos\EasyISOBoot\isos\HBCD_PE_x64.iso"
-
-# Heurística de detección de ISO de Windows
- build/Release/TestISODetection.exe "C:\ruta\a\alguna.iso"
-
-# Demostración de recuperación de espacio (mismas rutinas que la app)
- build/Release/TestRecoverSpace.exe
-
-# Demostración del reemplazo de INI
- build/Release/test_ini_replacer.exe
+```powershell
+# Configure and build (VS 2022, x64)
+cmake -S . -B build -G "Visual Studio 17 2022" -A x64
 cmake --build build --config Release
- Ejecuta el binario con privilegios elevados y los siguientes argumentos:
-  -autoreboot=y|n ^
-  -lang=en_us|es_cr
- - `-lang` establece el código de idioma según los archivos dentro de `lang/`.
- 1. **Validacion y particiones** (`PartitionManager`): verifica espacio disponible, ejecuta `chkdsk` opcional, reduce `C:` ~12 GB, crea `ISOEFI` (500 MB FAT32) y `ISOBOOT` (10 GB) o reformatea las existentes, y expone metodos de recuperacion.
-./compilar.bat
- ## Limitaciones
- - Opera sobre el Disco 0 y reduce la unidad C: en 12 GB; otros layouts no están soportados por ahora.
- - Requiere privilegios de administrador y disponibilidad de Windows PowerShell.
- - Se requieren archivos de idioma en `lang/`; la app muestra un error si no los encuentra.
- **Caché de hash del ISO (ISOBOOTHASH)**: Compara el MD5 del ISO, el modo de arranque y el formato con los valores guardados en el archivo `ISOBOOTHASH` del destino. Si coinciden, omite el formateo y la copia de contenidos para acelerar ejecuciones repetidas.
+```
 
-Code signing:
+The final executable is located at `build/Release/BootThatISO!.exe`. Also included is `compilar.bat` with equivalent steps.
+
+### Quick compilation with compilar.bat (recommended)
+```powershell
+# In the repository root
+./compilar.bat
+```
+
+#### Code signing
 - To skip signing (useful on dev machines without a certificate):
 ```powershell
 $env:SIGN_CERT_SHA1 = "skip"
 ./compilar.bat
 ```
 - To sign, set `SIGN_CERT_SHA1` to your certificate's SHA1 thumbprint or make sure `signtool.exe` can find a suitable certificate in your store.
+
+#### Code formatting
+The `compilar.bat` script automatically formats all source code using `clang-format` before building:
+- Formats all `.cpp` and `.h` files in `src/`, `include/`, and `tests/` directories
+- Uses the project's `.clang-format` configuration file
+- If `clang-format` is not found, a warning is displayed but the build continues
 
 Note: The project now uses the 7‑Zip SDK (vendored) for ISO reading/extraction; no vcpkg or libarchive is required.
 
@@ -162,11 +157,28 @@ BootThatISO!.exe ^
 The process logs events and exits without showing the main window.
 
 ## Internal Flow Summary
-1. **Validation and Partitions** (`PartitionManager`): checks available space, runs optional `chkdsk`, reduces `C:` by ~12 GB, creates `ISOEFI` (500 MB FAT32) and `ISOBOOT` (10 GB), or reforms existing ones, and exposes recovery methods.
+1. **Validation and Partitions** (`PartitionManager`): checks available space, runs optional `chkdsk`, reduces `C:` by ~10.5 GB, creates `ISOEFI` (500 MB FAT32) and `ISOBOOT` (10 GB), or reforms existing ones, and exposes recovery methods.
 2. **Content Preparation** (`ISOCopyManager`): reads ISO content using the 7‑Zip SDK (ISO handler), classifies if Windows, lists content, copies files to target drives, and delegates EFI handling to `EFIManager`.
-3. **Copying and Progress** (`FileCopyManager`/`EventManager`): notifies granular progress, allows cancellation, and updates logs.
-4. **BCD Configuration** (`BCDManager` + strategies): creates WinPE entries (RAMDisk) or full installation, adjusts `{ramdiskoptions}`, and logs executed commands.
-5. **Win32 UI** (`MainWindow`): manually builds controls, applies style, handles commands, and exposes recovery options.
+3. **Boot Processing** (`BootWimProcessor`): orchestrates the extraction and processing of boot.wim, coordinates with specialized modules:
+   - `WimMounter`: handles DISM operations for mounting/unmounting WIM files
+   - `DriverIntegrator`: integrates system and custom drivers into the WIM image
+   - `PecmdConfigurator`: configures Hiren's BootCD PE environments
+   - `StartnetConfigurator`: configures standard WinPE environments
+   - `IniFileProcessor`: processes INI files with drive letter replacement
+   - `ProgramsIntegrator`: integrates additional programs into the boot environment
+4. **Copying and Progress** (`FileCopyManager`/`EventManager`): notifies granular progress, allows cancellation, and updates logs.
+5. **BCD Configuration** (`BCDManager` + strategies): creates WinPE entries (RAMDisk) or full installation, adjusts `{ramdiskoptions}`, and logs executed commands.
+6. **Win32 UI** (`MainWindow`): manually builds controls, applies style, handles commands, and exposes recovery options.
+
+### Modular Architecture
+The project follows a clean, modular architecture with clear separation of concerns:
+- **Facade Pattern**: `BootWimProcessor` provides a simple interface to complex boot processing operations
+- **Strategy Pattern**: Driver integration uses categories (Storage, USB, Network) for flexible configuration
+- **Observer Pattern**: `EventManager` notifies multiple observers (UI, Logger) of progress updates
+- **Chain of Responsibility**: Programs integration attempts multiple fallback strategies
+- **Single Responsibility**: Each class has one clear purpose (mounting WIMs, integrating drivers, etc.)
+
+For detailed architecture documentation, see `ARCHITECTURE.md`.
 
 ## Logs and Diagnostics
 All operations generate files in `logs/` (created alongside the executable). Among the most relevant:
@@ -180,9 +192,11 @@ Review these logs when diagnosing failures or sharing reports.
 
 ## Security and Recovery
 ## Limitations
-- Operates on Disk 0 and shrinks volume C: by 12 GB; other layouts are not currently supported.
+- Operates on Disk 0 and shrinks volume C: by ~10.5 GB; other disk layouts are not currently supported.
 - Requires administrator privileges and Windows PowerShell availability.
 - Language files under `lang/` are required; the app shows an error if none are found.
+
+## Security and Recovery
 - The operation modifies the system disk; back up before executing the tool.
 - During the process, avoid closing the application from Task Manager; use the integrated cancel option.
 - Use the **Recover Space** button to remove `ISOBOOT`/`ISOEFI` partitions and restore the `C:` drive if you decide to revert the configuration.
@@ -191,15 +205,26 @@ Review these logs when diagnosing failures or sharing reports.
 ```
 BootThatISO!/
 |- build/               # CMake/Visual Studio generated files
-|- include/             # Shared headers (reserved)
+|- include/             # Shared headers
+|  |- models/           # Model interfaces (HashInfo, PartitionDetector, etc.)
+|  |- version.h.in      # Version template
 |- src/
-|  |- controllers/      # Flow orchestration (ProcessController)
-|  |- models/           # Boot strategies, EFI handling, ISO reading (ISOReader), observers
-|  |- services/         # Partitioning, ISO copying, BCD, detections
-|  |- utils/            # Utilities (exec, conversions, constants)
-|  |- views/            # Main window and Win32 UI logic
+|  |- boot/             # Boot coordination (BootWimProcessor)
+|  |- wim/              # WIM/DISM operations (WimMounter)
+|  |- drivers/          # Driver integration (DriverIntegrator)
+|  |- config/           # PE configuration (PecmdConfigurator, StartnetConfigurator, IniFileProcessor)
+|  |- filesystem/       # Filesystem operations (ProgramsIntegrator)
+|  |- controllers/      # Flow orchestration (ProcessController, ProcessService)
+|  |- models/           # Domain models (ISOReader, FileCopyManager, EventManager, etc.)
+|  |- services/         # Application services (PartitionManager, ISOCopyManager, BCDManager)
+|  |- utils/            # Utilities (Logger, LocalizationManager, Utils, constants)
+|  |- views/            # Win32 UI (MainWindow)
+|- tests/               # Unit tests
+|- third-party/         # 7-Zip SDK
+|- lang/                # Localization files (en_us.xml, es_cr.xml)
 |- CMakeLists.txt
 |- compilar.bat
+|- .clang-format        # Code formatting configuration
 ```
 ## Credits
 Developed by **Andrey Rodríguez Araya** in 2025.
@@ -248,7 +273,7 @@ Sitio web: [Inglés](https://agsoft.co.cr/en/software-and-services/) | [Español
 - Detecta ISOs de Windows y ajusta automaticamente la configuracion de BCD; las ISOs no Windows arrancan directamente desde la particion EFI.
 - Ejecuta comprobaciones opcionales de integridad (`chkdsk`), genera bitacoras detalladas y permite cancelar o recuperar espacio.
 - Proporciona un modo no asistido para integraciones con scripts mediante argumentos de linea de comandos.
-- **Mejora ISOHASHBOOT**: Optimización de eficiencia que compara el hash MD5 del archivo ISO, el modo de arranque y el formato seleccionado contra los valores almacenados en la partición existente. Si coinciden, omite el formateo y la copia de archivos, acelerando procesos repetitivos con el mismo ISO y configuración.
+- **Caché de hash del ISO (ISOBOOTHASH)**: Compara el hash MD5 del archivo ISO, el modo de arranque y el formato seleccionado contra los valores almacenados en la partición existente. Si coinciden, omite el formateo y la copia de archivos, acelerando procesos repetitivos con el mismo ISO y configuración.
 
 ## ISOs Testeadas
 
@@ -264,8 +289,8 @@ Sitio web: [Inglés](https://agsoft.co.cr/en/software-and-services/) | [Español
 
 ## Requisitos
 - Windows 10 u 11 de 64 bits con privilegios de administrador.
+- Espacio libre minimo de 12 GB en la unidad `C:` para crear y formatear particiones (la herramienta intenta reducir ~10.5 GB).
 - PowerShell, DiskPart, bcdedit y herramientas de linea de comandos de Windows disponibles en el sistema.
-- Espacio libre minimo de 12 GB en la unidad `C:` para crear y formatear particiones.
 - Para compilacion: Visual Studio 2022 con CMake. No se requiere gestor de paquetes externo; el SDK de 7‑Zip está incluido en `third-party/`.
 
 ## Compilacion
@@ -277,21 +302,25 @@ cmake --build build --config Release
 
 El ejecutable final se ubica en `build/Release/BootThatISO!.exe`. Tambien se incluye `compilar.bat` con pasos equivalentes.
 
-Nota: El proyecto ahora utiliza el SDK de 7‑Zip (incluido) para lectura/extracción de ISOs; no se requiere vcpkg ni libarchive.
-
 ### Compilación rápida con compilar.bat (recomendado)
 ```powershell
 # En la raíz del repositorio
 ./compilar.bat
 ```
 
-Firma de código:
+#### Firma de código
 - Para omitir la firma (útil en equipos de desarrollo sin certificado):
 ```powershell
 $env:SIGN_CERT_SHA1 = "skip"
 ./compilar.bat
 ```
 - Para firmar, define `SIGN_CERT_SHA1` con la huella SHA1 de tu certificado o asegúrate de que `signtool.exe` encuentre un certificado válido en tu almacén.
+
+#### Formato de código
+El script `compilar.bat` formatea automáticamente todo el código fuente usando `clang-format` antes de compilar:
+- Formatea todos los archivos `.cpp` y `.h` en los directorios `src/`, `include/` y `tests/`
+- Utiliza el archivo de configuración `.clang-format` del proyecto
+- Si no se encuentra `clang-format`, se muestra una advertencia pero la compilación continúa
 
 ### Notas de compilación
 - En Release se vincula el runtime de MSVC de forma estática (/MT) para obtener un ejecutable autocontenido (no requiere VC++ Redistributable).
@@ -350,22 +379,41 @@ BootThatISO!.exe ^
   -mode=RAM|EXTRACT ^
   -format=NTFS|FAT32|EXFAT ^
   -chkdsk=TRUE|FALSE ^
-  -autoreboot=y|n
+  -autoreboot=y|n ^
+  -lang=en_us|es_cr
 ```
 
 - `-mode=RAM` activa el modo *Boot desde Memoria* y copia `boot.wim`/`boot.sdi`.
 - `-mode=EXTRACT` corresponde a *Instalacion Completa*.
 - `-chkdsk=TRUE` obliga la verificacion de disco (por defecto se omite).
 - `-autoreboot` esta disponible para automatizaciones futuras; actualmente solo registra la preferencia.
+- `-lang` establece el código de idioma según los archivos dentro de `lang/`.
 
 El proceso registra eventos y finaliza sin mostrar la ventana principal.
 
 ## Flujo interno resumido
 1. **Validacion y particiones** (`PartitionManager`): verifica espacio disponible, ejecuta `chkdsk` opcional, reduce `C:` ~10.5 GB, crea `ISOEFI` (500 MB FAT32) y `ISOBOOT` (10 GB) o reformatea las existentes, y expone metodos de recuperacion.
 2. **Preparacion de contenidos** (`ISOCopyManager`): lee el contenido del ISO usando el SDK de 7‑Zip (manejador ISO), clasifica si es Windows, lista el contenido, copia archivos a las unidades de destino y delega el manejo EFI a `EFIManager`.
-3. **Copia y progresos** (`FileCopyManager`/`EventManager`): notifica avance granular, permite cancelacion y actualiza bitacoras.
-4. **Configuracion de BCD** (`BCDManager` + estrategias): crea entradas WinPE (RAMDisk) o de instalacion completa, ajusta `{ramdiskoptions}` y registra comandos ejecutados.
-5. **UI Win32** (`MainWindow`): construye controles manualmente, aplica estilo, maneja comandos y expone opciones de recuperacion.
+3. **Procesamiento de Arranque** (`BootWimProcessor`): orquesta la extracción y procesamiento de boot.wim, coordina con módulos especializados:
+   - `WimMounter`: maneja operaciones DISM para montar/desmontar archivos WIM
+   - `DriverIntegrator`: integra drivers del sistema y personalizados en la imagen WIM
+   - `PecmdConfigurator`: configura entornos Hiren's BootCD PE
+   - `StartnetConfigurator`: configura entornos WinPE estándar
+   - `IniFileProcessor`: procesa archivos INI con reemplazo de letras de unidad
+   - `ProgramsIntegrator`: integra programas adicionales en el entorno de arranque
+4. **Copia y progresos** (`FileCopyManager`/`EventManager`): notifica avance granular, permite cancelacion y actualiza bitacoras.
+5. **Configuracion de BCD** (`BCDManager` + estrategias): crea entradas WinPE (RAMDisk) o de instalacion completa, ajusta `{ramdiskoptions}` y registra comandos ejecutados.
+6. **UI Win32** (`MainWindow`): construye controles manualmente, aplica estilo, maneja comandos y expone opciones de recuperacion.
+
+### Arquitectura Modular
+El proyecto sigue una arquitectura modular limpia con clara separación de responsabilidades:
+- **Patrón Facade**: `BootWimProcessor` proporciona una interfaz simple para operaciones complejas de procesamiento de arranque
+- **Patrón Strategy**: La integración de drivers usa categorías (Storage, USB, Network) para configuración flexible
+- **Patrón Observer**: `EventManager` notifica a múltiples observadores (UI, Logger) de actualizaciones de progreso
+- **Chain of Responsibility**: La integración de programas intenta múltiples estrategias de respaldo
+- **Responsabilidad Única**: Cada clase tiene un propósito claro (montar WIMs, integrar drivers, etc.)
+
+Para documentación detallada de la arquitectura, consulte `ARCHITECTURE.md`.
 
 ## Bitacoras y diagnostico
 Todas las operaciones generan archivos en `logs/` (creados junto al ejecutable). Entre los mas relevantes:
@@ -382,19 +430,35 @@ Revisa estas bitacoras al diagnosticar fallos o al compartir reportes.
 - Durante el proceso, evita cerrar la aplicacion desde el administrador de tareas; utiliza la opcion de cancelar integrada.
 - Usa el boton **Recuperar espacio** para eliminar `ISOBOOT`/`ISOEFI` y restaurar la unidad `C:` si decides revertir la configuracion.
 
+## Limitaciones
+- Opera sobre el Disco 0 y reduce la unidad C: en ~10.5 GB; otros layouts no están soportados por ahora.
+- Requiere privilegios de administrador y disponibilidad de Windows PowerShell.
+- Se requieren archivos de idioma en `lang/`; la app muestra un error si no los encuentra.
+
 ## Estructura del repositorio
 ```
 BootThatISO!/
 |- build/               # Archivos generados por CMake/Visual Studio
-|- include/             # Cabeceras compartidas (reservado)
+|- include/             # Cabeceras compartidas
+|  |- models/           # Interfaces de modelos (HashInfo, PartitionDetector, etc.)
+|  |- version.h.in      # Plantilla de versión
 |- src/
-|  |- controllers/      # Orquestacion del flujo (ProcessController)
-|  |- models/           # Estrategias de boot, manejo EFI, lectura de ISO (ISOReader), observadores
-|  |- services/         # Particionado, copiado de ISO, BCD, detecciones
-|  |- utils/            # Utilidades (exec, conversiones, constantes)
-|  |- views/            # Ventana principal y logica UI Win32
+|  |- boot/             # Coordinación de arranque (BootWimProcessor)
+|  |- wim/              # Operaciones WIM/DISM (WimMounter)
+|  |- drivers/          # Integración de drivers (DriverIntegrator)
+|  |- config/           # Configuración PE (PecmdConfigurator, StartnetConfigurator, IniFileProcessor)
+|  |- filesystem/       # Operaciones de sistema de archivos (ProgramsIntegrator)
+|  |- controllers/      # Orquestación del flujo (ProcessController, ProcessService)
+|  |- models/           # Modelos de dominio (ISOReader, FileCopyManager, EventManager, etc.)
+|  |- services/         # Servicios de aplicación (PartitionManager, ISOCopyManager, BCDManager)
+|  |- utils/            # Utilidades (Logger, LocalizationManager, Utils, constantes)
+|  |- views/            # UI Win32 (MainWindow)
+|- tests/               # Pruebas unitarias
+|- third-party/         # SDK de 7-Zip
+|- lang/                # Archivos de localización (en_us.xml, es_cr.xml)
 |- CMakeLists.txt
 |- compilar.bat
+|- .clang-format        # Configuración de formato de código
 ```
 ## Creditos
 Desarrollado por **Andrey Rodríguez Araya** en 2025.
