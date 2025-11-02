@@ -260,46 +260,19 @@ bool BootWimProcessor::mountAndProcessWim(const std::string &bootWimDest, const 
     bool isPecmdPE = (GetFileAttributesA(pecmdExe.c_str()) != INVALID_FILE_ATTRIBUTES) &&
                      (GetFileAttributesA(pecmdIni.c_str()) != INVALID_FILE_ATTRIBUTES);
     
-    // For PECMD PEs (Hiren's), extract Programs and CustomDrivers to data partition, NOT to boot.wim
+    // For PECMD PEs in RAM mode: we WILL integrate Programs into boot.wim at X:\Programs
+    // Then we'll add "subst Y: X:\" to pecmd.ini so Y:\Programs will work transparently
     if (isPecmdPE) {
-        logFile << ISOCopyManager::getTimestamp() << "PECMD PE detected, extracting Programs and CustomDrivers to data partition" << std::endl;
-        eventManager_.notifyLogUpdate("PECMD PE detectado: extrayendo Programs y CustomDrivers a particion de datos...\r\n");
-        
-        // Extract Programs to data partition
-        std::string programsDataDest = destPath + "Programs";
-        if (GetFileAttributesA(programsDataDest.c_str()) == INVALID_FILE_ATTRIBUTES) {
-            eventManager_.notifyDetailedProgress(35, 100, "Extrayendo Programs a particion de datos");
-            if (isoReader_->extractDirectory(sourcePath, "Programs", programsDataDest)) {
-                logFile << ISOCopyManager::getTimestamp() << "Programs extracted to data partition: " << programsDataDest << std::endl;
-                eventManager_.notifyLogUpdate("Programs extraido a particion de datos (Y:\\Programs).\r\n");
-            } else {
-                logFile << ISOCopyManager::getTimestamp() << "Programs directory not found in ISO or extraction failed" << std::endl;
-                eventManager_.notifyLogUpdate("Advertencia: Programs no encontrado en ISO.\r\n");
-            }
-        } else {
-            logFile << ISOCopyManager::getTimestamp() << "Programs already exists on data partition" << std::endl;
-        }
-        
-        // Extract CustomDrivers to data partition
-        std::string customDriversDataDest = destPath + "CustomDrivers";
-        if (GetFileAttributesA(customDriversDataDest.c_str()) == INVALID_FILE_ATTRIBUTES) {
-            eventManager_.notifyDetailedProgress(38, 100, "Extrayendo CustomDrivers a particion de datos");
-            if (isoReader_->extractDirectory(sourcePath, "CustomDrivers", customDriversDataDest)) {
-                logFile << ISOCopyManager::getTimestamp() << "CustomDrivers extracted to data partition: " << customDriversDataDest << std::endl;
-                eventManager_.notifyLogUpdate("CustomDrivers extraido a particion de datos (Y:\\CustomDrivers).\r\n");
-            } else {
-                logFile << ISOCopyManager::getTimestamp() << "CustomDrivers directory not found in ISO or extraction failed" << std::endl;
-                eventManager_.notifyLogUpdate("Advertencia: CustomDrivers no encontrado en ISO.\r\n");
-            }
-        } else {
-            logFile << ISOCopyManager::getTimestamp() << "CustomDrivers already exists on data partition" << std::endl;
-        }
+        logFile << ISOCopyManager::getTimestamp() 
+                << "PECMD PE detected: will integrate Programs/CustomDrivers into boot.wim and map Y: -> X:" 
+                << std::endl;
+        eventManager_.notifyLogUpdate("PECMD PE detectado: integrando contenido en boot.wim para modo RAM...\r\n");
     }
     
     if (mountCode == 0) {
-        // CRITICAL: For PECMD-based PEs like Hiren's, do NOT integrate Programs into boot.wim
-        // PECMD expects Programs to be on the Y: drive (data partition), not in the ramdisk
-        if (integratePrograms && !isPecmdPE) {
+        // CRITICAL: For PECMD-based PEs like Hiren's in RAM mode, DO integrate Programs into boot.wim
+        // We'll add "subst Y: X:\" to pecmd.ini so Y:\Programs will map to X:\Programs
+        if (integratePrograms) {
             eventManager_.notifyDetailedProgress(40, 100, "Integrando Programs en boot.wim");
             eventManager_.notifyLogUpdate("Integrando Programs en boot.wim...\r\n");
             eventManager_.notifyDetailedProgress(0, 0, "Integrando Programs en boot.wim...");
@@ -352,18 +325,11 @@ bool BootWimProcessor::mountAndProcessWim(const std::string &bootWimDest, const 
                 // If Programs is not present in source or ISO, just skip silently with an info message
                 eventManager_.notifyLogUpdate("Carpeta 'Programs' no encontrada; se omite su integracion.\r\n");
             }
-        } else if (integratePrograms && isPecmdPE) {
-            // For PECMD-based PEs (Hiren's), Programs must stay on the data partition (Y:), not in boot.wim
-            logFile << ISOCopyManager::getTimestamp() 
-                    << "PECMD PE detected: skipping Programs injection into boot.wim (Programs must be on Y: drive)" 
-                    << std::endl;
-            eventManager_.notifyLogUpdate(
-                "PECMD detectado: Programs NO se integra en boot.wim (debe estar en partición de datos Y:).\r\n");
         }
         
-        // Integrate CustomDrivers - but NOT for PECMD-based PEs
-        // For Hiren's, CustomDrivers are loaded directly from Y:\CustomDrivers by PECMD
-        if (!isPecmdPE) {
+        // Integrate CustomDrivers into boot.wim (including for PECMD PEs in RAM mode)
+        // We'll add "subst Y: X:\" to pecmd.ini so Y:\CustomDrivers will map to X:\CustomDrivers
+        {
             // NOTE: Stage drivers OUTSIDE the mounted image and let DISM publish them into the image.
             //       Keeping a raw "CustomDrivers" folder inside the image is not required and only adds size.
             std::filesystem::path customDriversStage;
@@ -450,34 +416,20 @@ bool BootWimProcessor::mountAndProcessWim(const std::string &bootWimDest, const 
         // Cleanup staging folder
         std::error_code rmStgEc; std::filesystem::remove_all(customDriversStage, rmStgEc);
     }
+        }
+        
+        // Integrate critical system drivers from the current machine
+        eventManager_.notifyDetailedProgress(47, 100, "Integrando controladores locales en boot.wim");
+        if (integrateSystemDriversIntoMountedImage(mountDir, logFile)) {
+            eventManager_.notifyLogUpdate("Controladores del sistema integrados en boot.wim.\r\n");
         } else {
-            // For PECMD-based PEs, do not integrate CustomDrivers into boot.wim
-            // PECMD loads them directly from Y:\CustomDrivers via pnputil commands in pecmd.ini
-            logFile << ISOCopyManager::getTimestamp() 
-                    << "PECMD PE detected: skipping CustomDrivers injection into boot.wim (loaded from Y: by PECMD)" 
-                    << std::endl;
             eventManager_.notifyLogUpdate(
-                "PECMD detectado: CustomDrivers NO se integra en boot.wim (PECMD los carga desde Y:\\CustomDrivers).\r\n");
+                "Advertencia: No se pudieron integrar todos los controladores locales en boot.wim.\r\n");
         }
+        eventManager_.notifyDetailedProgress(0, 0, "");
         
-        // Integrate critical system drivers from the current machine (NOT for PECMD PEs)
-        if (!isPecmdPE) {
-            eventManager_.notifyDetailedProgress(47, 100, "Integrando controladores locales en boot.wim");
-            if (integrateSystemDriversIntoMountedImage(mountDir, logFile)) {
-                eventManager_.notifyLogUpdate("Controladores del sistema integrados en boot.wim.\r\n");
-            } else {
-                eventManager_.notifyLogUpdate(
-                    "Advertencia: No se pudieron integrar todos los controladores locales en boot.wim.\r\n");
-            }
-            eventManager_.notifyDetailedProgress(0, 0, "");
-        } else {
-            logFile << ISOCopyManager::getTimestamp() 
-                    << "PECMD PE detected: skipping system drivers integration (PECMD handles drivers)" << std::endl;
-        }
-        
-        // Copy and configure .ini files (but NOT for PECMD PEs - they have their own config)
-        if (!isPecmdPE) {
-            eventManager_.notifyDetailedProgress(55, 100, "Copiando y reconfigurando archivos .ini");
+        // Copy and configure .ini files
+        eventManager_.notifyDetailedProgress(55, 100, "Copiando y reconfigurando archivos .ini");
             IniConfigurator iniConfigurator;
             // First, reconfigure any existing .ini files in the mounted boot.wim
             WIN32_FIND_DATAA findDataExisting;
@@ -567,10 +519,6 @@ bool BootWimProcessor::mountAndProcessWim(const std::string &bootWimDest, const 
 
             eventManager_.notifyLogUpdate("Archivos .ini integrados y reconfigurados en boot.wim correctamente.\r\n");
         }
-        } else {
-            logFile << ISOCopyManager::getTimestamp() 
-                    << "PECMD PE detected: skipping .ini file injection (PECMD has its own configuration)" << std::endl;
-        }
 
         // Ensure Windows\System32 exists and handle startnet.cmd content
         std::string windowsDir  = mountDir + "\\Windows";
@@ -609,8 +557,8 @@ bool BootWimProcessor::mountAndProcessWim(const std::string &bootWimDest, const 
         if (hasPecmd) {
             eventManager_.notifyLogUpdate("Hiren's BootCD PE detectado (PECMD presente).\r\n");
             
-            // For Hiren's BootCD PE: Copy HBCD_PE.ini from ISO root to DATA PARTITION ROOT (not boot.wim)
-            // LetterSwap.exe expects this file at Y:\HBCD_PE.ini (data partition root)
+            // For Hiren's BootCD PE: Copy HBCD_PE.ini from ISO root to BOOT.WIM ROOT
+            // Since we're using "subst Y: X:\", LetterSwap.exe will find it at Y:\HBCD_PE.ini (which points to X:\HBCD_PE.ini)
             std::string hbcdIniInISO = sourcePath;
             // sourcePath is the ISO path, need to check if HBCD_PE.ini exists in root
             std::vector<std::string> isoRootFiles;
@@ -631,15 +579,15 @@ bool BootWimProcessor::mountAndProcessWim(const std::string &bootWimDest, const 
             }
             
             if (foundHBCDini) {
-                // Extract to DATA PARTITION ROOT, not to boot.wim
-                std::string hbcdIniDest = destPath + "HBCD_PE.ini";
+                // Extract to BOOT.WIM ROOT (X:\HBCD_PE.ini), accessible as Y:\HBCD_PE.ini via subst
+                std::string hbcdIniDest = mountDir + "\\HBCD_PE.ini";
                 logFile << ISOCopyManager::getTimestamp() 
-                        << "Found HBCD_PE.ini in ISO root, extracting to data partition root..." << std::endl;
+                        << "Found HBCD_PE.ini in ISO root, extracting to boot.wim root..." << std::endl;
                 
                 if (isoReader_->extractFile(sourcePath, "HBCD_PE.ini", hbcdIniDest)) {
                     logFile << ISOCopyManager::getTimestamp() 
-                            << "HBCD_PE.ini copied successfully to data partition: " << hbcdIniDest << std::endl;
-                    eventManager_.notifyLogUpdate("HBCD_PE.ini extraido a particion de datos (Y:\\HBCD_PE.ini).\r\n");
+                            << "HBCD_PE.ini copied successfully to boot.wim root: " << hbcdIniDest << std::endl;
+                    eventManager_.notifyLogUpdate("HBCD_PE.ini integrado en boot.wim (accesible como Y:\\HBCD_PE.ini via subst).\r\n");
                 } else {
                     logFile << ISOCopyManager::getTimestamp() 
                             << "Failed to extract HBCD_PE.ini from ISO" << std::endl;
@@ -649,13 +597,50 @@ bool BootWimProcessor::mountAndProcessWim(const std::string &bootWimDest, const 
                         << "HBCD_PE.ini not found in ISO root (normal for some PE variants)" << std::endl;
             }
             
-            // Important: Do NOT modify startnet.cmd for Hiren's PECMD-based PE
-            // PECMD.ini handles the entire boot process automatically via winpeshl.ini
+            // For PECMD PE in RAM mode: modify pecmd.ini to map Y: -> X: using subst
+            // This allows PECMD scripts to work without changes (Y:\Programs still works)
             logFile << ISOCopyManager::getTimestamp() 
-                    << "Hiren's/PECMD PE detected: preserving startnet.cmd and pecmd.ini without modification" 
+                    << "Hiren's/PECMD PE detected in RAM mode: adding Y: -> X: drive mapping to pecmd.ini" 
                     << std::endl;
+            
+            // Read existing pecmd.ini
+            std::ifstream pecmdIn(pecmdIni, std::ios::binary);
+            std::string pecmdContent;
+            if (pecmdIn) {
+                pecmdContent.assign((std::istreambuf_iterator<char>(pecmdIn)), std::istreambuf_iterator<char>());
+                pecmdIn.close();
+                
+                // Insert SUBST Y: X:\ command at the very beginning (after first line which is usually {ENTER:...})
+                // Find the first newline
+                size_t firstNewline = pecmdContent.find('\n');
+                if (firstNewline != std::string::npos) {
+                    // Insert after the first line (ENTER line)
+                    std::string substCmd = "// BootThatISO: Map Y: to X: for RAM boot mode\r\n"
+                                          "EXEC @!X:\\Windows\\System32\\subst.exe Y: X:\\\r\n"
+                                          "WAIT 500\r\n\r\n";
+                    pecmdContent.insert(firstNewline + 1, substCmd);
+                    
+                    // Write modified pecmd.ini back
+                    std::ofstream pecmdOut(pecmdIni, std::ios::binary | std::ios::trunc);
+                    if (pecmdOut) {
+                        pecmdOut.write(pecmdContent.data(), (std::streamsize)pecmdContent.size());
+                        pecmdOut.flush();
+                        logFile << ISOCopyManager::getTimestamp() 
+                                << "Added 'subst Y: X:\\' command to pecmd.ini for RAM boot compatibility" 
+                                << std::endl;
+                        eventManager_.notifyLogUpdate("Mapeo Y: -> X: agregado a pecmd.ini para modo RAM.\r\n");
+                    }
+                } else {
+                    logFile << ISOCopyManager::getTimestamp() 
+                            << "Warning: Could not find insertion point in pecmd.ini" << std::endl;
+                }
+            } else {
+                logFile << ISOCopyManager::getTimestamp() 
+                        << "Warning: Could not read pecmd.ini for modification" << std::endl;
+            }
+            
             eventManager_.notifyLogUpdate(
-                "PECMD detectado: configuración original preservada (PECMD maneja el arranque automáticamente).\r\n");
+                "PECMD configurado para modo RAM (Y: apuntará a X:).\r\n");
         } else {
             // For non-PECMD PEs, handle startnet.cmd normally
             bool startnetExists = fileExists(startnetPath);
