@@ -3,6 +3,7 @@
 #include <wincrypt.h>
 
 #include <vector>
+#include <algorithm>
 
 std::string Utils::exec(const char *cmd) {
     HANDLE              hRead, hWrite;
@@ -171,4 +172,38 @@ std::string Utils::calculateMD5(const std::string &filePath) {
     CryptDestroyHash(hHash);
     CryptReleaseContext(hProv, 0);
     return hashStr;
+}
+
+std::string Utils::toLower(const std::string &str) {
+    std::string lower = str;
+    std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
+    return lower;
+}
+
+bool Utils::matchesPattern(const std::string &str, const std::string &pattern) {
+    // Simple wildcard matching: * matches any sequence, ? matches any single character
+    size_t strPos = 0, patternPos = 0;
+    size_t strLen = str.length(), patternLen = pattern.length();
+    size_t starPos = std::string::npos, strStarPos = std::string::npos;
+
+    while (strPos < strLen) {
+        if (patternPos < patternLen && (pattern[patternPos] == str[strPos] || pattern[patternPos] == '?')) {
+            ++strPos;
+            ++patternPos;
+        } else if (patternPos < patternLen && pattern[patternPos] == '*') {
+            starPos = patternPos++;
+            strStarPos = strPos;
+        } else if (starPos != std::string::npos) {
+            patternPos = starPos + 1;
+            strPos = ++strStarPos;
+        } else {
+            return false;
+        }
+    }
+
+    while (patternPos < patternLen && pattern[patternPos] == '*') {
+        ++patternPos;
+    }
+
+    return patternPos == patternLen;
 }

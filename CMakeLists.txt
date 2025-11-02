@@ -6,7 +6,61 @@ enable_testing()
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-add_compile_definitions(UNICODE _UNICODE)
+add_compile_definitions(UNICODE _UNICODE _7ZIP_ST)
+
+# 7z SDK (minimal subset for ISO reading)
+set(7Z_SDK_C_FILES
+    third-party/C/7zCrc.c
+)
+
+set(7Z_SDK_CPP_FILES
+    # Common utilities
+    third-party/CPP/Common/MyWindows.cpp
+    third-party/CPP/Common/MyString.cpp
+    third-party/CPP/Common/IntToString.cpp
+    third-party/CPP/Common/StringConvert.cpp
+    third-party/CPP/Common/UTFConvert.cpp
+    third-party/CPP/Common/CRC.cpp
+
+    # Windows wrappers
+    third-party/CPP/Windows/FileIO.cpp
+    third-party/CPP/Windows/FileName.cpp
+    third-party/CPP/Windows/FileFind.cpp
+    third-party/CPP/Windows/PropVariant.cpp
+    third-party/CPP/Windows/System.cpp
+    third-party/CPP/Windows/TimeUtils.cpp
+
+    # 7zip common stream helpers
+    third-party/CPP/7zip/Common/FileStreams.cpp
+    third-party/CPP/7zip/Common/StreamUtils.cpp
+
+    # Archive exports and ISO handler
+    third-party/CPP/7zip/Archive/ArchiveExports.cpp
+    third-party/CPP/7zip/Archive/Iso/IsoHandler.cpp
+    third-party/CPP/7zip/Archive/Iso/IsoHeader.cpp
+    third-party/CPP/7zip/Archive/Iso/IsoIn.cpp
+    third-party/CPP/7zip/Archive/Iso/IsoRegister.cpp
+    
+    # Our GUID definitions for 7-Zip interfaces
+    src/SevenZipGuids.cpp
+)
+
+add_library(sevenzip STATIC ${7Z_SDK_C_FILES} ${7Z_SDK_CPP_FILES})
+
+target_include_directories(sevenzip
+    PUBLIC
+        ${CMAKE_SOURCE_DIR}/third-party/CPP
+        ${CMAKE_SOURCE_DIR}/third-party/CPP/7zip
+        ${CMAKE_SOURCE_DIR}/third-party/CPP/Windows
+        ${CMAKE_SOURCE_DIR}/third-party/CPP/Common
+        ${CMAKE_SOURCE_DIR}/third-party/C
+)
+
+# Ensure sevenzip uses the same runtime as the rest (/MT for Release)
+if(MSVC)
+    target_compile_options(sevenzip PRIVATE $<$<CONFIG:Release>:/MT> $<$<CONFIG:Debug>:/MTd>)
+    set_target_properties(sevenzip PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+endif()
 
 set(SOURCE_FILES
     src/main.cpp
@@ -79,6 +133,10 @@ target_include_directories(BootThatISO
         ${CMAKE_SOURCE_DIR}/include
         ${CMAKE_SOURCE_DIR}/src
         ${CMAKE_BINARY_DIR}
+    ${CMAKE_SOURCE_DIR}/third-party/CPP
+    ${CMAKE_SOURCE_DIR}/third-party/CPP/7zip
+    ${CMAKE_SOURCE_DIR}/third-party/CPP/Windows
+    ${CMAKE_SOURCE_DIR}/third-party/CPP/Common
 )
 
 if(MSVC)
@@ -89,12 +147,7 @@ else()
 endif()
 
 # Link necessary libraries (MFC is included via CMAKE_MFC_FLAG)
-find_package(LibArchive)
-if(LibArchive_FOUND)
-    target_link_libraries(BootThatISO LibArchive::LibArchive)
-    add_compile_definitions(HAVE_LIBARCHIVE)
-endif()
-target_link_libraries(BootThatISO comctl32 gdiplus)
+target_link_libraries(BootThatISO comctl32 gdiplus sevenzip)
 
 set_target_properties(BootThatISO PROPERTIES OUTPUT_NAME "BootThatISO!")
 
@@ -193,6 +246,55 @@ endif()
 
 add_executable(test_ini_replacer test_ini_replacer.cpp)
 
+add_executable(TestISOReader
+    test_iso_reader.cpp
+    src/models/ISOReader.cpp
+    src/utils/Utils.cpp
+)
+
+target_include_directories(TestISOReader
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_BINARY_DIR}
+    ${CMAKE_SOURCE_DIR}/third-party/CPP
+    ${CMAKE_SOURCE_DIR}/third-party/CPP/7zip
+    ${CMAKE_SOURCE_DIR}/third-party/CPP/Windows
+    ${CMAKE_SOURCE_DIR}/third-party/CPP/Common
+)
+
+if(MSVC)
+    target_compile_options(TestISOReader PRIVATE /utf-8 /W4 /permissive- /EHsc /Zc:__cplusplus)
+else()
+    target_compile_options(TestISOReader PRIVATE -Wall -Wextra -Wpedantic -Wconversion -Wshadow)
+endif()
+
+target_link_libraries(TestISOReader PRIVATE sevenzip)
+
+add_executable(TestISODetection
+    test_iso_detection.cpp
+    src/models/ISOReader.cpp
+    src/utils/Utils.cpp
+)
+
+target_include_directories(TestISODetection
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_BINARY_DIR}
+    ${CMAKE_SOURCE_DIR}/third-party/CPP
+    ${CMAKE_SOURCE_DIR}/third-party/CPP/7zip
+    ${CMAKE_SOURCE_DIR}/third-party/CPP/Windows
+    ${CMAKE_SOURCE_DIR}/third-party/CPP/Common
+)
+
+if(MSVC)
+    target_compile_options(TestISODetection PRIVATE /utf-8 /W4 /permissive- /EHsc /Zc:__cplusplus)
+else()
+    target_compile_options(TestISODetection PRIVATE -Wall -Wextra -Wpedantic -Wconversion -Wshadow)
+endif()
+
+target_link_libraries(TestISODetection PRIVATE sevenzip)
 
 
 

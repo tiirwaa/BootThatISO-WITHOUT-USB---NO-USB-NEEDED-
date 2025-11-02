@@ -45,25 +45,18 @@ Website: [English](https://agsoft.co.cr/en/software-and-services/) | [Spanish](h
 - Windows 10 or 11 64-bit with administrator privileges.
 - PowerShell, DiskPart, bcdedit, and available Windows command-line tools.
 - Minimum 12 GB free space on C: drive for creating and formatting partitions.
-- For compilation: vcpkg installed and integrated (for libarchive dependency).
+- For compilation: Visual Studio 2022 with CMake. No external package manager required; the 7‑Zip SDK is vendored under `third-party/`.
 
 ## Compilation
 ```powershell
-# Install vcpkg if not already installed
-git clone https://github.com/Microsoft/vcpkg.git
-cd vcpkg
-.\bootstrap-vcpkg.bat
-.\vcpkg integrate install
-
-# Then compile the project
-cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE=C:\path\to\vcpkg\scripts\buildsystems\vcpkg.cmake
+# Configure and build (VS 2022, x64)
+cmake -S . -B build -G "Visual Studio 17 2022" -A x64
 cmake --build build --config Release
 ```
-```
-The final executable is located at `build/Release/BootThatISO!.exe`. Also included is `compilar.bat` with the same steps, assuming vcpkg is installed and integrated.
 
-**Note**: The project uses libarchive for direct ISO reading. vcpkg is used to manage this dependency. The executable is digitally signed with a development certificate to enhance trust and reduce security warnings on Windows.
-```
+The final executable is located at `build/Release/BootThatISO!.exe`. Also included is `compilar.bat` with equivalent steps.
+
+Note: The project now uses the 7‑Zip SDK (vendored) for ISO reading/extraction; no vcpkg or libarchive is required.
 
 ## Usage
 ### Graphical Interface
@@ -99,7 +92,7 @@ The process logs events and exits without showing the main window.
 
 ## Internal Flow Summary
 1. **Validation and Partitions** (`PartitionManager`): checks available space, runs optional `chkdsk`, reduces `C:` by ~10.5 GB, creates `ISOEFI` (500 MB FAT32) and `ISOBOOT` (10 GB), or reforms existing ones, and exposes recovery methods.
-2. **Content Preparation** (`ISOCopyManager`): reads ISO content directly using libarchive, classifies if Windows, lists content, copies files to target drives, and delegates EFI handling to `EFIManager`.
+2. **Content Preparation** (`ISOCopyManager`): reads ISO content using the 7‑Zip SDK (ISO handler), classifies if Windows, lists content, copies files to target drives, and delegates EFI handling to `EFIManager`.
 3. **Copying and Progress** (`FileCopyManager`/`EventManager`): notifies granular progress, allows cancellation, and updates logs.
 4. **BCD Configuration** (`BCDManager` + strategies): creates WinPE entries (RAMDisk) or full installation, adjusts `{ramdiskoptions}`, and logs executed commands.
 5. **Win32 UI** (`MainWindow`): manually builds controls, applies style, handles commands, and exposes recovery options.
@@ -138,6 +131,16 @@ Developed by **Andrey Rodríguez Araya** in 2025.
 
 ## License
 This project is under the GPL 3.0 License. See the `LICENSE` file for more details.
+
+## Third-party notices
+- 7‑Zip SDK: Portions of this product include code from the 7‑Zip SDK by Igor Pavlov.
+  - Licensing summary (per `third-party/DOC/License.txt`):
+    - Most files are licensed under the GNU LGPL (v2.1 or later).
+    - Some files are public domain where explicitly stated in headers.
+    - `CPP/7zip/Compress/LzfseDecoder.cpp` is under the BSD 3‑Clause license.
+    - `CPP/7zip/Compress/Rar*` are under GNU LGPL with the “unRAR license restriction”.
+  - We vendor a minimal subset (ISO handler and common utilities). No RAR code is used by this project.
+  - Full texts: see `third-party/DOC/License.txt`, `third-party/DOC/lzma.txt`, and `third-party/DOC/unRarLicense.txt`.
 
 ---
 
@@ -188,25 +191,18 @@ Sitio web: [Inglés](https://agsoft.co.cr/en/software-and-services/) | [Español
 - Windows 10 u 11 de 64 bits con privilegios de administrador.
 - PowerShell, DiskPart, bcdedit y herramientas de linea de comandos de Windows disponibles en el sistema.
 - Espacio libre minimo de 12 GB en la unidad `C:` para crear y formatear particiones.
-- Para compilacion: vcpkg instalado e integrado (para la dependencia de libarchive).
+- Para compilacion: Visual Studio 2022 con CMake. No se requiere gestor de paquetes externo; el SDK de 7‑Zip está incluido en `third-party/`.
 
 ## Compilacion
 ```powershell
-# Instala vcpkg si no está instalado
-git clone https://github.com/Microsoft/vcpkg.git
-cd vcpkg
-.\bootstrap-vcpkg.bat
-.\vcpkg integrate install
-
-# Luego compila el proyecto
-cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE=C:\ruta\a\vcpkg\scripts\buildsystems\vcpkg.cmake
+# Configura y compila (VS 2022, x64)
+cmake -S . -B build -G "Visual Studio 17 2022" -A x64
 cmake --build build --config Release
 ```
-```
-El ejecutable final se ubica en `build/Release/BootThatISO!.exe`. Tambien se incluye `compilar.bat` con los mismos pasos, asumiendo que vcpkg está instalado e integrado.
 
-**Nota**: El proyecto usa libarchive para lectura directa de ISOs. vcpkg se usa para gestionar esta dependencia. El ejecutable está firmado digitalmente con un certificado de desarrollo para mejorar la confianza y reducir advertencias de seguridad en Windows.
-```
+El ejecutable final se ubica en `build/Release/BootThatISO!.exe`. Tambien se incluye `compilar.bat` con pasos equivalentes.
+
+Nota: El proyecto ahora utiliza el SDK de 7‑Zip (incluido) para lectura/extracción de ISOs; no se requiere vcpkg ni libarchive.
 
 ## Uso
 ### Interfaz grafica
@@ -242,7 +238,7 @@ El proceso registra eventos y finaliza sin mostrar la ventana principal.
 
 ## Flujo interno resumido
 1. **Validacion y particiones** (`PartitionManager`): verifica espacio disponible, ejecuta `chkdsk` opcional, reduce `C:` ~10.5 GB, crea `ISOEFI` (500 MB FAT32) y `ISOBOOT` (10 GB) o reformatea las existentes, y expone metodos de recuperacion.
-2. **Preparacion de contenidos** (`ISOCopyManager`): lee el contenido del ISO directamente usando libarchive, clasifica si es Windows, lista el contenido, copia archivos a las unidades de destino y delega el manejo EFI a `EFIManager`.
+2. **Preparacion de contenidos** (`ISOCopyManager`): lee el contenido del ISO usando el SDK de 7‑Zip (manejador ISO), clasifica si es Windows, lista el contenido, copia archivos a las unidades de destino y delega el manejo EFI a `EFIManager`.
 3. **Copia y progresos** (`FileCopyManager`/`EventManager`): notifica avance granular, permite cancelacion y actualiza bitacoras.
 4. **Configuracion de BCD** (`BCDManager` + estrategias): crea entradas WinPE (RAMDisk) o de instalacion completa, ajusta `{ramdiskoptions}` y registra comandos ejecutados.
 5. **UI Win32** (`MainWindow`): construye controles manualmente, aplica estilo, maneja comandos y expone opciones de recuperacion.
@@ -281,3 +277,13 @@ Desarrollado por **Andrey Rodríguez Araya** en 2025.
 
 ## Licencia
 Este proyecto está bajo la Licencia GPL 3.0. Ver el archivo `LICENSE` para más detalles.
+
+## Avisos de terceros
+- SDK de 7‑Zip: Este producto incluye partes del SDK de 7‑Zip de Igor Pavlov.
+  - Resumen de licenciamiento (según `third-party/DOC/License.txt`):
+    - La mayoría de los archivos están bajo GNU LGPL (v2.1 o posterior).
+    - Algunos archivos son de dominio público cuando así se indica en sus cabeceras.
+    - `CPP/7zip/Compress/LzfseDecoder.cpp` usa la licencia BSD de 3 cláusulas.
+    - `CPP/7zip/Compress/Rar*` están bajo GNU LGPL con la “restricción de licencia unRAR”.
+  - Incluimos un subconjunto mínimo (manejador ISO y utilidades comunes). Este proyecto no utiliza código RAR.
+  - Textos completos: ver `third-party/DOC/License.txt`, `third-party/DOC/lzma.txt` y `third-party/DOC/unRarLicense.txt`.

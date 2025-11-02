@@ -223,7 +223,34 @@ bool ISOCopyManager::extractISOContents(EventManager &eventManager, const std::s
     eventManager.notifyLogUpdate("Analizando contenido del ISO...\r\n");
 
     // Check if it's Windows ISO
-    bool isWindowsISO = isoReader->fileExists(isoPath, "sources/install.wim") || isoReader->fileExists(isoPath, "sources/install.esd") || isoReader->fileExists(isoPath, "sources/boot.wim");
+    bool isWindowsISO = false;
+    bool hasSourcesDir = false;
+    bool hasSetupExe = false;
+    bool hasBootMgr = false;
+    
+    for (const auto &file : files) {
+        std::string lower = Utils::toLower(file);
+        if (lower.find("boot.wim") != std::string::npos || lower.find("install.wim") != std::string::npos || lower.find("install.esd") != std::string::npos) {
+            isWindowsISO = true;
+            break;
+        }
+        if (lower.find("sources/") == 0 || lower == "sources") {
+            hasSourcesDir = true;
+        }
+        if (lower.find("setup.exe") != std::string::npos) {
+            hasSetupExe = true;
+        }
+        if (lower.find("bootmgr") != std::string::npos) {
+            hasBootMgr = true;
+        }
+    }
+    
+    // Heuristic: If we have sources directory and setup.exe, it's likely a Windows ISO
+    // even if we can't read the UDF part with boot.wim/install.wim
+    if (!isWindowsISO && hasSourcesDir && hasSetupExe) {
+        isWindowsISO = true;
+        logFile << getTimestamp() << "Windows ISO detected via heuristic (sources + setup.exe)" << std::endl;
+    }
     logFile << getTimestamp() << "Is Windows ISO: " << (isWindowsISO ? "Yes" : "No") << std::endl;
 
     if (isWindowsISO) {
@@ -301,11 +328,14 @@ bool ISOCopyManager::extractISOContents(EventManager &eventManager, const std::s
     }
     logFile.close();
 
-    // Write the current ISO hash, mode and format to the file
-    hashVerifier->saveHashInfo(hashFilePath, Utils::calculateMD5(isoPath), mode, format);
+    bool overallSuccess = efiSuccess && bootWimSuccess;
+    if (overallSuccess) {
+        // Write the current ISO hash, mode and format to the file
+        hashVerifier->saveHashInfo(hashFilePath, Utils::calculateMD5(isoPath), mode, format);
+    }
 
     eventManager.notifyDetailedProgress(100, 100, "");
-    return efiSuccess && bootWimSuccess;
+    return overallSuccess;
 }
 
 bool ISOCopyManager::copyISOFile(EventManager &eventManager, const std::string &isoPath, const std::string &destPath) {

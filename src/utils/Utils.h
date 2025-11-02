@@ -12,6 +12,8 @@ std::wstring utf8_to_wstring(const std::string &utf8);
 std::string  wstring_to_utf8(const std::wstring &wstr);
 std::string  ansi_to_utf8(const std::string &ansi);
 std::string  calculateMD5(const std::string &filePath);
+std::string  toLower(const std::string &str);
+bool matchesPattern(const std::string &str, const std::string &pattern);
 } // namespace Utils
 
 #endif // UTILS_H
