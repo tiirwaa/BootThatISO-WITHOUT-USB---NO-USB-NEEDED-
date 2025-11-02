@@ -127,7 +127,7 @@ bool EFIManager::extractBootFilesFromWIM(const std::string &sourcePath, const st
     }
 
     // Determine preferred index to mount (prefer Windows Setup image when present)
-    int         preferredIndex = 1;
+    int preferredIndex = 1;
     {
         std::string infoCmd    = "dism /Get-WimInfo /WimFile:\"" + bootWimPath + "\"";
         std::string infoOutput = exec(infoCmd.c_str(), &eventManager);
@@ -136,32 +136,44 @@ bool EFIManager::extractBootFilesFromWIM(const std::string &sourcePath, const st
             // normalize a couple of common accents used in Spanish output
             for (char &c : s) {
                 unsigned char uc = (unsigned char)c;
-                if (uc == 0xED || uc == 0xCD) c = 'i'; // í / Í
-                if (uc == 0xF3 || uc == 0xD3) c = 'o'; // ó / Ó
+                if (uc == 0xED || uc == 0xCD)
+                    c = 'i'; // í / Í
+                if (uc == 0xF3 || uc == 0xD3)
+                    c = 'o'; // ó / Ó
             }
             return s;
         };
 
-        std::string low = lowerize(infoOutput);
-        int         count = 0; size_t p = 0;
-        while ((p = low.find("index :", p)) != std::string::npos) { count++; p += 7; }
+        std::string low   = lowerize(infoOutput);
+        int         count = 0;
+        size_t      p     = 0;
+        while ((p = low.find("index :", p)) != std::string::npos) {
+            count++;
+            p += 7;
+        }
         // Try to find a block that mentions setup/instalacion
         int upperBound = (count > 2 ? count : 2);
         for (int cand = 1; cand <= upperBound; ++cand) {
             std::string marker = lowerize("Index : " + std::to_string(cand));
             size_t      s      = low.find(marker);
-            if (s == std::string::npos) continue;
-            size_t      e      = low.find("index :", s + marker.size());
-            std::string block  = low.substr(s, e == std::string::npos ? std::string::npos : e - s);
-            bool        isSetup = (block.find("setup") != std::string::npos) ||
-                                  (block.find("instalacion") != std::string::npos);
-            if (isSetup) { preferredIndex = cand; break; }
-            if (cand == 2 && count >= 2) preferredIndex = 2; // sensible default
+            if (s == std::string::npos)
+                continue;
+            size_t      e     = low.find("index :", s + marker.size());
+            std::string block = low.substr(s, e == std::string::npos ? std::string::npos : e - s);
+            bool        isSetup =
+                (block.find("setup") != std::string::npos) || (block.find("instalacion") != std::string::npos);
+            if (isSetup) {
+                preferredIndex = cand;
+                break;
+            }
+            if (cand == 2 && count >= 2)
+                preferredIndex = 2; // sensible default
         }
         logFile << getTimestamp() << "WIM index selected for EFI extraction: " << preferredIndex << std::endl;
     }
 
-    std::string mountCmd = "cmd /c dism /Mount-Wim /WimFile:\"" + bootWimPath + "\" /index:" + std::to_string(preferredIndex) + " /MountDir:\"" +
+    std::string mountCmd = "cmd /c dism /Mount-Wim /WimFile:\"" + bootWimPath +
+                           "\" /index:" + std::to_string(preferredIndex) + " /MountDir:\"" +
                            tempDir.substr(0, tempDir.size() - 1) + "\" /ReadOnly";
     logFile << getTimestamp() << "Mount command: " << mountCmd << std::endl;
     std::string mountResult     = exec(mountCmd.c_str(), &eventManager);
@@ -576,12 +588,12 @@ bool EFIManager::ensureSecureBootCompatibleBootloader(const std::string &espPath
 
     if (sysAttrs != INVALID_FILE_ATTRIBUTES) {
         // Ensure destination directory exists (create nested folders if needed)
-        std::string destDir = espPath + "EFI\\Microsoft\\Boot";
+        std::string     destDir = espPath + "EFI\\Microsoft\\Boot";
         std::error_code dirEc;
         std::filesystem::create_directories(destDir, dirEc);
         if (dirEc) {
-            logFile << getTimestamp() << "Failed to create destination directory " << destDir
-                    << " (error " << dirEc.value() << ")" << std::endl;
+            logFile << getTimestamp() << "Failed to create destination directory " << destDir << " (error "
+                    << dirEc.value() << ")" << std::endl;
             // Continue anyway; CopyFileW will fail and we will report GetLastError below.
         }
 

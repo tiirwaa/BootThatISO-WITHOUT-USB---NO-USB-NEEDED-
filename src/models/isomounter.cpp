@@ -21,7 +21,7 @@ const char *ISOMounter::getTimestamp() {
 }
 
 bool ISOMounter::mountISO(const std::string &isoPath, std::string &driveLetter) {
-    std::string logPath = Utils::getExeDirectory() + "logs\\iso_mount.log";
+    std::string   logPath = Utils::getExeDirectory() + "logs\\iso_mount.log";
     std::ofstream logFile(logPath.c_str(), std::ios::app);
     logFile << getTimestamp() << "Mounting ISO: " << isoPath << std::endl;
 
@@ -100,7 +100,7 @@ bool ISOMounter::unmountISO(const std::string &isoPath) {
     }
 
     // Log the failure details to a separate log for easier debugging
-    std::string logPath = Utils::getExeDirectory() + "logs\\iso_mount.log";
+    std::string   logPath = Utils::getExeDirectory() + "logs\\iso_mount.log";
     std::ofstream f(logPath.c_str(), std::ios::app);
     f << getTimestamp() << "Warning: Failed to unmount ISO. Primary result: '''" << result << "''' Fallback result: '''"
       << fallbackResult << "'''" << std::endl;
