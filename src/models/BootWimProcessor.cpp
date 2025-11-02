@@ -609,8 +609,8 @@ bool BootWimProcessor::mountAndProcessWim(const std::string &bootWimDest, const 
         if (hasPecmd) {
             eventManager_.notifyLogUpdate("Hiren's BootCD PE detectado (PECMD presente).\r\n");
             
-            // For Hiren's BootCD PE: Copy HBCD_PE.ini from ISO root to System32 if it exists
-            // This file is used by LetterSwap.exe to map the data partition to Y:
+            // For Hiren's BootCD PE: Copy HBCD_PE.ini from ISO root to DATA PARTITION ROOT (not boot.wim)
+            // LetterSwap.exe expects this file at Y:\HBCD_PE.ini (data partition root)
             std::string hbcdIniInISO = sourcePath;
             // sourcePath is the ISO path, need to check if HBCD_PE.ini exists in root
             std::vector<std::string> isoRootFiles;
@@ -631,14 +631,15 @@ bool BootWimProcessor::mountAndProcessWim(const std::string &bootWimDest, const 
             }
             
             if (foundHBCDini) {
-                std::string hbcdIniDest = system32DirPath + "\\HBCD_PE.ini";
+                // Extract to DATA PARTITION ROOT, not to boot.wim
+                std::string hbcdIniDest = destPath + "HBCD_PE.ini";
                 logFile << ISOCopyManager::getTimestamp() 
-                        << "Found HBCD_PE.ini in ISO root, extracting to System32..." << std::endl;
+                        << "Found HBCD_PE.ini in ISO root, extracting to data partition root..." << std::endl;
                 
                 if (isoReader_->extractFile(sourcePath, "HBCD_PE.ini", hbcdIniDest)) {
                     logFile << ISOCopyManager::getTimestamp() 
-                            << "HBCD_PE.ini copied successfully to " << hbcdIniDest << std::endl;
-                    eventManager_.notifyLogUpdate("HBCD_PE.ini integrado en boot.wim para configuración de letra Y:.\r\n");
+                            << "HBCD_PE.ini copied successfully to data partition: " << hbcdIniDest << std::endl;
+                    eventManager_.notifyLogUpdate("HBCD_PE.ini extraido a particion de datos (Y:\\HBCD_PE.ini).\r\n");
                 } else {
                     logFile << ISOCopyManager::getTimestamp() 
                             << "Failed to extract HBCD_PE.ini from ISO" << std::endl;
