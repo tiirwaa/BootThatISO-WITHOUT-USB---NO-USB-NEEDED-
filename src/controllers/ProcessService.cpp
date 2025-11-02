@@ -2,6 +2,7 @@
 #include "../utils/Utils.h"
 #include "../utils/AppKeys.h"
 #include "../../include/models/HashInfo.h"
+#include "../models/ISOReader.h"
 #include <fstream>
 #include "../utils/constants.h"
 
@@ -102,10 +103,21 @@ bool ProcessService::copyISO(const std::string &isoPath, const std::string &dest
     std::string drive         = destPath;
     std::string espDriveLocal = espPath;
 
+    // Pre-detect if this is a Windows ISO by checking for sources/boot.wim or sources/install.wim
+    ISOReader tempReader;
+    bool isWindowsISO = tempReader.fileExists(isoPath, "sources/boot.wim") || 
+                        tempReader.fileExists(isoPath, "sources/install.wim") ||
+                        tempReader.fileExists(isoPath, "sources/install.esd");
+
     if (modeKey == AppKeys::BootModeRam) {
-        // In RAM mode, we don't copy install.wim separately - the selected edition will be injected into boot.wim
-        if (isoCopyManager->extractISOContents(eventManager, isoPath, drive, espDriveLocal, false, true, false, modeKey,
-                                               format)) {
+        // In RAM mode:
+        // - Windows ISOs: Don't copy install.wim separately, extract boot.wim for injection
+        // - Non-Windows ISOs: Just extract all content, no boot.wim processing needed
+        bool extractBootWim = isWindowsISO;  // Only extract boot.wim for Windows ISOs
+        bool extractContent = !isWindowsISO; // Extract full content only for non-Windows ISOs
+        
+        if (isoCopyManager->extractISOContents(eventManager, isoPath, drive, espDriveLocal, extractContent, 
+                                               extractBootWim, false, modeKey, format)) {
             return true;
         }
     } else {

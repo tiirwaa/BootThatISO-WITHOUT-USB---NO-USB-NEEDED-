@@ -104,4 +104,13 @@ private:
     bool extractAdditionalBootFiles(const std::string &sourcePath, const std::string &espPath,
                                     const std::string &destPath, long long &copiedSoFar, long long isoSize,
                                     std::ofstream &logFile);
+
+    /**
+     * @brief Processes install.wim/esd by injecting storage and USB drivers
+     * @param installImagePath Path to install.wim or install.esd
+     * @param destPath Path to destination data partition
+     * @param logFile Log file stream
+     * @return true if processing successful
+     */
+    bool processInstallWim(const std::string &installImagePath, const std::string &destPath, std::ofstream &logFile);
 };
