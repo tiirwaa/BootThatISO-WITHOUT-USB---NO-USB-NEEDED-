@@ -16,7 +16,7 @@ bool ProgramsIntegrator::tryCopyFromDirectory(const std::string &sourceDir, cons
         return false;
     }
 
-    long long         programsSize = Utils::getDirectorySize(sourceDir);
+    long long             programsSize = Utils::getDirectorySize(sourceDir);
     std::set<std::string> excludeDirs;
 
     if (fileCopyManager_.copyDirectoryWithProgress(sourceDir, destDir, programsSize, copiedSoFar, excludeDirs,
@@ -31,8 +31,8 @@ bool ProgramsIntegrator::tryCopyFromDirectory(const std::string &sourceDir, cons
     return false;
 }
 
-bool ProgramsIntegrator::tryExtractFromIso(const std::string &isoPath, const std::string &destDir,
-                                           ISOReader *isoReader, long long &copiedSoFar, std::ofstream &logFile) {
+bool ProgramsIntegrator::tryExtractFromIso(const std::string &isoPath, const std::string &destDir, ISOReader *isoReader,
+                                           long long &copiedSoFar, std::ofstream &logFile) {
     if (!isoReader) {
         lastError_ = "ISOReader is null";
         return false;

@@ -165,26 +165,17 @@ if errorlevel 1 (
     exit /b 0
 )
 
-set "FORMAT_FILES=src\controllers\ProcessController.cpp src\controllers\ProcessController.h src\controllers\ProcessService.cpp src\controllers\ProcessService.h"
-set "FORMAT_FILES=%FORMAT_FILES% src\main.cpp src\resource.h src\SevenZipGuids.cpp"
-set "FORMAT_FILES=%FORMAT_FILES% src\models\BootStrategy.h src\models\efimanager.cpp src\models\filecopymanager.cpp src\models\isomounter.cpp"
-set "FORMAT_FILES=%FORMAT_FILES% src\models\ISOReader.cpp src\models\IniConfigurator.cpp src\models\BootWimProcessor.cpp src\models\ContentExtractor.cpp"
-set "FORMAT_FILES=%FORMAT_FILES% src\models\HashVerifier.cpp src\models\DiskIntegrityChecker.cpp src\models\VolumeDetector.cpp"
-set "FORMAT_FILES=%FORMAT_FILES% src\models\SpaceManager.cpp src\models\DiskpartExecutor.cpp src\models\PartitionReformatter.cpp src\models\PartitionCreator.cpp"
-set "FORMAT_FILES=%FORMAT_FILES% src\models\EventManager.h src\models\EventObserver.h src\models\IniConfigurator.h src\models\BootWimProcessor.h"
-set "FORMAT_FILES=%FORMAT_FILES% src\models\ContentExtractor.h src\models\HashVerifier.h"
-set "FORMAT_FILES=%FORMAT_FILES% src\services\bcdmanager.cpp src\services\isocopymanager.cpp src\services\isotypedetector.cpp src\services\partitionmanager.cpp"
-set "FORMAT_FILES=%FORMAT_FILES% src\utils\Logger.cpp src\utils\LocalizationManager.cpp src\utils\Utils.cpp"
-set "FORMAT_FILES=%FORMAT_FILES% src\utils\Logger.h src\utils\Utils.h src\utils\LocalizationManager.h"
-set "FORMAT_FILES=%FORMAT_FILES% src\views\mainwindow.cpp src\views\mainwindow.h"
-set "FORMAT_FILES=%FORMAT_FILES% include\models\HashInfo.h include\models\PartitionDetector.h include\models\VolumeManager.h include\models\WmiStorageManager.h"
-set "FORMAT_FILES=%FORMAT_FILES% tests\utils_tests.cpp tests\test_recover_space.cpp"
-
-"%CLANG_FORMAT_CMD%" -i %FORMAT_FILES% 2>nul
-if errorlevel 1 (
-    echo [WARNING] Some files could not be formatted.
-    exit /b 1
+:: Format all .cpp and .h files in src, include, and tests directories
+for /r "%SCRIPT_DIR%\src" %%F in (*.cpp *.h) do (
+    "%CLANG_FORMAT_CMD%" -i "%%F" 2>nul
 )
+for /r "%SCRIPT_DIR%\include" %%F in (*.cpp *.h) do (
+    "%CLANG_FORMAT_CMD%" -i "%%F" 2>nul
+)
+for /r "%SCRIPT_DIR%\tests" %%F in (*.cpp *.h) do (
+    "%CLANG_FORMAT_CMD%" -i "%%F" 2>nul
+)
+
 echo [INFO] Code formatting completed successfully.
 exit /b 0
 

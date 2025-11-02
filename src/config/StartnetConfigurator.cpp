@@ -12,7 +12,7 @@ std::string StartnetConfigurator::getStartnetPath(const std::string &mountDir) {
 }
 
 bool StartnetConfigurator::ensureSystem32Exists(const std::string &mountDir) {
-    std::string windowsDir = mountDir + "\\Windows";
+    std::string windowsDir  = mountDir + "\\Windows";
     std::string system32Dir = windowsDir + "\\System32";
 
     CreateDirectoryA(windowsDir.c_str(), NULL);

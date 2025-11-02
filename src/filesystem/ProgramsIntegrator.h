@@ -10,12 +10,12 @@ class ISOReader;
 
 /**
  * @brief Handles integration of Programs directory into mounted WIM images.
- * 
+ *
  * Responsible for:
  * - Copying Programs from various sources (disk, ISO)
  * - Managing Programs directory in WIM for RAM boot
  * - Providing progress feedback during integration
- * 
+ *
  * Follows Single Responsibility Principle for Programs integration.
  */
 class ProgramsIntegrator {
@@ -42,15 +42,16 @@ public:
      * @return true if integration successful
      */
     bool integratePrograms(const std::string &mountDir, const std::string &programsSource,
-                           const std::string &fallbackProgramsSource, const std::string &isoPath,
-                           ISOReader *isoReader, long long &copiedSoFar, std::ofstream &logFile,
-                           ProgressCallback progressCallback = nullptr);
+                           const std::string &fallbackProgramsSource, const std::string &isoPath, ISOReader *isoReader,
+                           long long &copiedSoFar, std::ofstream &logFile, ProgressCallback progressCallback = nullptr);
 
     /**
      * @brief Gets the last error message
      * @return Error message string
      */
-    std::string getLastError() const { return lastError_; }
+    std::string getLastError() const {
+        return lastError_;
+    }
 
 private:
     FileCopyManager &fileCopyManager_;

@@ -67,8 +67,7 @@ bool BootWimProcessor::extractBootFiles(const std::string &sourcePath, const std
         eventManager_.notifyDetailedProgress(0, 0, "Copiando boot.sdi...");
 
         if (isoReader_->extractFile(sourcePath, "boot/boot.sdi", bootSdiDest)) {
-            logFile << ISOCopyManager::getTimestamp() << "boot.sdi copied successfully to " << bootSdiDest
-                    << std::endl;
+            logFile << ISOCopyManager::getTimestamp() << "boot.sdi copied successfully to " << bootSdiDest << std::endl;
             eventManager_.notifyLogUpdate("boot.sdi copiado correctamente.\r\n");
         } else {
             logFile << ISOCopyManager::getTimestamp() << "Failed to copy boot.sdi" << std::endl;
@@ -78,8 +77,8 @@ bool BootWimProcessor::extractBootFiles(const std::string &sourcePath, const std
         eventManager_.notifyDetailedProgress(0, 0, "");
     } else {
         // Fallback to system boot.sdi
-        logFile << ISOCopyManager::getTimestamp()
-                << "boot.sdi not found inside ISO; attempting system fallback" << std::endl;
+        logFile << ISOCopyManager::getTimestamp() << "boot.sdi not found inside ISO; attempting system fallback"
+                << std::endl;
         std::vector<std::string> systemSdiCandidates = {std::string("C:\\Windows\\Boot\\DVD\\EFI\\boot.sdi"),
                                                         std::string("C:\\Windows\\Boot\\PCAT\\boot.sdi"),
                                                         std::string("C:\\Windows\\Boot\\EFI\\boot.sdi")};
@@ -163,8 +162,8 @@ bool BootWimProcessor::mountAndProcessWim(const std::string &bootWimDest, const 
         auto programsProgress = [this](const std::string &msg) { eventManager_.notifyLogUpdate(msg + "\r\n"); };
 
         std::string fallbackProgramsSrc = destPath + "Programs";
-        programsIntegrator_->integratePrograms(mountDir, programsSrc, fallbackProgramsSrc, sourcePath,
-                                               isoReader_.get(), copiedSoFar, logFile, programsProgress);
+        programsIntegrator_->integratePrograms(mountDir, programsSrc, fallbackProgramsSrc, sourcePath, isoReader_.get(),
+                                               copiedSoFar, logFile, programsProgress);
     }
 
     // Integrate CustomDrivers
@@ -178,7 +177,7 @@ bool BootWimProcessor::mountAndProcessWim(const std::string &bootWimDest, const 
         // Try extracting from ISO
         try {
             std::filesystem::path tempDir = std::filesystem::temp_directory_path() / "EasyISOBoot_CustomDrivers";
-            std::string tempCustomDrivers = tempDir.string();
+            std::string           tempCustomDrivers = tempDir.string();
             if (isoReader_->extractDirectory(sourcePath, "CustomDrivers", tempCustomDrivers)) {
                 driverIntegrator_->integrateCustomDrivers(mountDir, tempCustomDrivers, logFile, driverProgress);
                 std::error_code ec;
@@ -191,8 +190,7 @@ bool BootWimProcessor::mountAndProcessWim(const std::string &bootWimDest, const 
 
     // Integrate system drivers
     eventManager_.notifyDetailedProgress(47, 100, "Integrando controladores locales en boot.wim");
-    driverIntegrator_->integrateSystemDrivers(mountDir, DriverIntegrator::DriverCategory::All, logFile,
-                                              driverProgress);
+    driverIntegrator_->integrateSystemDrivers(mountDir, DriverIntegrator::DriverCategory::All, logFile, driverProgress);
     eventManager_.notifyLogUpdate(driverIntegrator_->getIntegrationStats() + "\r\n");
 
     // Configure PECMD or startnet.cmd
@@ -262,8 +260,8 @@ bool BootWimProcessor::processBootWim(const std::string &sourcePath, const std::
 
     // Skip install.wim injection in RAM mode
     if (copyInstallWim) {
-        logFile << ISOCopyManager::getTimestamp()
-                << "Skipping install.* injection; will use on-disk install image." << std::endl;
+        logFile << ISOCopyManager::getTimestamp() << "Skipping install.* injection; will use on-disk install image."
+                << std::endl;
         eventManager_.notifyLogUpdate(
             "Omitiendo la inyección de install.* en boot.wim; se usará la imagen desde disco.\r\n");
     }

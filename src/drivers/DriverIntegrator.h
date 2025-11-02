@@ -6,12 +6,12 @@
 
 /**
  * @brief Handles driver integration into mounted WIM images.
- * 
+ *
  * Responsible for:
  * - Staging and integrating local system drivers (storage, USB, network)
  * - Integrating custom drivers from CustomDrivers folder
  * - Filtering and categorizing drivers by type
- * 
+ *
  * Follows Single Responsibility Principle and Strategy Pattern for driver selection.
  */
 class DriverIntegrator {
@@ -67,7 +67,9 @@ public:
      * @brief Gets the last error message
      * @return Error message string
      */
-    std::string getLastError() const { return lastError_; }
+    std::string getLastError() const {
+        return lastError_;
+    }
 
     /**
      * @brief Gets statistics about integrated drivers

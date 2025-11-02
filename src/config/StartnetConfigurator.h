@@ -4,13 +4,13 @@
 
 /**
  * @brief Handles startnet.cmd configuration for WinPE boot environments.
- * 
+ *
  * Responsible for:
  * - Detecting existing startnet.cmd
  * - Creating minimal startnet.cmd for standard WinPE
  * - Preserving custom startnet.cmd scripts
  * - Ensuring proper WinPE initialization
- * 
+ *
  * Follows Single Responsibility Principle for startnet.cmd management.
  */
 class StartnetConfigurator {
@@ -45,7 +45,9 @@ public:
      * @brief Gets the last error message
      * @return Error message string
      */
-    std::string getLastError() const { return lastError_; }
+    std::string getLastError() const {
+        return lastError_;
+    }
 
 private:
     std::string lastError_;

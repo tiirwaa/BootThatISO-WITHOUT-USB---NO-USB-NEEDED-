@@ -4,7 +4,7 @@
 
 /**
  * @brief Encapsulates WIM mounting and unmounting operations using DISM.
- * 
+ *
  * Follows Single Responsibility Principle - handles only WIM image mounting/unmounting.
  * Thread-safe for sequential operations on the same mount directory.
  */
@@ -74,7 +74,9 @@ public:
      * @brief Gets the last DISM error message
      * @return Error message string
      */
-    std::string getLastError() const { return lastError_; }
+    std::string getLastError() const {
+        return lastError_;
+    }
 
 private:
     std::string lastError_;

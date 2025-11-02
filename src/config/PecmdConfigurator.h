@@ -4,13 +4,13 @@
 
 /**
  * @brief Handles detection and configuration of PECMD-based PE environments (like Hiren's BootCD PE).
- * 
+ *
  * Responsible for:
  * - Detecting PECMD presence (pecmd.exe and pecmd.ini)
  * - Configuring PECMD for RAM boot mode (subst Y: X:\)
  * - Extracting and placing HBCD_PE.ini for LetterSwap compatibility
  * - Preserving PECMD scripts integrity
- * 
+ *
  * Follows Single Responsibility Principle for PECMD-specific configuration.
  */
 class PecmdConfigurator {
@@ -48,7 +48,9 @@ public:
      * @brief Gets the last error message
      * @return Error message string
      */
-    std::string getLastError() const { return lastError_; }
+    std::string getLastError() const {
+        return lastError_;
+    }
 
     /**
      * @brief Checks if Programs directory exists in mount

@@ -20,10 +20,12 @@ public:
     bool extractFile(const std::string &isoPath, const std::string &filePathInISO, const std::string &destPath);
 
     // Extract multiple files
-    bool extractFiles(const std::string &isoPath, const std::vector<std::string> &filesInISO, const std::string &destDir);
+    bool extractFiles(const std::string &isoPath, const std::vector<std::string> &filesInISO,
+                      const std::string &destDir);
 
     // Extract all files to destDir, with optional exclude patterns
-    bool extractAll(const std::string &isoPath, const std::string &destDir, const std::vector<std::string> &excludePatterns = {});
+    bool extractAll(const std::string &isoPath, const std::string &destDir,
+                    const std::vector<std::string> &excludePatterns = {});
 
     // Extract a directory from ISO to destination
     bool extractDirectory(const std::string &isoPath, const std::string &dirPathInISO, const std::string &destDir);

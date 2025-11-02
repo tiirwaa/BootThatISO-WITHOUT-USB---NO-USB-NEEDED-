@@ -17,7 +17,7 @@ class IniConfigurator;
 
 /**
  * @brief Orchestrates the processing of boot.wim for Windows PE boot environments.
- * 
+ *
  * This is a high-level coordinator that delegates specific responsibilities to specialized classes:
  * - WimMounter: Mounting/unmounting WIM images
  * - DriverIntegrator: Integrating system and custom drivers
@@ -25,7 +25,7 @@ class IniConfigurator;
  * - StartnetConfigurator: Managing startnet.cmd
  * - ProgramsIntegrator: Integrating Programs directory
  * - IniFileProcessor: Processing INI configuration files
- * 
+ *
  * Follows Facade Pattern and Single Responsibility Principle.
  * This class coordinates the workflow but delegates implementation details.
  */

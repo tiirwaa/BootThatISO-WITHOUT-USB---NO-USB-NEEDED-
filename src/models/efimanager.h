@@ -18,8 +18,8 @@ public:
                                  long long &copiedSoFar, long long isoSize);
 
 private:
-    EventManager    &eventManager;
-    FileCopyManager &fileCopyManager;
+    EventManager              &eventManager;
+    FileCopyManager           &fileCopyManager;
     std::unique_ptr<ISOReader> isoReader_;
 
     // Helper methods

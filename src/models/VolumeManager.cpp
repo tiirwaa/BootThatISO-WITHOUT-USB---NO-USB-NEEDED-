@@ -52,7 +52,8 @@ bool VolumeManager::formatVolume(const std::string &volumeLabel, const std::stri
     si.dwFlags     = STARTF_USESHOWWINDOW;
     si.wShowWindow = SW_HIDE;
 
-    if (!CreateProcessA(NULL, const_cast<char *>(cmd.c_str()), NULL, NULL, FALSE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) {
+    if (!CreateProcessA(NULL, const_cast<char *>(cmd.c_str()), NULL, NULL, FALSE, CREATE_NO_WINDOW, NULL, NULL, &si,
+                        &pi)) {
         errorMsg = "Failed to start format process";
         return false;
     }

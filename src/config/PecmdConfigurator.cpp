@@ -90,8 +90,8 @@ bool PecmdConfigurator::configurePecmdForRamBoot(const std::string &mountDir, st
     return addSubstCommandToPecmdIni(pecmdIni, logFile);
 }
 
-bool PecmdConfigurator::extractHbcdIni(const std::string &isoPath, const std::string &mountDir,
-                                       ISOReader *isoReader, std::ofstream &logFile) {
+bool PecmdConfigurator::extractHbcdIni(const std::string &isoPath, const std::string &mountDir, ISOReader *isoReader,
+                                       std::ofstream &logFile) {
     if (!isoReader) {
         lastError_ = "ISOReader is null";
         return false;
@@ -114,8 +114,8 @@ bool PecmdConfigurator::extractHbcdIni(const std::string &isoPath, const std::st
     }
 
     if (!foundHBCDini) {
-        logFile << ISOCopyManager::getTimestamp()
-                << "HBCD_PE.ini not found in ISO root (normal for some PE variants)" << std::endl;
+        logFile << ISOCopyManager::getTimestamp() << "HBCD_PE.ini not found in ISO root (normal for some PE variants)"
+                << std::endl;
         return true; // Not an error
     }
 

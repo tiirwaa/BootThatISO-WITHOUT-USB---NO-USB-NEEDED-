@@ -25,8 +25,7 @@ int IniFileProcessor::reconfigureExistingIniFiles(const std::string &mountDir, c
         std::string iniPath = mountDir + "\\" + iniName;
 
         iniConfigurator_.configureIniFile(iniPath, driveLetter);
-        logFile << ISOCopyManager::getTimestamp() << "Existing " << iniName << " in boot.wim reconfigured"
-                << std::endl;
+        logFile << ISOCopyManager::getTimestamp() << "Existing " << iniName << " in boot.wim reconfigured" << std::endl;
         count++;
     } while (FindNextFileA(hFind, &findData));
 

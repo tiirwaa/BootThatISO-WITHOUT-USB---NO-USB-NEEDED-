@@ -8,8 +8,7 @@
 #include <sstream>
 #include <fstream>
 
-DriverIntegrator::DriverIntegrator()
-    : stagedStorage_(0), stagedUsb_(0), stagedNetwork_(0), stagedCustom_(0) {}
+DriverIntegrator::DriverIntegrator() : stagedStorage_(0), stagedUsb_(0), stagedNetwork_(0), stagedCustom_(0) {}
 
 DriverIntegrator::~DriverIntegrator() {}
 
@@ -135,9 +134,9 @@ bool DriverIntegrator::stageSystemDrivers(const std::string &stagingDir, DriverC
         return false;
     }
 
-    bool                        copiedAny = false;
-    std::error_code             ec;
-    std::filesystem::path       stagingRoot(stagingDir);
+    bool                  copiedAny = false;
+    std::error_code       ec;
+    std::filesystem::path stagingRoot(stagingDir);
     std::filesystem::create_directories(stagingRoot, ec);
     if (ec) {
         lastError_ = "Failed to create staging directory: " + ec.message();
@@ -153,8 +152,7 @@ bool DriverIntegrator::stageSystemDrivers(const std::string &stagingDir, DriverC
 
     for (auto end = std::filesystem::directory_iterator(); it != end; it.increment(ec)) {
         if (ec) {
-            logFile << ISOCopyManager::getTimestamp() << "DriverStore enumeration error: " << ec.message()
-                    << std::endl;
+            logFile << ISOCopyManager::getTimestamp() << "DriverStore enumeration error: " << ec.message() << std::endl;
             break;
         }
 
@@ -219,9 +217,9 @@ bool DriverIntegrator::stageSystemDrivers(const std::string &stagingDir, DriverC
 
 bool DriverIntegrator::addDriversToImage(const std::string &mountDir, const std::string &stagingDir,
                                          std::ofstream &logFile, bool isCustomDrivers) {
-    std::string dism    = Utils::getDismPath();
-    std::string command = "\"" + dism + "\" /Image:\"" + mountDir + "\" /Add-Driver /Driver:\"" + stagingDir +
-                          "\" /Recurse";
+    std::string dism = Utils::getDismPath();
+    std::string command =
+        "\"" + dism + "\" /Image:\"" + mountDir + "\" /Add-Driver /Driver:\"" + stagingDir + "\" /Recurse";
 
     std::string driverType = isCustomDrivers ? "CustomDrivers" : "system drivers";
     logFile << ISOCopyManager::getTimestamp() << "Adding " << driverType << " with command: " << command << std::endl;

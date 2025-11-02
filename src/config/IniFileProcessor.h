@@ -10,13 +10,13 @@ class IniConfigurator;
 
 /**
  * @brief Handles INI file configuration and integration in mounted WIM images.
- * 
+ *
  * Responsible for:
  * - Extracting INI files from ISO
  * - Reconfiguring existing INI files in WIM
  * - Processing drive letter replacements
  * - Managing INI file caching and cleanup
- * 
+ *
  * Follows Single Responsibility Principle for INI file management.
  */
 class IniFileProcessor {
@@ -48,7 +48,9 @@ public:
      * @brief Gets the last error message
      * @return Error message string
      */
-    std::string getLastError() const { return lastError_; }
+    std::string getLastError() const {
+        return lastError_;
+    }
 
 private:
     IniConfigurator &iniConfigurator_;
@@ -73,8 +75,8 @@ private:
      * @param logFile Log file stream
      * @return Number of INI files extracted and processed
      */
-    int extractAndProcessIniFilesFromIso(const std::string &mountDir, const std::string &isoPath,
-                                         ISOReader *isoReader, const std::string &driveLetter, std::ofstream &logFile);
+    int extractAndProcessIniFilesFromIso(const std::string &mountDir, const std::string &isoPath, ISOReader *isoReader,
+                                         const std::string &driveLetter, std::ofstream &logFile);
 
     /**
      * @brief Gets list of INI files from ISO root
