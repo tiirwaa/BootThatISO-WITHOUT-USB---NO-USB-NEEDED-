@@ -3,6 +3,7 @@
 #include "../models/ISOReader.h"
 #include "../models/EventManager.h"
 #include "../views/EditionSelectorDialog.h"
+#include "../drivers/DriverIntegrator.h"
 #include "../utils/Utils.h"
 #include "../utils/LocalizationManager.h"
 #include <windows.h>
@@ -10,7 +11,7 @@
 #include <iomanip>
 
 WindowsEditionSelector::WindowsEditionSelector(EventManager &eventManager, WimMounter &wimMounter, ISOReader &isoReader)
-    : eventManager_(eventManager), wimMounter_(wimMounter), isoReader_(isoReader), isEsd_(false) {}
+    : eventManager_(eventManager), wimMounter_(wimMounter), isoReader_(isoReader), driverIntegrator_(nullptr), isEsd_(false) {}
 
 WindowsEditionSelector::~WindowsEditionSelector() {
     // Cleanup extracted install image if it exists
@@ -287,7 +288,56 @@ bool WindowsEditionSelector::injectEditionIntoBootWim(const std::string &isoPath
         return false;
     }
 
-    // Step 2: Mount boot.wim Index 2 (Windows Setup) to modify startnet.cmd
+    // Step 1.5: Inject storage drivers into the filtered install.wim
+    if (driverIntegrator_) {
+        logFile << "[WindowsEditionSelector] Injecting storage drivers into filtered install.wim" << std::endl;
+        eventManager_.notifyDetailedProgress(62, 100, "Inyectando controladores en install.wim");
+        eventManager_.notifyLogUpdate("Inyectando controladores de almacenamiento en install.wim...\r\n");
+
+        std::string installMountDir = tempDir + "\\install_wim_mount";
+        CreateDirectoryA(installMountDir.c_str(), NULL);
+
+        auto mountProgress = [this](int percent, const std::string &message) {
+            int adjustedPercent = 62 + (percent * 3 / 100); // Map 0-100 to 62-65
+            eventManager_.notifyDetailedProgress(adjustedPercent, 100, message);
+        };
+
+        // Mount the filtered install.wim (it only has 1 index now)
+        if (wimMounter_.mountWim(destInstallPath, installMountDir, 1, mountProgress)) {
+            // Inject storage drivers
+            auto driverProgress = [this](const std::string &msg) { 
+                eventManager_.notifyLogUpdate("  " + msg + "\r\n"); 
+            };
+
+            driverIntegrator_->integrateSystemDrivers(
+                installMountDir, 
+                DriverIntegrator::DriverCategory::Storage,  // Critical for disk detection
+                logFile, 
+                driverProgress
+            );
+
+            // Unmount and save
+            auto unmountProgress = [this](int percent, const std::string &message) {
+                int adjustedPercent = 65 + (percent * 5 / 100); // Map 0-100 to 65-70
+                eventManager_.notifyDetailedProgress(adjustedPercent, 100, message);
+            };
+
+            if (wimMounter_.unmountWim(installMountDir, true, unmountProgress)) {
+                logFile << "[WindowsEditionSelector] Storage drivers successfully injected into install.wim" << std::endl;
+                eventManager_.notifyLogUpdate("Controladores inyectados en install.wim.\r\n");
+            } else {
+                logFile << "[WindowsEditionSelector] Warning: Failed to save install.wim with drivers" << std::endl;
+                eventManager_.notifyLogUpdate("Advertencia: No se pudieron guardar los controladores.\r\n");
+            }
+        } else {
+            logFile << "[WindowsEditionSelector] Warning: Failed to mount install.wim for driver injection" << std::endl;
+            eventManager_.notifyLogUpdate("Advertencia: No se pudo inyectar controladores en install.wim.\r\n");
+        }
+    } else {
+        logFile << "[WindowsEditionSelector] No DriverIntegrator available, skipping driver injection" << std::endl;
+    }
+
+    // Step 2: Mount boot.wim Index 2 (Windows Setup) to modify startnet.cmd and inject drivers
     std::string mountDir = tempDir + "\\boot_wim_mount";
     CreateDirectoryA(mountDir.c_str(), NULL);
 
@@ -308,41 +358,43 @@ bool WindowsEditionSelector::injectEditionIntoBootWim(const std::string &isoPath
         return false;
     }
 
-    // Step 3: Modify startnet.cmd to assign drive letter and launch setup
+    // Step 3: Modify startnet.cmd to assign drive letter and launch setup from disk
     std::string startnetPath = mountDir + "\\Windows\\System32\\startnet.cmd";
-    std::string sourcesPath = mountDir + "\\sources";
-    CreateDirectoryA(sourcesPath.c_str(), NULL);
     
-    logFile << "[WindowsEditionSelector] Modifying startnet.cmd to mount install partition" << std::endl;
+    logFile << "[WindowsEditionSelector] Modifying startnet.cmd to find and mount install partition" << std::endl;
     
     std::ofstream startnet(startnetPath, std::ios::trunc);
     if (startnet.is_open()) {
         startnet << "@echo off\r\n";
         startnet << "echo Initializing Windows Setup from RAM...\r\n";
         startnet << "wpeinit\r\n";
-        startnet << "echo Mounting install partition...\r\n";
-        // Assign drive letter to the NTFS data partition containing install.wim/esd
-        startnet << "for /f \"tokens=2\" %%a in ('echo list volume ^| diskpart ^| findstr /C:\"NTFS\" ^| findstr /V /C:\"Hidden\"') do (\r\n";
-        startnet << "  if exist %%a:\\sources\\install.wim (\r\n";
-        startnet << "    set INSTALL_DRIVE=%%a:\r\n";
-        startnet << "    goto :found\r\n";
+        startnet << "echo.\r\n";
+        startnet << "echo Searching for Windows installation files...\r\n";
+        startnet << "echo.\r\n";
+        startnet << "\r\n";
+        startnet << "REM Try to find the drive containing install.wim\r\n";
+        startnet << "for %%d in (C D E F G H I J K L M N O P Q R S T U V W X Y Z) do (\r\n";
+        startnet << "  if exist %%d:\\sources\\install.wim (\r\n";
+        startnet << "    echo Found install.wim on %%d:\r\n";
+        startnet << "    cd /d %%d:\\sources\r\n";
+        startnet << "    start setup.exe\r\n";
+        startnet << "    goto :eof\r\n";
         startnet << "  )\r\n";
-        startnet << "  if exist %%a:\\sources\\install.esd (\r\n";
-        startnet << "    set INSTALL_DRIVE=%%a:\r\n";
-        startnet << "    goto :found\r\n";
+        startnet << "  if exist %%d:\\sources\\install.esd (\r\n";
+        startnet << "    echo Found install.esd on %%d:\r\n";
+        startnet << "    cd /d %%d:\\sources\r\n";
+        startnet << "    start setup.exe\r\n";
+        startnet << "    goto :eof\r\n";
         startnet << "  )\r\n";
         startnet << ")\r\n";
-        startnet << ":found\r\n";
-        startnet << "if defined INSTALL_DRIVE (\r\n";
-        startnet << "  echo Install image found on %INSTALL_DRIVE%\r\n";
-        startnet << "  cd /d %INSTALL_DRIVE%\\sources\r\n";
-        startnet << "  start setup.exe\r\n";
-        startnet << ") else (\r\n";
-        startnet << "  echo ERROR: Install image not found!\r\n";
-        startnet << "  cmd\r\n";
-        startnet << ")\r\n";
+        startnet << "\r\n";
+        startnet << "echo ERROR: Could not find Windows installation files!\r\n";
+        startnet << "echo The storage drivers may not have been loaded correctly.\r\n";
+        startnet << "echo.\r\n";
+        startnet << "pause\r\n";
+        startnet << "cmd\r\n";
         startnet.close();
-        logFile << "[WindowsEditionSelector] startnet.cmd created successfully" << std::endl;
+        logFile << "[WindowsEditionSelector] startnet.cmd configured successfully" << std::endl;
     } else {
         logFile << "[WindowsEditionSelector] Failed to create startnet.cmd" << std::endl;
         wimMounter_.unmountWim(mountDir, false, nullptr);

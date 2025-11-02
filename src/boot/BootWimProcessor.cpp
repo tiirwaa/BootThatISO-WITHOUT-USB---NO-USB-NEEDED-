@@ -23,7 +23,10 @@ BootWimProcessor::BootWimProcessor(EventManager &eventManager, FileCopyManager &
       programsIntegrator_(std::make_unique<ProgramsIntegrator>(fileCopyManager)),
       iniConfigurator_(std::make_unique<IniConfigurator>()),
       iniFileProcessor_(std::make_unique<IniFileProcessor>(*iniConfigurator_)),
-      windowsEditionSelector_(std::make_unique<WindowsEditionSelector>(eventManager, *wimMounter_, *isoReader_)) {}
+      windowsEditionSelector_(std::make_unique<WindowsEditionSelector>(eventManager, *wimMounter_, *isoReader_)) {
+    // Pass DriverIntegrator to WindowsEditionSelector so it can inject drivers into install.wim
+    windowsEditionSelector_->setDriverIntegrator(driverIntegrator_.get());
+}
 
 BootWimProcessor::~BootWimProcessor() {}
 
@@ -305,6 +308,116 @@ bool BootWimProcessor::processBootWim(const std::string &sourcePath, const std::
         return false;
     }
 
+    // If install.wim/esd exists on disk (copyInstallWim mode), inject drivers into it as well
+    if (copyInstallWim) {
+        std::string installWimPath = destPath + "sources\\install.wim";
+        std::string installEsdPath = destPath + "sources\\install.esd";
+        std::string installImagePath;
+        
+        if (GetFileAttributesA(installWimPath.c_str()) != INVALID_FILE_ATTRIBUTES) {
+            installImagePath = installWimPath;
+        } else if (GetFileAttributesA(installEsdPath.c_str()) != INVALID_FILE_ATTRIBUTES) {
+            installImagePath = installEsdPath;
+        }
+
+        if (!installImagePath.empty()) {
+            logFile << ISOCopyManager::getTimestamp() << "Found install image at: " << installImagePath 
+                    << " - injecting drivers for Windows Setup" << std::endl;
+            eventManager_.notifyLogUpdate("Inyectando controladores en install.wim para instalación de Windows...\r\n");
+            
+            if (!processInstallWim(installImagePath, destPath, logFile)) {
+                logFile << ISOCopyManager::getTimestamp() 
+                        << "Warning: Failed to inject drivers into install image (non-fatal)" << std::endl;
+                eventManager_.notifyLogUpdate("Advertencia: No se pudieron inyectar controladores en install.wim\r\n");
+            } else {
+                logFile << ISOCopyManager::getTimestamp() << "Drivers successfully injected into install image" << std::endl;
+                eventManager_.notifyLogUpdate("Controladores inyectados exitosamente en install.wim\r\n");
+            }
+        }
+    }
+
     // Extract additional boot files
     return extractAdditionalBootFiles(sourcePath, espPath, destPath, copiedSoFar, 0, logFile);
+}
+
+bool BootWimProcessor::processInstallWim(const std::string &installImagePath, const std::string &destPath,
+                                         std::ofstream &logFile) {
+    logFile << ISOCopyManager::getTimestamp() << "Starting driver injection into install.wim/esd" << std::endl;
+    eventManager_.notifyDetailedProgress(65, 100, "Inyectando controladores en install.wim");
+    eventManager_.notifyLogUpdate("Inyectando controladores de almacenamiento en install.wim...\r\n");
+
+    // Get all indices from install.wim/esd
+    auto installImages = wimMounter_->getWimImageInfo(installImagePath);
+    if (installImages.empty()) {
+        logFile << ISOCopyManager::getTimestamp() << "No images found in install.wim/esd" << std::endl;
+        return false;
+    }
+
+    logFile << ISOCopyManager::getTimestamp() << "Found " << installImages.size() 
+            << " edition(s) in install image" << std::endl;
+
+    // Create mount directory
+    std::string mountDir = destPath + "temp_install_mount";
+    wimMounter_->cleanupMountDirectory(mountDir);
+
+    bool overallSuccess = true;
+
+    // Inject drivers into EACH edition (index) of install.wim
+    for (const auto &image : installImages) {
+        logFile << ISOCopyManager::getTimestamp() << "Processing install.wim Index " << image.index 
+                << ": " << image.name << std::endl;
+        
+        std::string progressMsg = "Inyectando controladores en edición: " + image.name;
+        eventManager_.notifyLogUpdate(progressMsg + "\r\n");
+
+        // Mount the specific index
+        auto mountProgress = [this, &image](int percent, const std::string &message) {
+            int baseProgress = 65 + ((image.index - 1) * 10);
+            int adjustedPercent = baseProgress + (percent * 10 / 100 / static_cast<int>(image.index));
+            eventManager_.notifyDetailedProgress(adjustedPercent, 100, message);
+        };
+
+        if (!wimMounter_->mountWim(installImagePath, mountDir, image.index, mountProgress)) {
+            logFile << ISOCopyManager::getTimestamp() << "Failed to mount install.wim Index " << image.index 
+                    << ": " << wimMounter_->getLastError() << std::endl;
+            overallSuccess = false;
+            continue;
+        }
+
+        // Inject storage and USB drivers (critical for Windows Setup to detect the disk)
+        auto driverProgress = [this](const std::string &msg) { 
+            eventManager_.notifyLogUpdate("  " + msg + "\r\n"); 
+        };
+
+        logFile << ISOCopyManager::getTimestamp() << "Integrating storage drivers into Index " << image.index << std::endl;
+        bool driverSuccess = driverIntegrator_->integrateSystemDrivers(
+            mountDir, 
+            DriverIntegrator::DriverCategory::Storage,  // Only storage drivers - critical for disk detection
+            logFile, 
+            driverProgress
+        );
+
+        if (!driverSuccess) {
+            logFile << ISOCopyManager::getTimestamp() << "Warning: Failed to inject drivers into Index " 
+                    << image.index << std::endl;
+        }
+
+        // Unmount and save
+        auto unmountProgress = [this](int percent, const std::string &message) {
+            eventManager_.notifyDetailedProgress(70 + (percent * 5 / 100), 100, message);
+        };
+
+        if (!wimMounter_->unmountWim(mountDir, true, unmountProgress)) {
+            logFile << ISOCopyManager::getTimestamp() << "Failed to unmount install.wim Index " << image.index 
+                    << ": " << wimMounter_->getLastError() << std::endl;
+            overallSuccess = false;
+        } else {
+            logFile << ISOCopyManager::getTimestamp() << "Successfully processed Index " << image.index << std::endl;
+        }
+    }
+
+    logFile << ISOCopyManager::getTimestamp() << "Completed driver injection into install.wim" << std::endl;
+    eventManager_.notifyLogUpdate("Controladores inyectados en todas las ediciones de Windows.\r\n");
+
+    return overallSuccess;
 }

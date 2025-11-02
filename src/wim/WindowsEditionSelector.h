@@ -106,10 +106,19 @@ public:
     bool processWindowsEditions(const std::string &isoPath, const std::string &bootWimPath, const std::string &tempDir,
                                 std::ofstream &logFile);
 
+    /**
+     * @brief Sets driver integrator for injecting drivers into install.wim
+     * @param driverIntegrator Pointer to DriverIntegrator instance
+     */
+    void setDriverIntegrator(class DriverIntegrator *driverIntegrator) {
+        driverIntegrator_ = driverIntegrator;
+    }
+
 private:
     EventManager &eventManager_;
     WimMounter   &wimMounter_;
     ISOReader    &isoReader_;
+    class DriverIntegrator *driverIntegrator_; // Optional driver integrator
 
     std::string installImagePath_; // Cached path to extracted install.wim/esd
     bool        isEsd_;            // true if install.esd, false if install.wim
