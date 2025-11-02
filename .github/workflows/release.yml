@@ -40,6 +40,33 @@ jobs:
           cmake --build . --config Release --target UtilsTests
           ctest -C Release --output-on-failure
 
+      - name: Create code signing certificate
+        run: |
+          New-SelfSignedCertificate -Type CodeSigningCert -Subject "CN=BootThatISO Dev" -KeyUsage DigitalSignature -KeyLength 2048 -CertStoreLocation "Cert:\CurrentUser\My" -NotAfter (Get-Date).AddYears(1)
+        shell: powershell
+
+      - name: Find signtool path
+        run: |
+          $signtool = Get-Command signtool -ErrorAction SilentlyContinue
+          if ($signtool) {
+            $signtoolPath = $signtool.Source
+          } else {
+            $sdkPaths = Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin" -Directory -Recurse | Where-Object { Test-Path (Join-Path $_.FullName "x64\signtool.exe") } | Sort-Object Name -Descending | Select-Object -First 1
+            if ($sdkPaths) {
+              $signtoolPath = Join-Path $sdkPaths.FullName "x64\signtool.exe"
+            } else {
+              throw "signtool not found"
+            }
+          }
+          echo "SIGNTOOL_PATH=$signtoolPath" >> $env:GITHUB_ENV
+          Write-Host "Signtool path: $signtoolPath"
+        shell: pwsh
+
+      - name: Sign the executable
+        run: |
+          & $env:SIGNTOOL_PATH sign /fd SHA256 /a /d "BootThatISO - Bootear ISO sin USB" /du "https://github.com/tiirwaa/BootThatISO-WITHOUT-USB---NO-USB-NEEDED-" /tr http://timestamp.digicert.com /td SHA256 "./build/Release/BootThatISO!.exe"
+        shell: pwsh
+
       - name: Create release notes
         shell: pwsh
         run: |
