@@ -26,4 +26,5 @@ private:
     bool extractAdditionalBootFiles(const std::string &sourcePath, const std::string &espPath,
                                     const std::string &destPath, long long &copiedSoFar, long long isoSize,
                                     std::ofstream &logFile);
+    bool integrateSystemDriversIntoMountedImage(const std::string &mountDir, std::ofstream &logFile);
 };

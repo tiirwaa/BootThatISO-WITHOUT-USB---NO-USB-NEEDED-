@@ -37,10 +37,10 @@ bool PartitionCreator::performDiskpartOperations(const std::string &format) {
     scriptFile << "select disk 0\n";
     scriptFile << "select volume C\n";
     scriptFile << "shrink desired=12000 minimum=12000\n";
-    scriptFile << "create partition efi size=500\n";
-    scriptFile << "format fs=fat32 quick label=\"" << EFI_VOLUME_LABEL << "\"\n";
     scriptFile << "create partition primary size=10000\n";
     scriptFile << "format fs=" << fsFormat << " quick label=\"" << VOLUME_LABEL << "\"\n";
+    scriptFile << "create partition efi size=500\n";
+    scriptFile << "format fs=fat32 quick label=\"" << EFI_VOLUME_LABEL << "\"\n";
     scriptFile << "exit\n";
     scriptFile.close();
 
@@ -120,10 +120,10 @@ bool PartitionCreator::performDiskpartOperations(const std::string &format) {
         logFile << "select disk 0\n";
         logFile << "select volume C\n";
         logFile << "shrink desired=12000 minimum=12000\n";
-        logFile << "create partition efi size=500\n";
-        logFile << "format fs=fat32 quick label=\"" << EFI_VOLUME_LABEL << "\"\n";
         logFile << "create partition primary size=10000\n";
         logFile << "format fs=" << fsFormat << " quick label=\"" << VOLUME_LABEL << "\"\n";
+        logFile << "create partition efi size=500\n";
+        logFile << "format fs=fat32 quick label=\"" << EFI_VOLUME_LABEL << "\"\n";
         logFile << "exit\n";
         logFile << "\nExit code: " << exitCode << "\n";
         logFile << "\nDiskpart output:\n" << Utils::ansi_to_utf8(output) << "\n";

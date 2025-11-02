@@ -4,7 +4,14 @@
 #include "IniConfigurator.h"
 #include "../services/ISOCopyManager.h"
 #include "ISOReader.h"
+#include <filesystem>
+#include <algorithm>
+#include <fstream>
+#include <sstream>
 #include <set>
+#include <vector>
+#include <cstring>
+#include <cctype>
 
 BootWimProcessor::BootWimProcessor(EventManager &eventManager, FileCopyManager &fileCopyManager)
     : eventManager_(eventManager), fileCopyManager_(fileCopyManager), isoReader_(std::make_unique<ISOReader>()) {}
@@ -183,6 +190,14 @@ bool BootWimProcessor::mountAndProcessWim(const std::string &bootWimDest, const 
                 eventManager_.notifyLogUpdate("Error al integrar CustomDrivers en boot.wim.\r\n");
             }
         }
+        // Integrate critical system drivers from the current machine
+        eventManager_.notifyDetailedProgress(47, 100, "Integrando controladores locales en boot.wim");
+        if (integrateSystemDriversIntoMountedImage(mountDir, logFile)) {
+            eventManager_.notifyLogUpdate("Controladores del sistema integrados en boot.wim.\r\n");
+        } else {
+            eventManager_.notifyLogUpdate(
+                "Advertencia: No se pudieron integrar todos los controladores locales en boot.wim.\r\n");
+        }
         eventManager_.notifyDetailedProgress(0, 0, "");
         // Copy and configure .ini files
         eventManager_.notifyDetailedProgress(55, 100, "Copiando y reconfigurando archivos .ini");
@@ -297,5 +312,208 @@ bool BootWimProcessor::extractAdditionalBootFiles(const std::string &sourcePath,
     // For now, return true as placeholder.
     eventManager_.notifyLogUpdate("Archivos adicionales desde boot.wim extraidos correctamente.\r\n");
     eventManager_.notifyDetailedProgress(0, 0, "");
+    return true;
+}
+
+bool BootWimProcessor::integrateSystemDriversIntoMountedImage(const std::string &mountDir, std::ofstream &logFile) {
+    char windowsDir[MAX_PATH] = {0};
+    UINT written              = GetWindowsDirectoryA(windowsDir, MAX_PATH);
+    if (written == 0 || written >= MAX_PATH) {
+        logFile << ISOCopyManager::getTimestamp()
+                << "Skipping local driver integration: failed to resolve Windows directory." << std::endl;
+        return false;
+    }
+
+    std::string systemRoot(windowsDir);
+    if (!systemRoot.empty() && (systemRoot.back() == '\\' || systemRoot.back() == '/')) {
+        systemRoot.pop_back();
+    }
+
+    std::string fileRepository = systemRoot + "\\System32\\DriverStore\\FileRepository";
+    if (GetFileAttributesA(fileRepository.c_str()) == INVALID_FILE_ATTRIBUTES) {
+        logFile << ISOCopyManager::getTimestamp()
+                << "Skipping local driver integration: DriverStore not found at " << fileRepository << std::endl;
+        return false;
+    }
+
+    char tempPath[MAX_PATH] = {0};
+    if (!GetTempPathA(MAX_PATH, tempPath)) {
+        logFile << ISOCopyManager::getTimestamp()
+                << "Skipping local driver integration: GetTempPath failed." << std::endl;
+        return false;
+    }
+
+    char tempDirTemplate[MAX_PATH] = {0};
+    if (!GetTempFileNameA(tempPath, "drv", 0, tempDirTemplate)) {
+        logFile << ISOCopyManager::getTimestamp()
+                << "Skipping local driver integration: GetTempFileName failed." << std::endl;
+        return false;
+    }
+
+    DeleteFileA(tempDirTemplate);
+    if (!CreateDirectoryA(tempDirTemplate, NULL)) {
+        logFile << ISOCopyManager::getTimestamp()
+                << "Skipping local driver integration: failed to create staging directory." << std::endl;
+        return false;
+    }
+
+    std::filesystem::path        stagingRoot(tempDirTemplate);
+    const std::vector<std::string> storagePrefixes = {"storahci", "stornvme"};
+    const std::vector<std::string> usbPrefixes     = {"usb", "xhci"};
+    const std::vector<std::string> networkPrefixes = {"net", "vwifi", "vwlan"};
+    const std::vector<std::string> networkTokens   = {"wifi", "wlan", "wwan"};
+
+    auto startsWithIgnoreCase = [](const std::string &value, const std::string &prefix) {
+        if (value.size() < prefix.size()) {
+            return false;
+        }
+        return _strnicmp(value.c_str(), prefix.c_str(), static_cast<unsigned int>(prefix.size())) == 0;
+    };
+    auto matchesAnyPrefix = [&](const std::string &dirLower, const std::vector<std::string> &list) -> bool {
+        for (const auto &prefix : list) {
+            if (dirLower.rfind(prefix, 0) == 0) {
+                return true;
+            }
+        }
+        return false;
+    };
+    auto containsAnyToken = [&](const std::string &dirLower, const std::vector<std::string> &tokens) -> bool {
+        for (const auto &token : tokens) {
+            if (dirLower.find(token) != std::string::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
+    auto directoryContainsNetworkInf = [&](const std::filesystem::path &dirPath) -> bool {
+        std::error_code infEc;
+        for (std::filesystem::directory_iterator infIt(dirPath, infEc), infEnd; infIt != infEnd; infIt.increment(infEc)) {
+            if (infEc) {
+                logFile << ISOCopyManager::getTimestamp()
+                        << "Failed to enumerate files inside " << dirPath.string() << ": " << infEc.message()
+                        << std::endl;
+                break;
+            }
+            if (!infIt->is_regular_file()) {
+                continue;
+            }
+
+            std::string extension = infIt->path().extension().string();
+            std::transform(extension.begin(), extension.end(), extension.begin(),
+                           [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+            if (extension != ".inf") {
+                continue;
+            }
+
+            std::ifstream infFile(infIt->path());
+            if (!infFile.is_open()) {
+                continue;
+            }
+
+            std::ostringstream buffer;
+            buffer << infFile.rdbuf();
+            std::string content = buffer.str();
+            std::string normalized;
+            normalized.reserve(content.size());
+            for (char ch : content) {
+                if (!std::isspace(static_cast<unsigned char>(ch))) {
+                    normalized.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(ch))));
+                }
+            }
+
+            if (normalized.find("class=net") != std::string::npos ||
+                normalized.find("{4d36e972e32511cebfc108002be10318}") != std::string::npos) {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    bool            copiedAny = false;
+    std::error_code ec;
+    std::filesystem::directory_iterator it(fileRepository, ec);
+    std::filesystem::directory_iterator endIt;
+    if (ec) {
+        logFile << ISOCopyManager::getTimestamp()
+                << "Skipping local driver integration: unable to enumerate DriverStore (" << ec.message() << ")"
+                << std::endl;
+        std::filesystem::remove_all(stagingRoot, ec);
+        return false;
+    }
+
+    for (; it != endIt; it.increment(ec)) {
+        if (ec) {
+            logFile << ISOCopyManager::getTimestamp()
+                    << "DriverStore enumeration error: " << ec.message() << std::endl;
+            break;
+        }
+
+        const auto &entry = *it;
+        if (!entry.is_directory()) {
+            continue;
+        }
+
+        std::string dirName      = entry.path().filename().string();
+        std::string dirNameLower = dirName;
+        std::transform(dirNameLower.begin(), dirNameLower.end(), dirNameLower.begin(),
+                       [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+
+        bool storageMatch = matchesAnyPrefix(dirNameLower, storagePrefixes);
+        bool usbMatch     = matchesAnyPrefix(dirNameLower, usbPrefixes);
+        bool netMatch     = matchesAnyPrefix(dirNameLower, networkPrefixes) ||
+                            containsAnyToken(dirNameLower, networkTokens) ||
+                            directoryContainsNetworkInf(entry.path());
+
+        if (!(storageMatch || usbMatch || netMatch)) {
+            continue;
+        }
+
+        std::filesystem::path destination = stagingRoot / dirName;
+        std::filesystem::create_directories(destination, ec);
+        if (ec) {
+            logFile << ISOCopyManager::getTimestamp()
+                    << "Failed to create staging directory for " << dirName << ": " << ec.message() << std::endl;
+            ec.clear();
+            continue;
+        }
+
+        std::filesystem::copy(entry.path(), destination,
+                              std::filesystem::copy_options::recursive | std::filesystem::copy_options::overwrite_existing,
+                              ec);
+        if (ec) {
+            logFile << ISOCopyManager::getTimestamp()
+                    << "Failed to copy driver directory " << dirName << ": " << ec.message() << std::endl;
+            ec.clear();
+            continue;
+        }
+        logFile << ISOCopyManager::getTimestamp() << "Staged driver directory " << dirName
+                << (netMatch ? " (network)" : "") << std::endl;
+        copiedAny = true;
+    }
+
+    if (!copiedAny) {
+        logFile << ISOCopyManager::getTimestamp()
+                << "No matching local driver directories found for integration." << std::endl;
+        std::filesystem::remove_all(stagingRoot, ec);
+        return false;
+    }
+
+    std::string stagingRootStr = stagingRoot.string();
+    std::string dism           = Utils::getDismPath();
+    std::string addDriver      = "\"" + dism + "\" /Image:\"" + mountDir + "\" /Add-Driver /Driver:\""
+                            + stagingRootStr + "\" /Recurse";
+    logFile << ISOCopyManager::getTimestamp() << "Adding local drivers with command: " << addDriver << std::endl;
+    std::string dismOutput;
+    int         dismCode = Utils::execWithExitCode(addDriver.c_str(), dismOutput);
+    logFile << ISOCopyManager::getTimestamp()
+            << "DISM add-driver output (code=" << dismCode << "): " << dismOutput << std::endl;
+
+    std::filesystem::remove_all(stagingRoot, ec);
+
+    if (dismCode != 0) {
+        logFile << ISOCopyManager::getTimestamp()
+                << "DISM add-driver reported failure while integrating local drivers." << std::endl;
+        return false;
+    }
     return true;
 }
