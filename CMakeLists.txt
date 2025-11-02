@@ -258,7 +258,7 @@ if(CLANG_FORMAT_EXE)
         src/models/EventManager.h
         src/models/EventObserver.h
         src/models/IniConfigurator.h
-        src/models/BootWimProcessor.h
+        src/boot/BootWimProcessor.h
         src/models/ContentExtractor.h
         src/models/HashVerifier.h
         src/views/mainwindow.h
