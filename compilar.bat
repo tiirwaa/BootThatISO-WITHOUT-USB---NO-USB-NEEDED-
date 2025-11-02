@@ -36,6 +36,11 @@ if errorlevel 1 (
     goto :cleanup
 )
 
+call :format_code
+if errorlevel 1 (
+    echo [WARNING] Code formatting failed or clang-format not found. Continuing build...
+)
+
 echo [INFO] Configuring with generator "%GENERATOR%" (%ARCH%)
 "%CMAKE_CMD%" -S "%SCRIPT_DIR%" -B "%BUILD_DIR%" -G "%GENERATOR%" -A "%ARCH%"
 if errorlevel 1 (
@@ -148,6 +153,66 @@ exit /b 1
 :resolve_signtool_done
 if not exist "%SIGNTOOL_CMD%" (
     echo [ERROR] signtool.exe "%SIGNTOOL_CMD%" does not exist.
+    exit /b 1
+)
+exit /b 0
+
+:format_code
+echo [INFO] Formatting code with clang-format...
+call :resolve_clang_format
+if errorlevel 1 (
+    echo [WARNING] clang-format not found, skipping formatting.
+    exit /b 0
+)
+
+set "FORMAT_FILES=src\controllers\ProcessController.cpp src\controllers\ProcessController.h src\controllers\ProcessService.cpp src\controllers\ProcessService.h"
+set "FORMAT_FILES=%FORMAT_FILES% src\main.cpp src\resource.h src\SevenZipGuids.cpp"
+set "FORMAT_FILES=%FORMAT_FILES% src\models\BootStrategy.h src\models\efimanager.cpp src\models\filecopymanager.cpp src\models\isomounter.cpp"
+set "FORMAT_FILES=%FORMAT_FILES% src\models\ISOReader.cpp src\models\IniConfigurator.cpp src\models\BootWimProcessor.cpp src\models\ContentExtractor.cpp"
+set "FORMAT_FILES=%FORMAT_FILES% src\models\HashVerifier.cpp src\models\DiskIntegrityChecker.cpp src\models\VolumeDetector.cpp"
+set "FORMAT_FILES=%FORMAT_FILES% src\models\SpaceManager.cpp src\models\DiskpartExecutor.cpp src\models\PartitionReformatter.cpp src\models\PartitionCreator.cpp"
+set "FORMAT_FILES=%FORMAT_FILES% src\models\EventManager.h src\models\EventObserver.h src\models\IniConfigurator.h src\models\BootWimProcessor.h"
+set "FORMAT_FILES=%FORMAT_FILES% src\models\ContentExtractor.h src\models\HashVerifier.h"
+set "FORMAT_FILES=%FORMAT_FILES% src\services\bcdmanager.cpp src\services\isocopymanager.cpp src\services\isotypedetector.cpp src\services\partitionmanager.cpp"
+set "FORMAT_FILES=%FORMAT_FILES% src\utils\Logger.cpp src\utils\LocalizationManager.cpp src\utils\Utils.cpp"
+set "FORMAT_FILES=%FORMAT_FILES% src\utils\Logger.h src\utils\Utils.h src\utils\LocalizationManager.h"
+set "FORMAT_FILES=%FORMAT_FILES% src\views\mainwindow.cpp src\views\mainwindow.h"
+set "FORMAT_FILES=%FORMAT_FILES% include\models\HashInfo.h include\models\PartitionDetector.h include\models\VolumeManager.h include\models\WmiStorageManager.h"
+set "FORMAT_FILES=%FORMAT_FILES% tests\utils_tests.cpp tests\test_recover_space.cpp"
+
+"%CLANG_FORMAT_CMD%" -i %FORMAT_FILES% 2>nul
+if errorlevel 1 (
+    echo [WARNING] Some files could not be formatted.
+    exit /b 1
+)
+echo [INFO] Code formatting completed successfully.
+exit /b 0
+
+:resolve_clang_format
+if defined CLANG_FORMAT_EXE (
+    set "CLANG_FORMAT_CMD=%CLANG_FORMAT_EXE%"
+    set "CLANG_FORMAT_CMD=%CLANG_FORMAT_CMD:"=%"
+    if exist "%CLANG_FORMAT_CMD%" goto :resolve_clang_format_done
+    echo [WARNING] CLANG_FORMAT_EXE "%CLANG_FORMAT_EXE%" not found.
+    exit /b 1
+)
+for /f "delims=" %%I in ('where clang-format 2^>nul') do (
+    set "CLANG_FORMAT_CMD=%%~fI"
+    goto :resolve_clang_format_done
+)
+if exist "%ProgramFiles%\LLVM\bin\clang-format.exe" (
+    set "CLANG_FORMAT_CMD=%ProgramFiles%\LLVM\bin\clang-format.exe"
+    goto :resolve_clang_format_done
+)
+if exist "%ProgramFiles(x86)%\LLVM\bin\clang-format.exe" (
+    set "CLANG_FORMAT_CMD=%ProgramFiles(x86)%\LLVM\bin\clang-format.exe"
+    goto :resolve_clang_format_done
+)
+echo [WARNING] Could not find clang-format.exe.
+exit /b 1
+:resolve_clang_format_done
+if not exist "%CLANG_FORMAT_CMD%" (
+    echo [WARNING] clang-format.exe "%CLANG_FORMAT_CMD%" does not exist.
     exit /b 1
 )
 exit /b 0
