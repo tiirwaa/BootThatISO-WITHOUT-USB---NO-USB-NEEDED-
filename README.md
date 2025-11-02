@@ -32,9 +32,9 @@ Website: [English](https://agsoft.co.cr/en/software-and-services/) | [Spanish](h
 ## Tested ISOs
 
 ### RAM Mode (Boot from Memory)
-- ✅ HBCD_PE_x64.iso (CORRECT BOOT)
-- ✅ Win11_25H2_Spanish_x64.iso (CORRECT BOOT)
-- ✅ Windows10_22H2_X64.iso (CORRECT BOOT)
+- ✅ HBCD_PE_x64.iso
+- ✅ Win11_25H2_Spanish_x64.iso (BOOT, TESTING INSTALL)
+- ✅ Windows10_22H2_X64.iso (BOOT, TESTING INSTALL)
 
 ### EXTRACT Mode (Full Installation)
 - ✅ HBCD_PE_x64.iso (falls back to ISOBOOT_RAM)
@@ -207,9 +207,9 @@ Sitio web: [Inglés](https://agsoft.co.cr/en/software-and-services/) | [Español
 ## ISOs Testeadas
 
 ### Modo RAM (Boot desde Memoria)
-- ✅ HBCD_PE_x64.iso (ARRANQUE CORRECTO)
-- ✅ Win11_25H2_Spanish_x64.iso (ARRANQUE CORRECTO)
-- ✅ Windows10_22H2_X64.iso (ARRANQUE CORRECTO)
+- ✅ HBCD_PE_x64.iso 
+- ✅ Win11_25H2_Spanish_x64.iso (ARRANQUE, PROBANDO INSTALACION)
+- ✅ Windows10_22H2_X64.iso (ARRANQUE, PROBANDO INSTALACION)
 
 ### Modo EXTRACT (Instalación Completa)
 - ✅ HBCD_PE_x64.iso (hace fallback ISOBOOT_RAM)
@@ -335,6 +335,7 @@ Desarrollado por **Andrey Rodríguez Araya** en 2025.
 
 ## Licencia
 Este proyecto está bajo la Licencia GPL 3.0. Ver el archivo `LICENSE` para más detalles.
+<<<<<<< HEAD
 
 ## Avisos de terceros
 - SDK de 7‑Zip: Este producto incluye partes del SDK de 7‑Zip de Igor Pavlov.
@@ -345,3 +346,5 @@ Este proyecto está bajo la Licencia GPL 3.0. Ver el archivo `LICENSE` para más
     - `CPP/7zip/Compress/Rar*` están bajo GNU LGPL con la “restricción de licencia unRAR”.
   - Incluimos un subconjunto mínimo (manejador ISO y utilidades comunes). Este proyecto no utiliza código RAR.
   - Textos completos: ver `third-party/DOC/License.txt`, `third-party/DOC/lzma.txt` y `third-party/DOC/unRarLicense.txt`.
+=======
+>>>>>>> 834dfd94b74f1a69f10c705ba124500e648862f8
