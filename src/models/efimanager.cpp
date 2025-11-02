@@ -7,11 +7,14 @@
 #include <vector>
 #include <set>
 #include <algorithm>
+#include <filesystem>
 #include "../utils/Utils.h"
+#include "../utils/constants.h"
 #include "filecopymanager.h"
+#include "ISOReader.h"
 
 EFIManager::EFIManager(EventManager &eventManager, FileCopyManager &fileCopyManager)
-    : eventManager(eventManager), fileCopyManager(fileCopyManager) {}
+    : eventManager(eventManager), fileCopyManager(fileCopyManager), isoReader_(std::make_unique<ISOReader>()) {}
 
 EFIManager::~EFIManager() {}
 
@@ -19,26 +22,9 @@ bool EFIManager::extractEFI(const std::string &sourcePath, const std::string &es
                             long long &copiedSoFar, long long isoSize) {
     std::string logDir = Utils::getExeDirectory() + "logs";
     CreateDirectoryA(logDir.c_str(), NULL);
-    std::ofstream logFile(logDir + "\\iso_extract.log", std::ios::app);
+    std::ofstream logFile(logDir + "\\" + ISO_EXTRACT_LOG_FILE, std::ios::app);
     logFile << getTimestamp() << "Extracting EFI directory to ESP" << std::endl;
     eventManager.notifyLogUpdate("Extrayendo archivos EFI al ESP...\r\n");
-
-    // Check if source EFI directory exists
-    std::string efiSourcePath = sourcePath + "efi";
-    DWORD       efiAttrs      = GetFileAttributesA(efiSourcePath.c_str());
-    if (efiAttrs == INVALID_FILE_ATTRIBUTES || !(efiAttrs & FILE_ATTRIBUTE_DIRECTORY)) {
-        // Try alternative paths
-        std::string altEfiPath = sourcePath + "EFI";
-        DWORD       altAttrs   = GetFileAttributesA(altEfiPath.c_str());
-        if (altAttrs != INVALID_FILE_ATTRIBUTES && (altAttrs & FILE_ATTRIBUTE_DIRECTORY)) {
-            efiSourcePath = altEfiPath;
-            logFile << getTimestamp() << "Found EFI directory at alternative path: " << efiSourcePath << std::endl;
-        } else {
-            logFile << getTimestamp() << "EFI directory not found at alternative path either" << std::endl;
-            logFile.close();
-            return false;
-        }
-    }
 
     // Create destination EFI directory on ESP
     std::string efiDestPath = espPath + "EFI";
@@ -48,13 +34,14 @@ bool EFIManager::extractEFI(const std::string &sourcePath, const std::string &es
         return false;
     }
 
-    // Copy EFI files with progress
-    std::set<std::string> noExclude;
-    if (!fileCopyManager.copyDirectoryWithProgress(efiSourcePath, efiDestPath, isoSize, copiedSoFar, noExclude,
-                                                   "Copiando EFI")) {
-        logFile << getTimestamp() << "Failed to copy EFI or cancelled" << std::endl;
-        logFile.close();
-        return false;
+    // Extract EFI directory from the ISO using ISOReader
+    if (!isoReader_->extractDirectory(sourcePath, "efi", efiDestPath)) {
+        // Try uppercase path as some ISOs may list it differently
+        if (!isoReader_->extractDirectory(sourcePath, "EFI", efiDestPath)) {
+            logFile << getTimestamp() << "Failed to extract EFI directory from ISO" << std::endl;
+            logFile.close();
+            return false;
+        }
     }
 
     // Validate and fix EFI files after copying
@@ -83,7 +70,7 @@ bool EFIManager::extractEFIDirectory(const std::string &sourcePath, const std::s
 bool EFIManager::extractBootFilesFromWIM(const std::string &sourcePath, const std::string &espPath,
                                          const std::string &dataPath, long long &copiedSoFar, long long isoSize) {
     std::string   logDir = Utils::getExeDirectory() + "logs";
-    std::ofstream logFile(logDir + "\\iso_extract.log", std::ios::app);
+    std::ofstream logFile(logDir + "\\" + ISO_EXTRACT_LOG_FILE, std::ios::app);
 
     auto ensureDirectoryRecursive = [](const std::string &directory) {
         if (directory.empty())
@@ -233,7 +220,7 @@ bool EFIManager::extractBootFilesFromWIM(const std::string &sourcePath, const st
 
 bool EFIManager::copyBootmgrForNonWindows(const std::string &sourcePath, const std::string &espPath) {
     std::string   logDir = Utils::getExeDirectory() + "logs";
-    std::ofstream logFile(logDir + "\\iso_extract.log", std::ios::app);
+    std::ofstream logFile(logDir + "\\" + ISO_EXTRACT_LOG_FILE, std::ios::app);
 
     std::string bootmgrSource = sourcePath + "bootmgr.efi";
     bool        bootmgrCopied = false;
@@ -553,9 +540,15 @@ bool EFIManager::ensureSecureBootCompatibleBootloader(const std::string &espPath
             << std::endl;
 
     if (sysAttrs != INVALID_FILE_ATTRIBUTES) {
-        // Ensure destination directory exists
+        // Ensure destination directory exists (create nested folders if needed)
         std::string destDir = espPath + "EFI\\Microsoft\\Boot";
-        CreateDirectoryA(destDir.c_str(), NULL);
+        std::error_code dirEc;
+        std::filesystem::create_directories(destDir, dirEc);
+        if (dirEc) {
+            logFile << getTimestamp() << "Failed to create destination directory " << destDir
+                    << " (error " << dirEc.value() << ")" << std::endl;
+            // Continue anyway; CopyFileW will fail and we will report GetLastError below.
+        }
 
         // Check if destination already exists
         DWORD destAttrs = GetFileAttributesA(destBootmgfw.c_str());

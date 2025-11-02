@@ -5,6 +5,7 @@
 #include "EventManager.h"
 
 class FileCopyManager;
+class ISOReader;
 
 class EFIManager {
 public:
@@ -19,6 +20,7 @@ public:
 private:
     EventManager    &eventManager;
     FileCopyManager &fileCopyManager;
+    std::unique_ptr<ISOReader> isoReader_;
 
     // Helper methods
     bool extractEFIDirectory(const std::string &sourcePath, const std::string &espPath, long long &copiedSoFar,

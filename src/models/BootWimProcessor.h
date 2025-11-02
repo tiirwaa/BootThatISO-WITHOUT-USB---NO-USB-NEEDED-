@@ -4,6 +4,8 @@
 #include "../models/EventManager.h"
 #include "../models/FileCopyManager.h"
 
+class ISOReader;
+
 class BootWimProcessor {
 public:
     BootWimProcessor(EventManager &eventManager, FileCopyManager &fileCopyManager);
@@ -16,6 +18,7 @@ public:
 private:
     EventManager    &eventManager_;
     FileCopyManager &fileCopyManager_;
+    std::unique_ptr<ISOReader> isoReader_;
 
     bool mountAndProcessWim(const std::string &bootWimDest, const std::string &destPath, const std::string &sourcePath,
                             bool integratePrograms, const std::string &programsSrc, long long &copiedSoFar,

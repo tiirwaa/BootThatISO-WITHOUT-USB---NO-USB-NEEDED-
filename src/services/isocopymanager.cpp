@@ -301,13 +301,63 @@ bool ISOCopyManager::extractISOContents(EventManager &eventManager, const std::s
 
     // Copy install file if requested
     if (copyInstallWim && isWindowsISO) {
-        std::string installFile = isoReader->fileExists(isoPath, "sources/install.esd") ? "sources/install.esd" : "sources/install.wim";
+        // Choose source inside ISO
+        bool esdPreferred = isoReader->fileExists(isoPath, "sources/install.esd");
+        std::string installFile = esdPreferred ? "sources/install.esd" : "sources/install.wim";
         std::string installDest = destPath + "sources\\" + installFile.substr(installFile.find_last_of('/') + 1);
+
         eventManager.notifyDetailedProgress(75, 100, "Copiando archivo de instalación");
         eventManager.notifyLogUpdate("Copiando archivo de instalación...\r\n");
-        if (isoReader->extractFile(isoPath, installFile, installDest)) {
-            logFile << getTimestamp() << "Install file extracted successfully to " << installDest << std::endl;
-            eventManager.notifyLogUpdate("Archivo de instalación copiado correctamente.\r\n");
+        bool extracted = isoReader->extractFile(isoPath, installFile, installDest);
+        if (extracted) {
+            auto validateInstall = [&](bool logOnWarn) -> bool {
+                unsigned long long srcSize = 0ULL; bool haveSrc = isoReader->getFileSize(isoPath, installFile, srcSize);
+                WIN32_FILE_ATTRIBUTE_DATA dstInfo{};
+                unsigned long long dstSize = 0ULL;
+                if (GetFileAttributesExA(installDest.c_str(), GetFileExInfoStandard, &dstInfo)) {
+                    dstSize = (static_cast<unsigned long long>(dstInfo.nFileSizeHigh) << 32) | dstInfo.nFileSizeLow;
+                }
+
+                logFile << getTimestamp() << "Install file extracted to " << installDest
+                        << ", srcSize=" << (haveSrc ? std::to_string(srcSize) : std::string("unknown"))
+                        << ", dstSize=" << dstSize << std::endl;
+
+                bool sizeOk = !haveSrc || (srcSize == dstSize);
+                if (!sizeOk && logOnWarn) {
+                    eventManager.notifyLogUpdate("Advertencia: tamaño de origen/destino no coincide para install.*.\r\n");
+                }
+
+                std::string infoCmd = std::string("\"") + Utils::getDismPath() + "\" /Get-WimInfo /WimFile:\"" + installDest + "\"";
+                std::string infoOut; int infoCode = Utils::execWithExitCode(infoCmd.c_str(), infoOut);
+                int indexCount = 0; size_t p = 0;
+                while ((p = infoOut.find("Index :", p)) != std::string::npos) { ++indexCount; p += 7; }
+                bool dismOk = (infoCode == 0) && (indexCount >= 1 ||
+                              infoOut.find("The operation completed successfully") != std::string::npos ||
+                              infoOut.find("correctamente") != std::string::npos);
+
+                if (sizeOk && dismOk) {
+                    logFile << getTimestamp() << "Install image validation: OK (indices=" << indexCount << ")" << std::endl;
+                    eventManager.notifyLogUpdate("Archivo de instalación copiado y validado correctamente.\r\n");
+                    return true;
+                }
+
+                logFile << getTimestamp() << "Install image validation: FAILED (code=" << infoCode
+                        << ", sizeOk=" << (sizeOk?"true":"false")
+                        << ", indices=" << indexCount << ")\nOutput:\n" << infoOut << std::endl;
+                if (logOnWarn) {
+                    eventManager.notifyLogUpdate("Error/Advertencia al validar install.*; revise iso_extract.log.\r\n");
+                }
+                return false;
+            };
+
+            bool ok = validateInstall(true);
+            if (!ok) {
+                eventManager.notifyLogUpdate("Reintentando extracción de install.*...\r\n");
+                DeleteFileA(installDest.c_str());
+                if (isoReader->extractFile(isoPath, installFile, installDest)) {
+                    validateInstall(false);
+                }
+            }
         } else {
             logFile << getTimestamp() << "Failed to extract install file" << std::endl;
             eventManager.notifyLogUpdate("Error al copiar archivo de instalación.\r\n");

@@ -5,6 +5,8 @@
 #include <sstream>
 #include <vector>
 #include <string>
+#include <unordered_map>
+#include <iostream>
 #include <windows.h>
 #include <OleAuto.h>
 
@@ -39,39 +41,57 @@ namespace {
         return out;
     }
 
-    // Obtain CLSID for the "Iso" handler from 7-Zip registry
+    inline void NormalizeSlashes(std::wstring &ws) {
+        for (auto &ch : ws) if (ch == L'\\') ch = L'/';
+    }
+    inline void NormalizeSlashes(std::string &s) {
+        for (auto &ch : s) if (ch == '\\') ch = '/';
+    }
+
+    // Obtain CLSID for the most suitable handler for optical images: prefer Udf, then Iso, then Ext
     bool GetIsoHandlerClsid(GUID &outClsid) {
         UInt32 num = 0;
         if (GetNumberOfFormats(&num) != S_OK) return false;
-        for (UInt32 i = 0; i < num; ++i) {
-            NWindows::NCOM::CPropVariant prop;
-            if (GetHandlerProperty2(i, NArchive::NHandlerPropID::kName, &prop) != S_OK)
-                continue;
-            bool isIso = false;
-            if (prop.vt == VT_BSTR && prop.bstrVal) {
-                std::wstring name(prop.bstrVal, prop.bstrVal + SysStringLen(prop.bstrVal));
-                if (name == L"Iso") isIso = true;
-            }
-            NWindows::NCOM::PropVariant_Clear(&prop);
-            if (!isIso) continue;
 
-            if (GetHandlerProperty2(i, NArchive::NHandlerPropID::kClassID, &prop) != S_OK)
-                continue;
-            if (prop.vt == VT_BSTR && prop.bstrVal && SysStringByteLen(prop.bstrVal) == sizeof(GUID)) {
-                memcpy(&outClsid, prop.bstrVal, sizeof(GUID));
+        auto findByName = [&](const wchar_t* wantName, GUID &clsidOut) -> bool {
+            for (UInt32 i = 0; i < num; ++i) {
+                NWindows::NCOM::CPropVariant prop;
+                if (GetHandlerProperty2(i, NArchive::NHandlerPropID::kName, &prop) != S_OK) {
+                    continue;
+                }
+                bool match = false;
+                if (prop.vt == VT_BSTR && prop.bstrVal) {
+                    std::wstring name(prop.bstrVal, prop.bstrVal + SysStringLen(prop.bstrVal));
+                    if (name == wantName) match = true;
+                }
                 NWindows::NCOM::PropVariant_Clear(&prop);
-                return true;
+                if (!match) continue;
+
+                if (GetHandlerProperty2(i, NArchive::NHandlerPropID::kClassID, &prop) != S_OK) {
+                    continue;
+                }
+                if (prop.vt == VT_BSTR && prop.bstrVal && SysStringByteLen(prop.bstrVal) == sizeof(GUID)) {
+                    memcpy(&clsidOut, prop.bstrVal, sizeof(GUID));
+                    NWindows::NCOM::PropVariant_Clear(&prop);
+                    return true;
+                }
+                NWindows::NCOM::PropVariant_Clear(&prop);
             }
-            NWindows::NCOM::PropVariant_Clear(&prop);
-        }
+            return false;
+        };
+
+        if (findByName(L"Udf", outClsid)) return true;
+        if (findByName(L"Iso", outClsid)) return true;
+        if (findByName(L"Ext", outClsid)) return true; // last resort
         return false;
     }
 
     // Extract callback implementation: writes files under baseDir
     class ExtractCallback : public IArchiveExtractCallback {
     public:
-        explicit ExtractCallback(IInArchive *arc, const std::wstring &base)
-            : _ref(1), _archive(arc), _baseDir(base) {
+        explicit ExtractCallback(IInArchive *arc, const std::wstring &base,
+                                 const std::unordered_map<UInt32, std::wstring> *overridePaths = nullptr)
+            : _ref(1), _archive(arc), _baseDir(base), _overridePaths(overridePaths) {
             if (!_baseDir.empty() && (_baseDir.back() == L'/' || _baseDir.back() == L'\\')) {
                 _baseDir.pop_back();
             }
@@ -123,7 +143,22 @@ namespace {
             }
             NWindows::NCOM::PropVariant_Clear(&prop);
 
-            std::filesystem::path outPath = std::filesystem::path(_baseDir) / relPath;
+            std::filesystem::path outPath;
+            bool forcePath = false;
+            if (_overridePaths) {
+                auto it = _overridePaths->find(index);
+                if (it != _overridePaths->end()) {
+                    outPath = std::filesystem::path(it->second);
+                    forcePath = true;
+                }
+            }
+            if (!forcePath) {
+                outPath = std::filesystem::path(_baseDir);
+                if (!relPath.empty()) {
+                    outPath /= relPath;
+                }
+            }
+
             std::error_code ec;
             if (isDir) {
                 std::filesystem::create_directories(outPath, ec);
@@ -151,39 +186,118 @@ namespace {
         LONG _ref;
         IInArchive *_archive; // not owning; Archive manages its lifetime
         std::wstring _baseDir;
+        const std::unordered_map<UInt32, std::wstring> *_overridePaths;
     };
 
     struct OpenResult {
-        CMyComPtr<IInArchive> archive;
-        CMyComPtr<IInStream> inStream;
+        CMyComPtr<IInArchive> archive;     // the actual filesystem archive (UDF/ISO)
+        CMyComPtr<IInStream> inStream;     // stream backing 'archive'
+        CMyComPtr<IUnknown> outerArchive;  // holds outer Ext archive alive if substream is used
         bool ok = false;
     };
 
     OpenResult OpenIsoArchive(const std::wstring &isoPath) {
         OpenResult res;
-        GUID clsid{};
-        if (!GetIsoHandlerClsid(clsid)) return res;
+        const UInt64 kMaxCheckStartPosition = 1 << 20; // 1 MiB scan window
 
-        CMyComPtr<IInArchive> arc;
-        if (CreateArchiver(&clsid, &IID_IInArchive, (void**)&arc) != S_OK || !arc) {
-            return res;
-        }
-
+        // Open base file stream
         CInFileStream *fileSpec = new CInFileStream();
         CMyComPtr<IInStream> file = fileSpec;
         if (!fileSpec->Open(isoPath.c_str())) {
             return res;
         }
 
-        const UInt64 kMaxCheckStartPosition = 1 << 20; // 1 MiB scan window
-        HRESULT hr = arc->Open(file, &kMaxCheckStartPosition, nullptr);
-        if (hr != S_OK) {
-            return res;
+        auto tryOpenWithClsid = [&](const GUID &clsid, CMyComPtr<IInArchive> &outArc, CMyComPtr<IInStream> &in) -> HRESULT {
+            outArc.Release();
+            if (CreateArchiver(&clsid, &IID_IInArchive, (void**)&outArc) != S_OK || !outArc) return E_FAIL;
+            return outArc->Open(in, &kMaxCheckStartPosition, nullptr);
+        };
+
+        // no-op helper removed; we resolve CLSIDs below directly
+
+        // 1) Try opening via Ext, then unwrap main substream as Udf or Iso
+        GUID extClsid{}; GUID udfClsid{}; GUID isoClsid{};
+        bool haveExt=false, haveUdf=false, haveIso=false;
+        {
+            // We reuse GetIsoHandlerClsid to fetch specific names
+            UInt32 num=0; if (GetNumberOfFormats(&num)==S_OK) {
+                for (UInt32 i=0;i<num;++i){
+                    NWindows::NCOM::CPropVariant prop;
+                    if (GetHandlerProperty2(i, NArchive::NHandlerPropID::kName, &prop)==S_OK && prop.vt==VT_BSTR && prop.bstrVal){
+                        std::wstring n(prop.bstrVal, prop.bstrVal + SysStringLen(prop.bstrVal));
+                        NWindows::NCOM::PropVariant_Clear(&prop);
+                        if (n==L"Ext" || n==L"Udf" || n==L"Iso"){
+                            if (GetHandlerProperty2(i, NArchive::NHandlerPropID::kClassID, &prop)==S_OK && prop.vt==VT_BSTR && prop.bstrVal && SysStringByteLen(prop.bstrVal)==sizeof(GUID)){
+                                if (n==L"Ext") { memcpy(&extClsid, prop.bstrVal, sizeof(GUID)); haveExt=true; }
+                                if (n==L"Udf") { memcpy(&udfClsid, prop.bstrVal, sizeof(GUID)); haveUdf=true; }
+                                if (n==L"Iso") { memcpy(&isoClsid, prop.bstrVal, sizeof(GUID)); haveIso=true; }
+                            }
+                        }
+                    }
+                    NWindows::NCOM::PropVariant_Clear(&prop);
+                }
+            }
         }
 
-        res.archive = arc;
-        res.inStream = file;
-        res.ok = true;
+        if (haveExt) {
+            CMyComPtr<IInArchive> extArc;
+            if (tryOpenWithClsid(extClsid, extArc, file) == S_OK && extArc) {
+                // Query main subfile index
+                NWindows::NCOM::CPropVariant prop;
+                UInt32 mainSub = (UInt32)(Int32)-1;
+                if (extArc->GetArchiveProperty(kpidMainSubfile, &prop) == S_OK && prop.vt == VT_UI4) {
+                    mainSub = prop.ulVal;
+                }
+                NWindows::NCOM::PropVariant_Clear(&prop);
+
+                if (mainSub != (UInt32)(Int32)-1) {
+                    CMyComPtr<IInArchiveGetStream> getStream;
+                    if (extArc->QueryInterface(IID_IInArchiveGetStream, (void**)&getStream) == S_OK && getStream) {
+                        CMyComPtr<ISequentialInStream> subSeq;
+                        if (getStream->GetStream(mainSub, &subSeq) == S_OK && subSeq) {
+                            CMyComPtr<IInStream> sub;
+                            if (subSeq.QueryInterface(IID_IInStream, &sub) == S_OK && sub) {
+                                // Prefer UDF, then ISO
+                                if (haveUdf && tryOpenWithClsid(udfClsid, res.archive, sub) == S_OK) {
+                                    res.inStream = sub;
+                                    res.outerArchive = extArc; // keep ext alive
+                                    res.ok = true;
+                                    return res;
+                                }
+                                if (haveIso && tryOpenWithClsid(isoClsid, res.archive, sub) == S_OK) {
+                                    res.inStream = sub;
+                                    res.outerArchive = extArc;
+                                    res.ok = true;
+                                    return res;
+                                }
+                            }
+                        }
+                    }
+                }
+                // If we couldn't unwrap, we still can fallback to direct open below
+            }
+        }
+
+        // 2) Fallback: open directly as Udf, then Iso
+        if (haveUdf) {
+            CMyComPtr<IInArchive> arc;
+            if (tryOpenWithClsid(udfClsid, arc, file) == S_OK) {
+                res.archive = arc;
+                res.inStream = file;
+                res.ok = true;
+                return res;
+            }
+        }
+        if (haveIso) {
+            CMyComPtr<IInArchive> arc;
+            if (tryOpenWithClsid(isoClsid, arc, file) == S_OK) {
+                res.archive = arc;
+                res.inStream = file;
+                res.ok = true;
+                return res;
+            }
+        }
+
         return res;
     }
 }
@@ -196,10 +310,14 @@ std::vector<std::string> ISOReader::listFiles(const std::string &isoPath) {
     std::vector<std::string> files;
     const std::wstring wIso = Utf8ToWide(isoPath);
     auto opened = OpenIsoArchive(wIso);
-    if (!opened.ok) return files;
+    if (!opened.ok) {
+        return files;
+    }
 
     UInt32 numItems = 0;
-    if (opened.archive->GetNumberOfItems(&numItems) != S_OK) return files;
+    if (opened.archive->GetNumberOfItems(&numItems) != S_OK) {
+        return files;
+    }
     files.reserve(numItems);
 
     for (UInt32 i = 0; i < numItems; ++i) {
@@ -216,11 +334,12 @@ std::vector<std::string> ISOReader::listFiles(const std::string &isoPath) {
 
 bool ISOReader::fileExists(const std::string &isoPath, const std::string &filePath) {
     auto files = listFiles(isoPath);
-    std::string lowerFilePath = Utils::toLower(filePath);
-    for (const auto &file : files) {
-        if (Utils::toLower(file) == lowerFilePath) {
-            return true;
-        }
+    std::string target = filePath;
+    NormalizeSlashes(target);
+    target = Utils::toLower(target);
+    for (auto file : files) {
+        NormalizeSlashes(file);
+        if (Utils::toLower(file) == target) return true;
     }
     return false;
 }
@@ -234,12 +353,16 @@ bool ISOReader::extractFile(const std::string &isoPath, const std::string &fileP
     UInt32 numItems = 0;
     if (opened.archive->GetNumberOfItems(&numItems) != S_OK) return false;
     std::wstring target = Utf8ToWide(filePathInISO);
+    NormalizeSlashes(target);
+    std::transform(target.begin(), target.end(), target.begin(), ::towlower);
     Int32 found = -1;
     for (UInt32 i = 0; i < numItems; ++i) {
         NWindows::NCOM::CPropVariant prop;
         if (opened.archive->GetProperty(i, kpidPath, &prop) == S_OK && prop.vt == VT_BSTR && prop.bstrVal) {
             std::wstring ws(prop.bstrVal, prop.bstrVal + SysStringLen(prop.bstrVal));
-            if (_wcsicmp(ws.c_str(), target.c_str()) == 0) {
+            NormalizeSlashes(ws);
+            std::transform(ws.begin(), ws.end(), ws.begin(), ::towlower);
+            if (ws == target) {
                 found = (Int32)i;
                 NWindows::NCOM::PropVariant_Clear(&prop);
                 break;
@@ -249,11 +372,20 @@ bool ISOReader::extractFile(const std::string &isoPath, const std::string &fileP
     }
     if (found < 0) return false;
 
-    // Prepare destination directory
-    createDirectories(destPath);
+    // Prepare destination directory for the target file
+    std::filesystem::path destFs(destPath);
+    std::string destDir = destFs.parent_path().u8string();
+    if (destDir.empty()) {
+        // If there is no parent (file in current dir), ensure at least base dir is set
+        destDir = destFs.has_root_path() ? destFs.root_path().u8string() : std::string(".");
+    }
+    createDirectories(destDir);
 
-    // Extract only that item
-    CMyComPtr<IArchiveExtractCallback> cb = new ExtractCallback(opened.archive, Utf8ToWide(destPath));
+    // Extract only that item into the requested destination path
+    std::unordered_map<UInt32, std::wstring> overrides;
+    overrides.emplace(static_cast<UInt32>(found), Utf8ToWide(destPath));
+    CMyComPtr<IArchiveExtractCallback> cb =
+        new ExtractCallback(opened.archive, Utf8ToWide(destDir), &overrides);
     UInt32 index = (UInt32)found;
     HRESULT hr = opened.archive->Extract(&index, 1, 0, cb);
     opened.archive->Close();
@@ -270,10 +402,12 @@ bool ISOReader::extractFiles(const std::string &isoPath, const std::vector<std::
     std::vector<UInt32> indices;
     indices.reserve(filesInISO.size());
 
-    // Build lookup set in lowercase
+    // Build lookup set in lowercase with normalized slashes
     std::vector<std::wstring> wanted;
     for (const auto &s : filesInISO) {
-        std::wstring ws = Utf8ToWide(Utils::toLower(s));
+        std::string norm = s;
+        NormalizeSlashes(norm);
+        std::wstring ws = Utf8ToWide(Utils::toLower(norm));
         wanted.push_back(ws);
     }
 
@@ -281,6 +415,7 @@ bool ISOReader::extractFiles(const std::string &isoPath, const std::vector<std::
         NWindows::NCOM::CPropVariant prop;
         if (opened.archive->GetProperty(i, kpidPath, &prop) == S_OK && prop.vt == VT_BSTR && prop.bstrVal) {
             std::wstring ws(prop.bstrVal, prop.bstrVal + SysStringLen(prop.bstrVal));
+            NormalizeSlashes(ws);
             std::wstring low;
             low.resize(ws.size());
             std::transform(ws.begin(), ws.end(), low.begin(), ::towlower);
@@ -325,19 +460,35 @@ bool ISOReader::extractDirectory(const std::string &isoPath, const std::string &
 
     UInt32 numItems = 0;
     if (opened.archive->GetNumberOfItems(&numItems) != S_OK) return false;
-    std::wstring dir = Utf8ToWide(Utils::toLower(dirPathInISO));
+    std::string normDir = dirPathInISO;
+    NormalizeSlashes(normDir);
+    std::wstring dir = Utf8ToWide(Utils::toLower(normDir));
     if (!dir.empty() && dir.back() != L'/' && dir.back() != L'\\') dir.push_back(L'/');
 
     std::vector<UInt32> indices;
+    std::unordered_map<UInt32, std::wstring> overrides;
+    std::filesystem::path base = std::filesystem::u8path(destDir);
+
     for (UInt32 i = 0; i < numItems; ++i) {
         NWindows::NCOM::CPropVariant prop;
         if (opened.archive->GetProperty(i, kpidPath, &prop) == S_OK && prop.vt == VT_BSTR && prop.bstrVal) {
             std::wstring ws(prop.bstrVal, prop.bstrVal + SysStringLen(prop.bstrVal));
+            NormalizeSlashes(ws);
             std::wstring low;
             low.resize(ws.size());
             std::transform(ws.begin(), ws.end(), low.begin(), ::towlower);
             if (low.rfind(dir, 0) == 0) { // starts with dir
                 indices.push_back(i);
+                std::wstring rel = ws.substr(dir.size());
+                while (!rel.empty() && (rel.front() == L'/' || rel.front() == L'\\')) {
+                    rel.erase(rel.begin());
+                }
+                std::filesystem::path relPath(rel);
+                std::filesystem::path outPath = base;
+                if (!rel.empty()) {
+                    outPath /= relPath;
+                }
+                overrides.emplace(i, outPath.native());
             }
         }
         NWindows::NCOM::PropVariant_Clear(&prop);
@@ -348,7 +499,8 @@ bool ISOReader::extractDirectory(const std::string &isoPath, const std::string &
     indices.erase(std::unique(indices.begin(), indices.end()), indices.end());
 
     createDirectories(destDir);
-    CMyComPtr<IArchiveExtractCallback> cb = new ExtractCallback(opened.archive, Utf8ToWide(destDir));
+    CMyComPtr<IArchiveExtractCallback> cb =
+        new ExtractCallback(opened.archive, Utf8ToWide(destDir), overrides.empty() ? nullptr : &overrides);
     HRESULT hr = opened.archive->Extract(indices.data(), (UInt32)indices.size(), 0, cb);
     opened.archive->Close();
     return hr == S_OK;
@@ -358,4 +510,45 @@ void ISOReader::createDirectories(const std::string &path) {
     std::filesystem::path p(path);
     std::error_code ec;
     std::filesystem::create_directories(p, ec);
+}
+
+bool ISOReader::getFileSize(const std::string &isoPath, const std::string &filePathInISO, unsigned long long &sizeOut) {
+    sizeOut = 0ULL;
+    const std::wstring wIso = Utf8ToWide(isoPath);
+    auto opened = OpenIsoArchive(wIso);
+    if (!opened.ok) return false;
+
+    UInt32 numItems = 0;
+    if (opened.archive->GetNumberOfItems(&numItems) != S_OK) return false;
+    std::wstring target = Utf8ToWide(filePathInISO);
+    NormalizeSlashes(target);
+    std::transform(target.begin(), target.end(), target.begin(), ::towlower);
+    Int32 found = -1;
+    for (UInt32 i = 0; i < numItems; ++i) {
+        NWindows::NCOM::CPropVariant prop;
+        if (opened.archive->GetProperty(i, kpidPath, &prop) == S_OK && prop.vt == VT_BSTR && prop.bstrVal) {
+            std::wstring ws(prop.bstrVal, prop.bstrVal + SysStringLen(prop.bstrVal));
+            NormalizeSlashes(ws);
+            std::transform(ws.begin(), ws.end(), ws.begin(), ::towlower);
+            if (ws == target) {
+                found = (Int32)i;
+                NWindows::NCOM::PropVariant_Clear(&prop);
+                break;
+            }
+        }
+        NWindows::NCOM::PropVariant_Clear(&prop);
+    }
+    if (found < 0) { opened.archive->Close(); return false; }
+
+    NWindows::NCOM::CPropVariant sizeProp;
+    if (opened.archive->GetProperty((UInt32)found, kpidSize, &sizeProp) == S_OK) {
+        if (sizeProp.vt == VT_UI8) {
+            sizeOut = static_cast<unsigned long long>(sizeProp.uhVal.QuadPart);
+        } else if (sizeProp.vt == VT_EMPTY) {
+            sizeOut = 0ULL;
+        }
+    }
+    NWindows::NCOM::PropVariant_Clear(&sizeProp);
+    opened.archive->Close();
+    return (found >= 0);
 }

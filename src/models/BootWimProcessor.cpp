@@ -3,10 +3,11 @@
 #include "../utils/constants.h"
 #include "IniConfigurator.h"
 #include "../services/ISOCopyManager.h"
+#include "ISOReader.h"
 #include <set>
 
 BootWimProcessor::BootWimProcessor(EventManager &eventManager, FileCopyManager &fileCopyManager)
-    : eventManager_(eventManager), fileCopyManager_(fileCopyManager) {}
+    : eventManager_(eventManager), fileCopyManager_(fileCopyManager), isoReader_(std::make_unique<ISOReader>()) {}
 
 BootWimProcessor::~BootWimProcessor() {}
 
@@ -24,7 +25,7 @@ bool BootWimProcessor::processBootWim(const std::string &sourcePath, const std::
         eventManager_.notifyDetailedProgress(20, 100, "Preparando archivos de arranque del ISO");
         eventManager_.notifyLogUpdate("Preparando archivos de arranque del ISO...\r\n");
 
-        std::string bootWimSrc     = sourcePath + "sources\\boot.wim";
+        // sourcePath is the ISO file path; extract boot.wim from the ISO to the data partition
         std::string bootWimDestDir = destPath + "sources";
         CreateDirectoryA(bootWimDestDir.c_str(), NULL);
         if (GetFileAttributesA(bootWimDest.c_str()) != INVALID_FILE_ATTRIBUTES) {
@@ -34,7 +35,7 @@ bool BootWimProcessor::processBootWim(const std::string &sourcePath, const std::
             eventManager_.notifyDetailedProgress(25, 100, "Extrayendo boot.wim hacia la particion de datos");
             eventManager_.notifyLogUpdate("Extrayendo boot.wim hacia la particion de datos...\r\n");
             eventManager_.notifyDetailedProgress(0, 0, "Copiando boot.wim...");
-            if (fileCopyManager_.copyFileUtf8(bootWimSrc, bootWimDest)) {
+            if (isoReader_->extractFile(sourcePath, "sources/boot.wim", bootWimDest)) {
                 logFile << ISOCopyManager::getTimestamp() << "boot.wim extracted successfully to " << bootWimDest
                         << std::endl;
                 eventManager_.notifyLogUpdate("boot.wim copiado correctamente.\r\n");
@@ -47,18 +48,17 @@ bool BootWimProcessor::processBootWim(const std::string &sourcePath, const std::
         }
 
         // Copy boot.sdi
-        std::string bootSdiSrc     = sourcePath + "boot\\boot.sdi";
         std::string bootSdiDestDir = destPath + "boot";
         CreateDirectoryA(bootSdiDestDir.c_str(), NULL);
         std::string bootSdiDest = bootSdiDestDir + "\\boot.sdi";
         if (GetFileAttributesA(bootSdiDest.c_str()) != INVALID_FILE_ATTRIBUTES) {
             logFile << ISOCopyManager::getTimestamp() << "boot.sdi already exists at " << bootSdiDest << std::endl;
             bootSdiSuccess = true;
-        } else if (GetFileAttributesA(bootSdiSrc.c_str()) != INVALID_FILE_ATTRIBUTES) {
+        } else if (isoReader_->fileExists(sourcePath, "boot/boot.sdi")) {
             eventManager_.notifyDetailedProgress(30, 100, "Copiando boot.sdi requerido para arranque RAM");
             eventManager_.notifyLogUpdate("Copiando boot.sdi requerido para arranque RAM...\r\n");
             eventManager_.notifyDetailedProgress(0, 0, "Copiando boot.sdi...");
-            if (fileCopyManager_.copyFileUtf8(bootSdiSrc, bootSdiDest)) {
+            if (isoReader_->extractFile(sourcePath, "boot/boot.sdi", bootSdiDest)) {
                 logFile << ISOCopyManager::getTimestamp() << "boot.sdi copied successfully to " << bootSdiDest
                         << std::endl;
                 eventManager_.notifyLogUpdate("boot.sdi copiado correctamente.\r\n");
@@ -69,94 +69,19 @@ bool BootWimProcessor::processBootWim(const std::string &sourcePath, const std::
             }
             eventManager_.notifyDetailedProgress(0, 0, "");
         } else {
-            logFile << ISOCopyManager::getTimestamp() << "boot.sdi not found at " << bootSdiSrc << std::endl;
+            logFile << ISOCopyManager::getTimestamp() << "boot.sdi not found inside ISO at path boot/boot.sdi" << std::endl;
             bootSdiSuccess = false;
             eventManager_.notifyLogUpdate(
                 "boot.sdi no se encontro en el ISO. El arranque desde RAM podria fallar.\r\n");
         }
 
         if (copyInstallWim) {
-            std::string installWimSrc     = sourcePath + "sources\\install.wim";
-            std::string installEsdSrc     = sourcePath + "sources\\install.esd";
-            std::string sourceInstallPath;
-            bool        installFileExists = false;
-
-            if (GetFileAttributesA(installWimSrc.c_str()) != INVALID_FILE_ATTRIBUTES) {
-                sourceInstallPath = installWimSrc;
-                installFileExists = true;
-                eventManager_.notifyDetailedProgress(35, 100, "Inyectando contenido de install.wim directamente en boot.wim");
-                eventManager_.notifyLogUpdate("Inyectando contenido de install.wim directamente en boot.wim...\r\n");
-            } else if (GetFileAttributesA(installEsdSrc.c_str()) != INVALID_FILE_ATTRIBUTES) {
-                sourceInstallPath = installEsdSrc;
-                installFileExists = true;
-                eventManager_.notifyDetailedProgress(35, 100, "Inyectando contenido de install.esd directamente en boot.wim");
-                eventManager_.notifyLogUpdate("Inyectando contenido de install.esd directamente en boot.wim...\r\n");
-            } else {
-                logFile << ISOCopyManager::getTimestamp() << "install.wim or install.esd not found, skipping injection" << std::endl;
-                eventManager_.notifyLogUpdate("install.wim o install.esd no se encontraron en el ISO. Se omite la inyección.\r\n");
-                installWimSuccess = false;
-            }
-
-            if (installFileExists) {
-                // Log initial boot.wim size
-                logFile << ISOCopyManager::getTimestamp() << "Boot.wim size before export: ";
-                WIN32_FILE_ATTRIBUTE_DATA fileInfo;
-                if (GetFileAttributesExA(bootWimDest.c_str(), GetFileExInfoStandard, &fileInfo)) {
-                    long long fileSize = ((long long)fileInfo.nFileSizeHigh << 32) | fileInfo.nFileSizeLow;
-                    logFile << fileSize << " bytes" << std::endl;
-                } else {
-                    logFile << "Unable to get file size" << std::endl;
-                }
-                eventManager_.notifyDetailedProgress(0, 0, "Exportando índices directamente a boot.wim...");
-                bool anyExported = false;
-                // Export all indices directly from source
-                for (int idx = 1;; ++idx) {
-                    std::string idxExportCmd = "dism /export-image /sourceimagefile:\"" + sourceInstallPath + "\" /sourceindex:" + std::to_string(idx) + " /destinationimagefile:\"" + bootWimDest + "\" /compress:fast";                    logFile << ISOCopyManager::getTimestamp() << "Export command: " << idxExportCmd << std::endl;
-                    std::string exportOutput = Utils::exec(idxExportCmd.c_str());
-                    logFile << ISOCopyManager::getTimestamp() << "Export output: " << exportOutput << std::endl;
-                    if (exportOutput.find("successfully") == std::string::npos && exportOutput.find("correctamente") == std::string::npos && exportOutput.find("Correctamente") == std::string::npos && exportOutput.find("The operation completed successfully") == std::string::npos) {
-                        if (idx == 1) {
-                            logFile << ISOCopyManager::getTimestamp() << "Failed to export index 1 from " << sourceInstallPath << " to boot.wim" << std::endl;
-                            eventManager_.notifyLogUpdate("Error al exportar contenido a boot.wim.\r\n");
-                            installWimSuccess = false;
-                        } else {
-                            logFile << ISOCopyManager::getTimestamp() << "No more indices to export from " << sourceInstallPath << " (stopped at index " << idx << ")" << std::endl;
-                        }
-                        break; // No more indices or error
-                    } else {
-                        logFile << ISOCopyManager::getTimestamp() << "Exported index " << idx << " from " << sourceInstallPath << " to boot.wim successfully" << std::endl;
-                        anyExported = true;
-                    }
-                }
-                // Verify the export result by checking index count
-                std::string postExportInfoCmd = "dism /Get-WimInfo /WimFile:\"" + bootWimDest + "\"";
-                std::string postInfoOutput = Utils::exec(postExportInfoCmd.c_str());
-                int postIndexCount = 0;
-                size_t pos = 0;
-                while ((pos = postInfoOutput.find("Index :", pos)) != std::string::npos) {
-                    postIndexCount++;
-                    pos += 7;
-                }
-                logFile << ISOCopyManager::getTimestamp() << "Post-export index count: " << postIndexCount << std::endl;
-                // Log final boot.wim size
-                logFile << ISOCopyManager::getTimestamp() << "Boot.wim size after export: ";
-                if (GetFileAttributesExA(bootWimDest.c_str(), GetFileExInfoStandard, &fileInfo)) {
-                    long long fileSize = ((long long)fileInfo.nFileSizeHigh << 32) | fileInfo.nFileSizeLow;
-                    logFile << fileSize << " bytes" << std::endl;
-                } else {
-                    logFile << "Unable to get file size" << std::endl;
-                }
-                if (postIndexCount > 1) {
-                    anyExported = true;
-                    installWimSuccess = true;
-                } else {
-                    installWimSuccess = false;
-                }
-                if (anyExported) {
-                    eventManager_.notifyLogUpdate("Contenido inyectado en boot.wim correctamente.\r\n");
-                }
-                eventManager_.notifyDetailedProgress(0, 0, "");
-            }
+            // Skip injecting install.* into boot.wim in RAM mode to improve reliability and reduce size.
+            // We'll use install.wim/esd directly from disk during setup.
+            logFile << ISOCopyManager::getTimestamp()
+                    << "Skipping install.* injection into boot.wim; will use on-disk install image." << std::endl;
+            eventManager_.notifyLogUpdate(
+                "Omitiendo la inyección de install.* en boot.wim; se usará la imagen desde disco.\r\n");
         }
 
         // Mount and process boot.wim
@@ -211,13 +136,15 @@ bool BootWimProcessor::mountAndProcessWim(const std::string &bootWimDest, const 
         eventManager_.notifyLogUpdate("Detalles del índice seleccionado:\r\n" + indexDetails + "\r\n");
     }
     
-    std::string dismMountCmd =
-        "dism /Mount-Wim /WimFile:\"" + bootWimDest + "\" /index:" + std::to_string(index) + " /MountDir:\"" + mountDir + "\"";
+    std::string dism = Utils::getDismPath();
+    std::string dismMountCmd = "\"" + dism + "\" /Mount-Wim /WimFile:\"" + bootWimDest + "\" /index:" +
+                                std::to_string(index) + " /MountDir:\"" + mountDir + "\"";
     logFile << ISOCopyManager::getTimestamp() << "Mounting boot.wim: " << dismMountCmd << std::endl;
-    std::string mountOutput = Utils::exec(dismMountCmd.c_str());
-    logFile << ISOCopyManager::getTimestamp() << "Mount output: " << mountOutput << std::endl;
-    if (mountOutput.find("correctamente") != std::string::npos ||
-        mountOutput.find("successfully") != std::string::npos || mountOutput.empty()) {
+    std::string mountOutput;
+    int         mountCode = Utils::execWithExitCode(dismMountCmd.c_str(), mountOutput);
+    logFile << ISOCopyManager::getTimestamp() << "Mount output (code=" << mountCode << "): " << mountOutput
+            << std::endl;
+    if (mountCode == 0) {
         if (integratePrograms) {
             eventManager_.notifyDetailedProgress(40, 100, "Integrando Programs en boot.wim");
             eventManager_.notifyLogUpdate("Integrando Programs en boot.wim...\r\n");
@@ -334,10 +261,12 @@ bool BootWimProcessor::mountAndProcessWim(const std::string &bootWimDest, const 
         eventManager_.notifyDetailedProgress(0, 0, "Guardando cambios en boot.wim...");
         std::string dismUnmountCmd = "dism /Unmount-Wim /MountDir:\"" + mountDir + "\" /Commit";
         logFile << ISOCopyManager::getTimestamp() << "Unmounting boot.wim: " << dismUnmountCmd << std::endl;
-        std::string unmountOutput = Utils::exec(dismUnmountCmd.c_str());
-        logFile << ISOCopyManager::getTimestamp() << "Unmount output: " << unmountOutput << std::endl;
-        if (unmountOutput.find("correctamente") == std::string::npos &&
-            unmountOutput.find("successfully") == std::string::npos && !unmountOutput.empty()) {
+    std::string unmountOutput;
+    std::string dismUnmountCmdFull = "\"" + dism + "\" /Unmount-Wim /MountDir:\"" + mountDir + "\" /Commit";
+    int         unmountCode        = Utils::execWithExitCode(dismUnmountCmdFull.c_str(), unmountOutput);
+    logFile << ISOCopyManager::getTimestamp() << "Unmount output (code=" << unmountCode << "): "
+        << unmountOutput << std::endl;
+    if (unmountCode != 0) {
             logFile << ISOCopyManager::getTimestamp() << "Failed to unmount boot.wim, changes not saved" << std::endl;
             eventManager_.notifyLogUpdate("Error al desmontar boot.wim, cambios no guardados.\r\n");
             RemoveDirectoryA(mountDir.c_str());
@@ -346,8 +275,9 @@ bool BootWimProcessor::mountAndProcessWim(const std::string &bootWimDest, const 
         eventManager_.notifyLogUpdate("boot.wim actualizado correctamente.\r\n");
         eventManager_.notifyDetailedProgress(0, 0, "");
     } else {
-        logFile << ISOCopyManager::getTimestamp()
-                << "Failed to mount boot.wim for processing. DISM output: " << mountOutput << std::endl;
+    logFile << ISOCopyManager::getTimestamp()
+        << "Failed to mount boot.wim for processing. DISM code=" << mountCode
+        << ", output: " << mountOutput << std::endl;
         eventManager_.notifyLogUpdate(
             "Error al montar boot.wim para procesamiento. Verifique el archivo de log para mas detalles.\r\n");
         RemoveDirectoryA(mountDir.c_str());

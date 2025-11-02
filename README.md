@@ -58,6 +58,35 @@ The final executable is located at `build/Release/BootThatISO!.exe`. Also includ
 
 Note: The project now uses the 7‑Zip SDK (vendored) for ISO reading/extraction; no vcpkg or libarchive is required.
 
+### Build notes
+- Release binaries are linked with the static MSVC runtime (/MT) for a self-contained EXE (no VC++ Redistributable required).
+- 7‑Zip SDK is compiled as a static library and linked whole-archive to retain handler registration.
+- Included handlers: UDF, ISO, Ext container, and MBR. The reader prefers UDF and can unwrap Ext to reach the inner UDF/ISO stream.
+
+### Diagnostics and tests
+Two small console tools are built alongside the app to validate ISO handling:
+
+```powershell
+# List supported handlers and try opening via UDF/ISO
+build/Release/ListFormats.exe
+
+# List ISO contents and auto-extract all *.wim/*.esd to %TEMP%\EasyISOBoot_iso_extract_test
+build/Release/TestISOReader.exe "C:\Users\Andrey\Documentos\EasyISOBoot\isos\Win11_25H2_Spanish_x64.iso"
+build/Release/TestISOReader.exe "C:\Users\Andrey\Documentos\EasyISOBoot\isos\Windows10_22H2_X64.iso"
+build/Release/TestISOReader.exe "C:\Users\Andrey\Documentos\EasyISOBoot\isos\HBCD_PE_x64.iso"
+```
+
+Notes:
+- The test preserves internal ISO paths when extracting (e.g., writes to %TEMP%\EasyISOBoot_iso_extract_test\sources\boot.wim).
+- Windows ISOs may use `install.wim` or `install.esd`; the test discovers and extracts all `.wim` and `.esd` files it finds.
+- Hybrid Windows ISOs expose few items via the ISO handler; opening through UDF yields the full file list (handled automatically).
+
+### Install image copy validation
+- When copying the Windows image from the ISO (`sources/install.wim` or `sources/install.esd`), the app now verifies:
+  - Size match: compares the size inside the ISO with the extracted file size on disk.
+  - Image integrity: runs `DISM /Get-WimInfo /WimFile:"<dest>"` and checks for valid indices.
+- Results are written to `logs/iso_extract_log.log` and shown in the UI. Any mismatch or DISM failure is flagged so you can retry extraction.
+
 ## Usage
 ### Graphical Interface
 1. Run `BootThatISO!.exe` **as administrator** (the manifest already requests it).
@@ -203,6 +232,35 @@ cmake --build build --config Release
 El ejecutable final se ubica en `build/Release/BootThatISO!.exe`. Tambien se incluye `compilar.bat` con pasos equivalentes.
 
 Nota: El proyecto ahora utiliza el SDK de 7‑Zip (incluido) para lectura/extracción de ISOs; no se requiere vcpkg ni libarchive.
+
+### Notas de compilación
+- En Release se vincula el runtime de MSVC de forma estática (/MT) para obtener un ejecutable autocontenido (no requiere VC++ Redistributable).
+- El SDK de 7‑Zip se compila como librería estática y se enlaza como "whole-archive" para conservar el registro de manejadores.
+- Manejadores incluidos: UDF, ISO, contenedor Ext y MBR. El lector prioriza UDF y puede "desenvolver" Ext para acceder al flujo interno UDF/ISO.
+
+### Diagnóstico y pruebas
+Se generan dos utilidades de consola junto con la app para validar el manejo de ISOs:
+
+```powershell
+# Lista manejadores soportados e intenta abrir vía UDF/ISO
+build/Release/ListFormats.exe
+
+# Lista el contenido del ISO y extrae automáticamente todos los *.wim/*.esd a %TEMP%\EasyISOBoot_iso_extract_test
+build/Release/TestISOReader.exe "C:\Users\Andrey\Documentos\EasyISOBoot\isos\Win11_25H2_Spanish_x64.iso"
+build/Release/TestISOReader.exe "C:\Users\Andrey\Documentos\EasyISOBoot\isos\Windows10_22H2_X64.iso"
+build/Release/TestISOReader.exe "C:\Users\Andrey\Documentos\EasyISOBoot\isos\HBCD_PE_x64.iso"
+```
+
+Notas:
+- La prueba preserva las rutas internas del ISO al extraer (por ejemplo, escribe en %TEMP%\EasyISOBoot_iso_extract_test\sources\boot.wim).
+- Las ISOs de Windows pueden usar `install.wim` o `install.esd`; la prueba detecta y extrae todos los `.wim` y `.esd` que encuentre.
+- Las ISOs híbridas de Windows muestran pocos elementos con el manejador ISO; al abrir vía UDF se obtiene el listado completo (se maneja automáticamente).
+
+### Validación de copia de la imagen de instalación
+- Al copiar la imagen de Windows desde el ISO (`sources/install.wim` o `sources/install.esd`), la app ahora verifica:
+  - Coincidencia de tamaño: compara el tamaño dentro del ISO con el tamaño del archivo extraído en disco.
+  - Integridad de la imagen: ejecuta `DISM /Get-WimInfo /WimFile:"<dest>"` y verifica que existan índices válidos.
+- Los resultados se escriben en `logs/iso_extract_log.log` y se muestran en la UI. Cualquier discrepancia o fallo de DISM se marca para que puedas reintentar la extracción.
 
 ## Uso
 ### Interfaz grafica

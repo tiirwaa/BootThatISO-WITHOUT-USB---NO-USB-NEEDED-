@@ -207,3 +207,56 @@ bool Utils::matchesPattern(const std::string &str, const std::string &pattern) {
 
     return patternPos == patternLen;
 }
+
+int Utils::execWithExitCode(const char *cmd, std::string &output) {
+    HANDLE              hRead, hWrite;
+    SECURITY_ATTRIBUTES sa = {sizeof(SECURITY_ATTRIBUTES), NULL, TRUE};
+    output.clear();
+    if (!CreatePipe(&hRead, &hWrite, &sa, 0))
+        return -1;
+
+    STARTUPINFOA si = {sizeof(STARTUPINFOA)};
+    si.dwFlags      = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
+    si.hStdOutput   = hWrite;
+    si.hStdError    = hWrite;
+    si.wShowWindow  = SW_HIDE;
+
+    PROCESS_INFORMATION pi{};
+    if (!CreateProcessA(NULL, (LPSTR)cmd, NULL, NULL, TRUE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) {
+        CloseHandle(hRead);
+        CloseHandle(hWrite);
+        return -1;
+    }
+
+    CloseHandle(hWrite);
+
+    char  buffer[256];
+    DWORD bytesRead;
+    while (ReadFile(hRead, buffer, sizeof(buffer) - 1, &bytesRead, NULL) && bytesRead > 0) {
+        buffer[bytesRead] = '\0';
+        output += buffer;
+    }
+
+    CloseHandle(hRead);
+    WaitForSingleObject(pi.hProcess, INFINITE);
+    DWORD exitCode = 0xFFFFFFFF;
+    GetExitCodeProcess(pi.hProcess, &exitCode);
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
+    return static_cast<int>(exitCode);
+}
+
+std::string Utils::getDismPath() {
+    char sysdir[MAX_PATH] = {0};
+    UINT n = GetSystemDirectoryA(sysdir, MAX_PATH);
+    if (n == 0 || n >= MAX_PATH) {
+        // Fallback to plain dism in PATH
+        return "dism";
+    }
+    std::string path(sysdir);
+    if (!path.empty() && (path.back() == '\\' || path.back() == '/')) {
+        path.pop_back();
+    }
+    path += "\\dism.exe";
+    return path;
+}

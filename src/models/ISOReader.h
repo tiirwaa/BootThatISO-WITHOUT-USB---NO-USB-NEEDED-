@@ -28,6 +28,9 @@ public:
     // Extract a directory from ISO to destination
     bool extractDirectory(const std::string &isoPath, const std::string &dirPathInISO, const std::string &destDir);
 
+    // Get file size (bytes) for a specific entry inside the ISO
+    bool getFileSize(const std::string &isoPath, const std::string &filePathInISO, unsigned long long &sizeOut);
+
 private:
     // Helper to create directories
     void createDirectories(const std::string &path);
