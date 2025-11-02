@@ -97,7 +97,6 @@ set(SOURCE_FILES
     src/models/isomounter.cpp
     src/models/ISOReader.cpp
     src/models/IniConfigurator.cpp
-    src/models/BootWimProcessor.cpp
     src/models/ContentExtractor.cpp
     src/models/HashVerifier.cpp
     src/models/DiskIntegrityChecker.cpp
@@ -114,6 +113,14 @@ set(SOURCE_FILES
     src/utils/LocalizationManager.cpp
     src/utils/Utils.cpp
     src/views/mainwindow.cpp
+    # Refactored boot processing modules
+    src/boot/BootWimProcessor.cpp
+    src/wim/WimMounter.cpp
+    src/drivers/DriverIntegrator.cpp
+    src/config/PecmdConfigurator.cpp
+    src/config/StartnetConfigurator.cpp
+    src/config/IniFileProcessor.cpp
+    src/filesystem/ProgramsIntegrator.cpp
 )
 
 set(RESOURCE_FILES

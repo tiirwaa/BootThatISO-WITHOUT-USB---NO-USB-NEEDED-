@@ -23,7 +23,7 @@
 #include "../models/filecopymanager.h"
 #include "version.h"
 #include "../models/IniConfigurator.h"
-#include "../models/BootWimProcessor.h"
+#include "../boot/BootWimProcessor.h"
 #include "../models/ContentExtractor.h"
 #include "../models/HashVerifier.h"
 #include "../models/ISOReader.h"
