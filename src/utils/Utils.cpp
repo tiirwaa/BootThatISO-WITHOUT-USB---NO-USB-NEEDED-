@@ -191,11 +191,11 @@ bool Utils::matchesPattern(const std::string &str, const std::string &pattern) {
             ++strPos;
             ++patternPos;
         } else if (patternPos < patternLen && pattern[patternPos] == '*') {
-            starPos = patternPos++;
+            starPos    = patternPos++;
             strStarPos = strPos;
         } else if (starPos != std::string::npos) {
             patternPos = starPos + 1;
-            strPos = ++strStarPos;
+            strPos     = ++strStarPos;
         } else {
             return false;
         }
@@ -248,7 +248,7 @@ int Utils::execWithExitCode(const char *cmd, std::string &output) {
 
 std::string Utils::getDismPath() {
     char sysdir[MAX_PATH] = {0};
-    UINT n = GetSystemDirectoryA(sysdir, MAX_PATH);
+    UINT n                = GetSystemDirectoryA(sysdir, MAX_PATH);
     if (n == 0 || n >= MAX_PATH) {
         // Fallback to plain dism in PATH
         return "dism";

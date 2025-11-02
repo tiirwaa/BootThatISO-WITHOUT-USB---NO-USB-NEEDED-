@@ -16,8 +16,8 @@ public:
                         bool extractBootWim, bool copyInstallWim, std::ofstream &logFile);
 
 private:
-    EventManager    &eventManager_;
-    FileCopyManager &fileCopyManager_;
+    EventManager              &eventManager_;
+    FileCopyManager           &fileCopyManager_;
     std::unique_ptr<ISOReader> isoReader_;
 
     bool mountAndProcessWim(const std::string &bootWimDest, const std::string &destPath, const std::string &sourcePath,

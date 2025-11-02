@@ -67,7 +67,8 @@ bool PartitionCreator::performDiskpartOperations(const std::string &format) {
     si.wShowWindow = SW_HIDE;
 
     std::string cmd = "diskpart /s " + std::string(tempFile);
-    if (!CreateProcessA(NULL, const_cast<char *>(cmd.c_str()), NULL, NULL, TRUE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) {
+    if (!CreateProcessA(NULL, const_cast<char *>(cmd.c_str()), NULL, NULL, TRUE, CREATE_NO_WINDOW, NULL, NULL, &si,
+                        &pi)) {
         CloseHandle(hRead);
         CloseHandle(hWrite);
         DeleteFileA(tempFile);

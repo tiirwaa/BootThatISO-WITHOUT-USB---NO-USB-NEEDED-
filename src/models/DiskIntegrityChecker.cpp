@@ -39,7 +39,8 @@ bool DiskIntegrityChecker::performDiskIntegrityCheck() {
     si_chk.wShowWindow = SW_HIDE;
 
     std::string cmd_chk = "chkdsk C:";
-    if (!CreateProcessA(NULL, const_cast<char *>(cmd_chk.c_str()), NULL, NULL, TRUE, CREATE_NO_WINDOW, NULL, NULL, &si_chk, &pi_chk)) {
+    if (!CreateProcessA(NULL, const_cast<char *>(cmd_chk.c_str()), NULL, NULL, TRUE, CREATE_NO_WINDOW, NULL, NULL,
+                        &si_chk, &pi_chk)) {
         CloseHandle(hRead_chk);
         CloseHandle(hWrite_chk);
         if (eventManager_)
@@ -124,7 +125,8 @@ bool DiskIntegrityChecker::performDiskIntegrityCheck() {
         si_f.wShowWindow = SW_HIDE;
 
         std::string cmd_f = "chkdsk C: /f";
-        if (!CreateProcessA(NULL, const_cast<char *>(cmd_f.c_str()), NULL, NULL, TRUE, CREATE_NO_WINDOW, NULL, NULL, &si_f, &pi_f)) {
+        if (!CreateProcessA(NULL, const_cast<char *>(cmd_f.c_str()), NULL, NULL, TRUE, CREATE_NO_WINDOW, NULL, NULL,
+                            &si_f, &pi_f)) {
             CloseHandle(hRead_f);
             CloseHandle(hWrite_f);
             CloseHandle(hRead_stdin);
@@ -304,8 +306,8 @@ bool DiskIntegrityChecker::performDiskIntegrityCheck() {
                 logToGeneral(failMsg);
                 if (eventManager_)
                     eventManager_->notifyLogUpdate(failMsg);
-                std::string       shutOut     = Utils::exec("shutdown /r /t 0");
-                int               ret         = 0; // Utils::exec doesn't expose exit code here; treat non-empty as attempted
+                std::string       shutOut = Utils::exec("shutdown /r /t 0");
+                int               ret = 0; // Utils::exec doesn't expose exit code here; treat non-empty as attempted
                 const std::string shutdownMsg = "Resultado comando 'shutdown': " + std::to_string(ret) +
                                                 " (0=OK, otro=error o sin privilegios)\r\n";
                 logToGeneral(shutdownMsg);

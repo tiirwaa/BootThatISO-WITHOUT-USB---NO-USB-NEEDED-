@@ -41,7 +41,8 @@ ISOCopyManager::ISOCopyManager()
     : typeDetector(std::make_unique<ISOTypeDetector>()), efiManager(nullptr),
       isoMounter(std::make_unique<ISOMounter>()), fileCopyManager(nullptr),
       iniConfigurator(std::make_unique<IniConfigurator>()), bootWimProcessor(nullptr), contentExtractor(nullptr),
-      hashVerifier(std::make_unique<HashVerifier>()), isoReader(std::make_unique<ISOReader>()), isWindowsISODetected(false) {}
+      hashVerifier(std::make_unique<HashVerifier>()), isoReader(std::make_unique<ISOReader>()),
+      isWindowsISODetected(false) {}
 
 ISOCopyManager::~ISOCopyManager() {}
 
@@ -210,7 +211,7 @@ bool ISOCopyManager::extractISOContents(EventManager &eventManager, const std::s
     eventManager.notifyDetailedProgress(10, 100, "Analizando contenido ISO");
 
     // List all files in the ISO
-    auto files = isoReader->listFiles(isoPath);
+    auto      files     = isoReader->listFiles(isoPath);
     long long fileCount = files.size();
     logFile << getTimestamp() << "Total files analyzed: " << fileCount << std::endl;
 
@@ -223,14 +224,15 @@ bool ISOCopyManager::extractISOContents(EventManager &eventManager, const std::s
     eventManager.notifyLogUpdate("Analizando contenido del ISO...\r\n");
 
     // Check if it's Windows ISO
-    bool isWindowsISO = false;
+    bool isWindowsISO  = false;
     bool hasSourcesDir = false;
-    bool hasSetupExe = false;
-    bool hasBootMgr = false;
-    
+    bool hasSetupExe   = false;
+    bool hasBootMgr    = false;
+
     for (const auto &file : files) {
         std::string lower = Utils::toLower(file);
-        if (lower.find("boot.wim") != std::string::npos || lower.find("install.wim") != std::string::npos || lower.find("install.esd") != std::string::npos) {
+        if (lower.find("boot.wim") != std::string::npos || lower.find("install.wim") != std::string::npos ||
+            lower.find("install.esd") != std::string::npos) {
             isWindowsISO = true;
             break;
         }
@@ -244,7 +246,7 @@ bool ISOCopyManager::extractISOContents(EventManager &eventManager, const std::s
             hasBootMgr = true;
         }
     }
-    
+
     // Heuristic: If we have sources directory and setup.exe, it's likely a Windows ISO
     // even if we can't read the UDF part with boot.wim/install.wim
     if (!isWindowsISO && hasSourcesDir && hasSetupExe) {
@@ -283,35 +285,36 @@ bool ISOCopyManager::extractISOContents(EventManager &eventManager, const std::s
         if (mode == AppKeys::BootModeRam) {
             integratePrograms = true;
             programsSrc       = destPath + "Programs";
-            logFile << getTimestamp()
-                    << "Programs integration scheduled for RAM boot (no pre-extraction)" << std::endl;
-                        eventManager.notifyLogUpdate("Integracion de Programs en boot.wim para arranque RAM.\r\n");
-        }    } else {
+            logFile << getTimestamp() << "Programs integration scheduled for RAM boot (no pre-extraction)" << std::endl;
+            eventManager.notifyLogUpdate("Integracion de Programs en boot.wim para arranque RAM.\r\n");
+        }
+    } else {
         logFile << getTimestamp() << "Skipping content extraction (" << modeLabel << " mode)" << std::endl;
     }
 
     // Extract boot.wim if requested
     bool bootWimSuccess = true;
     if (extractBootWim) {
-        bootWimSuccess = bootWimProcessor->processBootWim(isoPath, destPath, espPath, integratePrograms, programsSrc, copiedSoFar,
-                                         extractBootWim, copyInstallWim, logFile);
+        bootWimSuccess = bootWimProcessor->processBootWim(isoPath, destPath, espPath, integratePrograms, programsSrc,
+                                                          copiedSoFar, extractBootWim, copyInstallWim, logFile);
     }
 
     // Copy install file if requested
     if (copyInstallWim && isWindowsISO) {
         // Choose source inside ISO
-        bool esdPreferred = isoReader->fileExists(isoPath, "sources/install.esd");
-        std::string installFile = esdPreferred ? "sources/install.esd" : "sources/install.wim";
-        std::string installDest = destPath + "sources\\" + installFile.substr(installFile.find_last_of('/') + 1);
+        bool        esdPreferred = isoReader->fileExists(isoPath, "sources/install.esd");
+        std::string installFile  = esdPreferred ? "sources/install.esd" : "sources/install.wim";
+        std::string installDest  = destPath + "sources\\" + installFile.substr(installFile.find_last_of('/') + 1);
 
-    eventManager.notifyDetailedProgress(75, 100, "Copiando archivo de instalacion");
-    eventManager.notifyLogUpdate("Copiando archivo de instalacion...\r\n");
+        eventManager.notifyDetailedProgress(75, 100, "Copiando archivo de instalacion");
+        eventManager.notifyLogUpdate("Copiando archivo de instalacion...\r\n");
         bool extracted = isoReader->extractFile(isoPath, installFile, installDest);
         if (extracted) {
             auto validateInstall = [&](bool logOnWarn) -> bool {
-                unsigned long long srcSize = 0ULL; bool haveSrc = isoReader->getFileSize(isoPath, installFile, srcSize);
+                unsigned long long        srcSize = 0ULL;
+                bool                      haveSrc = isoReader->getFileSize(isoPath, installFile, srcSize);
                 WIN32_FILE_ATTRIBUTE_DATA dstInfo{};
-                unsigned long long dstSize = 0ULL;
+                unsigned long long        dstSize = 0ULL;
                 if (GetFileAttributesExA(installDest.c_str(), GetFileExInfoStandard, &dstInfo)) {
                     dstSize = (static_cast<unsigned long long>(dstInfo.nFileSizeHigh) << 32) | dstInfo.nFileSizeLow;
                 }
@@ -322,26 +325,35 @@ bool ISOCopyManager::extractISOContents(EventManager &eventManager, const std::s
 
                 bool sizeOk = !haveSrc || (srcSize == dstSize);
                 if (!sizeOk && logOnWarn) {
-                    eventManager.notifyLogUpdate("Advertencia: tamano de origen/destino no coincide para install.*.\r\n");
+                    eventManager.notifyLogUpdate(
+                        "Advertencia: tamano de origen/destino no coincide para install.*.\r\n");
                 }
 
-                std::string infoCmd = std::string("\"") + Utils::getDismPath() + "\" /Get-WimInfo /WimFile:\"" + installDest + "\"";
-                std::string infoOut; int infoCode = Utils::execWithExitCode(infoCmd.c_str(), infoOut);
-                int indexCount = 0; size_t p = 0;
-                while ((p = infoOut.find("Index :", p)) != std::string::npos) { ++indexCount; p += 7; }
-                bool dismOk = (infoCode == 0) && (indexCount >= 1 ||
-                              infoOut.find("The operation completed successfully") != std::string::npos ||
-                              infoOut.find("correctamente") != std::string::npos);
+                std::string infoCmd =
+                    std::string("\"") + Utils::getDismPath() + "\" /Get-WimInfo /WimFile:\"" + installDest + "\"";
+                std::string infoOut;
+                int         infoCode   = Utils::execWithExitCode(infoCmd.c_str(), infoOut);
+                int         indexCount = 0;
+                size_t      p          = 0;
+                while ((p = infoOut.find("Index :", p)) != std::string::npos) {
+                    ++indexCount;
+                    p += 7;
+                }
+                bool dismOk =
+                    (infoCode == 0) &&
+                    (indexCount >= 1 || infoOut.find("The operation completed successfully") != std::string::npos ||
+                     infoOut.find("correctamente") != std::string::npos);
 
                 if (sizeOk && dismOk) {
-                    logFile << getTimestamp() << "Install image validation: OK (indices=" << indexCount << ")" << std::endl;
+                    logFile << getTimestamp() << "Install image validation: OK (indices=" << indexCount << ")"
+                            << std::endl;
                     eventManager.notifyLogUpdate("Archivo de instalacion copiado y validado correctamente.\r\n");
                     return true;
                 }
 
                 logFile << getTimestamp() << "Install image validation: FAILED (code=" << infoCode
-                        << ", sizeOk=" << (sizeOk?"true":"false")
-                        << ", indices=" << indexCount << ")\nOutput:\n" << infoOut << std::endl;
+                        << ", sizeOk=" << (sizeOk ? "true" : "false") << ", indices=" << indexCount << ")\nOutput:\n"
+                        << infoOut << std::endl;
                 if (logOnWarn) {
                     eventManager.notifyLogUpdate("Error/Advertencia al validar install.*; revise iso_extract.log.\r\n");
                 }
@@ -469,7 +481,3 @@ static HashInfo readHashInfo(const std::string &path) {
     }
     return info;
 }
-
-
-
-

@@ -30,7 +30,8 @@ bool executeCommandHidden(const std::string &command, DWORD timeoutMs, std::stri
     si.hStdError   = hWrite;
     si.wShowWindow = SW_HIDE;
 
-    if (!CreateProcessA(NULL, const_cast<char *>(command.c_str()), NULL, NULL, TRUE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) {
+    if (!CreateProcessA(NULL, const_cast<char *>(command.c_str()), NULL, NULL, TRUE, CREATE_NO_WINDOW, NULL, NULL, &si,
+                        &pi)) {
         CloseHandle(hRead);
         CloseHandle(hWrite);
         return false;
@@ -150,7 +151,8 @@ bool PartitionReformatter::reformatPartition(const std::string &format) {
     si.wShowWindow = SW_HIDE;
 
     std::string cmd = "diskpart /s " + std::string(tempFile);
-    if (!CreateProcessA(NULL, const_cast<char *>(cmd.c_str()), NULL, NULL, TRUE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) {
+    if (!CreateProcessA(NULL, const_cast<char *>(cmd.c_str()), NULL, NULL, TRUE, CREATE_NO_WINDOW, NULL, NULL, &si,
+                        &pi)) {
         CloseHandle(hRead);
         CloseHandle(hWrite);
         DeleteFileA(tempFile);
@@ -295,7 +297,7 @@ bool PartitionReformatter::reformatPartition(const std::string &format) {
 
     if (exitCode == 0) {
         Sleep(5000);
-    Utils::exec("mountvol /r");
+        Utils::exec("mountvol /r");
         if (eventManager_)
             eventManager_->notifyLogUpdate("Particion reformateada exitosamente.\r\n");
         return true;
@@ -495,7 +497,8 @@ bool PartitionReformatter::reformatEfiPartition() {
     si.hStdError   = NULL;
 
     cmd = "diskpart /s " + std::string(tempFile);
-    if (!CreateProcessA(NULL, const_cast<char *>(cmd.c_str()), NULL, NULL, FALSE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) {
+    if (!CreateProcessA(NULL, const_cast<char *>(cmd.c_str()), NULL, NULL, FALSE, CREATE_NO_WINDOW, NULL, NULL, &si,
+                        &pi)) {
         DeleteFileA(tempFile);
         if (eventManager_)
             eventManager_->notifyLogUpdate("Error: No se pudo ejecutar diskpart para formateo EFI.\r\n");

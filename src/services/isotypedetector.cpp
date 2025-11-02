@@ -24,7 +24,7 @@ const char *ISOTypeDetector::getTimestamp() {
 
 bool ISOTypeDetector::isWindowsISO(const std::string &mountedIsoPath) {
     // Create log file for debugging
-    std::string logPath = Utils::getExeDirectory() + "logs\\iso_type_detection.log";
+    std::string   logPath = Utils::getExeDirectory() + "logs\\iso_type_detection.log";
     std::ofstream logFile(logPath.c_str(), std::ios::app);
     logFile << getTimestamp() << "Checking ISO type for path: " << mountedIsoPath << std::endl;
 
