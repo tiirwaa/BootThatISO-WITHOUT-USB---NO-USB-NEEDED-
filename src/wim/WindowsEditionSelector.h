@@ -73,7 +73,7 @@ public:
                                   std::ofstream &logFile);
 
     /**
-     * @brief Injects selected Windows edition into boot.wim
+     * @brief Injects selected Windows edition into boot.wim by copying install.esd inside Index 2
      * @param isoPath Path to the ISO file
      * @param bootWimPath Path to the boot.wim file
      * @param selectedIndex Index of the edition to inject (1-based)
@@ -83,6 +83,17 @@ public:
      */
     bool injectEditionIntoBootWim(const std::string &isoPath, const std::string &bootWimPath, int selectedIndex,
                                   const std::string &tempDir, std::ofstream &logFile);
+    
+    /**
+     * @brief Exports selected editions to a new install.esd with only chosen indices
+     * @param sourceInstallPath Path to the original install.wim/esd
+     * @param selectedIndices Vector of indices to export (1-based)
+     * @param destInstallPath Path for the new install.esd with selected editions
+     * @param logFile Log file stream
+     * @return true if export successful
+     */
+    bool exportSelectedEditions(const std::string &sourceInstallPath, const std::vector<int> &selectedIndices,
+                                const std::string &destInstallPath, std::ofstream &logFile);
 
     /**
      * @brief Main workflow: detect, prompt, and inject Windows edition

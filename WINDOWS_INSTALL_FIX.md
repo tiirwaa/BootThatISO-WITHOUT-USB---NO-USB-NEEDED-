@@ -9,15 +9,20 @@ Al utilizar ISOs de instalación de Windows (Windows 10 y Windows 11) en modo RA
 3. **La unidad X: se vuelve inaccesible** una vez el arranque en RAM se completa
 4. **Windows Setup no puede encontrar** los archivos de instalación (`install.wim/esd`) porque están en una unidad inaccesible
 
-## Solución Implementada
+## Solución Implementada (Actualizada - 2 Nov 2025)
 
-La solución correcta es **inyectar el índice seleccionado del `install.wim/install.esd` directamente en el `boot.wim`**, de manera que todos los archivos necesarios estén contenidos en la imagen de arranque que se carga en RAM.
+La solución correcta es **copiar el `install.esd` filtrado (solo ediciones seleccionadas) DENTRO del Índice 2 de boot.wim**, específicamente en la ruta `X:\sources\install.esd` dentro del entorno Windows Setup PE. De esta manera:
+
+1. Windows Setup (Índice 2) arranca en RAM
+2. Puede acceder a `X:\sources\install.esd` directamente desde su propio sistema de archivos
+3. No necesita buscar el archivo en una unidad externa inaccesible
+4. El tamaño del boot.wim aumenta, pero el archivo install.esd está accesible durante toda la instalación
 
 ### Cambios Realizados
 
 #### 1. Extensión de `WimMounter` (src/wim/WimMounter.h/cpp)
 
-Se agregó el método `exportWimIndex()` que utiliza DISM para exportar un índice específico de un WIM a otro:
+Se agregó el método `exportWimIndex()` que utiliza DISM para exportar índices específicos de un WIM a otro WIM nuevo:
 
 ```cpp
 bool exportWimIndex(const std::string &sourceWim, int sourceIndex, 
@@ -25,10 +30,10 @@ bool exportWimIndex(const std::string &sourceWim, int sourceIndex,
                    ProgressCallback progressCallback = nullptr);
 ```
 
-Este método usa el comando DISM:
+Este método se usa para crear un `install.esd` filtrado con solo las ediciones seleccionadas:
 ```
-DISM /Export-Image /SourceImageFile:"install.wim" /SourceIndex:1 
-     /DestinationImageFile:"boot.wim" /Compress:maximum /CheckIntegrity
+DISM /Export-Image /SourceImageFile:"install.esd" /SourceIndex:1 
+     /DestinationImageFile:"install_filtered.esd" /Compress:maximum /CheckIntegrity
 ```
 
 #### 2. Nueva Clase: `WindowsEditionSelector` (src/wim/WindowsEditionSelector.h/cpp)
@@ -39,7 +44,7 @@ Se creó una nueva clase que encapsula toda la lógica de:
 - **Extracción**: Extraer el archivo de instalación del ISO temporalmente
 - **Análisis**: Leer todos los índices (ediciones) disponibles usando DISM
 - **Selección**: Presentar las opciones al usuario y permitir selección (actualmente auto-selecciona la mejor opción)
-- **Inyección**: Exportar el índice seleccionado al `boot.wim`
+- **Inyección**: Copiar el `install.esd` filtrado dentro del Índice 2 de `boot.wim` en `sources\install.esd`
 
 **Métodos principales:**
 
@@ -55,6 +60,11 @@ bool injectEditionIntoBootWim(const std::string &isoPath,
                               int selectedIndex, 
                               const std::string &tempDir,
                               std::ofstream &logFile);
+
+bool exportSelectedEditions(const std::string &sourceInstallPath,
+                            const std::vector<int> &selectedIndices,
+                            const std::string &destInstallPath,
+                            std::ofstream &logFile);
 ```
 
 #### 3. Modificación de `BootWimProcessor` (src/boot/BootWimProcessor.h/cpp)
@@ -113,13 +123,19 @@ src/wim/WindowsEditionSelector.cpp
 2. **Extracción de boot.wim**: Se extrae `boot.wim` del ISO
 3. **Análisis de ediciones**: Se extrae temporalmente `install.wim/esd` y se leen las ediciones disponibles
 4. **Selección de edición**: 
-   - Si hay múltiples ediciones, se selecciona automáticamente la mejor (Pro/Home)
+   - Si hay múltiples ediciones, se muestra diálogo gráfico para selección
    - Si solo hay una edición, se selecciona automáticamente
-   - (Futuro: Se puede implementar un diálogo para que el usuario seleccione)
-5. **Inyección**: La edición seleccionada se exporta como un nuevo índice en `boot.wim`
-6. **Limpieza**: Se elimina el `install.wim/esd` temporal extraído
-7. **Procesamiento de boot.wim**: Se continúa con el procesamiento normal (drivers, configuración, etc.)
-8. **NO se copia install.wim/esd al disco**: El parámetro `copyInstallWim` es `false` en modo RAM
+5. **Creación de install.esd filtrado**: 
+   - Se exportan solo los índices seleccionados del `install.esd` original
+   - Se crea `install_filtered.esd` con solo esas ediciones
+6. **Montaje de boot.wim Índice 2**: Se monta el entorno Windows Setup PE
+7. **Inyección**: 
+   - Se crea la carpeta `sources\` dentro del WIM montado
+   - Se copia `install_filtered.esd` a `[MountDir]\sources\install.esd`
+8. **Guardado**: Se desmontan y guardan los cambios en boot.wim
+9. **Limpieza**: Se eliminan archivos temporales
+10. **Procesamiento de boot.wim**: Se continúa con el procesamiento normal (drivers, configuración, etc.)
+11. **NO se copia install.wim/esd al disco**: El parámetro `copyInstallWim` es `false` en modo RAM
 
 ### Para ISOs de Hiren's BootCD o similares (sin install.wim):
 
@@ -157,8 +173,22 @@ Típicamente, `boot.wim` de Windows tiene 2 índices:
 1. **Índice 1**: Microsoft Windows PE (entorno de recuperación)
 2. **Índice 2**: Microsoft Windows Setup (instalador)
 
-Después de la inyección, `boot.wim` tendrá un tercer índice:
-3. **Índice 3**: Edición de Windows seleccionada (ej. Windows 11 Pro)
+**Nueva implementación (2 Nov 2025)**:
+Después del procesamiento, `boot.wim` sigue teniendo **solo 2 índices**, pero el Índice 2 ahora contiene:
+- Todo el entorno Windows Setup PE
+- **Archivo `sources\install.esd` interno** con las ediciones seleccionadas
+
+**Ventajas de este enfoque**:
+- ✅ Windows Setup encuentra install.esd en la ubicación esperada (`X:\sources\install.esd`)
+- ✅ No hay conflictos con bootmgr (solo arranca Índice 2 como siempre)
+- ✅ Error 0xC00000BB resuelto
+- ✅ Compatible con el flujo estándar de instalación de Windows
+
+**Implementación anterior (DEPRECADA)**:
+La versión anterior inyectaba el sistema operativo completo como Índice 3:
+3. **Índice 3**: Edición de Windows seleccionada (ej. Windows 11 Pro) ❌ INCORRECTO
+
+Esto causaba el error 0xC00000BB porque Windows Setup (Índice 2) no sabía que debía buscar el Índice 3.
 
 ### Selección Automática de Edición
 

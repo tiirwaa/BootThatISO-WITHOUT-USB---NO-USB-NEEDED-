@@ -42,7 +42,7 @@ void ProcessController::startProcess(const std::string &isoPath, const std::stri
     const std::string logDir = Logger::instance().logDirectory();
 
     // Log to file
-    std::ofstream logFile((logDir + "\\start_process.log").c_str());
+    std::ofstream logFile((logDir + "\\" + START_PROCESS_LOG_FILE).c_str());
     logFile << "startProcess called with synchronous: " << synchronous << "\n";
     logFile.close();
 

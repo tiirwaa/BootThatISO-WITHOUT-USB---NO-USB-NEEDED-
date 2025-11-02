@@ -39,8 +39,8 @@ std::wstring EditionSelectorDialog::formatSize(long long bytes) {
 
 void EditionSelectorDialog::initListView(HWND                                                       hListView,
                                          const std::vector<WindowsEditionSelector::WindowsEdition> &editions) {
-    // Set extended styles
-    ListView_SetExtendedListViewStyle(hListView, LVS_EX_FULLROWSELECT | LVS_EX_CHECKBOXES | LVS_EX_GRIDLINES);
+    // Set extended styles (removed LVS_EX_CHECKBOXES to use radio button behavior)
+    ListView_SetExtendedListViewStyle(hListView, LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
 
     // Get localized column names
     std::wstring colIndex = LocalizationManager::getInstance().getWString("editionSelector.columnIndex");
@@ -111,16 +111,37 @@ void EditionSelectorDialog::initDialog(HWND hDlg, DialogData *data) {
         SetDlgItemTextW(hDlg, IDCANCEL_EDITION, btnCancel.c_str());
     }
 
-    // Center dialog
-    RECT rc;
-    GetWindowRect(hDlg, &rc);
-    int width        = rc.right - rc.left;
-    int height       = rc.bottom - rc.top;
-    int screenWidth  = GetSystemMetrics(SM_CXSCREEN);
-    int screenHeight = GetSystemMetrics(SM_CYSCREEN);
-    int x            = (screenWidth - width) / 2;
-    int y            = (screenHeight - height) / 2;
-    SetWindowPos(hDlg, NULL, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
+    // Center dialog relative to parent window
+    RECT rcDlg, rcParent;
+    GetWindowRect(hDlg, &rcDlg);
+    int dlgWidth  = rcDlg.right - rcDlg.left;
+    int dlgHeight = rcDlg.bottom - rcDlg.top;
+    
+    HWND hParent = GetParent(hDlg);
+    if (hParent && GetWindowRect(hParent, &rcParent)) {
+        // Center relative to parent window
+        int parentWidth  = rcParent.right - rcParent.left;
+        int parentHeight = rcParent.bottom - rcParent.top;
+        int x = rcParent.left + (parentWidth - dlgWidth) / 2;
+        int y = rcParent.top + (parentHeight - dlgHeight) / 2;
+        
+        // Ensure dialog is visible on screen
+        int screenWidth  = GetSystemMetrics(SM_CXSCREEN);
+        int screenHeight = GetSystemMetrics(SM_CYSCREEN);
+        if (x < 0) x = 0;
+        if (y < 0) y = 0;
+        if (x + dlgWidth > screenWidth) x = screenWidth - dlgWidth;
+        if (y + dlgHeight > screenHeight) y = screenHeight - dlgHeight;
+        
+        SetWindowPos(hDlg, HWND_TOP, x, y, 0, 0, SWP_NOSIZE);
+    } else {
+        // Fallback: center on screen
+        int screenWidth  = GetSystemMetrics(SM_CXSCREEN);
+        int screenHeight = GetSystemMetrics(SM_CYSCREEN);
+        int x = (screenWidth - dlgWidth) / 2;
+        int y = (screenHeight - dlgHeight) / 2;
+        SetWindowPos(hDlg, HWND_TOP, x, y, 0, 0, SWP_NOSIZE);
+    }
 
     // Get control handles
     data->hListView  = GetDlgItem(hDlg, IDC_EDITION_LIST);
@@ -133,23 +154,26 @@ void EditionSelectorDialog::initDialog(HWND hDlg, DialogData *data) {
         initListView(data->hListView, *data->editions);
 
         // Auto-select recommended edition (Pro or Home)
+        int selectedIndex = -1;
         for (size_t i = 0; i < data->editions->size(); ++i) {
             const auto &ed        = (*data->editions)[i];
             std::string nameLower = ed.name;
             std::transform(nameLower.begin(), nameLower.end(), nameLower.begin(), ::tolower);
 
             if (nameLower.find("pro") != std::string::npos || nameLower.find("home") != std::string::npos) {
-                ListView_SetCheckState(data->hListView, static_cast<int>(i), TRUE);
-                ListView_SetItemState(data->hListView, static_cast<int>(i), LVIS_SELECTED, LVIS_SELECTED);
+                selectedIndex = static_cast<int>(i);
                 break;
             }
         }
 
         // If no Pro/Home found, select first
-        if (ListView_GetNextItem(data->hListView, -1, LVNI_SELECTED) == -1) {
-            ListView_SetCheckState(data->hListView, 0, TRUE);
-            ListView_SetItemState(data->hListView, 0, LVIS_SELECTED, LVIS_SELECTED);
+        if (selectedIndex == -1) {
+            selectedIndex = 0;
         }
+        
+        // Apply selection
+        ListView_SetItemState(data->hListView, selectedIndex, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
+        ListView_EnsureVisible(data->hListView, selectedIndex, FALSE);
     }
 
     // Load logo
@@ -168,29 +192,29 @@ void EditionSelectorDialog::updateTotalSize(DialogData *data) {
     if (!data || !data->editions || !data->hListView)
         return;
 
-    long long total = 0;
-    int       count = ListView_GetItemCount(data->hListView);
-
-    for (int i = 0; i < count; ++i) {
-        if (ListView_GetCheckState(data->hListView, i)) {
-            LVITEMW item = {};
-            item.mask    = LVIF_PARAM;
-            item.iItem   = i;
-            ListView_GetItem(data->hListView, &item);
-
-            int editionIndex = static_cast<int>(item.lParam);
-            for (const auto &ed : *data->editions) {
-                if (ed.index == editionIndex) {
-                    total += ed.size;
-                    break;
-                }
-            }
-        }
+    // Get selected item (radio button behavior - only one selection)
+    int selectedItem = ListView_GetNextItem(data->hListView, -1, LVNI_SELECTED);
+    if (selectedItem == -1) {
+        data->totalSize = 0;
+        std::wstring sizeText = formatSize(0);
+        SetWindowTextW(data->hSizeLabel, sizeText.c_str());
+        return;
     }
 
-    data->totalSize       = total;
-    std::wstring sizeText = formatSize(total);
-    SetWindowTextW(data->hSizeLabel, sizeText.c_str());
+    LVITEMW item = {};
+    item.mask    = LVIF_PARAM;
+    item.iItem   = selectedItem;
+    ListView_GetItem(data->hListView, &item);
+
+    int editionIndex = static_cast<int>(item.lParam);
+    for (const auto &ed : *data->editions) {
+        if (ed.index == editionIndex) {
+            data->totalSize = ed.size;
+            std::wstring sizeText = formatSize(ed.size);
+            SetWindowTextW(data->hSizeLabel, sizeText.c_str());
+            break;
+        }
+    }
 }
 
 void EditionSelectorDialog::updateInfo(DialogData *data) {
@@ -242,11 +266,9 @@ INT_PTR CALLBACK EditionSelectorDialog::dialogProc(HWND hDlg, UINT message, WPAR
             if (nmhdr->code == LVN_ITEMCHANGED) {
                 LPNMLISTVIEW pnmv = reinterpret_cast<LPNMLISTVIEW>(lParam);
                 if (pnmv->uChanged & LVIF_STATE) {
-                    // Check state or selection changed
-                    if ((pnmv->uOldState ^ pnmv->uNewState) & LVIS_STATEIMAGEMASK) {
-                        updateTotalSize(data);
-                    }
+                    // Selection changed (radio button behavior)
                     if ((pnmv->uOldState ^ pnmv->uNewState) & LVIS_SELECTED) {
+                        updateTotalSize(data);
                         updateInfo(data);
                     }
                 }
@@ -262,19 +284,11 @@ INT_PTR CALLBACK EditionSelectorDialog::dialogProc(HWND hDlg, UINT message, WPAR
         case IDOK_EDITION: {
             if (data && data->editions && data->hListView) {
                 data->selectedIndices.clear();
-                int count = ListView_GetItemCount(data->hListView);
-
-                for (int i = 0; i < count; ++i) {
-                    if (ListView_GetCheckState(data->hListView, i)) {
-                        LVITEMW item = {};
-                        item.mask    = LVIF_PARAM;
-                        item.iItem   = i;
-                        ListView_GetItem(data->hListView, &item);
-                        data->selectedIndices.push_back(static_cast<int>(item.lParam));
-                    }
-                }
-
-                if (data->selectedIndices.empty()) {
+                
+                // Get the selected item (radio button behavior - only one)
+                int selectedItem = ListView_GetNextItem(data->hListView, -1, LVNI_SELECTED);
+                
+                if (selectedItem == -1) {
                     std::wstring warningMsg =
                         LocalizationManager::getInstance().getWString("editionSelector.warningNoSelection");
                     std::wstring warningTitle =
@@ -282,6 +296,12 @@ INT_PTR CALLBACK EditionSelectorDialog::dialogProc(HWND hDlg, UINT message, WPAR
                     MessageBoxW(hDlg, warningMsg.c_str(), warningTitle.c_str(), MB_OK | MB_ICONWARNING);
                     return TRUE;
                 }
+
+                LVITEMW item = {};
+                item.mask    = LVIF_PARAM;
+                item.iItem   = selectedItem;
+                ListView_GetItem(data->hListView, &item);
+                data->selectedIndices.push_back(static_cast<int>(item.lParam));
 
                 EndDialog(hDlg, IDOK);
             }

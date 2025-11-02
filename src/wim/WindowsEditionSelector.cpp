@@ -134,8 +134,11 @@ int WindowsEditionSelector::promptUserSelection(const std::vector<WindowsEdition
 
     // Get LocalizationManager instance
     LocalizationManager *locManager = &LocalizationManager::getInstance();
+    
+    // Find main window to use as parent (for proper modal behavior and centering)
+    HWND hMainWindow = FindWindowW(L"BootThatISOClass", NULL);
 
-    if (EditionSelectorDialog::show(hInstance, NULL, editions, selectedIndices, locManager)) {
+    if (EditionSelectorDialog::show(hInstance, hMainWindow, editions, selectedIndices, locManager)) {
         if (!selectedIndices.empty()) {
             int firstSelected = selectedIndices[0];
             logFile << "[WindowsEditionSelector] User selected edition index: " << firstSelected << std::endl;
@@ -177,8 +180,11 @@ bool WindowsEditionSelector::promptUserMultiSelection(const std::vector<WindowsE
 
     // Get LocalizationManager instance
     LocalizationManager *locManager = &LocalizationManager::getInstance();
+    
+    // Find main window to use as parent (for proper modal behavior and centering)
+    HWND hMainWindow = FindWindowW(L"BootThatISOClass", NULL);
 
-    if (EditionSelectorDialog::show(hInstance, NULL, editions, selectedIndices, locManager)) {
+    if (EditionSelectorDialog::show(hInstance, hMainWindow, editions, selectedIndices, locManager)) {
         if (!selectedIndices.empty()) {
             logFile << "[WindowsEditionSelector] User selected " << selectedIndices.size() << " edition(s)"
                     << std::endl;
@@ -203,6 +209,50 @@ bool WindowsEditionSelector::promptUserMultiSelection(const std::vector<WindowsE
     return false;
 }
 
+bool WindowsEditionSelector::exportSelectedEditions(const std::string &sourceInstallPath,
+                                                    const std::vector<int> &selectedIndices,
+                                                    const std::string &destInstallPath, std::ofstream &logFile) {
+    logFile << "[WindowsEditionSelector] Exporting selected editions to new install image" << std::endl;
+
+    // Delete destination file if it exists
+    if (GetFileAttributesA(destInstallPath.c_str()) != INVALID_FILE_ATTRIBUTES) {
+        DeleteFileA(destInstallPath.c_str());
+    }
+
+    // Export each selected index
+    for (size_t i = 0; i < selectedIndices.size(); ++i) {
+        int srcIndex  = selectedIndices[i];
+        int destIndex = static_cast<int>(i) + 1; // 1-based indexing
+
+        logFile << "[WindowsEditionSelector] Exporting index " << srcIndex << " as index " << destIndex << std::endl;
+
+        auto exportProgress = [this, srcIndex, i, &selectedIndices](int percent, const std::string &message) {
+            // Calculate overall progress (35-60% range for export - this is the slowest operation)
+            int totalEditions = static_cast<int>(selectedIndices.size());
+            int baseProgress = 35;
+            int rangeProgress = 25; // 25% range for export (slow operation)
+            int currentEditionProgress = static_cast<int>((static_cast<double>(i) / totalEditions) * rangeProgress);
+            int individualProgress = static_cast<int>((static_cast<double>(percent) / totalEditions / 100.0) * rangeProgress);
+            int overallPercent = baseProgress + currentEditionProgress + individualProgress;
+            
+            std::string msg = "Exportando edición " + std::to_string(srcIndex) + " (" + 
+                             std::to_string(static_cast<int>(i) + 1) + "/" + std::to_string(totalEditions) + ")";
+            eventManager_.notifyDetailedProgress(overallPercent, 100, msg);
+        };
+
+        bool success = wimMounter_.exportWimIndex(sourceInstallPath, srcIndex, destInstallPath, destIndex, exportProgress);
+
+        if (!success) {
+            logFile << "[WindowsEditionSelector] Failed to export index " << srcIndex << ": "
+                    << wimMounter_.getLastError() << std::endl;
+            return false;
+        }
+    }
+
+    logFile << "[WindowsEditionSelector] Successfully exported " << selectedIndices.size() << " edition(s)" << std::endl;
+    return true;
+}
+
 bool WindowsEditionSelector::injectEditionIntoBootWim(const std::string &isoPath, const std::string &bootWimPath,
                                                       int selectedIndex, const std::string &tempDir,
                                                       std::ofstream &logFile) {
@@ -214,24 +264,113 @@ bool WindowsEditionSelector::injectEditionIntoBootWim(const std::string &isoPath
         }
     }
 
-    logFile << "[WindowsEditionSelector] Injecting Windows edition " << selectedIndex << " into boot.wim" << std::endl;
-    eventManager_.notifyDetailedProgress(35, 100, "Inyectando edición de Windows en boot.wim");
-    eventManager_.notifyLogUpdate("Inyectando edición seleccionada en boot.wim para arranque RAM...\r\n");
+    logFile << "[WindowsEditionSelector] Preparing to create filtered Windows install image for RAM boot" << std::endl;
+    eventManager_.notifyDetailedProgress(35, 100, "Preparando imagen de instalación para RAM boot");
+    eventManager_.notifyLogUpdate("Preparando edición seleccionada para arranque RAM...\r\n");
 
-    // Use WimMounter to export the selected index to boot.wim
-    auto exportProgress = [this](int percent, const std::string &message) {
-        int adjustedPercent = 35 + (percent * 20 / 100); // Map 0-100 to 35-55
+    // Step 1: Create a new install.wim with only the selected edition
+    // Extract boot.wim path to get the destination partition
+    std::string bootWimDir = bootWimPath.substr(0, bootWimPath.find_last_of("\\/"));
+    std::string destPartition = bootWimDir.substr(0, bootWimDir.find("sources"));
+    std::string destInstallPath = destPartition + "sources\\install.wim";
+    
+    std::vector<int> selectedIndices = {selectedIndex};
+
+    logFile << "[WindowsEditionSelector] Creating filtered install.wim with only selected edition" << std::endl;
+    logFile << "[WindowsEditionSelector] Destination: " << destInstallPath << std::endl;
+    eventManager_.notifyLogUpdate("Creando imagen de instalación filtrada...\r\n");
+
+    // Export directly to the destination to save space
+    if (!exportSelectedEditions(installImagePath_, selectedIndices, destInstallPath, logFile)) {
+        logFile << "[WindowsEditionSelector] Failed to create filtered install image" << std::endl;
+        eventManager_.notifyLogUpdate("Error al crear imagen filtrada.\r\n");
+        return false;
+    }
+
+    // Step 2: Mount boot.wim Index 2 (Windows Setup) to modify startnet.cmd
+    std::string mountDir = tempDir + "\\boot_wim_mount";
+    CreateDirectoryA(mountDir.c_str(), NULL);
+
+    logFile << "[WindowsEditionSelector] Mounting boot.wim Index 2 (Windows Setup) to configure boot script" << std::endl;
+    eventManager_.notifyDetailedProgress(70, 100, "Configurando boot.wim para RAM boot");
+    eventManager_.notifyLogUpdate("Configurando entorno de arranque...\r\n");
+
+    auto mountProgress = [this](int percent, const std::string &message) {
+        int adjustedPercent = 70 + (percent * 5 / 100); // Map 0-100 to 70-75
         eventManager_.notifyDetailedProgress(adjustedPercent, 100, message);
     };
 
-    bool success = wimMounter_.exportWimIndex(installImagePath_, selectedIndex, bootWimPath, 3, exportProgress);
+    if (!wimMounter_.mountWim(bootWimPath, mountDir, 2, mountProgress)) {
+        logFile << "[WindowsEditionSelector] Failed to mount boot.wim Index 2: " << wimMounter_.getLastError()
+                << std::endl;
+        eventManager_.notifyLogUpdate("Error al montar boot.wim.\r\n");
+        DeleteFileA(destInstallPath.c_str());
+        return false;
+    }
+
+    // Step 3: Modify startnet.cmd to assign drive letter and launch setup
+    std::string startnetPath = mountDir + "\\Windows\\System32\\startnet.cmd";
+    std::string sourcesPath = mountDir + "\\sources";
+    CreateDirectoryA(sourcesPath.c_str(), NULL);
+    
+    logFile << "[WindowsEditionSelector] Modifying startnet.cmd to mount install partition" << std::endl;
+    
+    std::ofstream startnet(startnetPath, std::ios::trunc);
+    if (startnet.is_open()) {
+        startnet << "@echo off\r\n";
+        startnet << "echo Initializing Windows Setup from RAM...\r\n";
+        startnet << "wpeinit\r\n";
+        startnet << "echo Mounting install partition...\r\n";
+        // Assign drive letter to the NTFS data partition containing install.wim/esd
+        startnet << "for /f \"tokens=2\" %%a in ('echo list volume ^| diskpart ^| findstr /C:\"NTFS\" ^| findstr /V /C:\"Hidden\"') do (\r\n";
+        startnet << "  if exist %%a:\\sources\\install.wim (\r\n";
+        startnet << "    set INSTALL_DRIVE=%%a:\r\n";
+        startnet << "    goto :found\r\n";
+        startnet << "  )\r\n";
+        startnet << "  if exist %%a:\\sources\\install.esd (\r\n";
+        startnet << "    set INSTALL_DRIVE=%%a:\r\n";
+        startnet << "    goto :found\r\n";
+        startnet << "  )\r\n";
+        startnet << ")\r\n";
+        startnet << ":found\r\n";
+        startnet << "if defined INSTALL_DRIVE (\r\n";
+        startnet << "  echo Install image found on %INSTALL_DRIVE%\r\n";
+        startnet << "  cd /d %INSTALL_DRIVE%\\sources\r\n";
+        startnet << "  start setup.exe\r\n";
+        startnet << ") else (\r\n";
+        startnet << "  echo ERROR: Install image not found!\r\n";
+        startnet << "  cmd\r\n";
+        startnet << ")\r\n";
+        startnet.close();
+        logFile << "[WindowsEditionSelector] startnet.cmd created successfully" << std::endl;
+    } else {
+        logFile << "[WindowsEditionSelector] Failed to create startnet.cmd" << std::endl;
+        wimMounter_.unmountWim(mountDir, false, nullptr);
+        DeleteFileA(destInstallPath.c_str());
+        return false;
+    }
+
+    // Step 4: Unmount and save changes
+    logFile << "[WindowsEditionSelector] Saving changes to boot.wim" << std::endl;
+    eventManager_.notifyDetailedProgress(75, 100, "Guardando cambios en boot.wim");
+    eventManager_.notifyLogUpdate("Guardando configuración...\r\n");
+
+    auto unmountProgress = [this](int percent, const std::string &message) {
+        int adjustedPercent = 75 + (percent * 25 / 100); // Map 0-100 to 75-100
+        eventManager_.notifyDetailedProgress(adjustedPercent, 100, message);
+    };
+
+    bool success = wimMounter_.unmountWim(mountDir, true, unmountProgress);
 
     if (success) {
-        logFile << "[WindowsEditionSelector] Successfully injected edition into boot.wim" << std::endl;
-        eventManager_.notifyLogUpdate("Edición de Windows inyectada correctamente en boot.wim.\r\n");
+        logFile << "[WindowsEditionSelector] Successfully configured Windows Setup for RAM boot" << std::endl;
+        logFile << "[WindowsEditionSelector] install.wim location: " << destInstallPath << std::endl;
+        eventManager_.notifyLogUpdate("Edición de Windows preparada correctamente.\r\n");
+        eventManager_.notifyLogUpdate("Windows Setup buscará install.wim en la partición de datos.\r\n");
     } else {
-        logFile << "[WindowsEditionSelector] Failed to inject edition: " << wimMounter_.getLastError() << std::endl;
-        eventManager_.notifyLogUpdate("Error al inyectar edición en boot.wim.\r\n");
+        logFile << "[WindowsEditionSelector] Failed to save boot.wim changes: " << wimMounter_.getLastError() << std::endl;
+        eventManager_.notifyLogUpdate("Error al guardar configuración.\r\n");
+        DeleteFileA(destInstallPath.c_str());
     }
 
     return success;

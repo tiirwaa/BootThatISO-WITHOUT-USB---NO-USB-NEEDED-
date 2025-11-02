@@ -22,6 +22,11 @@ const char *const REFORMAT_LOG_FILE         = "reformat_log.log";
 const char *const REFORMAT_EXIT_LOG_FILE    = "reformat_exit_log.log";
 const char *const CHKDSK_LOG_FILE           = "chkdsk_log.txt";
 const char *const CHKDSK_F_LOG_FILE         = "chkdsk_f_log.txt";
+const char *const START_PROCESS_LOG_FILE    = "start_process.log";
+const char *const UNATTENDED_DEBUG_LOG_FILE = "unattended_debug.log";
+const char *const GENERAL_ALT_LOG_FILE      = "general.log";
+const char *const DISKPART_LIST_LOG_FILE    = "diskpart_list_disk.log";
+const char *const ISO_TYPE_DETECTION_LOG    = "iso_type_detection.log";
 
 // Diskpart error codes
 constexpr DWORD DISKPART_DEVICE_IN_USE = 0x80042413;

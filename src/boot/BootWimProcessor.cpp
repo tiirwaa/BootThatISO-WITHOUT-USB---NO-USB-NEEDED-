@@ -265,17 +265,17 @@ bool BootWimProcessor::processBootWim(const std::string &sourcePath, const std::
     // Process Windows editions (inject selected edition into boot.wim) if this is a Windows install ISO
     // and we're NOT copying install.wim separately
     if (!copyInstallWim) {
-        // Create temp directory for extraction
-        std::string tempDir = destPath + "temp_install_extract";
+        // Create temp directory for extraction on C:\ (more space available than on target partition)
+        std::string tempDir = "C:\\BootThatISO_temp_install";
         CreateDirectoryA(tempDir.c_str(), NULL);
 
         logFile << ISOCopyManager::getTimestamp() << "Checking for Windows install image to inject" << std::endl;
+        logFile << ISOCopyManager::getTimestamp() << "Using temp directory: " << tempDir << std::endl;
 
         // Process Windows editions - this will inject the selected edition into boot.wim
         if (windowsEditionSelector_->hasInstallImage(sourcePath)) {
             logFile << ISOCopyManager::getTimestamp() << "Windows install image detected, processing edition selection"
                     << std::endl;
-            eventManager_.notifyLogUpdate("Detectado ISO de instalación de Windows.\r\n");
 
             if (!windowsEditionSelector_->processWindowsEditions(sourcePath, bootWimDest, tempDir, logFile)) {
                 logFile << ISOCopyManager::getTimestamp() << "Failed to process Windows editions" << std::endl;
