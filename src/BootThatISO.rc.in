@@ -16,6 +16,23 @@ BEGIN
     PUSHBUTTON      "Cancel", IDCANCEL, 150, 150, 60, 18
 END
 
+IDD_EDITION_DIALOG DIALOGEX 0, 0, 480, 260
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Windows Edition Selector"
+FONT 9, "Segoe UI", 0, 0, 0x0
+BEGIN
+    CONTROL         "", IDC_EDITION_LOGO, "STATIC", WS_CHILD | WS_VISIBLE | SS_BITMAP, 8, 8, 32, 32
+    LTEXT           "Select Windows Editions", IDC_EDITION_TITLE, 50, 15, 420, 14, SS_LEFT
+    LTEXT           "Selected editions will be injected into boot.wim", IDC_EDITION_SUBTITLE, 50, 29, 420, 10, SS_LEFT
+    CONTROL         "", IDC_EDITION_LIST, "SysListView32", LVS_REPORT | LVS_SINGLESEL | WS_BORDER | WS_TABSTOP, 15, 48, 450, 150
+    LTEXT           "Information:", IDC_EDITION_INFO_LABEL, 15, 204, 60, 10, SS_LEFT
+    EDITTEXT        IDC_EDITION_INFO, 15, 214, 450, 16, ES_READONLY | ES_AUTOHSCROLL
+    LTEXT           "Total estimated size:", IDC_EDITION_SIZE_TEXT, 15, 235, 100, 10, SS_LEFT
+    LTEXT           "0 MB", IDC_EDITION_SIZE_LABEL, 120, 235, 160, 10, SS_LEFT
+    DEFPUSHBUTTON   "Continue", IDOK_EDITION, 270, 235, 90, 18
+    PUSHBUTTON      "Cancel", IDCANCEL_EDITION, 370, 235, 90, 18
+END
+
 IDR_AG_LOGO RCDATA "../res/ag.png"
 IDR_LOGO_T RCDATA "../res/logo_t.png"
 IDR_EN_US RCDATA "../lang/en_us.xml"

@@ -4,6 +4,7 @@
 #include "../models/ISOReader.h"
 #include "../models/IniConfigurator.h"
 #include "../wim/WimMounter.h"
+#include "../wim/WindowsEditionSelector.h"
 #include "../drivers/DriverIntegrator.h"
 #include "../config/PecmdConfigurator.h"
 #include "../config/StartnetConfigurator.h"
@@ -21,7 +22,8 @@ BootWimProcessor::BootWimProcessor(EventManager &eventManager, FileCopyManager &
       startnetConfigurator_(std::make_unique<StartnetConfigurator>()),
       programsIntegrator_(std::make_unique<ProgramsIntegrator>(fileCopyManager)),
       iniConfigurator_(std::make_unique<IniConfigurator>()),
-      iniFileProcessor_(std::make_unique<IniFileProcessor>(*iniConfigurator_)) {}
+      iniFileProcessor_(std::make_unique<IniFileProcessor>(*iniConfigurator_)),
+      windowsEditionSelector_(std::make_unique<WindowsEditionSelector>(eventManager, *wimMounter_, *isoReader_)) {}
 
 BootWimProcessor::~BootWimProcessor() {}
 
@@ -258,8 +260,40 @@ bool BootWimProcessor::processBootWim(const std::string &sourcePath, const std::
         return false;
     }
 
-    // Skip install.wim injection in RAM mode
-    if (copyInstallWim) {
+    std::string bootWimDest = destPath + "sources\\boot.wim";
+
+    // Process Windows editions (inject selected edition into boot.wim) if this is a Windows install ISO
+    // and we're NOT copying install.wim separately
+    if (!copyInstallWim) {
+        // Create temp directory for extraction
+        std::string tempDir = destPath + "temp_install_extract";
+        CreateDirectoryA(tempDir.c_str(), NULL);
+
+        logFile << ISOCopyManager::getTimestamp() << "Checking for Windows install image to inject" << std::endl;
+
+        // Process Windows editions - this will inject the selected edition into boot.wim
+        if (windowsEditionSelector_->hasInstallImage(sourcePath)) {
+            logFile << ISOCopyManager::getTimestamp() << "Windows install image detected, processing edition selection"
+                    << std::endl;
+            eventManager_.notifyLogUpdate("Detectado ISO de instalación de Windows.\r\n");
+
+            if (!windowsEditionSelector_->processWindowsEditions(sourcePath, bootWimDest, tempDir, logFile)) {
+                logFile << ISOCopyManager::getTimestamp() << "Failed to process Windows editions" << std::endl;
+                eventManager_.notifyLogUpdate("Error al procesar ediciones de Windows.\r\n");
+                // Cleanup temp directory
+                std::string rdCmd = "cmd /c rd /s /q \"" + tempDir + "\" 2>nul";
+                Utils::exec(rdCmd.c_str());
+                return false;
+            }
+        } else {
+            logFile << ISOCopyManager::getTimestamp()
+                    << "No Windows install image found; proceeding with standard boot.wim processing" << std::endl;
+        }
+
+        // Cleanup temp directory
+        std::string rdCmd = "cmd /c rd /s /q \"" + tempDir + "\" 2>nul";
+        Utils::exec(rdCmd.c_str());
+    } else {
         logFile << ISOCopyManager::getTimestamp() << "Skipping install.* injection; will use on-disk install image."
                 << std::endl;
         eventManager_.notifyLogUpdate(
@@ -267,7 +301,6 @@ bool BootWimProcessor::processBootWim(const std::string &sourcePath, const std::
     }
 
     // Mount and process boot.wim
-    std::string bootWimDest = destPath + "sources\\boot.wim";
     if (!mountAndProcessWim(bootWimDest, destPath, sourcePath, integratePrograms, programsSrc, copiedSoFar, logFile)) {
         return false;
     }

@@ -2,11 +2,14 @@
 #define UTILS_H
 
 #include <string>
+#include <functional>
 
 namespace Utils {
 std::string exec(const char *cmd);
 // Execute a command and capture stdout; return process exit code, and set output.
 int execWithExitCode(const char *cmd, std::string &output);
+// Execute a command with real-time output callback for progress monitoring
+int execWithCallback(const char *cmd, std::string &output, std::function<void(const std::string &)> callback);
 // Returns full path to dism.exe (typically %SystemRoot%\System32\dism.exe)
 std::string  getDismPath();
 long long    getFileSize(const std::string &filePath);

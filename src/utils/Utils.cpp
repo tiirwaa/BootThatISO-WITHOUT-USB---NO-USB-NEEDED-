@@ -246,6 +246,73 @@ int Utils::execWithExitCode(const char *cmd, std::string &output) {
     return static_cast<int>(exitCode);
 }
 
+int Utils::execWithCallback(const char *cmd, std::string &output, std::function<void(const std::string &)> callback) {
+    HANDLE              hRead, hWrite;
+    SECURITY_ATTRIBUTES sa = {sizeof(SECURITY_ATTRIBUTES), NULL, TRUE};
+    output.clear();
+    if (!CreatePipe(&hRead, &hWrite, &sa, 0))
+        return -1;
+
+    STARTUPINFOA si = {sizeof(STARTUPINFOA)};
+    si.dwFlags      = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
+    si.hStdOutput   = hWrite;
+    si.hStdError    = hWrite;
+    si.wShowWindow  = SW_HIDE;
+
+    PROCESS_INFORMATION pi{};
+    if (!CreateProcessA(NULL, (LPSTR)cmd, NULL, NULL, TRUE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) {
+        CloseHandle(hRead);
+        CloseHandle(hWrite);
+        return -1;
+    }
+
+    CloseHandle(hWrite);
+
+    char        buffer[256];
+    DWORD       bytesRead;
+    std::string lineBuffer;
+
+    while (ReadFile(hRead, buffer, sizeof(buffer) - 1, &bytesRead, NULL) && bytesRead > 0) {
+        buffer[bytesRead] = '\0';
+        output += buffer;
+
+        // Process line by line if callback is provided
+        if (callback) {
+            lineBuffer += buffer;
+            size_t pos;
+            while ((pos = lineBuffer.find('\n')) != std::string::npos) {
+                std::string line = lineBuffer.substr(0, pos);
+                // Remove carriage return if present
+                if (!line.empty() && line.back() == '\r') {
+                    line.pop_back();
+                }
+                if (!line.empty()) {
+                    callback(line);
+                }
+                lineBuffer.erase(0, pos + 1);
+            }
+        }
+    }
+
+    // Process remaining data in line buffer
+    if (callback && !lineBuffer.empty()) {
+        if (!lineBuffer.empty() && lineBuffer.back() == '\r') {
+            lineBuffer.pop_back();
+        }
+        if (!lineBuffer.empty()) {
+            callback(lineBuffer);
+        }
+    }
+
+    CloseHandle(hRead);
+    WaitForSingleObject(pi.hProcess, INFINITE);
+    DWORD exitCode = 0xFFFFFFFF;
+    GetExitCodeProcess(pi.hProcess, &exitCode);
+    CloseHandle(pi.hProcess);
+    CloseHandle(pi.hThread);
+    return static_cast<int>(exitCode);
+}
+
 std::string Utils::getDismPath() {
     char sysdir[MAX_PATH] = {0};
     UINT n                = GetSystemDirectoryA(sysdir, MAX_PATH);

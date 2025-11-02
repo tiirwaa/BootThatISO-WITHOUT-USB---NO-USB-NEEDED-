@@ -55,6 +55,21 @@
     <string id="title.repairDisk">Reparar disco</string>
     <string id="unit.mb">MB</string>
     <string id="unit.gb">GB</string>
+    <string id="editionSelector.title">Seleccionar Edición de Windows</string>
+    <string id="editionSelector.header">Seleccione las ediciones de Windows a incluir</string>
+    <string id="editionSelector.subtitle">Las ediciones seleccionadas serán inyectadas en boot.wim para arranque RAM</string>
+    <string id="editionSelector.columnIndex">#</string>
+    <string id="editionSelector.columnName">Nombre de Edición</string>
+    <string id="editionSelector.columnSize">Tamaño</string>
+    <string id="editionSelector.infoLabel">Información:</string>
+    <string id="editionSelector.sizeLabel">Tamaño estimado total:</string>
+    <string id="editionSelector.buttonContinue">Continuar</string>
+    <string id="editionSelector.buttonCancel">Cancelar</string>
+    <string id="editionSelector.infoSelect">Seleccione una edición para ver detalles</string>
+    <string id="editionSelector.warningNoSelection">Por favor seleccione al menos una edición</string>
+    <string id="editionSelector.warningTitle">Advertencia</string>
+    <string id="editionSelector.sizeUnknown">Tamaño desconocido</string>
+    <string id="editionSelector.infoIndex">Índice:</string>
 </language>
     <string id="button.perform.hint">Clic para Bootear el ISO</string>
     <string id="mainwindow.developedBy">Desarrollado por una empresa Costarricense</string>

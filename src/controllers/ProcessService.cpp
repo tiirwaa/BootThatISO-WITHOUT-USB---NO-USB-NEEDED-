@@ -103,11 +103,13 @@ bool ProcessService::copyISO(const std::string &isoPath, const std::string &dest
     std::string espDriveLocal = espPath;
 
     if (modeKey == AppKeys::BootModeRam) {
-        if (isoCopyManager->extractISOContents(eventManager, isoPath, drive, espDriveLocal, false, true, true, modeKey,
+        // In RAM mode, we don't copy install.wim separately - the selected edition will be injected into boot.wim
+        if (isoCopyManager->extractISOContents(eventManager, isoPath, drive, espDriveLocal, false, true, false, modeKey,
                                                format)) {
             return true;
         }
     } else {
+        // In disk mode, we still need install.wim on disk
         if (isoCopyManager->extractISOContents(eventManager, isoPath, drive, espDriveLocal, true, true, true, modeKey,
                                                format)) {
             return true;

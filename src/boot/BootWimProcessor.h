@@ -14,6 +14,7 @@ class StartnetConfigurator;
 class ProgramsIntegrator;
 class IniFileProcessor;
 class IniConfigurator;
+class WindowsEditionSelector;
 
 /**
  * @brief Orchestrates the processing of boot.wim for Windows PE boot environments.
@@ -56,14 +57,15 @@ private:
     FileCopyManager &fileCopyManager_;
 
     // Specialized collaborators (composition over inheritance)
-    std::unique_ptr<ISOReader>            isoReader_;
-    std::unique_ptr<WimMounter>           wimMounter_;
-    std::unique_ptr<DriverIntegrator>     driverIntegrator_;
-    std::unique_ptr<PecmdConfigurator>    pecmdConfigurator_;
-    std::unique_ptr<StartnetConfigurator> startnetConfigurator_;
-    std::unique_ptr<ProgramsIntegrator>   programsIntegrator_;
-    std::unique_ptr<IniFileProcessor>     iniFileProcessor_;
-    std::unique_ptr<IniConfigurator>      iniConfigurator_;
+    std::unique_ptr<ISOReader>              isoReader_;
+    std::unique_ptr<WimMounter>             wimMounter_;
+    std::unique_ptr<DriverIntegrator>       driverIntegrator_;
+    std::unique_ptr<PecmdConfigurator>      pecmdConfigurator_;
+    std::unique_ptr<StartnetConfigurator>   startnetConfigurator_;
+    std::unique_ptr<ProgramsIntegrator>     programsIntegrator_;
+    std::unique_ptr<IniFileProcessor>       iniFileProcessor_;
+    std::unique_ptr<IniConfigurator>        iniConfigurator_;
+    std::unique_ptr<WindowsEditionSelector> windowsEditionSelector_;
 
     /**
      * @brief Extracts boot.wim and boot.sdi from ISO to data partition

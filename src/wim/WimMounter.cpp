@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cctype>
 #include <sstream>
+#include <string>
 
 WimMounter::WimMounter() {}
 
@@ -37,6 +38,7 @@ std::vector<WimMounter::WimImageInfo> WimMounter::parseWimInfo(const std::string
     while ((pos = normalized.find("index :", pos)) != std::string::npos) {
         WimImageInfo info;
         info.index = (int)images.size() + 1;
+        info.size  = 0; // Default to 0 if not found
 
         // Find the block for this index
         size_t      blockStart = pos;
@@ -62,6 +64,31 @@ std::vector<WimMounter::WimImageInfo> WimMounter::parseWimInfo(const std::string
             size_t descEnd   = block.find_first_of("\r\n", descPos);
             info.description = dismOutput.substr(
                 blockStart + descPos, (descEnd == std::string::npos) ? std::string::npos : descEnd - descPos);
+        }
+
+        // Extract size (looking for "Size :" or "Tamaño :" or similar)
+        size_t sizePos = block.find("size :");
+        if (sizePos == std::string::npos)
+            sizePos = block.find("tamano :");
+        if (sizePos != std::string::npos) {
+            size_t sizeEnd = block.find_first_of("\r\n", sizePos);
+            if (sizeEnd != std::string::npos) {
+                std::string sizeStr = dismOutput.substr(blockStart + sizePos, sizeEnd - sizePos);
+                // Extract numbers from the string (e.g., "Size : 4,567,890,123 bytes")
+                std::string numStr;
+                for (char c : sizeStr) {
+                    if (isdigit(c)) {
+                        numStr += c;
+                    }
+                }
+                if (!numStr.empty()) {
+                    try {
+                        info.size = std::stoll(numStr);
+                    } catch (...) {
+                        info.size = 0;
+                    }
+                }
+            }
         }
 
         // Detect if this is a Windows Setup image
@@ -182,4 +209,73 @@ void WimMounter::cleanupMountDirectory(const std::string &mountDir) {
         std::string rdCmd = "cmd /c rd /s /q \"" + mountDir + "\" 2>nul";
         Utils::exec(rdCmd.c_str());
     }
+}
+
+bool WimMounter::exportWimIndex(const std::string &sourceWim, int sourceIndex, const std::string &destWim,
+                                int destIndex, ProgressCallback progressCallback) {
+    // Remove read-only attribute from both files
+    SetFileAttributesA(sourceWim.c_str(), FILE_ATTRIBUTE_NORMAL);
+    SetFileAttributesA(destWim.c_str(), FILE_ATTRIBUTE_NORMAL);
+
+    if (progressCallback)
+        progressCallback(5, "Exportando índice " + std::to_string(sourceIndex) + " de install.wim a boot.wim");
+
+    std::string dism = Utils::getDismPath();
+
+    // Use /Export-Image to add the install index to boot.wim
+    // Note: For .esd files, DISM can read them but exports to .wim format
+    std::string command = "\"" + dism + "\" /Export-Image /SourceImageFile:\"" + sourceWim +
+                          "\" /SourceIndex:" + std::to_string(sourceIndex) + " /DestinationImageFile:\"" + destWim +
+                          "\" /Compress:maximum /CheckIntegrity";
+
+    std::string output;
+    int         lastReportedPercent = 5;
+
+    // Callback to monitor DISM output and extract progress
+    auto dismCallback = [&](const std::string &line) {
+        // DISM reports progress like: [==25.0%==] or [===50.0%===]
+        size_t percentPos = line.find('%');
+        if (percentPos != std::string::npos) {
+            // Search backwards for a number
+            size_t startPos = percentPos;
+            while (startPos > 0 && (isdigit(line[startPos - 1]) || line[startPos - 1] == '.')) {
+                startPos--;
+            }
+
+            if (startPos < percentPos) {
+                try {
+                    std::string percentStr = line.substr(startPos, percentPos - startPos);
+                    double      percent    = std::stod(percentStr);
+                    int         intPercent = static_cast<int>(percent);
+
+                    // Only update if progress has increased by at least 5%
+                    if (intPercent > lastReportedPercent && intPercent <= 100) {
+                        lastReportedPercent = intPercent;
+                        if (progressCallback) {
+                            progressCallback(intPercent, "Exportando índice " + std::to_string(sourceIndex) + " (" +
+                                                             std::to_string(intPercent) + "%)");
+                        }
+                    }
+                } catch (...) {
+                    // Ignore parsing errors
+                }
+            }
+        }
+    };
+
+    int exitCode = Utils::execWithCallback(command.c_str(), output, dismCallback);
+
+    lastDismOutput_ = output;
+
+    if (exitCode != 0) {
+        lastError_ = "DISM export failed with code " + std::to_string(exitCode);
+        if (progressCallback)
+            progressCallback(0, "Error al exportar índice WIM");
+        return false;
+    }
+
+    if (progressCallback)
+        progressCallback(100, "Índice exportado exitosamente a boot.wim");
+
+    return true;
 }

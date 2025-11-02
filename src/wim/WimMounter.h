@@ -18,6 +18,7 @@ public:
         std::string name;
         std::string description;
         bool        isSetupImage;
+        long long   size; // Size in bytes
     };
 
     /**
@@ -69,6 +70,18 @@ public:
      * @param mountDir Directory to clean
      */
     void cleanupMountDirectory(const std::string &mountDir);
+
+    /**
+     * @brief Exports a specific index from a source WIM to a destination WIM
+     * @param sourceWim Path to source WIM file (install.wim/install.esd)
+     * @param sourceIndex Index to export from source (1-based)
+     * @param destWim Path to destination WIM file (boot.wim)
+     * @param destIndex Index where to add in destination (2 for boot.wim typically)
+     * @param progressCallback Optional callback for progress updates
+     * @return true if export successful, false otherwise
+     */
+    bool exportWimIndex(const std::string &sourceWim, int sourceIndex, const std::string &destWim, int destIndex,
+                        ProgressCallback progressCallback = nullptr);
 
     /**
      * @brief Gets the last DISM error message
