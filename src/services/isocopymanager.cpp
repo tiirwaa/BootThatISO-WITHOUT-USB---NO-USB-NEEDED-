@@ -10,6 +10,8 @@
 #include <ctime>
 #include <iomanip>
 #include <memory>
+#include <algorithm>
+#include <cstddef>
 #include "../utils/Utils.h"
 #include "../utils/LocalizationManager.h"
 #include "../utils/LocalizationHelpers.h"
@@ -24,6 +26,7 @@
 #include "../models/BootWimProcessor.h"
 #include "../models/ContentExtractor.h"
 #include "../models/HashVerifier.h"
+#include "../models/ISOReader.h"
 static bool     isValidPE(const std::string &path);
 static uint16_t getPEMachine(const std::string &path);
 static BOOL     copyFileUtf8(const std::string &src, const std::string &dst);
@@ -38,7 +41,7 @@ ISOCopyManager::ISOCopyManager()
     : typeDetector(std::make_unique<ISOTypeDetector>()), efiManager(nullptr),
       isoMounter(std::make_unique<ISOMounter>()), fileCopyManager(nullptr),
       iniConfigurator(std::make_unique<IniConfigurator>()), bootWimProcessor(nullptr), contentExtractor(nullptr),
-      hashVerifier(std::make_unique<HashVerifier>()), isWindowsISODetected(false) {}
+      hashVerifier(std::make_unique<HashVerifier>()), isoReader(std::make_unique<ISOReader>()), isWindowsISODetected(false) {}
 
 ISOCopyManager::~ISOCopyManager() {}
 
@@ -195,50 +198,32 @@ bool ISOCopyManager::extractISOContents(EventManager &eventManager, const std::s
 
     bool        integratePrograms = false;
     std::string programsSrc;
+    std::string sourceInstallPath;
 
     long long isoSize     = Utils::getFileSize(isoPath);
     long long copiedSoFar = 0;
-    eventManager.notifyDetailedProgress(5, 100, "Montando ISO");
+    eventManager.notifyDetailedProgress(5, 100, "Analizando ISO");
 
-    // Mount the ISO
-    std::string driveLetterStr;
-    if (!isoMounter->mountISO(isoPath, driveLetterStr)) {
-        logFile << getTimestamp() << "Failed to mount ISO" << std::endl;
-        logFile.close();
-        eventManager.notifyLogUpdate("Error: Falló el montaje del ISO.\r\n");
-        return false;
-    }
-
-    eventManager.notifyLogUpdate("ISO montado exitosamente en " + driveLetterStr + ":.\r\n");
-
-    std::string sourcePath = driveLetterStr + ":\\";
+    std::string sourcePath = isoPath;
     logFile << getTimestamp() << "Source path: " << sourcePath << std::endl;
-
-    // Add delay to allow the drive to be ready
-    logFile << getTimestamp() << "Waiting 10 seconds for drive to be ready" << std::endl;
-    Sleep(10000);
-    logFile << getTimestamp() << "Drive ready, proceeding with analysis" << std::endl;
-
-    if (eventManager.isCancelRequested()) {
-        logFile << getTimestamp() << "Operation cancelled after mount preparation\n";
-        isoMounter->unmountISO(isoPath);
-        logFile.close();
-        return false;
-    }
 
     eventManager.notifyDetailedProgress(10, 100, "Analizando contenido ISO");
 
-    // List all files and directories recursively in the ISO (up to 10 levels deep)
-    std::ofstream contentLog(logDir + "\\" + ISO_CONTENT_LOG_FILE);
-    long long     fileCount = 0;
-    listDirectoryRecursive(contentLog, sourcePath, 0, 10, eventManager, fileCount);
-    contentLog.close();
+    // List all files in the ISO
+    auto files = isoReader->listFiles(isoPath);
+    long long fileCount = files.size();
     logFile << getTimestamp() << "Total files analyzed: " << fileCount << std::endl;
+
+    // Log some files
+    size_t limit = std::min<size_t>(20, files.size());
+    for (size_t i = 0; i < limit; ++i) {
+        logFile << getTimestamp() << "File: " << files[i] << std::endl;
+    }
 
     eventManager.notifyLogUpdate("Analizando contenido del ISO...\r\n");
 
     // Check if it's Windows ISO
-    bool isWindowsISO = typeDetector->isWindowsISO(sourcePath);
+    bool isWindowsISO = isoReader->fileExists(isoPath, "sources/install.wim") || isoReader->fileExists(isoPath, "sources/install.esd") || isoReader->fileExists(isoPath, "sources/boot.wim");
     logFile << getTimestamp() << "Is Windows ISO: " << (isWindowsISO ? "Yes" : "No") << std::endl;
 
     if (isWindowsISO) {
@@ -260,53 +245,52 @@ bool ISOCopyManager::extractISOContents(EventManager &eventManager, const std::s
     }
 
     if (extractContent && !skipCopy) {
-        if (!contentExtractor->extractContent(sourcePath, destPath, isoSize, copiedSoFar, extractContent, isWindowsISO,
-                                              mode, logFile)) {
-            // Ensure ISO is dismounted
-            isoMounter->unmountISO(isoPath);
+        std::vector<std::string> excludePatterns;
+        if (!isoReader->extractAll(isoPath, destPath, excludePatterns)) {
             logFile.close();
             return false;
         }
+        copiedSoFar += isoSize;
     } else if (!extractContent && isWindowsISO && !skipCopy) {
-        // For Windows ISOs in RAM mode, copy the Programs folder to have shortcuts available
-        programsSrc              = sourcePath + "Programs";
-        std::string programsDest = destPath + "Programs";
-        if (GetFileAttributesA(programsSrc.c_str()) != INVALID_FILE_ATTRIBUTES) {
-            if (mode == AppKeys::BootModeRam) {
-                integratePrograms = true;
-                logFile << getTimestamp() << "Programs will be integrated into boot.wim for RAM boot" << std::endl;
-                eventManager.notifyLogUpdate("Programs sera integrado en boot.wim para arranque RAM.\r\n");
-            } else {
-                eventManager.notifyLogUpdate("Copiando carpeta Programs para accesos directos...\r\n");
-                std::set<std::string> excludeDirs; // No exclude for Programs
-                if (!fileCopyManager->copyDirectoryWithProgress(programsSrc, programsDest, 0, copiedSoFar, excludeDirs,
-                                                                "Copiando Programs")) {
-                    logFile << getTimestamp() << "Failed to copy Programs folder" << std::endl;
-                    eventManager.notifyLogUpdate("Error al copiar carpeta Programs.\r\n");
-                } else {
-                    eventManager.notifyLogUpdate("Carpeta Programs copiada correctamente.\r\n");
-                }
-            }
+        // For Windows ISOs in RAM mode, extract the Programs folder
+        if (mode == AppKeys::BootModeRam) {
+            integratePrograms = true;
+            std::string programsDest = destPath + "Programs";
+            isoReader->extractDirectory(isoPath, "Programs", programsDest);
+            programsSrc = programsDest;
+            logFile << getTimestamp() << "Programs extracted for RAM boot" << std::endl;
+            eventManager.notifyLogUpdate("Programs extraído para arranque RAM.\r\n");
         }
     } else {
         logFile << getTimestamp() << "Skipping content extraction (" << modeLabel << " mode)" << std::endl;
     }
 
     // Extract boot.wim if requested
-    bool bootWimSuccess =
-        bootWimProcessor->processBootWim(sourcePath, destPath, espPath, integratePrograms, programsSrc, copiedSoFar,
+    bool bootWimSuccess = true;
+    if (extractBootWim) {
+        bootWimSuccess = bootWimProcessor->processBootWim(isoPath, destPath, espPath, integratePrograms, programsSrc, copiedSoFar,
                                          extractBootWim, copyInstallWim, logFile);
+    }
+
+    // Copy install file if requested
+    if (copyInstallWim && isWindowsISO) {
+        std::string installFile = isoReader->fileExists(isoPath, "sources/install.esd") ? "sources/install.esd" : "sources/install.wim";
+        std::string installDest = destPath + "sources\\" + installFile.substr(installFile.find_last_of('/') + 1);
+        eventManager.notifyDetailedProgress(75, 100, "Copiando archivo de instalación");
+        eventManager.notifyLogUpdate("Copiando archivo de instalación...\r\n");
+        if (isoReader->extractFile(isoPath, installFile, installDest)) {
+            logFile << getTimestamp() << "Install file extracted successfully to " << installDest << std::endl;
+            eventManager.notifyLogUpdate("Archivo de instalación copiado correctamente.\r\n");
+        } else {
+            logFile << getTimestamp() << "Failed to extract install file" << std::endl;
+            eventManager.notifyLogUpdate("Error al copiar archivo de instalación.\r\n");
+        }
+        eventManager.notifyDetailedProgress(0, 0, "");
+    }
 
     // Extract EFI
     eventManager.notifyDetailedProgress(80, 100, "Extrayendo EFI");
-    bool efiSuccess = efiManager->extractEFI(sourcePath, espPath, isWindowsISO, copiedSoFar, isoSize);
-
-    // Dismount the ISO
-    eventManager.notifyDetailedProgress(90, 100, "Desmontando ISO");
-    if (!isoMounter->unmountISO(isoPath)) {
-        logFile << getTimestamp() << "Warning: Failed to unmount ISO" << std::endl;
-    }
-    logFile << getTimestamp() << "Dismount ISO completed" << std::endl;
+    bool efiSuccess = efiManager->extractEFI(isoPath, espPath, isWindowsISO, copiedSoFar, isoSize);
 
     logFile << getTimestamp() << "EFI extraction " << (efiSuccess ? "SUCCESS" : "FAILED") << std::endl;
     if (extractBootWim) {

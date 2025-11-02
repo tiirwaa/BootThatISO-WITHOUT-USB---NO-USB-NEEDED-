@@ -15,6 +15,7 @@ set(SOURCE_FILES
     src/models/efimanager.cpp
     src/models/filecopymanager.cpp
     src/models/isomounter.cpp
+    src/models/ISOReader.cpp
     src/models/IniConfigurator.cpp
     src/models/BootWimProcessor.cpp
     src/models/ContentExtractor.cpp
@@ -88,6 +89,11 @@ else()
 endif()
 
 # Link necessary libraries (MFC is included via CMAKE_MFC_FLAG)
+find_package(LibArchive)
+if(LibArchive_FOUND)
+    target_link_libraries(BootThatISO LibArchive::LibArchive)
+    add_compile_definitions(HAVE_LIBARCHIVE)
+endif()
 target_link_libraries(BootThatISO comctl32 gdiplus)
 
 set_target_properties(BootThatISO PROPERTIES OUTPUT_NAME "BootThatISO!")

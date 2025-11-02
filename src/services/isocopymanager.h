@@ -6,6 +6,7 @@
 #include <fstream>
 #include <memory>
 #include "../models/EventManager.h"
+#include "../models/ISOReader.h"
 
 class ISOTypeDetector;
 class EFIManager;
@@ -43,6 +44,7 @@ private:
     std::unique_ptr<BootWimProcessor> bootWimProcessor;
     std::unique_ptr<ContentExtractor> contentExtractor;
     std::unique_ptr<HashVerifier>     hashVerifier;
+    std::unique_ptr<ISOReader>        isoReader;
     bool                              isWindowsISODetected;
 
     std::string exec(const char *cmd, EventManager *eventManager = nullptr);

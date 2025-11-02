@@ -5,7 +5,7 @@
 <img src="res/ag.png" alt="Company Logo">
 </div>
 
-BootThatISO! is an innovative Windows tool that allows **booting operating systems from ISO files without needing a USB drive**. Ideal for situations where you don't have a USB device handy, such as during travel, borrowed equipment, or emergencies. It automates the creation of EFI and data partitions on the internal disk, ISO mounting, file copying, and BCD configuration, offering an intuitive graphical interface and support for unattended execution.
+BootThatISO! is an innovative Windows tool that allows **booting operating systems from ISO files without needing a USB drive**. Ideal for situations where you don't have a USB device handy, such as during travel, borrowed equipment, or emergencies. It automates the creation of EFI and data partitions on the internal disk, direct ISO reading and file extraction, and BCD configuration, offering an intuitive graphical interface and support for unattended execution.
 
 This utility is especially useful for:
 - **Quick Installations**: Direct boot from ISO for Windows, Linux installation, or recovery tools without preparing USB.
@@ -45,16 +45,24 @@ Website: [English](https://agsoft.co.cr/en/software-and-services/) | [Spanish](h
 - Windows 10 or 11 64-bit with administrator privileges.
 - PowerShell, DiskPart, bcdedit, and available Windows command-line tools.
 - Minimum 12 GB free space on C: drive for creating and formatting partitions.
+- For compilation: vcpkg installed and integrated (for libarchive dependency).
 
 ## Compilation
 ```powershell
-cmake -S . -B build -G "Visual Studio 17 2022" -A x64
+# Install vcpkg if not already installed
+git clone https://github.com/Microsoft/vcpkg.git
+cd vcpkg
+.\bootstrap-vcpkg.bat
+.\vcpkg integrate install
+
+# Then compile the project
+cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE=C:\path\to\vcpkg\scripts\buildsystems\vcpkg.cmake
 cmake --build build --config Release
 ```
 ```
-The final executable is located at `build/Release/BootThatISO!.exe`. Also included is `compilar.bat` with the same steps.
+The final executable is located at `build/Release/BootThatISO!.exe`. Also included is `compilar.bat` with the same steps, assuming vcpkg is installed and integrated.
 
-**Note**: The executable is digitally signed with a development certificate to enhance trust and reduce security warnings on Windows.
+**Note**: The project uses libarchive for direct ISO reading. vcpkg is used to manage this dependency. The executable is digitally signed with a development certificate to enhance trust and reduce security warnings on Windows.
 ```
 
 ## Usage
@@ -91,7 +99,7 @@ The process logs events and exits without showing the main window.
 
 ## Internal Flow Summary
 1. **Validation and Partitions** (`PartitionManager`): checks available space, runs optional `chkdsk`, reduces `C:` by ~10.5 GB, creates `ISOEFI` (500 MB FAT32) and `ISOBOOT` (10 GB), or reforms existing ones, and exposes recovery methods.
-2. **Content Preparation** (`ISOCopyManager`): mounts ISO via PowerShell, classifies if Windows, lists content, copies files to target drives, and delegates EFI handling to `EFIManager`.
+2. **Content Preparation** (`ISOCopyManager`): reads ISO content directly using libarchive, classifies if Windows, lists content, copies files to target drives, and delegates EFI handling to `EFIManager`.
 3. **Copying and Progress** (`FileCopyManager`/`EventManager`): notifies granular progress, allows cancellation, and updates logs.
 4. **BCD Configuration** (`BCDManager` + strategies): creates WinPE entries (RAMDisk) or full installation, adjusts `{ramdiskoptions}`, and logs executed commands.
 5. **Win32 UI** (`MainWindow`): manually builds controls, applies style, handles commands, and exposes recovery options.
@@ -118,7 +126,7 @@ BootThatISO!/
 |- include/             # Shared headers (reserved)
 |- src/
 |  |- controllers/      # Flow orchestration (ProcessController)
-|  |- models/           # Boot strategies, EFI handling, observers
+|  |- models/           # Boot strategies, EFI handling, ISO reading (ISOReader), observers
 |  |- services/         # Partitioning, ISO copying, BCD, detections
 |  |- utils/            # Utilities (exec, conversions, constants)
 |  |- views/            # Main window and Win32 UI logic
@@ -140,7 +148,7 @@ This project is under the GPL 3.0 License. See the `LICENSE` file for more detai
 <img src="res/ag.png" alt="Company Logo">
 </div>
 
-BootThatISO! es una herramienta innovadora para Windows que permite **arrancar sistemas operativos desde archivos ISO sin necesidad de una memoria USB**. Ideal para situaciones donde no se cuenta con un dispositivo USB a mano, como en viajes, equipos prestados o emergencias. Automatiza la creación de particiones EFI y de datos en el disco interno, montaje de ISOs, copia de archivos y configuración de BCD, ofreciendo una interfaz gráfica intuitiva y soporte para ejecución no asistida.
+BootThatISO! es una herramienta innovadora para Windows que permite **arrancar sistemas operativos desde archivos ISO sin necesidad de una memoria USB**. Ideal para situaciones donde no se cuenta con un dispositivo USB a mano, como en viajes, equipos prestados o emergencias. Automatiza la creación de particiones EFI y de datos en el disco interno, lectura directa de ISO y extracción de archivos, y configuración de BCD, ofreciendo una interfaz gráfica intuitiva y soporte para ejecución no asistida.
 
 Esta utilidad es especialmente útil para:
 - **Instalaciones rápidas**: Arranque directo desde ISO para instalación de Windows, Linux o herramientas de recuperación sin preparar USB.
@@ -180,16 +188,24 @@ Sitio web: [Inglés](https://agsoft.co.cr/en/software-and-services/) | [Español
 - Windows 10 u 11 de 64 bits con privilegios de administrador.
 - PowerShell, DiskPart, bcdedit y herramientas de linea de comandos de Windows disponibles en el sistema.
 - Espacio libre minimo de 12 GB en la unidad `C:` para crear y formatear particiones.
+- Para compilacion: vcpkg instalado e integrado (para la dependencia de libarchive).
 
 ## Compilacion
 ```powershell
-cmake -S . -B build -G "Visual Studio 17 2022" -A x64
+# Instala vcpkg si no está instalado
+git clone https://github.com/Microsoft/vcpkg.git
+cd vcpkg
+.\bootstrap-vcpkg.bat
+.\vcpkg integrate install
+
+# Luego compila el proyecto
+cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_TOOLCHAIN_FILE=C:\ruta\a\vcpkg\scripts\buildsystems\vcpkg.cmake
 cmake --build build --config Release
 ```
 ```
-El ejecutable final se ubica en `build/Release/BootThatISO!.exe`. Tambien se incluye `compilar.bat` con los mismos pasos.
+El ejecutable final se ubica en `build/Release/BootThatISO!.exe`. Tambien se incluye `compilar.bat` con los mismos pasos, asumiendo que vcpkg está instalado e integrado.
 
-**Nota**: El ejecutable está firmado digitalmente con un certificado de desarrollo para mejorar la confianza y reducir advertencias de seguridad en Windows.
+**Nota**: El proyecto usa libarchive para lectura directa de ISOs. vcpkg se usa para gestionar esta dependencia. El ejecutable está firmado digitalmente con un certificado de desarrollo para mejorar la confianza y reducir advertencias de seguridad en Windows.
 ```
 
 ## Uso
@@ -226,7 +242,7 @@ El proceso registra eventos y finaliza sin mostrar la ventana principal.
 
 ## Flujo interno resumido
 1. **Validacion y particiones** (`PartitionManager`): verifica espacio disponible, ejecuta `chkdsk` opcional, reduce `C:` ~10.5 GB, crea `ISOEFI` (500 MB FAT32) y `ISOBOOT` (10 GB) o reformatea las existentes, y expone metodos de recuperacion.
-2. **Preparacion de contenidos** (`ISOCopyManager`): monta el ISO mediante PowerShell, clasifica si es Windows, lista el contenido, copia archivos a las unidades de destino y delega el manejo EFI a `EFIManager`.
+2. **Preparacion de contenidos** (`ISOCopyManager`): lee el contenido del ISO directamente usando libarchive, clasifica si es Windows, lista el contenido, copia archivos a las unidades de destino y delega el manejo EFI a `EFIManager`.
 3. **Copia y progresos** (`FileCopyManager`/`EventManager`): notifica avance granular, permite cancelacion y actualiza bitacoras.
 4. **Configuracion de BCD** (`BCDManager` + estrategias): crea entradas WinPE (RAMDisk) o de instalacion completa, ajusta `{ramdiskoptions}` y registra comandos ejecutados.
 5. **UI Win32** (`MainWindow`): construye controles manualmente, aplica estilo, maneja comandos y expone opciones de recuperacion.
@@ -253,7 +269,7 @@ BootThatISO!/
 |- include/             # Cabeceras compartidas (reservado)
 |- src/
 |  |- controllers/      # Orquestacion del flujo (ProcessController)
-|  |- models/           # Estrategias de boot, manejo EFI, observadores
+|  |- models/           # Estrategias de boot, manejo EFI, lectura de ISO (ISOReader), observadores
 |  |- services/         # Particionado, copiado de ISO, BCD, detecciones
 |  |- utils/            # Utilidades (exec, conversiones, constantes)
 |  |- views/            # Ventana principal y logica UI Win32

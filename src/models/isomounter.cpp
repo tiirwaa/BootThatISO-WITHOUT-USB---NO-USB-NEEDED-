@@ -5,6 +5,7 @@
 #include <iomanip>
 #include <algorithm>
 #include <cctype>
+#include "../utils/Utils.h"
 
 ISOMounter::ISOMounter() {}
 
@@ -20,7 +21,8 @@ const char *ISOMounter::getTimestamp() {
 }
 
 bool ISOMounter::mountISO(const std::string &isoPath, std::string &driveLetter) {
-    std::ofstream logFile("logs\\iso_mount.log", std::ios::app);
+    std::string logPath = Utils::getExeDirectory() + "logs\\iso_mount.log";
+    std::ofstream logFile(logPath.c_str(), std::ios::app);
     logFile << getTimestamp() << "Mounting ISO: " << isoPath << std::endl;
 
     // Trim the isoPath to remove leading/trailing whitespace, quotes and common invisible characters
@@ -98,7 +100,8 @@ bool ISOMounter::unmountISO(const std::string &isoPath) {
     }
 
     // Log the failure details to a separate log for easier debugging
-    std::ofstream f("logs\\iso_mount.log", std::ios::app);
+    std::string logPath = Utils::getExeDirectory() + "logs\\iso_mount.log";
+    std::ofstream f(logPath.c_str(), std::ios::app);
     f << getTimestamp() << "Warning: Failed to unmount ISO. Primary result: '''" << result << "''' Fallback result: '''"
       << fallbackResult << "'''" << std::endl;
     f.close();

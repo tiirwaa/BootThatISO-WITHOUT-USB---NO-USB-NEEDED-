@@ -3,6 +3,7 @@
 #include <fstream>
 #include <ctime>
 #include <iomanip>
+#include "../utils/Utils.h"
 
 ISOTypeDetector::ISOTypeDetector() {
     // Constructor vacío por ahora
@@ -23,7 +24,8 @@ const char *ISOTypeDetector::getTimestamp() {
 
 bool ISOTypeDetector::isWindowsISO(const std::string &mountedIsoPath) {
     // Create log file for debugging
-    std::ofstream logFile("logs\\iso_type_detection.log", std::ios::app);
+    std::string logPath = Utils::getExeDirectory() + "logs\\iso_type_detection.log";
+    std::ofstream logFile(logPath.c_str(), std::ios::app);
     logFile << getTimestamp() << "Checking ISO type for path: " << mountedIsoPath << std::endl;
 
     // Check if it's Windows ISO
