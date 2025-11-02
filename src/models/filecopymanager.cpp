@@ -11,6 +11,7 @@ struct CopyProgressContext {
     long long     totalSize;
     long long    &copiedSoFar;
     std::string   operation;
+    std::string   currentFile;
 };
 
 static DWORD CALLBACK CopyFileProgressRoutine(LARGE_INTEGER TotalFileSize, LARGE_INTEGER TotalBytesTransferred,
@@ -20,7 +21,26 @@ static DWORD CALLBACK CopyFileProgressRoutine(LARGE_INTEGER TotalFileSize, LARGE
     CopyProgressContext *ctx = static_cast<CopyProgressContext *>(lpData);
     if (ctx && ctx->eventManager && TotalFileSize.QuadPart > 0) {
         long long current = ctx->copiedSoFar + TotalBytesTransferred.QuadPart;
-        ctx->eventManager->notifyDetailedProgress(current, ctx->totalSize, ctx->operation);
+
+        // Create detailed message with file name and progress
+        std::string detailedMsg = ctx->operation;
+        if (!ctx->currentFile.empty()) {
+            // Extract just the filename from the path for display
+            size_t      lastSlash = ctx->currentFile.find_last_of("\\/");
+            std::string fileName =
+                (lastSlash != std::string::npos) ? ctx->currentFile.substr(lastSlash + 1) : ctx->currentFile;
+
+            // Add file progress percentage
+            int filePercent = 0;
+            if (TotalFileSize.QuadPart > 0) {
+                filePercent = static_cast<int>((TotalBytesTransferred.QuadPart * 100) / TotalFileSize.QuadPart);
+            }
+
+            detailedMsg += " - " + fileName + " (" + std::to_string(filePercent) + "%)";
+        }
+
+        ctx->eventManager->notifyDetailedProgress(current, ctx->totalSize, detailedMsg);
+
         if (ctx->totalSize > 0) {
             long long bounded = current;
             if (bounded > ctx->totalSize) {
@@ -118,7 +138,7 @@ bool FileCopyManager::copyDirectoryWithProgress(const std::string &source, const
                     return false;
                 }
 
-                CopyProgressContext ctx = {&eventManager, totalSize, copiedSoFar, operation};
+                CopyProgressContext ctx = {&eventManager, totalSize, copiedSoFar, operation, srcItem};
                 BOOL                copyResult =
                     CopyFileExW(Utils::utf8_to_wstring(srcItem).c_str(), Utils::utf8_to_wstring(destItem).c_str(),
                                 CopyFileProgressRoutine, &ctx, NULL, 0);

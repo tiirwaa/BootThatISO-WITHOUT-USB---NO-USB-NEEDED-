@@ -220,13 +220,13 @@ INT_PTR CALLBACK LanguageDialogProc(HWND hDlg, UINT message, WPARAM wParam, LPAR
         }
 
         HICON hIcon = static_cast<HICON>(
-            LoadImageW(GetModuleHandle(NULL), MAKEINTRESOURCEW(IDI_APP_ICON), IMAGE_ICON, 32, 32, LR_SHARED));
+            LoadImageW(GetModuleHandle(NULL), MAKEINTRESOURCEW(IDI_APP_ICON), IMAGE_ICON, 150, 150, LR_SHARED));
         if (hIcon) {
             SendDlgItemMessageW(hDlg, IDC_LANGUAGE_ICON, STM_SETICON, reinterpret_cast<WPARAM>(hIcon), 0);
         }
 
         if (state) {
-            state->logoBitmap = CreateScaledBitmapFromResource(IDR_AG_LOGO, 36, 36);
+            state->logoBitmap = CreateScaledBitmapFromResource(IDR_AG_LOGO, 32, 32);
             if (state->logoBitmap) {
                 SendDlgItemMessageW(hDlg, IDC_LANGUAGE_LOGO, STM_SETIMAGE, IMAGE_BITMAP,
                                     reinterpret_cast<LPARAM>(state->logoBitmap));
