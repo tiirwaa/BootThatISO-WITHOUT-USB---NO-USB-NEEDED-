@@ -83,7 +83,7 @@ public:
      */
     bool injectEditionIntoBootWim(const std::string &isoPath, const std::string &bootWimPath, int selectedIndex,
                                   const std::string &tempDir, std::ofstream &logFile);
-    
+
     /**
      * @brief Exports selected editions to a new install.esd with only chosen indices
      * @param sourceInstallPath Path to the original install.wim/esd
@@ -115,9 +115,9 @@ public:
     }
 
 private:
-    EventManager &eventManager_;
-    WimMounter   &wimMounter_;
-    ISOReader    &isoReader_;
+    EventManager           &eventManager_;
+    WimMounter             &wimMounter_;
+    ISOReader              &isoReader_;
     class DriverIntegrator *driverIntegrator_; // Optional driver integrator
 
     std::string installImagePath_; // Cached path to extracted install.wim/esd

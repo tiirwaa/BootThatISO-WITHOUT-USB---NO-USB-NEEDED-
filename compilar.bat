@@ -199,6 +199,25 @@ if exist "%ProgramFiles(x86)%\LLVM\bin\clang-format.exe" (
     set "CLANG_FORMAT_CMD=%ProgramFiles(x86)%\LLVM\bin\clang-format.exe"
     goto :resolve_clang_format_done
 )
+:: Check Visual Studio 2022 Community
+if exist "%ProgramFiles%\Microsoft Visual Studio\2022\Community\VC\Tools\Llvm\x64\bin\clang-format.exe" (
+    set "CLANG_FORMAT_CMD=%ProgramFiles%\Microsoft Visual Studio\2022\Community\VC\Tools\Llvm\x64\bin\clang-format.exe"
+    goto :resolve_clang_format_done
+)
+if exist "%ProgramFiles%\Microsoft Visual Studio\2022\Community\VC\Tools\Llvm\ARM64\bin\clang-format.exe" (
+    set "CLANG_FORMAT_CMD=%ProgramFiles%\Microsoft Visual Studio\2022\Community\VC\Tools\Llvm\ARM64\bin\clang-format.exe"
+    goto :resolve_clang_format_done
+)
+:: Check Visual Studio 2022 Enterprise
+if exist "%ProgramFiles%\Microsoft Visual Studio\2022\Enterprise\VC\Tools\Llvm\x64\bin\clang-format.exe" (
+    set "CLANG_FORMAT_CMD=%ProgramFiles%\Microsoft Visual Studio\2022\Enterprise\VC\Tools\Llvm\x64\bin\clang-format.exe"
+    goto :resolve_clang_format_done
+)
+:: Check Visual Studio 2022 Professional
+if exist "%ProgramFiles%\Microsoft Visual Studio\2022\Professional\VC\Tools\Llvm\x64\bin\clang-format.exe" (
+    set "CLANG_FORMAT_CMD=%ProgramFiles%\Microsoft Visual Studio\2022\Professional\VC\Tools\Llvm\x64\bin\clang-format.exe"
+    goto :resolve_clang_format_done
+)
 echo [WARNING] Could not find clang-format.exe.
 exit /b 1
 :resolve_clang_format_done

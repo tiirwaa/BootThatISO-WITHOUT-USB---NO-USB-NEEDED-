@@ -116,30 +116,34 @@ void EditionSelectorDialog::initDialog(HWND hDlg, DialogData *data) {
     GetWindowRect(hDlg, &rcDlg);
     int dlgWidth  = rcDlg.right - rcDlg.left;
     int dlgHeight = rcDlg.bottom - rcDlg.top;
-    
+
     HWND hParent = GetParent(hDlg);
     if (hParent && GetWindowRect(hParent, &rcParent)) {
         // Center relative to parent window
         int parentWidth  = rcParent.right - rcParent.left;
         int parentHeight = rcParent.bottom - rcParent.top;
-        int x = rcParent.left + (parentWidth - dlgWidth) / 2;
-        int y = rcParent.top + (parentHeight - dlgHeight) / 2;
-        
+        int x            = rcParent.left + (parentWidth - dlgWidth) / 2;
+        int y            = rcParent.top + (parentHeight - dlgHeight) / 2;
+
         // Ensure dialog is visible on screen
         int screenWidth  = GetSystemMetrics(SM_CXSCREEN);
         int screenHeight = GetSystemMetrics(SM_CYSCREEN);
-        if (x < 0) x = 0;
-        if (y < 0) y = 0;
-        if (x + dlgWidth > screenWidth) x = screenWidth - dlgWidth;
-        if (y + dlgHeight > screenHeight) y = screenHeight - dlgHeight;
-        
+        if (x < 0)
+            x = 0;
+        if (y < 0)
+            y = 0;
+        if (x + dlgWidth > screenWidth)
+            x = screenWidth - dlgWidth;
+        if (y + dlgHeight > screenHeight)
+            y = screenHeight - dlgHeight;
+
         SetWindowPos(hDlg, HWND_TOP, x, y, 0, 0, SWP_NOSIZE);
     } else {
         // Fallback: center on screen
         int screenWidth  = GetSystemMetrics(SM_CXSCREEN);
         int screenHeight = GetSystemMetrics(SM_CYSCREEN);
-        int x = (screenWidth - dlgWidth) / 2;
-        int y = (screenHeight - dlgHeight) / 2;
+        int x            = (screenWidth - dlgWidth) / 2;
+        int y            = (screenHeight - dlgHeight) / 2;
         SetWindowPos(hDlg, HWND_TOP, x, y, 0, 0, SWP_NOSIZE);
     }
 
@@ -170,9 +174,10 @@ void EditionSelectorDialog::initDialog(HWND hDlg, DialogData *data) {
         if (selectedIndex == -1) {
             selectedIndex = 0;
         }
-        
+
         // Apply selection
-        ListView_SetItemState(data->hListView, selectedIndex, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
+        ListView_SetItemState(data->hListView, selectedIndex, LVIS_SELECTED | LVIS_FOCUSED,
+                              LVIS_SELECTED | LVIS_FOCUSED);
         ListView_EnsureVisible(data->hListView, selectedIndex, FALSE);
     }
 
@@ -195,7 +200,7 @@ void EditionSelectorDialog::updateTotalSize(DialogData *data) {
     // Get selected item (radio button behavior - only one selection)
     int selectedItem = ListView_GetNextItem(data->hListView, -1, LVNI_SELECTED);
     if (selectedItem == -1) {
-        data->totalSize = 0;
+        data->totalSize       = 0;
         std::wstring sizeText = formatSize(0);
         SetWindowTextW(data->hSizeLabel, sizeText.c_str());
         return;
@@ -209,7 +214,7 @@ void EditionSelectorDialog::updateTotalSize(DialogData *data) {
     int editionIndex = static_cast<int>(item.lParam);
     for (const auto &ed : *data->editions) {
         if (ed.index == editionIndex) {
-            data->totalSize = ed.size;
+            data->totalSize       = ed.size;
             std::wstring sizeText = formatSize(ed.size);
             SetWindowTextW(data->hSizeLabel, sizeText.c_str());
             break;
@@ -284,10 +289,10 @@ INT_PTR CALLBACK EditionSelectorDialog::dialogProc(HWND hDlg, UINT message, WPAR
         case IDOK_EDITION: {
             if (data && data->editions && data->hListView) {
                 data->selectedIndices.clear();
-                
+
                 // Get the selected item (radio button behavior - only one)
                 int selectedItem = ListView_GetNextItem(data->hListView, -1, LVNI_SELECTED);
-                
+
                 if (selectedItem == -1) {
                     std::wstring warningMsg =
                         LocalizationManager::getInstance().getWString("editionSelector.warningNoSelection");

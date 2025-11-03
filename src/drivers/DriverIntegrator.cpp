@@ -18,9 +18,9 @@ int DriverIntegrator::executeDism(const std::string &command, std::string &outpu
 
 bool DriverIntegrator::isStorageDriver(const std::string &dirNameLower) {
     const std::vector<std::string> storagePrefixes = {"storahci", "stornvme", "msahci", "iastor", "iaahci"};
-    const std::vector<std::string> storageTokens   = {"nvme", "ahci", "rst", "vmd", "raid", "scsi", "ide", "iastor", 
-                                                       "iaahci", "msahci", "disk", "storage", "sata", "pciide", 
-                                                       "atapi", "intelide", "amdide", "viaide"};
+    const std::vector<std::string> storageTokens   = {"nvme", "ahci",   "rst",    "vmd",      "raid",   "scsi",
+                                                      "ide",  "iastor", "iaahci", "msahci",   "disk",   "storage",
+                                                      "sata", "pciide", "atapi",  "intelide", "amdide", "viaide"};
 
     for (const auto &prefix : storagePrefixes) {
         if (dirNameLower.rfind(prefix, 0) == 0)

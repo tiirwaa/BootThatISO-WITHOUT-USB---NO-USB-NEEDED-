@@ -607,14 +607,14 @@ void MainWindow::OnSelectISO() {
 
     if (GetOpenFileNameW(&ofn)) {
         SetWindowTextW(isoPathEdit, szFile);
-        
+
         // Detect ISO type and adjust format and boot mode options
         std::string isoPathUtf8 = Utils::wstring_to_utf8(szFile);
-        ISOReader tempReader;
-        bool isWindowsISO = tempReader.fileExists(isoPathUtf8, "sources/boot.wim") || 
+        ISOReader   tempReader;
+        bool        isWindowsISO = tempReader.fileExists(isoPathUtf8, "sources/boot.wim") ||
                             tempReader.fileExists(isoPathUtf8, "sources/install.wim") ||
                             tempReader.fileExists(isoPathUtf8, "sources/install.esd");
-        
+
         if (!isWindowsISO) {
             // Non-Windows ISO: Disable NTFS and select FAT32 by default
             EnableWindow(ntfsRadio, FALSE);
@@ -622,15 +622,16 @@ void MainWindow::OnSelectISO() {
             SendMessage(ntfsRadio, BM_SETCHECK, BST_UNCHECKED, 0);
             SendMessage(exfatRadio, BM_SETCHECK, BST_UNCHECKED, 0);
             selectedFormat = "FAT32";
-            
+
             // Non-Windows ISO: Disable "Boot from RAM" mode and select "Boot from Disk"
             // RAM boot requires boot.wim and boot.sdi which only exist in Windows ISOs
             EnableWindow(bootRamdiskRadio, FALSE);
             SendMessage(bootExtractedRadio, BM_SETCHECK, BST_CHECKED, 0);
             SendMessage(bootRamdiskRadio, BM_SETCHECK, BST_UNCHECKED, 0);
             selectedBootModeKey = AppKeys::BootModeExtract;
-            
-            LogMessage(LocalizedOrUtf8("log.linuxIsoDetected", 
+
+            LogMessage(LocalizedOrUtf8(
+                "log.linuxIsoDetected",
                 "ISO de Linux/otro detectado. Modo 'Boot desde RAM' deshabilitado (solo para Windows).\r\n"));
         } else {
             // Windows ISO: Enable all format and boot mode options

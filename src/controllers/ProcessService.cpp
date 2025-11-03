@@ -105,7 +105,7 @@ bool ProcessService::copyISO(const std::string &isoPath, const std::string &dest
 
     // Pre-detect if this is a Windows ISO by checking for sources/boot.wim or sources/install.wim
     ISOReader tempReader;
-    bool isWindowsISO = tempReader.fileExists(isoPath, "sources/boot.wim") || 
+    bool      isWindowsISO = tempReader.fileExists(isoPath, "sources/boot.wim") ||
                         tempReader.fileExists(isoPath, "sources/install.wim") ||
                         tempReader.fileExists(isoPath, "sources/install.esd");
 
@@ -115,8 +115,8 @@ bool ProcessService::copyISO(const std::string &isoPath, const std::string &dest
         // - Non-Windows ISOs: Just extract all content, no boot.wim processing needed
         bool extractBootWim = isWindowsISO;  // Only extract boot.wim for Windows ISOs
         bool extractContent = !isWindowsISO; // Extract full content only for non-Windows ISOs
-        
-        if (isoCopyManager->extractISOContents(eventManager, isoPath, drive, espDriveLocal, extractContent, 
+
+        if (isoCopyManager->extractISOContents(eventManager, isoPath, drive, espDriveLocal, extractContent,
                                                extractBootWim, false, modeKey, format)) {
             return true;
         }
