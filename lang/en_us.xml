@@ -36,7 +36,7 @@
     <string id="mainwindow.versionLabel">Version {0}</string>
     <string id="mainwindow.diskSpaceInfo">Available space on C: {0} GB | ISOBOOT: {1} | ISOEFI: {2}</string>
     <string id="message.adminRequired">This program requires administrator privileges.</string>
-    <string id="message.diskModifyConfirmPrimary">This operation will modify the system disk, shrinking it by 11 GB to create two bootable partitions: a 1GBMB FAT32 ESP (ISOEFI) and a 10GB data partition (ISOBOOT). Do you want to continue?</string>
+    <string id="message.diskModifyConfirmPrimary">This operation will modify the system disk, shrinking it by 11 GB to create two bootable partitions: a 1GB FAT32 ESP (ISOEFI) and a 10GB data partition (ISOBOOT). Do you want to continue?</string>
     <string id="message.diskModifyConfirmSecondary">This is the second confirmation. The disk modification operation is irreversible and may cause data loss if not performed correctly. Are you completely sure you want to proceed?</string>
     <string id="message.efiPartitionWarning">IMPORTANT: The ISOEFI partition is hidden with special GPT attributes to prevent Windows installer from automatically detecting it. During Windows installation, DO NOT delete the Windows EFI partition. If you do, Windows might reuse ISOEFI. If this happens, use 'Recover my space' after installing Windows to clean up.</string>
     <string id="message.operationInProgress">A process is running. Do you want to cancel the operation and close the application?</string>
