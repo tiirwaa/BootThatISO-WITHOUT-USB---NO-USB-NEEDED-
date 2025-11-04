@@ -12,6 +12,7 @@
 #include "../filesystem/ProgramsIntegrator.h"
 #include "../utils/Utils.h"
 #include "../services/ISOCopyManager.h"
+#include "../utils/LocalizationHelpers.h"
 #include <windows.h>
 #include <filesystem>
 
@@ -43,14 +44,19 @@ bool BootWimProcessor::extractBootFiles(const std::string &sourcePath, const std
     if (GetFileAttributesA(bootWimDest.c_str()) != INVALID_FILE_ATTRIBUTES) {
         logFile << ISOCopyManager::getTimestamp() << "boot.wim already exists at " << bootWimDest << std::endl;
     } else {
-        eventManager_.notifyDetailedProgress(25, 100, "Extrayendo boot.wim hacia la particion de datos");
-        eventManager_.notifyLogUpdate("Extrayendo boot.wim hacia la particion de datos...\r\n");
+        eventManager_.notifyDetailedProgress(
+            25, 100,
+            LocalizedOrUtf8("log.bootwim.extractingBootWim", "Extrayendo boot.wim hacia la particion de datos"));
+        eventManager_.notifyLogUpdate(
+            LocalizedOrUtf8("log.bootwim.extractingBootWim", "Extrayendo boot.wim hacia la particion de datos") +
+            "...\r\n");
         eventManager_.notifyDetailedProgress(0, 0, "Copiando boot.wim...");
 
         if (isoReader_->extractFile(sourcePath, "sources/boot.wim", bootWimDest)) {
             logFile << ISOCopyManager::getTimestamp() << "boot.wim extracted successfully to " << bootWimDest
                     << std::endl;
-            eventManager_.notifyLogUpdate("boot.wim copiado correctamente.\r\n");
+            eventManager_.notifyLogUpdate(
+                LocalizedOrUtf8("log.bootwim.bootWimCopied", "boot.wim copiado correctamente.\r\n"));
         } else {
             logFile << ISOCopyManager::getTimestamp() << "Failed to extract boot.wim" << std::endl;
             eventManager_.notifyLogUpdate("Error al copiar boot.wim.\r\n");
@@ -67,13 +73,16 @@ bool BootWimProcessor::extractBootFiles(const std::string &sourcePath, const std
     if (GetFileAttributesA(bootSdiDest.c_str()) != INVALID_FILE_ATTRIBUTES) {
         logFile << ISOCopyManager::getTimestamp() << "boot.sdi already exists at " << bootSdiDest << std::endl;
     } else if (isoReader_->fileExists(sourcePath, "boot/boot.sdi")) {
-        eventManager_.notifyDetailedProgress(30, 100, "Copiando boot.sdi requerido para arranque RAM");
-        eventManager_.notifyLogUpdate("Copiando boot.sdi requerido para arranque RAM...\r\n");
+        eventManager_.notifyDetailedProgress(
+            30, 100, LocalizedOrUtf8("log.bootwim.copyingBootSdi", "Copiando boot.sdi requerido para arranque RAM"));
+        eventManager_.notifyLogUpdate(
+            LocalizedOrUtf8("log.bootwim.copyingBootSdi", "Copiando boot.sdi requerido para arranque RAM") + "...\r\n");
         eventManager_.notifyDetailedProgress(0, 0, "Copiando boot.sdi...");
 
         if (isoReader_->extractFile(sourcePath, "boot/boot.sdi", bootSdiDest)) {
             logFile << ISOCopyManager::getTimestamp() << "boot.sdi copied successfully to " << bootSdiDest << std::endl;
-            eventManager_.notifyLogUpdate("boot.sdi copiado correctamente.\r\n");
+            eventManager_.notifyLogUpdate(
+                LocalizedOrUtf8("log.bootwim.bootSdiCopied", "boot.sdi copiado correctamente.\r\n"));
         } else {
             logFile << ISOCopyManager::getTimestamp() << "Failed to copy boot.sdi" << std::endl;
             eventManager_.notifyLogUpdate("Error al copiar boot.sdi.\r\n");
@@ -120,7 +129,8 @@ bool BootWimProcessor::extractBootFiles(const std::string &sourcePath, const std
         std::string espBootSdi    = espBootDir + "\\boot.sdi";
 
         logFile << ISOCopyManager::getTimestamp() << "Copying boot.sdi to ESP partition: " << espBootSdi << std::endl;
-        eventManager_.notifyLogUpdate("Copiando boot.sdi a particion ESP...\r\n");
+        eventManager_.notifyLogUpdate(
+            LocalizedOrUtf8("log.bootwim.copyingBootSdiToEsp", "Copiando boot.sdi a particion ESP") + "...\r\n");
 
         if (!CopyFileA(sourceBootSdi.c_str(), espBootSdi.c_str(), FALSE)) {
             logFile << ISOCopyManager::getTimestamp() << "Error: Failed to copy boot.sdi to ESP partition"
@@ -129,7 +139,8 @@ bool BootWimProcessor::extractBootFiles(const std::string &sourcePath, const std
             bootSdiSuccess = false;
         } else {
             logFile << ISOCopyManager::getTimestamp() << "boot.sdi copied successfully to ESP" << std::endl;
-            eventManager_.notifyLogUpdate("boot.sdi copiado exitosamente a ESP.\r\n");
+            eventManager_.notifyLogUpdate(
+                LocalizedOrUtf8("log.bootwim.bootSdiCopiedToEsp", "boot.sdi copiado exitosamente a ESP.\r\n"));
         }
     }
 
@@ -158,8 +169,9 @@ bool BootWimProcessor::mountAndProcessWim(const std::string &bootWimDest, const 
     auto images = wimMounter_->getWimImageInfo(bootWimDest);
     if (!images.empty() && imageIndex >= 1 && imageIndex <= (int)images.size()) {
         const auto &selectedImage = images[imageIndex - 1];
-        std::string infoMsg       = "Índice seleccionado:\r\nIndex: " + std::to_string(selectedImage.index) +
-                              "\r\nName: " + selectedImage.name + "\r\n";
+        std::string infoMsg       = LocalizedOrUtf8("log.bootwim.selectedIndex", "Índice seleccionado:") +
+                              "\r\nIndex: " + std::to_string(selectedImage.index) + "\r\nName: " + selectedImage.name +
+                              "\r\n";
         eventManager_.notifyLogUpdate(infoMsg);
     }
 
@@ -183,12 +195,13 @@ bool BootWimProcessor::mountAndProcessWim(const std::string &bootWimDest, const 
             << std::endl;
 
     if (isPecmdPE) {
-        eventManager_.notifyLogUpdate("PECMD presente en boot.wim.\r\n");
+        eventManager_.notifyLogUpdate(LocalizedOrUtf8("log.bootwim.pecmdPresent", "PECMD presente en boot.wim.\r\n"));
     }
 
     // Integrate Programs if requested
     if (integratePrograms) {
-        eventManager_.notifyDetailedProgress(40, 100, "Integrando Programs en boot.wim");
+        eventManager_.notifyDetailedProgress(
+            40, 100, LocalizedOrUtf8("log.bootwim.integratingPrograms", "Integrando Programs en boot.wim"));
         auto programsProgress = [this](const std::string &msg) { eventManager_.notifyLogUpdate(msg + "\r\n"); };
 
         std::string fallbackProgramsSrc = destPath + "Programs";
@@ -197,7 +210,8 @@ bool BootWimProcessor::mountAndProcessWim(const std::string &bootWimDest, const 
     }
 
     // Integrate CustomDrivers
-    eventManager_.notifyDetailedProgress(45, 100, "Integrando CustomDrivers en boot.wim");
+    eventManager_.notifyDetailedProgress(
+        45, 100, LocalizedOrUtf8("log.bootwim.integratingDrivers", "Integrando CustomDrivers en boot.wim"));
     std::string customDriversSrc = destPath + "CustomDrivers";
     auto        driverProgress   = [this](const std::string &msg) { eventManager_.notifyLogUpdate(msg + "\r\n"); };
 
@@ -226,26 +240,31 @@ bool BootWimProcessor::mountAndProcessWim(const std::string &bootWimDest, const 
         eventManager_.notifyLogUpdate(driverIntegrator_->getIntegrationStats() + "\r\n");
     } else {
         logFile << ISOCopyManager::getTimestamp() << "Driver injection disabled by user" << std::endl;
-        eventManager_.notifyLogUpdate("Inyección de drivers desactivada por el usuario.\r\n");
+        eventManager_.notifyLogUpdate(
+            LocalizedOrUtf8("log.bootwim.driversDisabled", "Inyección de drivers desactivada por el usuario.\r\n"));
     }
 
     // Configure PECMD or startnet.cmd
     if (isPecmdPE) {
         pecmdConfigurator_->extractHbcdIni(sourcePath, mountDir, isoReader_.get(), logFile);
         pecmdConfigurator_->configurePecmdForRamBoot(mountDir, logFile);
-        eventManager_.notifyLogUpdate("PECMD configurado para modo RAM.\r\n");
+        eventManager_.notifyLogUpdate(
+            LocalizedOrUtf8("log.bootwim.pecmdConfiguredRam", "PECMD configurado para modo RAM.\r\n"));
     } else {
         startnetConfigurator_->configureStartnet(mountDir, logFile);
     }
 
     // Process INI files
-    eventManager_.notifyDetailedProgress(55, 100, "Procesando archivos .ini");
+    eventManager_.notifyDetailedProgress(55, 100,
+                                         LocalizedOrUtf8("log.bootwim.processingIniFiles", "Procesando archivos .ini"));
     auto iniProgress = [this](const std::string &msg) { eventManager_.notifyLogUpdate(msg + "\r\n"); };
     iniFileProcessor_->processIniFiles(mountDir, sourcePath, isoReader_.get(), driveLetter, logFile, iniProgress);
 
     // Unmount and commit changes
-    eventManager_.notifyDetailedProgress(60, 100, "Guardando cambios en boot.wim");
-    eventManager_.notifyLogUpdate("Guardando cambios en boot.wim...\r\n");
+    eventManager_.notifyDetailedProgress(60, 100,
+                                         LocalizedOrUtf8("log.bootwim.savingChanges", "Guardando cambios en boot.wim"));
+    eventManager_.notifyLogUpdate(LocalizedOrUtf8("log.bootwim.savingChanges", "Guardando cambios en boot.wim") +
+                                  "...\r\n");
 
     auto unmountProgress = [this](int percent, const std::string &message) {
         int adjustedPercent = 60 + (percent * 40 / 100); // Map 0-100 to 60-100
@@ -259,8 +278,10 @@ bool BootWimProcessor::mountAndProcessWim(const std::string &bootWimDest, const 
         return false;
     }
 
-    eventManager_.notifyDetailedProgress(100, 100, "boot.wim actualizado correctamente");
-    eventManager_.notifyLogUpdate("boot.wim actualizado correctamente.\r\n");
+    eventManager_.notifyDetailedProgress(
+        100, 100, LocalizedOrUtf8("log.bootwim.bootWimUpdated", "boot.wim actualizado correctamente"));
+    eventManager_.notifyLogUpdate(
+        LocalizedOrUtf8("log.bootwim.bootWimUpdated", "boot.wim actualizado correctamente.\r\n"));
     eventManager_.notifyDetailedProgress(0, 0, "");
 
     return true;
@@ -307,8 +328,11 @@ bool BootWimProcessor::copyBootWimToEspIfNeeded(const std::string &destPath, con
                 << "PE environments boot correctly from data partition (Z:) without needing ESP copy" << std::endl;
         logFile << ISOCopyManager::getTimestamp() << "BCD will be configured to point to data partition for boot.wim"
                 << std::endl;
-        eventManager_.notifyLogUpdate("Windows PE detectado - boot.wim permanecera en particion de datos.\r\n");
-        eventManager_.notifyLogUpdate("BCD se configurara para arrancar desde particion de datos.\r\n");
+        eventManager_.notifyLogUpdate(
+            LocalizedOrUtf8("log.bootwim.winPEDetectedDataPartition",
+                            "Windows PE detectado - boot.wim permanecera en particion de datos.\r\n"));
+        eventManager_.notifyLogUpdate(LocalizedOrUtf8(
+            "log.bootwim.bcdConfiguredForData", "BCD se configurara para arrancar desde particion de datos.\r\n"));
         return true; // Skip copying - not an error, intentional for PE ISOs
     }
 
@@ -345,10 +369,15 @@ bool BootWimProcessor::copyBootWimToEspIfNeeded(const std::string &destPath, con
 bool BootWimProcessor::extractAdditionalBootFiles(const std::string &sourcePath, const std::string &espPath,
                                                   const std::string &destPath, long long &copiedSoFar,
                                                   long long isoSize, std::ofstream &logFile) {
-    eventManager_.notifyDetailedProgress(60, 100, "Extrayendo archivos adicionales desde boot.wim");
-    eventManager_.notifyLogUpdate("Extrayendo archivos adicionales desde boot.wim...\r\n");
+    eventManager_.notifyDetailedProgress(
+        60, 100,
+        LocalizedOrUtf8("log.bootwim.extractingAdditionalFiles", "Extrayendo archivos adicionales desde boot.wim"));
+    eventManager_.notifyLogUpdate(
+        LocalizedOrUtf8("log.bootwim.extractingAdditionalFiles", "Extrayendo archivos adicionales desde boot.wim") +
+        "...\r\n");
     eventManager_.notifyDetailedProgress(0, 0, "Extrayendo archivos de boot.wim...");
-    eventManager_.notifyLogUpdate("Archivos adicionales desde boot.wim extraidos correctamente.\r\n");
+    eventManager_.notifyLogUpdate(LocalizedOrUtf8("log.bootwim.additionalFilesExtracted",
+                                                  "Archivos adicionales desde boot.wim extraidos correctamente.\r\n"));
     eventManager_.notifyDetailedProgress(0, 0, "");
     return true;
 }
@@ -362,8 +391,10 @@ bool BootWimProcessor::processBootWim(const std::string &sourcePath, const std::
         return true;
     }
 
-    eventManager_.notifyDetailedProgress(20, 100, "Preparando archivos de arranque del ISO");
-    eventManager_.notifyLogUpdate("Preparando archivos de arranque del ISO...\r\n");
+    eventManager_.notifyDetailedProgress(
+        20, 100, LocalizedOrUtf8("log.bootwim.preparingBootFiles", "Preparando archivos de arranque del ISO"));
+    eventManager_.notifyLogUpdate(
+        LocalizedOrUtf8("log.bootwim.preparingBootFiles", "Preparando archivos de arranque del ISO") + "...\r\n");
 
     // Extract boot files
     if (!extractBootFiles(sourcePath, destPath, espPath, logFile)) {
@@ -407,7 +438,8 @@ bool BootWimProcessor::processBootWim(const std::string &sourcePath, const std::
         logFile << ISOCopyManager::getTimestamp() << "Skipping install.* injection; will use on-disk install image."
                 << std::endl;
         eventManager_.notifyLogUpdate(
-            "Omitiendo la inyección de install.* en boot.wim; se usará la imagen desde disco.\r\n");
+            LocalizedOrUtf8("log.bootwim.skippingInstallInjection",
+                            "Omitiendo la inyección de install.* en boot.wim; se usará la imagen desde disco.\r\n"));
     }
 
     // Mount and process boot.wim

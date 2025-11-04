@@ -1,6 +1,7 @@
 #include "DriverIntegrator.h"
 #include "../utils/Utils.h"
 #include "../services/ISOCopyManager.h"
+#include "../utils/LocalizationHelpers.h"
 #include <windows.h>
 #include <filesystem>
 #include <algorithm>
@@ -321,7 +322,7 @@ bool DriverIntegrator::integrateCustomDrivers(const std::string &mountDir, const
     }
 
     if (progressCallback)
-        progressCallback("Integrando CustomDrivers...");
+        progressCallback(LocalizedOrUtf8("log.bootwim.integratingDrivers", "Integrando CustomDrivers..."));
 
     logFile << ISOCopyManager::getTimestamp() << "Integrating CustomDrivers from " << customDriversSource << std::endl;
 
@@ -335,7 +336,7 @@ bool DriverIntegrator::integrateCustomDrivers(const std::string &mountDir, const
     } else {
         logFile << ISOCopyManager::getTimestamp() << "Failed to integrate CustomDrivers" << std::endl;
         if (progressCallback)
-            progressCallback("Error al integrar CustomDrivers");
+            progressCallback(LocalizedOrUtf8("log.bootwim.driversIntegrationError", "Error al integrar CustomDrivers"));
     }
 
     return success;

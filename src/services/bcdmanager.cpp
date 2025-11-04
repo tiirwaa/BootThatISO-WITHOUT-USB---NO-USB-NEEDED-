@@ -798,10 +798,14 @@ bool BCDManager::restoreBCD() {
 
         if (eventManager) {
             if (!defaultResult.empty()) {
-                eventManager->notifyLogUpdate("Resultado /default: " + Utils::ansi_to_utf8(defaultResult) + "\r\n");
+                eventManager->notifyLogUpdate(LocalizedFormatUtf8(
+                    "log.bcd.resultDefault", {Utils::utf8_to_wstring(Utils::ansi_to_utf8(defaultResult))},
+                    "Resultado /default: {0}\r\n"));
             }
             if (!timeoutResult.empty()) {
-                eventManager->notifyLogUpdate("Resultado /timeout: " + Utils::ansi_to_utf8(timeoutResult) + "\r\n");
+                eventManager->notifyLogUpdate(LocalizedFormatUtf8(
+                    "log.bcd.resultTimeout", {Utils::utf8_to_wstring(Utils::ansi_to_utf8(timeoutResult))},
+                    "Resultado /timeout: {0}\r\n"));
             }
         }
     }

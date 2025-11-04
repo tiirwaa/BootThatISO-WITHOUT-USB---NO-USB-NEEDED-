@@ -3,6 +3,7 @@
 #include "../models/ISOReader.h"
 #include "../services/ISOCopyManager.h"
 #include "../utils/Utils.h"
+#include "../utils/LocalizationHelpers.h"
 #include <windows.h>
 #include <filesystem>
 
@@ -59,14 +60,15 @@ bool ProgramsIntegrator::integratePrograms(const std::string &mountDir, const st
                                            ISOReader *isoReader, long long &copiedSoFar, std::ofstream &logFile,
                                            ProgressCallback progressCallback) {
     if (progressCallback)
-        progressCallback("Integrando Programs en boot.wim...");
+        progressCallback(LocalizedOrUtf8("log.bootwim.integratingPrograms", "Integrando Programs en boot.wim..."));
 
     std::string programsDest = mountDir + "\\Programs";
 
     // Try primary source
     if (tryCopyFromDirectory(programsSource, programsDest, copiedSoFar, logFile)) {
         if (progressCallback)
-            progressCallback("Programs integrado en boot.wim correctamente");
+            progressCallback(
+                LocalizedOrUtf8("log.bootwim.programsIntegrated", "Programs integrado en boot.wim correctamente"));
         return true;
     }
 
@@ -74,14 +76,16 @@ bool ProgramsIntegrator::integratePrograms(const std::string &mountDir, const st
     if (fallbackProgramsSource != programsSource &&
         tryCopyFromDirectory(fallbackProgramsSource, programsDest, copiedSoFar, logFile)) {
         if (progressCallback)
-            progressCallback("Programs integrado en boot.wim correctamente");
+            progressCallback(
+                LocalizedOrUtf8("log.bootwim.programsIntegrated", "Programs integrado en boot.wim correctamente"));
         return true;
     }
 
     // Try extracting from ISO
     if (tryExtractFromIso(isoPath, programsDest, isoReader, copiedSoFar, logFile)) {
         if (progressCallback)
-            progressCallback("Programs integrado en boot.wim correctamente");
+            progressCallback(
+                LocalizedOrUtf8("log.bootwim.programsIntegrated", "Programs integrado en boot.wim correctamente"));
         return true;
     }
 

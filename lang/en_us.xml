@@ -9,6 +9,9 @@
     <string id="log.cancel.completed">Operation canceled and cleaned up.</string>
     <string id="log.cancel.requested">Cancellation requested. Waiting for cleanup...</string>
     <string id="log.process.starting">Starting process...</string>
+    <string id="log.process.isoPathAfterTrimming">ISO path after trimming: '{0}'</string>
+    <string id="log.process.startingWithDetails">Starting process with ISO: {0}, format: {1}, mode: {2}</string>
+    <string id="log.process.verifyingPartitions">Verifying partition status...</string>
     <string id="log.recovery.alreadyRunning">Space recovery is already in progress.</string>
     <string id="log.recovery.cannotCancel">Space recovery is in progress and cannot be canceled. Wait for it to finish.</string>
     <string id="log.recovery.startFailed">Failed to start space recovery. Check if it's already running.</string>
@@ -85,6 +88,7 @@
     <string id="log.iso.installFileErrorFatal">Error copying installation file.</string>
     <string id="log.iso.copyingSetupFiles">Copying critical Setup files...</string>
     <string id="log.iso.setupFilesCopied">Critical files copied ({0} files).</string>
+    <string id="log.iso.setupFilesSkipped">Setup files skipped (not found in this ISO).</string>
     <string id="log.iso.integratingPrograms">Integrating Programs into boot.wim for RAM boot.</string>
     <string id="log.linuxIsoDetected">Linux ISO detected: {0}</string>
     
@@ -96,6 +100,8 @@
     <string id="log.bcd.errorDisplayorder">Error configuring displayorder: {0}</string>
     <string id="log.bcd.errorTimeout">Error configuring timeout: {0}</string>
     <string id="log.bcd.settingWindowsDefault">Setting Windows as default entry and adjusting timeout...</string>
+    <string id="log.bcd.resultDefault">Result /default: {0}</string>
+    <string id="log.bcd.resultTimeout">Result /timeout: {0}</string>
     
     <!-- Log messages - Windows Edition Selector -->
     <string id="log.edition.extracting">Extracting Windows installation image...</string>
@@ -141,9 +147,43 @@
     
     <!-- Log messages - Partition Reformatter -->
     <string id="log.reformatter.starting">Starting EFI partition reformatting...</string>
-    <string id="log.reformatter.executing">Executing EFI partition formatting...</string>
-    <string id="log.reformatter.success">EFI partition reformatted successfully.</string>
+    <string id="log.reformatter.startingData">Starting partition reformatting...</string>
+    <string id="log.reformatter.searchingVolume">Searching for volume to reformat...</string>
+    <string id="log.reformatter.volumeFound">Volume found (number {0}). Creating format script...</string>
+    <string id="log.reformatter.executing">Executing partition formatting...</string>
+    <string id="log.reformatter.success">Partition reformatted successfully.</string>
     <string id="log.reformatter.failed">Error: EFI partition formatting failed (code {0}).</string>
+    
+    <!-- Log messages - Process Controller -->
+    <string id="log.process.preparingISOFiles">Starting ISO file preparation...</string>
+    <string id="log.process.configuringBoot">Configuring boot...</string>
+    <string id="log.process.completedSuccessfully">Process completed successfully.</string>
+    
+    <!-- Log messages - Boot Wim Processor -->
+    <string id="log.bootwim.preparingBootFiles">Preparing ISO boot files...</string>
+    <string id="log.bootwim.extractingBootWim">Extracting boot.wim to data partition...</string>
+    <string id="log.bootwim.bootWimCopied">boot.wim copied successfully.</string>
+    <string id="log.bootwim.copyingBootSdi">Copying boot.sdi required for RAM boot...</string>
+    <string id="log.bootwim.bootSdiCopied">boot.sdi copied successfully.</string>
+    <string id="log.bootwim.copyingBootSdiToEsp">Copying boot.sdi to ESP partition...</string>
+    <string id="log.bootwim.bootSdiCopiedToEsp">boot.sdi copied successfully to ESP.</string>
+    <string id="log.bootwim.skippingInstallInjection">Skipping install.* injection into boot.wim; image from disk will be used.</string>
+    <string id="log.bootwim.selectedIndex">Selected index:</string>
+    <string id="log.bootwim.pecmdPresent">PECMD present in boot.wim.</string>
+    <string id="log.bootwim.integratingPrograms">Integrating Programs into boot.wim...</string>
+    <string id="log.bootwim.programsIntegrated">Programs integrated into boot.wim successfully</string>
+    <string id="log.bootwim.integratingDrivers">Integrating CustomDrivers...</string>
+    <string id="log.bootwim.driversIntegrationError">Error integrating CustomDrivers</string>
+    <string id="log.bootwim.driversDisabled">Driver injection disabled by user.</string>
+    <string id="log.bootwim.pecmdConfiguredRam">PECMD configured for RAM mode.</string>
+    <string id="log.bootwim.processingIniFiles">Processing .ini files...</string>
+    <string id="log.bootwim.iniFilesConfigured">INI files integrated and reconfigured successfully</string>
+    <string id="log.bootwim.savingChanges">Saving changes to boot.wim...</string>
+    <string id="log.bootwim.bootWimUpdated">boot.wim updated successfully.</string>
+    <string id="log.bootwim.winPEDetectedDataPartition">Windows PE detected - boot.wim will remain on data partition.</string>
+    <string id="log.bootwim.bcdConfiguredForData">BCD will be configured to boot from data partition.</string>
+    <string id="log.bootwim.extractingAdditionalFiles">Extracting additional files from boot.wim...</string>
+    <string id="log.bootwim.additionalFilesExtracted">Additional files from boot.wim extracted successfully.</string>
 </language>
     <string id="button.perform.hint">Click to boot the ISO</string>
     <string id="mainwindow.developedBy">Software developed by a Costa Rican company</string>

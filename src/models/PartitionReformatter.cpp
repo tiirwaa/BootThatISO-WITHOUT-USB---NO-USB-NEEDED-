@@ -105,7 +105,8 @@ PartitionReformatter::~PartitionReformatter() = default;
 
 bool PartitionReformatter::reformatPartition(const std::string &format) {
     if (eventManager_)
-        eventManager_->notifyLogUpdate("Iniciando reformateo de partición...\r\n");
+        eventManager_->notifyLogUpdate(
+            LocalizedOrUtf8("log.reformatter.startingData", "Iniciando reformateo de partición...\r\n"));
 
     std::string fsFormat;
     if (format == "EXFAT") {
@@ -117,7 +118,8 @@ bool PartitionReformatter::reformatPartition(const std::string &format) {
     }
 
     if (eventManager_)
-        eventManager_->notifyLogUpdate("Buscando volumen para reformatear...\r\n");
+        eventManager_->notifyLogUpdate(
+            LocalizedOrUtf8("log.reformatter.searchingVolume", "Buscando volumen para reformatear...\r\n"));
 
     // First, find the volume number by running diskpart list volume
     char tempPath[MAX_PATH];
@@ -252,8 +254,9 @@ bool PartitionReformatter::reformatPartition(const std::string &format) {
     }
 
     if (eventManager_)
-        eventManager_->notifyLogUpdate("Volumen encontrado (número " + std::to_string(volumeNumber) +
-                                       "). Creando script de formateo...\r\n");
+        eventManager_->notifyLogUpdate(
+            LocalizedFormatUtf8("log.reformatter.volumeFound", {Utils::utf8_to_wstring(std::to_string(volumeNumber))},
+                                "Volumen encontrado (número {0}). Creando script de formateo...\r\n"));
 
     // Now, create script to select and format
     GetTempFileNameA(tempPath, "format", 0, tempFile);
@@ -266,7 +269,8 @@ bool PartitionReformatter::reformatPartition(const std::string &format) {
     scriptFile.close();
 
     if (eventManager_)
-        eventManager_->notifyLogUpdate("Ejecutando formateo de particion...\r\n");
+        eventManager_->notifyLogUpdate(
+            LocalizedOrUtf8("log.reformatter.executing", "Ejecutando formateo de particion...\r\n"));
 
     std::string formatOutput;
     DWORD       formatExitCode = 0;
@@ -300,7 +304,8 @@ bool PartitionReformatter::reformatPartition(const std::string &format) {
         Sleep(5000);
         Utils::exec("mountvol /r");
         if (eventManager_)
-            eventManager_->notifyLogUpdate("Particion reformateada exitosamente.\r\n");
+            eventManager_->notifyLogUpdate(
+                LocalizedOrUtf8("log.reformatter.success", "Particion reformateada exitosamente.\r\n"));
         return true;
     }
 

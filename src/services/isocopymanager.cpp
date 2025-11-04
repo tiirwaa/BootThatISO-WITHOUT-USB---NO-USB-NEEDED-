@@ -385,86 +385,112 @@ bool ISOCopyManager::extractISOContents(EventManager &eventManager, const std::s
 
         // Copy setup.exe and critical files for Windows Setup to work from data partition
         logFile << getTimestamp() << "Copying setup.exe and critical files to data partition" << std::endl;
-        eventManager.notifyLogUpdate(
-            LocalizedOrUtf8("log.iso.copyingSetupFiles", "Copiando archivos críticos de Setup...") + "\r\n");
 
-        // Extract setup.exe to root
-        if (isoReader->fileExists(isoPath, "setup.exe")) {
-            std::string setupDest = destPath + "setup.exe";
-            if (isoReader->extractFile(isoPath, "setup.exe", setupDest)) {
-                logFile << getTimestamp() << "setup.exe copied to " << setupDest << std::endl;
-            } else {
-                logFile << getTimestamp() << "Warning: Failed to copy setup.exe" << std::endl;
-            }
-        }
+        // Check if setup.exe exists first
+        bool hasSetup = isoReader->fileExists(isoPath, "setup.exe");
 
-        // Extract ALL files from sources directory (except boot.wim and install.*)
-        // This includes .exe, .dll, .ini, .xml, .mui, etc - everything Setup needs
-        logFile << getTimestamp() << "Extracting sources directory from ISO..." << std::endl;
-        auto      sourceFiles    = isoReader->listFiles(isoPath);
-        int       copiedCount    = 0;
-        long long totalSizeBytes = 0;
-
-        // Create sources directory if it doesn't exist
-        std::string sourcesDir = destPath + "sources\\";
-        CreateDirectoryA(sourcesDir.c_str(), nullptr);
-
+        // Count files in sources/ directory (excluding boot.wim and install.*)
+        auto sourceFiles      = isoReader->listFiles(isoPath);
+        int  sourcesFileCount = 0;
         for (const auto &file : sourceFiles) {
             std::string lowerFile = Utils::toLower(file);
-            // Normalize path separators for comparison
             std::replace(lowerFile.begin(), lowerFile.end(), '\\', '/');
-
             bool isInSources = (lowerFile.find("sources/") == 0);
             bool isBootWim   = (lowerFile.find("boot.wim") != std::string::npos);
             bool isInstall   = (lowerFile.find("install.") != std::string::npos);
-
-            // Copy everything from sources/ except boot.wim and install.*
             if (isInSources && !isBootWim && !isInstall) {
-                // Get relative path after "sources/" (e.g., "sources/setup.exe" -> "setup.exe")
-                std::string normalizedFile = file;
-                std::replace(normalizedFile.begin(), normalizedFile.end(), '\\', '/');
-
-                // Find position after "sources/"
-                size_t sourcesPos = lowerFile.find("sources/");
-                if (sourcesPos != std::string::npos) {
-                    std::string relativePath = normalizedFile.substr(sourcesPos + 8); // Skip "sources/"
-                    std::string fileDest     = destPath + "sources\\" + relativePath;
-
-                    // Replace forward slashes with backslashes for Windows paths
-                    std::replace(fileDest.begin(), fileDest.end(), '/', '\\');
-
-                    // Create subdirectories if needed
-                    size_t lastSlash = fileDest.find_last_of('\\');
-                    if (lastSlash != std::string::npos) {
-                        std::string     subDir = fileDest.substr(0, lastSlash);
-                        std::error_code ec;
-                        std::filesystem::create_directories(subDir, ec);
-                    }
-
-                    if (isoReader->extractFile(isoPath, file, fileDest)) {
-                        copiedCount++;
-                        // Get file size for logging
-                        WIN32_FILE_ATTRIBUTE_DATA fileInfo;
-                        if (GetFileAttributesExA(fileDest.c_str(), GetFileExInfoStandard, &fileInfo)) {
-                            long long size =
-                                (static_cast<long long>(fileInfo.nFileSizeHigh) << 32) | fileInfo.nFileSizeLow;
-                            totalSizeBytes += size;
-                        }
-                        logFile << getTimestamp() << "Copied " << relativePath << std::endl;
-                    }
-                }
+                sourcesFileCount++;
             }
         }
 
-        logFile << getTimestamp() << "Extracted " << copiedCount << " files from sources ("
-                << (totalSizeBytes / (1024 * 1024)) << " MB)" << std::endl;
-        std::string formatArgs = std::to_string(copiedCount);
-        std::string message = LocalizedOrUtf8("log.iso.setupFilesCopied", "Archivos críticos copiados ({0} archivos).");
-        size_t      pos     = message.find("{0}");
-        if (pos != std::string::npos) {
-            message.replace(pos, 3, formatArgs);
+        // If no setup.exe and no files in sources/, skip with info message (WinPE case)
+        if (!hasSetup && sourcesFileCount == 0) {
+            logFile << getTimestamp() << "No setup.exe or sources files found - skipping (WinPE)" << std::endl;
+            eventManager.notifyLogUpdate(LocalizedOrUtf8("log.iso.setupFilesSkipped",
+                                                         "Archivos de Setup omitidos (no encontrados en esta ISO).") +
+                                         "\r\n");
+        } else {
+            eventManager.notifyLogUpdate(
+                LocalizedOrUtf8("log.iso.copyingSetupFiles", "Copiando archivos críticos de Setup...") + "\r\n");
+
+            // Extract setup.exe to root
+            if (hasSetup) {
+                std::string setupDest = destPath + "setup.exe";
+                if (isoReader->extractFile(isoPath, "setup.exe", setupDest)) {
+                    logFile << getTimestamp() << "setup.exe copied to " << setupDest << std::endl;
+                } else {
+                    logFile << getTimestamp() << "Warning: Failed to copy setup.exe" << std::endl;
+                }
+            }
+
+            // Extract ALL files from sources directory (except boot.wim and install.*)
+            // This includes .exe, .dll, .ini, .xml, .mui, etc - everything Setup needs
+            logFile << getTimestamp() << "Extracting sources directory from ISO..." << std::endl;
+            int       copiedCount    = 0;
+            long long totalSizeBytes = 0;
+
+            // Create sources directory if it doesn't exist
+            std::string sourcesDir = destPath + "sources\\";
+            CreateDirectoryA(sourcesDir.c_str(), nullptr);
+
+            for (const auto &file : sourceFiles) {
+                std::string lowerFile = Utils::toLower(file);
+                // Normalize path separators for comparison
+                std::replace(lowerFile.begin(), lowerFile.end(), '\\', '/');
+
+                bool isInSources = (lowerFile.find("sources/") == 0);
+                bool isBootWim   = (lowerFile.find("boot.wim") != std::string::npos);
+                bool isInstall   = (lowerFile.find("install.") != std::string::npos);
+
+                // Copy everything from sources/ except boot.wim and install.*
+                if (isInSources && !isBootWim && !isInstall) {
+                    // Get relative path after "sources/" (e.g., "sources/setup.exe" -> "setup.exe")
+                    std::string normalizedFile = file;
+                    std::replace(normalizedFile.begin(), normalizedFile.end(), '\\', '/');
+
+                    // Find position after "sources/"
+                    size_t sourcesPos = lowerFile.find("sources/");
+                    if (sourcesPos != std::string::npos) {
+                        std::string relativePath = normalizedFile.substr(sourcesPos + 8); // Skip "sources/"
+                        std::string fileDest     = destPath + "sources\\" + relativePath;
+
+                        // Replace forward slashes with backslashes for Windows paths
+                        std::replace(fileDest.begin(), fileDest.end(), '/', '\\');
+
+                        // Create subdirectories if needed
+                        size_t lastSlash = fileDest.find_last_of('\\');
+                        if (lastSlash != std::string::npos) {
+                            std::string     subDir = fileDest.substr(0, lastSlash);
+                            std::error_code ec;
+                            std::filesystem::create_directories(subDir, ec);
+                        }
+
+                        if (isoReader->extractFile(isoPath, file, fileDest)) {
+                            copiedCount++;
+                            // Get file size for logging
+                            WIN32_FILE_ATTRIBUTE_DATA fileInfo;
+                            if (GetFileAttributesExA(fileDest.c_str(), GetFileExInfoStandard, &fileInfo)) {
+                                long long size =
+                                    (static_cast<long long>(fileInfo.nFileSizeHigh) << 32) | fileInfo.nFileSizeLow;
+                                totalSizeBytes += size;
+                            }
+                            logFile << getTimestamp() << "Copied " << relativePath << std::endl;
+                        }
+                    }
+                }
+            }
+
+            logFile << getTimestamp() << "Extracted " << copiedCount << " files from sources ("
+                    << (totalSizeBytes / (1024 * 1024)) << " MB)" << std::endl;
+            std::string formatArgs = std::to_string(copiedCount);
+            std::string message =
+                LocalizedOrUtf8("log.iso.setupFilesCopied", "Archivos críticos copiados ({0} archivos).");
+            size_t pos = message.find("{0}");
+            if (pos != std::string::npos) {
+                message.replace(pos, 3, formatArgs);
+            }
+            eventManager.notifyLogUpdate(message + "\r\n");
         }
-        eventManager.notifyLogUpdate(message + "\r\n");
         eventManager.notifyDetailedProgress(0, 0, "");
     }
 

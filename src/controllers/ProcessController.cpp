@@ -59,15 +59,20 @@ void ProcessController::startProcess(const std::string &isoPath, const std::stri
     while (!trimmedIsoPath.empty() && isTrimChar(trimmedIsoPath.back()))
         trimmedIsoPath.pop_back();
 
-    eventManager.notifyLogUpdate("ISO path after trimming: '" + trimmedIsoPath + "'\r\n");
+    eventManager.notifyLogUpdate(LocalizedFormatUtf8("log.process.isoPathAfterTrimming",
+                                                     {Utils::utf8_to_wstring(trimmedIsoPath)},
+                                                     "ISO path after trimming: '{0}'\r\n"));
 
     if (trimmedIsoPath.empty()) {
         eventManager.notifyLogUpdate("Error: No se ha seleccionado un archivo ISO.\r\n");
         return;
     }
 
-    eventManager.notifyLogUpdate("Iniciando proceso con ISO: " + trimmedIsoPath + ", formato: " + selectedFormat +
-                                 ", modo: " + selectedBootModeLabel + "\r\n");
+    eventManager.notifyLogUpdate(
+        LocalizedFormatUtf8("log.process.startingWithDetails",
+                            {Utils::utf8_to_wstring(trimmedIsoPath), Utils::utf8_to_wstring(selectedFormat),
+                             Utils::utf8_to_wstring(selectedBootModeLabel)},
+                            "Iniciando proceso con ISO: {0}, formato: {1}, modo: {2}\r\n"));
 
     bool partitionExists = partitionManager->partitionExists();
     if (!partitionExists) {
@@ -96,7 +101,8 @@ void ProcessController::processInThread(const std::string &isoPath, const std::s
                                         const std::string &selectedBootModeKey,
                                         const std::string &selectedBootModeLabel, bool skipIntegrityCheck,
                                         bool injectDrivers) {
-    eventManager.notifyLogUpdate("Verificando estado de particiones...\r\n");
+    eventManager.notifyLogUpdate(
+        LocalizedOrUtf8("log.process.verifyingPartitions", "Verificando estado de particiones...\r\n"));
     eventManager.notifyProgressUpdate(10);
 
     auto prepareResult = processService->validateAndPrepare(isoPath, selectedFormat, skipIntegrityCheck);
@@ -108,7 +114,8 @@ void ProcessController::processInThread(const std::string &isoPath, const std::s
     }
     eventManager.notifyProgressUpdate(30);
 
-    eventManager.notifyLogUpdate("Iniciando preparación de archivos del ISO...\r\n");
+    eventManager.notifyLogUpdate(
+        LocalizedOrUtf8("log.process.preparingISOFiles", "Iniciando preparación de archivos del ISO...\r\n"));
     auto copyResult = processService->copyIsoContent(isoPath, selectedFormat, selectedBootModeKey,
                                                      selectedBootModeLabel, injectDrivers);
     if (!copyResult.success) {
@@ -119,7 +126,7 @@ void ProcessController::processInThread(const std::string &isoPath, const std::s
     }
     eventManager.notifyProgressUpdate(70);
 
-    eventManager.notifyLogUpdate("Configurando arranque...\r\n");
+    eventManager.notifyLogUpdate(LocalizedOrUtf8("log.process.configuringBoot", "Configurando arranque...\r\n"));
     auto configResult = processService->configureBoot(selectedBootModeKey);
     if (!configResult.success) {
         eventManager.notifyLogUpdate("Error: " + configResult.errorMessage + "\r\n");
@@ -128,7 +135,8 @@ void ProcessController::processInThread(const std::string &isoPath, const std::s
         return;
     }
 
-    eventManager.notifyLogUpdate("Proceso completado exitosamente.\r\n");
+    eventManager.notifyLogUpdate(
+        LocalizedOrUtf8("log.process.completedSuccessfully", "Proceso completado exitosamente.\r\n"));
     eventManager.notifyProgressUpdate(100);
     eventManager.notifyAskRestart();
     eventManager.notifyButtonEnable();

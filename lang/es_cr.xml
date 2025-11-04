@@ -9,6 +9,9 @@
     <string id="log.cancel.completed">Operación cancelada y limpiada.</string>
     <string id="log.cancel.requested">Solicitud de cancelación enviada. Esperando limpieza...</string>
     <string id="log.process.starting">Iniciando proceso...</string>
+    <string id="log.process.isoPathAfterTrimming">Ruta ISO después de limpiar: '{0}'</string>
+    <string id="log.process.startingWithDetails">Iniciando proceso con ISO: {0}, formato: {1}, modo: {2}</string>
+    <string id="log.process.verifyingPartitions">Verificando estado de particiones...</string>
     <string id="log.recovery.alreadyRunning">La recuperación de espacio ya está en progreso.</string>
     <string id="log.recovery.cannotCancel">La recuperación de espacio está en progreso y no puede cancelarse. Espera a que finalice.</string>
     <string id="log.recovery.startFailed">No se pudo iniciar la recuperación de espacio. Verifica si ya está en ejecución.</string>
@@ -85,7 +88,8 @@
     <string id="log.iso.installFileErrorFatal">Error al copiar archivo de instalación.</string>
     <string id="log.iso.copyingSetupFiles">Copiando archivos críticos de Setup...</string>
     <string id="log.iso.setupFilesCopied">Archivos críticos copiados ({0} archivos).</string>
-    <string id="log.iso.integratingPrograms">Integrando programas en boot.wim para arranque en RAM.</string>
+    <string id="log.iso.setupFilesSkipped">Archivos de Setup omitidos (no encontrados en esta ISO).</string>
+    <string id="log.iso.integratingPrograms">Integrando Programas en boot.wim para arranque RAM.</string>
     <string id="log.linuxIsoDetected">ISO de Linux detectada: {0}</string>
     
     <!-- Mensajes de log - Configuración BCD -->
@@ -96,6 +100,8 @@
     <string id="log.bcd.errorDisplayorder">Error al configurar displayorder: {0}</string>
     <string id="log.bcd.errorTimeout">Error al configurar timeout: {0}</string>
     <string id="log.bcd.settingWindowsDefault">Estableciendo Windows como entrada predeterminada y ajustando timeout...</string>
+    <string id="log.bcd.resultDefault">Resultado /default: {0}</string>
+    <string id="log.bcd.resultTimeout">Resultado /timeout: {0}</string>
     
     <!-- Mensajes de log - Selector de Ediciones Windows -->
     <string id="log.edition.extracting">Extrayendo imagen de instalación de Windows...</string>
@@ -141,9 +147,43 @@
     
     <!-- Mensajes de log - Reformateador de Particiones -->
     <string id="log.reformatter.starting">Iniciando reformateo de partición EFI...</string>
-    <string id="log.reformatter.executing">Ejecutando formateo de partición EFI...</string>
-    <string id="log.reformatter.success">Partición EFI reformateada exitosamente.</string>
+    <string id="log.reformatter.startingData">Iniciando reformateo de partición...</string>
+    <string id="log.reformatter.searchingVolume">Buscando volumen para reformatear...</string>
+    <string id="log.reformatter.volumeFound">Volumen encontrado (número {0}). Creando script de formateo...</string>
+    <string id="log.reformatter.executing">Ejecutando formateo de partición...</string>
+    <string id="log.reformatter.success">Partición reformateada exitosamente.</string>
     <string id="log.reformatter.failed">Error: Falló el formateo de la partición EFI (código {0}).</string>
+    
+    <!-- Mensajes de log - Controlador de Procesos -->
+    <string id="log.process.preparingISOFiles">Iniciando preparación de archivos del ISO...</string>
+    <string id="log.process.configuringBoot">Configurando arranque...</string>
+    <string id="log.process.completedSuccessfully">Proceso completado exitosamente.</string>
+    
+    <!-- Mensajes de log - Procesador Boot Wim -->
+    <string id="log.bootwim.preparingBootFiles">Preparando archivos de arranque del ISO...</string>
+    <string id="log.bootwim.extractingBootWim">Extrayendo boot.wim hacia la partición de datos...</string>
+    <string id="log.bootwim.bootWimCopied">boot.wim copiado correctamente.</string>
+    <string id="log.bootwim.copyingBootSdi">Copiando boot.sdi requerido para arranque RAM...</string>
+    <string id="log.bootwim.bootSdiCopied">boot.sdi copiado correctamente.</string>
+    <string id="log.bootwim.copyingBootSdiToEsp">Copiando boot.sdi a partición ESP...</string>
+    <string id="log.bootwim.bootSdiCopiedToEsp">boot.sdi copiado exitosamente a ESP.</string>
+    <string id="log.bootwim.skippingInstallInjection">Omitiendo la inyección de install.* en boot.wim; se usará la imagen desde disco.</string>
+    <string id="log.bootwim.selectedIndex">Índice seleccionado:</string>
+    <string id="log.bootwim.pecmdPresent">PECMD presente en boot.wim.</string>
+    <string id="log.bootwim.integratingPrograms">Integrando Programs en boot.wim...</string>
+    <string id="log.bootwim.programsIntegrated">Programs integrado en boot.wim correctamente</string>
+    <string id="log.bootwim.integratingDrivers">Integrando CustomDrivers...</string>
+    <string id="log.bootwim.driversIntegrationError">Error al integrar CustomDrivers</string>
+    <string id="log.bootwim.driversDisabled">Inyección de drivers desactivada por el usuario.</string>
+    <string id="log.bootwim.pecmdConfiguredRam">PECMD configurado para modo RAM.</string>
+    <string id="log.bootwim.processingIniFiles">Procesando archivos .ini...</string>
+    <string id="log.bootwim.iniFilesConfigured">Archivos .ini integrados y reconfigurados correctamente</string>
+    <string id="log.bootwim.savingChanges">Guardando cambios en boot.wim...</string>
+    <string id="log.bootwim.bootWimUpdated">boot.wim actualizado correctamente.</string>
+    <string id="log.bootwim.winPEDetectedDataPartition">Windows PE detectado - boot.wim permanecerá en partición de datos.</string>
+    <string id="log.bootwim.bcdConfiguredForData">BCD se configurará para arrancar desde partición de datos.</string>
+    <string id="log.bootwim.extractingAdditionalFiles">Extrayendo archivos adicionales desde boot.wim...</string>
+    <string id="log.bootwim.additionalFilesExtracted">Archivos adicionales desde boot.wim extraidos correctamente.</string>
 </language>
     <string id="button.perform.hint">Clic para Bootear el ISO</string>
     <string id="mainwindow.developedBy">Desarrollado por una empresa Costarricense</string>

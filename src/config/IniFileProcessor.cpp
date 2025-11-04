@@ -3,6 +3,7 @@
 #include "../models/ISOReader.h"
 #include "../services/ISOCopyManager.h"
 #include "../utils/Utils.h"
+#include "../utils/LocalizationHelpers.h"
 #include <windows.h>
 #include <filesystem>
 #include <algorithm>
@@ -146,7 +147,7 @@ bool IniFileProcessor::processIniFiles(const std::string &mountDir, const std::s
                                        const std::string &driveLetter, std::ofstream &logFile,
                                        ProgressCallback progressCallback) {
     if (progressCallback)
-        progressCallback("Procesando archivos .ini...");
+        progressCallback(LocalizedOrUtf8("log.bootwim.processingIniFiles", "Procesando archivos .ini..."));
 
     // Reconfigure existing INI files
     int existingCount = reconfigureExistingIniFiles(mountDir, driveLetter, logFile);
@@ -159,7 +160,8 @@ bool IniFileProcessor::processIniFiles(const std::string &mountDir, const std::s
                 << " existing reconfigured, " << extractedCount << " extracted from ISO" << std::endl;
 
         if (progressCallback)
-            progressCallback("Archivos .ini integrados y reconfigurados correctamente");
+            progressCallback(LocalizedOrUtf8("log.bootwim.iniFilesConfigured",
+                                             "Archivos .ini integrados y reconfigurados correctamente"));
 
         return true;
     }
