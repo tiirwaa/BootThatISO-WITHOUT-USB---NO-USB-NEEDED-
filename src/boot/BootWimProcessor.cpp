@@ -183,7 +183,7 @@ bool BootWimProcessor::mountAndProcessWim(const std::string &bootWimDest, const 
             << std::endl;
 
     if (isPecmdPE) {
-        eventManager_.notifyLogUpdate("Hiren's BootCD PE detectado (PECMD presente).\r\n");
+        eventManager_.notifyLogUpdate("PECMD presente en boot.wim.\r\n");
     }
 
     // Integrate Programs if requested

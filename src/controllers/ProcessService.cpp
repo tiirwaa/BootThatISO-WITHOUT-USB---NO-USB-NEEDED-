@@ -132,13 +132,14 @@ bool ProcessService::copyISO(const std::string &isoPath, const std::string &dest
 
     if (modeKey == AppKeys::BootModeRam) {
         // In RAM mode:
-        // - Windows ISOs: Don't copy install.wim separately, extract boot.wim for injection
+        // - Windows ISOs: Extract boot.wim AND copy install.wim/esd + Setup files
         // - Non-Windows ISOs: Just extract all content, no boot.wim processing needed
         bool extractBootWim = isWindowsISO;  // Only extract boot.wim for Windows ISOs
         bool extractContent = !isWindowsISO; // Extract full content only for non-Windows ISOs
+        bool copyInstallWim = isWindowsISO;  // Copy install.wim/esd + Setup for Windows ISOs
 
         if (isoCopyManager->extractISOContents(eventManager, isoPath, drive, espDriveLocal, extractContent,
-                                               extractBootWim, false, modeKey, format, injectDrivers)) {
+                                               extractBootWim, copyInstallWim, modeKey, format, injectDrivers)) {
             return true;
         }
     } else {
