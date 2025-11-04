@@ -1,5 +1,6 @@
 #include "SpaceManager.h"
 #include "VolumeDetector.h"
+#include "../services/bcdmanager.h"
 #include <windows.h>
 #include <fstream>
 #include <sstream>
@@ -252,6 +253,14 @@ bool SpaceManager::recoverSpace() {
 
     // Clean up
     DeleteFileA(psFile.c_str());
+
+    // Clean BCD entries created by BootThatISO
+    if (eventManager_)
+        eventManager_->notifyLogUpdate("Limpiando entradas BCD...\r\n");
+
+    BCDManager &bcdManager = BCDManager::getInstance();
+    bcdManager.setEventManager(eventManager_);
+    bcdManager.cleanBootThatISOEntries();
 
     if (exitCode == 0) {
         if (eventManager_)

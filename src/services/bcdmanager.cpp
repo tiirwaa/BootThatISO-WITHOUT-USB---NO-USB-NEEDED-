@@ -812,3 +812,132 @@ bool BCDManager::restoreBCD() {
 
     return deletedAny;
 }
+
+void BCDManager::cleanBootThatISOEntries() {
+    std::string logDir = Utils::getExeDirectory() + "logs";
+    CreateDirectoryA(logDir.c_str(), NULL);
+    std::ofstream bcdLog((logDir + "\\bcd_cleanup_log.log").c_str(), std::ios::app);
+
+    if (bcdLog) {
+        time_t    now = time(nullptr);
+        char      timeStr[100];
+        struct tm timeinfo;
+        localtime_s(&timeinfo, &now);
+        strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", &timeinfo);
+        bcdLog << "\n========================================\n";
+        bcdLog << "BCD Cleanup - " << timeStr << "\n";
+        bcdLog << "========================================\n";
+    }
+
+    if (eventManager) {
+        eventManager->notifyLogUpdate("Limpiando entradas BCD de BootThatISO...\r\n");
+    }
+
+    // Enumerate all BCD entries
+    std::string enumOutput = Utils::exec((std::string(BCD_CMD_PATH) + " /enum all").c_str());
+
+    if (bcdLog) {
+        bcdLog << "BCD enum output:\n" << enumOutput << "\n\n";
+    }
+
+    // Parse into blocks
+    auto                     blocks = split(enumOutput, '\n');
+    std::vector<std::string> entryBlocks;
+    std::string              currentBlock;
+    for (const auto &line : blocks) {
+        if (line.find_first_not_of(" \t\r\n") == std::string::npos) {
+            if (!currentBlock.empty()) {
+                entryBlocks.push_back(currentBlock);
+                currentBlock.clear();
+            }
+        } else {
+            currentBlock += line + "\n";
+        }
+    }
+    if (!currentBlock.empty())
+        entryBlocks.push_back(currentBlock);
+
+    auto icontains = [](const std::string &hay, const std::string &needle) {
+        std::string h = hay;
+        std::string n = needle;
+        std::transform(h.begin(), h.end(), h.begin(), ::tolower);
+        std::transform(n.begin(), n.end(), n.begin(), ::tolower);
+        return h.find(n) != std::string::npos;
+    };
+
+    int deletedCount = 0;
+
+    // Look for entries to delete
+    for (const auto &blk : entryBlocks) {
+        bool        shouldDelete = false;
+        std::string reason;
+
+        // Check if contains ISOBOOT in description
+        if (icontains(blk, "isoboot")) {
+            shouldDelete = true;
+            reason       = "Contains ISOBOOT in description";
+        }
+        // Check if device points to boot.wim (RAMDisk entry from BootThatISO)
+        else if (icontains(blk, "boot.wim") && icontains(blk, "ramdisk")) {
+            shouldDelete = true;
+            reason       = "RAMDisk entry pointing to boot.wim";
+        }
+        // Check if it's a Windows Setup entry with boot.wim device
+        else if (icontains(blk, "windows setup") && icontains(blk, "[boot]\\sources\\boot.wim")) {
+            shouldDelete = true;
+            reason       = "Windows Setup entry with BootThatISO boot.wim";
+        }
+
+        if (shouldDelete) {
+            // Extract GUID
+            size_t pos = blk.find('{');
+            if (pos != std::string::npos) {
+                size_t end = blk.find('}', pos);
+                if (end != std::string::npos) {
+                    std::string guid = blk.substr(pos, end - pos + 1);
+
+                    // Don't delete {current} or {bootmgr}
+                    if (guid == "{current}" || guid == "{bootmgr}" || guid == "{default}") {
+                        if (bcdLog) {
+                            bcdLog << "Skipping protected entry: " << guid << "\n";
+                        }
+                        continue;
+                    }
+
+                    if (bcdLog) {
+                        bcdLog << "Deleting entry " << guid << " - Reason: " << reason << "\n";
+                        bcdLog << "Entry details:\n" << blk << "\n";
+                    }
+
+                    std::string deleteCmd    = std::string(BCD_CMD_PATH) + " /delete " + guid + " /f";
+                    std::string deleteResult = Utils::exec(deleteCmd.c_str());
+
+                    if (bcdLog) {
+                        bcdLog << "Delete command: " << deleteCmd << "\n";
+                        bcdLog << "Delete result: " << deleteResult << "\n\n";
+                    }
+
+                    if (eventManager) {
+                        eventManager->notifyLogUpdate("Eliminada entrada BCD: " + guid + "\r\n");
+                    }
+
+                    deletedCount++;
+                }
+            }
+        }
+    }
+
+    if (bcdLog) {
+        bcdLog << "Total entries deleted: " << deletedCount << "\n";
+        bcdLog.close();
+    }
+
+    if (eventManager) {
+        if (deletedCount > 0) {
+            eventManager->notifyLogUpdate(
+                "Limpieza BCD completada. Entradas eliminadas: " + std::to_string(deletedCount) + "\r\n");
+        } else {
+            eventManager->notifyLogUpdate("No se encontraron entradas BCD de BootThatISO para eliminar.\r\n");
+        }
+    }
+}

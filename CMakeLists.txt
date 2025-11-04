@@ -218,6 +218,7 @@ add_test(NAME UtilsTests COMMAND $<TARGET_FILE:UtilsTests>)
 add_executable(TestRecoverSpace
     tests/test_recover_space.cpp
     src/services/partitionmanager.cpp
+    src/services/bcdmanager.cpp
     src/models/DiskIntegrityChecker.cpp
     src/models/VolumeDetector.cpp
     src/models/SpaceManager.cpp

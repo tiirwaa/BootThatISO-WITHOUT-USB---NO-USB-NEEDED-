@@ -25,6 +25,7 @@ public:
     // mode: "RAMDISK" or "EXTRACTED" - affects how BCD entries are created (ramdisk-specific settings when RAMDISK)
     std::string configureBCD(const std::string &driveLetter, const std::string &espDriveLetter, BootStrategy &strategy);
     bool        restoreBCD();
+    void        cleanBootThatISOEntries(); // Clean BCD entries created by BootThatISO
 
 private:
     WORD GetMachineType(const std::string &filePath);
