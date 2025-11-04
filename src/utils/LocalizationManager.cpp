@@ -98,7 +98,18 @@ LocalizationManager &LocalizationManager::getInstance() {
 bool LocalizationManager::initialize() {
     languages.clear();
     languages.push_back({L"en_us", L"English (US)", IDR_EN_US});
-    languages.push_back({L"es_cr", L"Español (CR)", IDR_ES_CR});
+    languages.push_back({L"es_cr", L"Español (Costa Rica)", IDR_ES_CR});
+    languages.push_back({L"de_de", L"Deutsch (Deutschland)", IDR_DE_DE});
+    languages.push_back({L"fr_fr", L"Français (France)", IDR_FR_FR});
+    languages.push_back({L"pt_br", L"Português (Brasil)", IDR_PT_BR});
+    languages.push_back({L"it_it", L"Italiano (Italia)", IDR_IT_IT});
+    languages.push_back({L"ru_ru", L"Русский (Россия)", IDR_RU_RU});
+    languages.push_back({L"zh_cn", L"中文 (简体)", IDR_ZH_CN});
+    languages.push_back({L"ja_jp", L"日本語 (日本)", IDR_JA_JP});
+    languages.push_back({L"ar_sa", L"العربية (السعودية)", IDR_AR_SA});
+    languages.push_back({L"hi_in", L"हिन्दी (भारत)", IDR_HI_IN});
+    languages.push_back({L"ko_kr", L"한국어 (대한민국)", IDR_KO_KR});
+    languages.push_back({L"tr_tr", L"Türkçe (Türkiye)", IDR_TR_TR});
     return true;
 }
 

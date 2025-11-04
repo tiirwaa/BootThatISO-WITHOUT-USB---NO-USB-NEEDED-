@@ -26,5 +26,16 @@
 #define IDR_EN_US 104
 #define IDR_ES_CR 105
 #define IDI_APP_ICON 106
+#define IDR_DE_DE 108
+#define IDR_FR_FR 109
+#define IDR_PT_BR 110
+#define IDR_IT_IT 111
+#define IDR_RU_RU 112
+#define IDR_ZH_CN 113
+#define IDR_JA_JP 114
+#define IDR_AR_SA 115
+#define IDR_HI_IN 116
+#define IDR_KO_KR 117
+#define IDR_TR_TR 118
 
 #endif // RESOURCE_H

@@ -1,5 +1,8 @@
 # BootThatISO!
 
+**Languages / Idiomas / Línguas / Sprachen / Langues / Lingue / Языки / 语言 / 言語:**
+[🇪🇸 Español](README.es.md) | [🇧🇷 Português](README.pt.md) | [🇩🇪 Deutsch](README.de.md) | [🇫🇷 Français](README.fr.md) | [🇮🇹 Italiano](README.it.md) | [🇷🇺 Русский](README.ru.md) | [🇨🇳 中文](README.zh.md) | [🇯🇵 日本語](README.ja.md)
+
 <div style="display: flex; justify-content: center; align-items: center;">
 <img src="res/logo.png" alt="Logo" style="margin-right: 20px;">
 <img src="res/ag.png" alt="Company Logo">
