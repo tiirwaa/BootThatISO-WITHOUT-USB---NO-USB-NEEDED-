@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="utf-8"?>
+<language code="ar_SA" name="العربية">
+    <string id="app.windowTitle">BootThatISO! - تشغيل ISO بدون USB</string>
+    <string id="bootMode.ram">التشغيل من الذاكرة RAM</string>
+    <string id="bootMode.extract">التشغيل من القرص</string>
+    <string id="common.yes">نعم</string>
+    <string id="common.no">لا</string>
+    <string id="dialog.openIso.filter">ملفات ISO (*.iso)</string>
+    <string id="log.cancel.completed">تم إلغاء العملية وتنظيفها.</string>
+    <string id="log.cancel.requested">تم طلب الإلغاء. في انتظار التنظيف...</string>
+    <string id="log.process.starting">جارٍ بدء العملية...</string>
+    <string id="log.process.isoPathAfterTrimming">مسار ISO بعد القص: '{0}'</string>
+    <string id="log.process.startingWithDetails">جارٍ بدء العملية مع ISO: {0}، التنسيق: {1}، الوضع: {2}</string>
+    <string id="log.process.verifyingPartitions">جارٍ التحقق من حالة القسم...</string>
+    <string id="log.recovery.alreadyRunning">استعادة المساحة قيد التقدم بالفعل.</string>
+    <string id="log.recovery.cannotCancel">استعادة المساحة قيد التقدم ولا يمكن إلغاؤها. انتظر حتى تنتهي.</string>
+    <string id="log.recovery.startFailed">فشل بدء استعادة المساحة. تحقق مما إذا كانت قيد التشغيل بالفعل.</string>
+    <string id="log.recovery.started">تم بدء استعادة المساحة في الخلفية.</string>
+    <string id="log.recovery.success">تمت استعادة المساحة بنجاح.</string>
+    <string id="log.recovery.failed">فشلت استعادة المساحة. تحقق من السجلات للحصول على التفاصيل.</string>
+    <string id="mainwindow.bootModeLabel">وضع التشغيل:</string>
+    <string id="mainwindow.browseButton">استعراض</string>
+    <string id="mainwindow.createButton">تنفيذ العملية وتشغيل ISO المحدد</string>
+    <string id="mainwindow.formatLabel">تنسيق نظام الملفات:</string>
+    <string id="mainwindow.format.fat32">FAT32 (موصى به - أقصى توافق مع EFI)</string>
+    <string id="mainwindow.format.exfat">exFAT (لا يوجد حد 4 جيجابايت لكل ملف)</string>
+    <string id="mainwindow.format.ntfs">NTFS (دعم Windows كامل)</string>
+    <string id="mainwindow.integrityCheck">إجراء فحص سلامة القرص</string>
+    <string id="mainwindow.injectDrivers">حقن برامج التشغيل الخاصة بي في ISO</string>
+    <string id="mainwindow.isoPathLabel">مسار ملف ISO:</string>
+    <string id="mainwindow.logoPlaceholder">الشعار</string>
+    <string id="mainwindow.recoverButton">استعادة مساحتي</string>
+    <string id="mainwindow.servicesButton">الخدمات</string>
+    <string id="mainwindow.subtitle">تكوين قسم EFI قابل للتشغيل</string>
+    <string id="mainwindow.title">شغّل هذا ISO!</string>
+    <string id="mainwindow.versionLabel">الإصدار {0}</string>
+    <string id="mainwindow.diskSpaceInfo">المساحة المتاحة على C: {0} جيجابايت | ISOBOOT: {1} | ISOEFI: {2}</string>
+    <string id="message.adminRequired">يتطلب هذا البرنامج امتيازات المسؤول.</string>
+    <string id="message.diskModifyConfirmPrimary">ستقوم هذه العملية بتعديل قرص النظام، وتقليصه بمقدار 11 جيجابايت لإنشاء قسمين قابلين للتشغيل: ESP FAT32 بحجم 1 جيجابايت (ISOEFI) وقسم بيانات بحجم 10 جيجابايت (ISOBOOT). هل تريد المتابعة؟</string>
+    <string id="message.diskModifyConfirmSecondary">هذا هو التأكيد الثاني. عملية تعديل القرص لا رجعة فيها وقد تتسبب في فقدان البيانات إذا لم يتم تنفيذها بشكل صحيح. هل أنت متأكد تمامًا من أنك تريد المتابعة؟</string>
+    <string id="message.operationInProgress">عملية قيد التشغيل. هل تريد إلغاء العملية وإغلاق التطبيق؟</string>
+    <string id="message.processCompleteRestart">اكتملت العملية. هل تريد إعادة تشغيل النظام الآن؟</string>
+    <string id="message.recoverSpaceFailed">فشلت استعادة المساحة. تحقق من السجلات للحصول على التفاصيل.</string>
+    <string id="message.recoveringSpace">جارٍ حذف الأقسام التي أنشأها BootThatISO!، الرجاء عدم إلغاء هذه العملية، سيتم تخصيص المساحة المحررة لنظام Windows وجارٍ إزالة إدخالات BCD ISOBOOT و ISOBOOT_RAM.</string>
+    <string id="message.restartFailed">فشل إعادة تشغيل النظام.</string>
+    <string id="message.selectIsoFirst">الرجاء تحديد ملف ISO أولاً.</string>
+    <string id="message.windowCreationFailed">خطأ في إنشاء النافذة!</string>
+    <string id="message.windowRegistrationFailed">خطأ في تسجيل النافذة!</string>
+    <string id="message.noLanguagesFound">لم يتم العثور على ملفات لغة في مجلد 'lang'.</string>
+    <string id="message.languageLoadFailed">فشل تحميل اللغة المحددة.</string>
+    <string id="message.selectEfiArchitecturePrompt">أيهما تريد استخدامه؟ حدد نعم لـ x64، لا لـ x86.</string>
+    <string id="message.diskErrorsFoundPrompt">تم العثور على أخطاء في محرك الأقراص C:. هل تريد إصلاح القرص وإعادة تشغيل النظام؟</string>
+    <string id="title.error">خطأ</string>
+    <string id="title.isoFile">ملف ISO</string>
+    <string id="title.operationConfirmation">تأكيد العملية</string>
+    <string id="title.operationInProgress">عملية قيد التقدم</string>
+    <string id="title.restart">إعادة التشغيل</string>
+    <string id="title.secondConfirmation">التأكيد الثاني</string>
+    <string id="title.spaceInsufficient">مساحة غير كافية</string>
+    <string id="title.selectEfiArchitecture">تحديد بنية EFI</string>
+    <string id="title.repairDisk">إصلاح القرص</string>
+    <string id="unit.mb">ميجابايت</string>
+    <string id="unit.gb">جيجابايت</string>
+    <string id="editionSelector.title">تحديد إصدار Windows</string>
+    <string id="editionSelector.header">حدد إصدار Windows للتثبيت</string>
+    <string id="editionSelector.subtitle">سيتم حقن الإصدار المحدد في boot.wim للتشغيل من RAM</string>
+    <string id="editionSelector.columnIndex">#</string>
+    <string id="editionSelector.columnName">اسم الإصدار</string>
+    <string id="editionSelector.columnSize">الحجم</string>
+    <string id="editionSelector.infoLabel">معلومات:</string>
+    <string id="editionSelector.sizeLabel">حجم الإصدار:</string>
+    <string id="editionSelector.buttonContinue">متابعة</string>
+    <string id="editionSelector.buttonCancel">إلغاء</string>
+    <string id="editionSelector.infoSelect">حدد إصدارًا لعرض التفاصيل</string>
+    <string id="editionSelector.warningNoSelection">الرجاء تحديد إصدار</string>
+    <string id="editionSelector.warningTitle">تحذير</string>
+    <string id="editionSelector.sizeUnknown">الحجم غير معروف</string>
+    <string id="editionSelector.infoIndex">الفهرس:</string>
+    
+    <!-- Log messages - ISO Processing -->
+    <string id="log.iso.analyzing">جارٍ تحليل محتوى ISO...</string>
+    <string id="log.iso.windowsDetected">تم اكتشاف Windows ISO.</string>
+    <string id="log.iso.nonWindowsDetected">تم اكتشاف ISO غير Windows.</string>
+    <string id="log.iso.copyingInstallFile">جارٍ نسخ ملف التثبيت...</string>
+    <string id="log.iso.installFileCopied">تم نسخ ملف التثبيت والتحقق منه بنجاح.</string>
+    <string id="log.iso.installFileError">خطأ/تحذير في التحقق من install.*؛ تحقق من iso_extract.log.</string>
+    <string id="log.iso.retryingInstall">جارٍ إعادة محاولة استخراج install.*...</string>
+    <string id="log.iso.installFileErrorFatal">خطأ في نسخ ملف التثبيت.</string>
+    <string id="log.iso.copyingSetupFiles">جارٍ نسخ ملفات الإعداد الحرجة...</string>
+    <string id="log.iso.setupFilesCopied">تم نسخ الملفات الحرجة ({0} ملف).</string>
+    <string id="log.iso.setupFilesSkipped">تم تخطي ملفات الإعداد (غير موجودة في هذا ISO).</string>
+    <string id="log.iso.integratingPrograms">جارٍ دمج البرامج في boot.wim للتشغيل من RAM.</string>
+    <string id="log.linuxIsoDetected">تم اكتشاف Linux ISO: {0}</string>
+    
+    <!-- Log messages - BCD Configuration -->
+    <string id="log.bcd.configuring">جارٍ تكوين بيانات تكوين التشغيل (BCD)...</string>
+    <string id="log.bcd.efiSelected">تم تحديد ملف EFI: {0}</string>
+    <string id="log.bcd.unsupportedArchitecture">خطأ: بنية EFI غير مدعومة.</string>
+    <string id="log.bcd.errorDefault">خطأ في تكوين الافتراضي: {0}</string>
+    <string id="log.bcd.errorDisplayorder">خطأ في تكوين displayorder: {0}</string>
+    <string id="log.bcd.errorTimeout">خطأ في تكوين المهلة: {0}</string>
+    <string id="log.bcd.settingWindowsDefault">جارٍ تعيين Windows كإدخال افتراضي وضبط المهلة...</string>
+    <string id="log.bcd.resultDefault">نتيجة /default: {0}</string>
+    <string id="log.bcd.resultTimeout">نتيجة /timeout: {0}</string>
+    
+    <!-- Log messages - Windows Edition Selector -->
+    <string id="log.edition.extracting">جارٍ استخراج صورة تثبيت Windows...</string>
+    <string id="log.edition.extractError">خطأ في استخراج صورة التثبيت.</string>
+    <string id="log.edition.noEditionsFound">لم يتم العثور على إصدارات Windows.</string>
+    <string id="log.edition.autoSelectingSingle">إصدار واحد فقط متاح، جارٍ التحديد التلقائي.</string>
+    <string id="log.edition.selected">الإصدار المحدد: {0}</string>
+    <string id="log.edition.preparingRAM">جارٍ تحضير الإصدار المحدد للتشغيل من RAM...</string>
+    <string id="log.edition.creatingFiltered">جارٍ إنشاء صورة تثبيت مفلترة...</string>
+    <string id="log.edition.filteredError">خطأ في إنشاء صورة مفلترة.</string>
+    <string id="log.edition.injectingDrivers">جارٍ حقن برامج تشغيل التخزين في install.wim...</string>
+    <string id="log.edition.driversInjected">تم حقن برامج التشغيل في install.wim.</string>
+    <string id="log.edition.driversSaveFailed">تحذير: تعذر حفظ برامج التشغيل.</string>
+    <string id="log.edition.driversInjectFailed">تحذير: تعذر حقن برامج التشغيل في install.wim.</string>
+    <string id="log.edition.configuringBoot">جارٍ تكوين بيئة التشغيل...</string>
+    <string id="log.edition.bootMountError">خطأ في تحميل boot.wim.</string>
+    <string id="log.edition.savingConfig">جارٍ حفظ التكوين...</string>
+    <string id="log.edition.preparedSuccess">تم تحضير إصدار Windows بنجاح.</string>
+    <string id="log.edition.setupWillSearch">سيبحث إعداد Windows عن install.wim على قسم البيانات.</string>
+    <string id="log.edition.saveConfigError">خطأ في حفظ التكوين.</string>
+    <string id="log.edition.windowsIsoDetected">تم اكتشاف ISO تثبيت Windows.</string>
+    <string id="log.edition.copyingFullImage">جارٍ نسخ صورة التثبيت الكاملة (جميع الإصدارات)...</string>
+    <string id="log.edition.copyImageError">خطأ في نسخ صورة التثبيت.</string>
+    <string id="log.edition.imageCopiedSuccess">تم نسخ صورة التثبيت. سيعرض إعداد Windows قائمة الإصدارات.</string>
+    
+    <!-- Log messages - EFI Manager -->
+    <string id="log.efi.extracting">جارٍ استخراج ملفات EFI إلى ESP...</string>
+    
+    <!-- Log messages - Content Extractor -->
+    <string id="log.content.copying">جارٍ نسخ محتوى ISO إلى {0}...</string>
+    <string id="log.content.copied">تم نسخ محتوى ISO بنجاح.</string>
+    
+    <!-- Log messages - Diskpart -->
+    <string id="log.diskpart.creatingScript">جارٍ إنشاء سكريبت diskpart للأقسام...</string>
+    <string id="log.diskpart.scriptError">خطأ: تعذر إنشاء ملف سكريبت diskpart.</string>
+    <string id="log.diskpart.success">تم تنفيذ Diskpart بنجاح. جارٍ التحقق من الأقسام...</string>
+    <string id="log.diskpart.failed">خطأ: فشل Diskpart برمز الخروج {0}</string>
+    <string id="log.diskpart.partitionsCreated">تم إنشاء الأقسام بنجاح.</string>
+    <string id="log.diskpart.partitionsFailed">خطأ: فشل إنشاء القسم.</string>
+    
+    <!-- Log messages - Recovery -->
+    <string id="log.recovery.recovering">جارٍ استعادة المساحة. قد يستغرق هذا عدة دقائق...</string>
+    
+    <!-- Log messages - Partition Reformatter -->
+    <string id="log.reformatter.starting">جارٍ بدء إعادة تنسيق قسم EFI...</string>
+    <string id="log.reformatter.startingData">جارٍ بدء إعادة تنسيق القسم...</string>
+    <string id="log.reformatter.searchingVolume">جارٍ البحث عن وحد التخزين لإعادة التنسيق...</string>
+    <string id="log.reformatter.volumeFound">تم العثور على وحدة التخزين (رقم {0}). جارٍ إنشاء سكريبت التنسيق...</string>
+    <string id="log.reformatter.executing">جارٍ تنفيذ تنسيق القسم...</string>
+    <string id="log.reformatter.success">تمت إعادة تنسيق القسم بنجاح.</string>
+    <string id="log.reformatter.failed">خطأ: فشل تنسيق قسم EFI (الرمز {0}).</string>
+    
+    <!-- Log messages - Process Controller -->
+    <string id="log.process.preparingISOFiles">جارٍ بدء تحضير ملف ISO...</string>
+    <string id="log.process.configuringBoot">جارٍ تكوين التشغيل...</string>
+    <string id="log.process.completedSuccessfully">اكتملت العملية بنجاح.</string>
+    
+    <!-- Log messages - Boot Wim Processor -->
+    <string id="log.bootwim.preparingBootFiles">جارٍ تحضير ملفات تشغيل ISO...</string>
+    <string id="log.bootwim.extractingBootWim">جارٍ استخراج boot.wim إلى قسم البيانات...</string>
+    <string id="log.bootwim.bootWimCopied">تم نسخ boot.wim بنجاح.</string>
+    <string id="log.bootwim.copyingBootSdi">جارٍ نسخ boot.sdi المطلوب للتشغيل من RAM...</string>
+    <string id="log.bootwim.bootSdiCopied">تم نسخ boot.sdi بنجاح.</string>
+    <string id="log.bootwim.copyingBootSdiToEsp">جارٍ نسخ boot.sdi إلى قسم ESP...</string>
+    <string id="log.bootwim.bootSdiCopiedToEsp">تم نسخ boot.sdi بنجاح إلى ESP.</string>
+    <string id="log.bootwim.skippingInstallInjection">جارٍ تخطي حقن install.* في boot.wim؛ سيتم استخدام الصورة من القرص.</string>
+    <string id="log.bootwim.selectedIndex">الفهرس المحدد:</string>
+    <string id="log.bootwim.pecmdPresent">PECMD موجود في boot.wim.</string>
+    <string id="log.bootwim.integratingPrograms">جارٍ دمج البرامج في boot.wim...</string>
+    <string id="log.bootwim.programsIntegrated">تم دمج البرامج في boot.wim بنجاح</string>
+    <string id="log.bootwim.integratingDrivers">جارٍ دمج برامج التشغيل المخصصة...</string>
+    <string id="log.bootwim.driversIntegrationError">خطأ في دمج برامج التشغيل المخصصة</string>
+    <string id="log.bootwim.driversDisabled">تم تعطيل حقن برامج التشغيل من قبل المستخدم.</string>
+    <string id="log.bootwim.pecmdConfiguredRam">تم تكوين PECMD لوضع RAM.</string>
+    <string id="log.bootwim.processingIniFiles">جارٍ معالجة ملفات .ini...</string>
+    <string id="log.bootwim.iniFilesConfigured">تم دمج وإعادة تكوين ملفات INI بنجاح</string>
+    <string id="log.bootwim.savingChanges">جارٍ حفظ التغييرات في boot.wim...</string>
+    <string id="log.bootwim.bootWimUpdated">تم تحديث boot.wim بنجاح.</string>
+    <string id="log.bootwim.winPEDetectedDataPartition">تم اكتشاف Windows PE - سيبقى boot.wim على قسم البيانات.</string>
+    <string id="log.bootwim.bcdConfiguredForData">سيتم تكوين BCD للتشغيل من قسم البيانات.</string>
+    <string id="log.bootwim.extractingAdditionalFiles">جارٍ استخراج ملفات إضافية من boot.wim...</string>
+    <string id="log.bootwim.additionalFilesExtracted">تم استخراج ملفات إضافية من boot.wim بنجاح.</string>
+    <string id="button.perform.hint">انقر لتشغيل ISO</string>
+    <string id="mainwindow.developedBy">برنامج تم تطويره بواسطة شركة كوستاريكية</string>
+</language>

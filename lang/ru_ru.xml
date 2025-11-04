@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="utf-8"?>
+<language code="ru_RU" name="Русский">
+    <string id="app.windowTitle">BootThatISO! - Загрузка ISO без USB</string>
+    <string id="bootMode.ram">Загрузка из RAM</string>
+    <string id="bootMode.extract">Загрузка с диска</string>
+    <string id="common.yes">Да</string>
+    <string id="common.no">Нет</string>
+    <string id="dialog.openIso.filter">Файлы ISO (*.iso)</string>
+    <string id="log.cancel.completed">Операция отменена и очищена.</string>
+    <string id="log.cancel.requested">Запрошена отмена. Ожидание очистки...</string>
+    <string id="log.process.starting">Запуск процесса...</string>
+    <string id="log.process.isoPathAfterTrimming">Путь ISO после обрезки: '{0}'</string>
+    <string id="log.process.startingWithDetails">Запуск процесса с ISO: {0}, формат: {1}, режим: {2}</string>
+    <string id="log.process.verifyingPartitions">Проверка состояния раздела...</string>
+    <string id="log.recovery.alreadyRunning">Восстановление пространства уже выполняется.</string>
+    <string id="log.recovery.cannotCancel">Восстановление пространства выполняется и не может быть отменено. Дождитесь его завершения.</string>
+    <string id="log.recovery.startFailed">Не удалось запустить восстановление пространства. Проверьте, не запущено ли оно уже.</string>
+    <string id="log.recovery.started">Восстановление пространства запущено в фоновом режиме.</string>
+    <string id="log.recovery.success">Восстановление пространства успешно завершено.</string>
+    <string id="log.recovery.failed">Восстановление пространства не удалось. Проверьте журналы для получения подробностей.</string>
+    <string id="mainwindow.bootModeLabel">Режим загрузки:</string>
+    <string id="mainwindow.browseButton">Обзор</string>
+    <string id="mainwindow.createButton">Выполнить процесс и загрузить выбранный ISO</string>
+    <string id="mainwindow.formatLabel">Формат файловой системы:</string>
+    <string id="mainwindow.format.fat32">FAT32 (Рекомендуется - Максимальная совместимость с EFI)</string>
+    <string id="mainwindow.format.exfat">exFAT (Нет ограничения 4 ГБ на файл)</string>
+    <string id="mainwindow.format.ntfs">NTFS (Полная поддержка Windows)</string>
+    <string id="mainwindow.integrityCheck">Выполнить проверку целостности диска</string>
+    <string id="mainwindow.injectDrivers">Внедрить мои драйверы в ISO</string>
+    <string id="mainwindow.isoPathLabel">Путь к файлу ISO:</string>
+    <string id="mainwindow.logoPlaceholder">ЛОГОТИП</string>
+    <string id="mainwindow.recoverButton">Восстановить моё пространство</string>
+    <string id="mainwindow.servicesButton">Службы</string>
+    <string id="mainwindow.subtitle">Конфигурация загрузочного раздела EFI</string>
+    <string id="mainwindow.title">ЗАГРУЗИ ЭТОТ ISO!</string>
+    <string id="mainwindow.versionLabel">Версия {0}</string>
+    <string id="mainwindow.diskSpaceInfo">Доступно на C: {0} ГБ | ISOBOOT: {1} | ISOEFI: {2}</string>
+    <string id="message.adminRequired">Эта программа требует прав администратора.</string>
+    <string id="message.diskModifyConfirmPrimary">Эта операция изменит системный диск, уменьшив его на 11 ГБ для создания двух загрузочных разделов: 1 ГБ FAT32 ESP (ISOEFI) и 10 ГБ раздела данных (ISOBOOT). Хотите продолжить?</string>
+    <string id="message.diskModifyConfirmSecondary">Это второе подтверждение. Операция изменения диска необратима и может привести к потере данных при неправильном выполнении. Вы полностью уверены, что хотите продолжить?</string>
+    <string id="message.operationInProgress">Процесс выполняется. Хотите отменить операцию и закрыть приложение?</string>
+    <string id="message.processCompleteRestart">Процесс завершён. Хотите перезагрузить систему сейчас?</string>
+    <string id="message.recoverSpaceFailed">Не удалось восстановить пространство. Проверьте журналы для получения подробностей.</string>
+    <string id="message.recoveringSpace">Удаление разделов, созданных BootThatISO!, пожалуйста, не отменяйте этот процесс, освобождённое пространство будет назначено Windows, и записи BCD ISOBOOT и ISOBOOT_RAM удаляются.</string>
+    <string id="message.restartFailed">Не удалось перезагрузить систему.</string>
+    <string id="message.selectIsoFirst">Пожалуйста, сначала выберите файл ISO.</string>
+    <string id="message.windowCreationFailed">Ошибка при создании окна!</string>
+    <string id="message.windowRegistrationFailed">Ошибка при регистрации окна!</string>
+    <string id="message.noLanguagesFound">Файлы языков не найдены в папке 'lang'.</string>
+    <string id="message.languageLoadFailed">Не удалось загрузить выбранный язык.</string>
+    <string id="message.selectEfiArchitecturePrompt">Какую вы хотите использовать? Выберите Да для x64, Нет для x86.</string>
+    <string id="message.diskErrorsFoundPrompt">На диске C: обнаружены ошибки. Хотите восстановить диск и перезагрузить систему?</string>
+    <string id="title.error">Ошибка</string>
+    <string id="title.isoFile">Файл ISO</string>
+    <string id="title.operationConfirmation">Подтверждение операции</string>
+    <string id="title.operationInProgress">Операция выполняется</string>
+    <string id="title.restart">Перезагрузка</string>
+    <string id="title.secondConfirmation">Второе подтверждение</string>
+    <string id="title.spaceInsufficient">Недостаточно места</string>
+    <string id="title.selectEfiArchitecture">Выбор архитектуры EFI</string>
+    <string id="title.repairDisk">Восстановление диска</string>
+    <string id="unit.mb">МБ</string>
+    <string id="unit.gb">ГБ</string>
+    <string id="editionSelector.title">Выбор издания Windows</string>
+    <string id="editionSelector.header">Выберите издание Windows для установки</string>
+    <string id="editionSelector.subtitle">Выбранное издание будет внедрено в boot.wim для загрузки в RAM</string>
+    <string id="editionSelector.columnIndex">#</string>
+    <string id="editionSelector.columnName">Название издания</string>
+    <string id="editionSelector.columnSize">Размер</string>
+    <string id="editionSelector.infoLabel">Информация:</string>
+    <string id="editionSelector.sizeLabel">Размер издания:</string>
+    <string id="editionSelector.buttonContinue">Продолжить</string>
+    <string id="editionSelector.buttonCancel">Отмена</string>
+    <string id="editionSelector.infoSelect">Выберите издание для просмотра деталей</string>
+    <string id="editionSelector.warningNoSelection">Пожалуйста, выберите издание</string>
+    <string id="editionSelector.warningTitle">Предупреждение</string>
+    <string id="editionSelector.sizeUnknown">Размер неизвестен</string>
+    <string id="editionSelector.infoIndex">Индекс:</string>
+    
+    <!-- Log messages - ISO Processing -->
+    <string id="log.iso.analyzing">Анализ содержимого ISO...</string>
+    <string id="log.iso.windowsDetected">Обнаружен Windows ISO.</string>
+    <string id="log.iso.nonWindowsDetected">Обнаружен не-Windows ISO.</string>
+    <string id="log.iso.copyingInstallFile">Копирование файла установки...</string>
+    <string id="log.iso.installFileCopied">Файл установки успешно скопирован и проверен.</string>
+    <string id="log.iso.installFileError">Ошибка/Предупреждение при проверке install.*; проверьте iso_extract.log.</string>
+    <string id="log.iso.retryingInstall">Повтор извлечения install.*...</string>
+    <string id="log.iso.installFileErrorFatal">Ошибка при копировании файла установки.</string>
+    <string id="log.iso.copyingSetupFiles">Копирование критически важных файлов установки...</string>
+    <string id="log.iso.setupFilesCopied">Критически важные файлы скопированы ({0} файлов).</string>
+    <string id="log.iso.setupFilesSkipped">Файлы установки пропущены (не найдены в этом ISO).</string>
+    <string id="log.iso.integratingPrograms">Интеграция программ в boot.wim для загрузки в RAM.</string>
+    <string id="log.linuxIsoDetected">Обнаружен Linux ISO: {0}</string>
+    
+    <!-- Log messages - BCD Configuration -->
+    <string id="log.bcd.configuring">Настройка данных конфигурации загрузки (BCD)...</string>
+    <string id="log.bcd.efiSelected">Выбран файл EFI: {0}</string>
+    <string id="log.bcd.unsupportedArchitecture">Ошибка: Неподдерживаемая архитектура EFI.</string>
+    <string id="log.bcd.errorDefault">Ошибка настройки по умолчанию: {0}</string>
+    <string id="log.bcd.errorDisplayorder">Ошибка настройки displayorder: {0}</string>
+    <string id="log.bcd.errorTimeout">Ошибка настройки таймаута: {0}</string>
+    <string id="log.bcd.settingWindowsDefault">Установка Windows в качестве записи по умолчанию и настройка таймаута...</string>
+    <string id="log.bcd.resultDefault">Результат /default: {0}</string>
+    <string id="log.bcd.resultTimeout">Результат /timeout: {0}</string>
+    
+    <!-- Log messages - Windows Edition Selector -->
+    <string id="log.edition.extracting">Извлечение образа установки Windows...</string>
+    <string id="log.edition.extractError">Ошибка при извлечении образа установки.</string>
+    <string id="log.edition.noEditionsFound">Издания Windows не найдены.</string>
+    <string id="log.edition.autoSelectingSingle">Доступно только одно издание, автоматический выбор.</string>
+    <string id="log.edition.selected">Выбранное издание: {0}</string>
+    <string id="log.edition.preparingRAM">Подготовка выбранного издания для загрузки в RAM...</string>
+    <string id="log.edition.creatingFiltered">Создание отфильтрованного образа установки...</string>
+    <string id="log.edition.filteredError">Ошибка при создании отфильтрованного образа.</string>
+    <string id="log.edition.injectingDrivers">Внедрение драйверов хранилища в install.wim...</string>
+    <string id="log.edition.driversInjected">Драйверы внедрены в install.wim.</string>
+    <string id="log.edition.driversSaveFailed">Предупреждение: Не удалось сохранить драйверы.</string>
+    <string id="log.edition.driversInjectFailed">Предупреждение: Не удалось внедрить драйверы в install.wim.</string>
+    <string id="log.edition.configuringBoot">Настройка среды загрузки...</string>
+    <string id="log.edition.bootMountError">Ошибка монтирования boot.wim.</string>
+    <string id="log.edition.savingConfig">Сохранение конфигурации...</string>
+    <string id="log.edition.preparedSuccess">Издание Windows успешно подготовлено.</string>
+    <string id="log.edition.setupWillSearch">Программа установки Windows будет искать install.wim на разделе данных.</string>
+    <string id="log.edition.saveConfigError">Ошибка при сохранении конфигурации.</string>
+    <string id="log.edition.windowsIsoDetected">Обнаружен ISO установки Windows.</string>
+    <string id="log.edition.copyingFullImage">Копирование полного образа установки (все издания)...</string>
+    <string id="log.edition.copyImageError">Ошибка при копировании образа установки.</string>
+    <string id="log.edition.imageCopiedSuccess">Образ установки скопирован. Программа установки Windows отобразит список изданий.</string>
+    
+    <!-- Log messages - EFI Manager -->
+    <string id="log.efi.extracting">Извлечение файлов EFI в ESP...</string>
+    
+    <!-- Log messages - Content Extractor -->
+    <string id="log.content.copying">Копирование содержимого ISO в {0}...</string>
+    <string id="log.content.copied">Содержимое ISO успешно скопировано.</string>
+    
+    <!-- Log messages - Diskpart -->
+    <string id="log.diskpart.creatingScript">Создание сценария diskpart для разделов...</string>
+    <string id="log.diskpart.scriptError">Ошибка: Не удалось создать файл сценария diskpart.</string>
+    <string id="log.diskpart.success">Diskpart успешно выполнен. Проверка разделов...</string>
+    <string id="log.diskpart.failed">Ошибка: Diskpart завершился с кодом выхода {0}</string>
+    <string id="log.diskpart.partitionsCreated">Разделы успешно созданы.</string>
+    <string id="log.diskpart.partitionsFailed">Ошибка: Не удалось создать раздел.</string>
+    
+    <!-- Log messages - Recovery -->
+    <string id="log.recovery.recovering">Восстановление пространства. Это может занять несколько минут...</string>
+    
+    <!-- Log messages - Partition Reformatter -->
+    <string id="log.reformatter.starting">Запуск переформатирования раздела EFI...</string>
+    <string id="log.reformatter.startingData">Запуск переформатирования раздела...</string>
+    <string id="log.reformatter.searchingVolume">Поиск тома для переформатирования...</string>
+    <string id="log.reformatter.volumeFound">Том найден (номер {0}). Создание сценария форматирования...</string>
+    <string id="log.reformatter.executing">Выполнение форматирования раздела...</string>
+    <string id="log.reformatter.success">Раздел успешно переформатирован.</string>
+    <string id="log.reformatter.failed">Ошибка: Форматирование раздела EFI не удалось (код {0}).</string>
+    
+    <!-- Log messages - Process Controller -->
+    <string id="log.process.preparingISOFiles">Начало подготовки файла ISO...</string>
+    <string id="log.process.configuringBoot">Настройка загрузки...</string>
+    <string id="log.process.completedSuccessfully">Процесс успешно завершён.</string>
+    
+    <!-- Log messages - Boot Wim Processor -->
+    <string id="log.bootwim.preparingBootFiles">Подготовка загрузочных файлов ISO...</string>
+    <string id="log.bootwim.extractingBootWim">Извлечение boot.wim на раздел данных...</string>
+    <string id="log.bootwim.bootWimCopied">boot.wim успешно скопирован.</string>
+    <string id="log.bootwim.copyingBootSdi">Копирование boot.sdi, необходимого для загрузки в RAM...</string>
+    <string id="log.bootwim.bootSdiCopied">boot.sdi успешно скопирован.</string>
+    <string id="log.bootwim.copyingBootSdiToEsp">Копирование boot.sdi на раздел ESP...</string>
+    <string id="log.bootwim.bootSdiCopiedToEsp">boot.sdi успешно скопирован на ESP.</string>
+    <string id="log.bootwim.skippingInstallInjection">Пропуск внедрения install.* в boot.wim; будет использован образ с диска.</string>
+    <string id="log.bootwim.selectedIndex">Выбранный индекс:</string>
+    <string id="log.bootwim.pecmdPresent">PECMD присутствует в boot.wim.</string>
+    <string id="log.bootwim.integratingPrograms">Интеграция программ в boot.wim...</string>
+    <string id="log.bootwim.programsIntegrated">Программы успешно интегрированы в boot.wim</string>
+    <string id="log.bootwim.integratingDrivers">Интеграция пользовательских драйверов...</string>
+    <string id="log.bootwim.driversIntegrationError">Ошибка интеграции пользовательских драйверов</string>
+    <string id="log.bootwim.driversDisabled">Внедрение драйверов отключено пользователем.</string>
+    <string id="log.bootwim.pecmdConfiguredRam">PECMD настроен для режима RAM.</string>
+    <string id="log.bootwim.processingIniFiles">Обработка файлов .ini...</string>
+    <string id="log.bootwim.iniFilesConfigured">Файлы INI успешно интегрированы и перенастроены</string>
+    <string id="log.bootwim.savingChanges">Сохранение изменений в boot.wim...</string>
+    <string id="log.bootwim.bootWimUpdated">boot.wim успешно обновлён.</string>
+    <string id="log.bootwim.winPEDetectedDataPartition">Обнаружен Windows PE - boot.wim останется на разделе данных.</string>
+    <string id="log.bootwim.bcdConfiguredForData">BCD будет настроен для загрузки с раздела данных.</string>
+    <string id="log.bootwim.extractingAdditionalFiles">Извлечение дополнительных файлов из boot.wim...</string>
+    <string id="log.bootwim.additionalFilesExtracted">Дополнительные файлы из boot.wim успешно извлечены.</string>
+    <string id="button.perform.hint">Нажмите для загрузки ISO</string>
+    <string id="mainwindow.developedBy">Программное обеспечение разработано костариканской компанией</string>
+</language>

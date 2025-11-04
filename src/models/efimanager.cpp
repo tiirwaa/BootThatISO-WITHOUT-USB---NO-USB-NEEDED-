@@ -48,6 +48,9 @@ bool EFIManager::extractEFI(const std::string &sourcePath, const std::string &es
     // Validate and fix EFI files after copying
     validateAndFixEFIFiles(efiDestPath, logFile);
 
+    // Create marker file to identify this as BootThatISO temporary partition
+    createPartitionMarkerFile(espPath);
+
     // For non-Windows ISOs, copy bootmgr.efi from root to ESP if it exists
     if (!isWindowsISO) {
         copyBootmgrForNonWindows(sourcePath, espPath);
@@ -622,4 +625,45 @@ bool EFIManager::ensureSecureBootCompatibleBootloader(const std::string &espPath
         logFile << getTimestamp() << "System bootmgfw.efi not found" << std::endl;
     }
     return false;
+}
+
+void EFIManager::createPartitionMarkerFile(const std::string &espPath) {
+    std::string   logDir = Utils::getExeDirectory() + "logs";
+    std::ofstream logFile(logDir + "\\iso_extract.log", std::ios::app);
+
+    std::string   markerPath = espPath + "BOOTTHATISO_TEMP_PARTITION.txt";
+    std::ofstream markerFile(markerPath);
+
+    if (markerFile.is_open()) {
+        // Get current time
+        time_t    now = time(nullptr);
+        char      timeStr[100];
+        struct tm timeinfo;
+        localtime_s(&timeinfo, &now);
+        strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", &timeinfo);
+
+        markerFile << "===================================================\n";
+        markerFile << "   BootThatISO! Temporary EFI Partition Marker\n";
+        markerFile << "===================================================\n\n";
+        markerFile << "This partition (ISOEFI) was created by BootThatISO!\n";
+        markerFile << "for temporarily booting ISO files without a USB drive.\n\n";
+        markerFile << "IMPORTANT:\n";
+        markerFile << "- This is a TEMPORARY partition for ISO boot purposes.\n";
+        markerFile << "- DO NOT use this as your Windows EFI System Partition.\n";
+        markerFile << "- During Windows installation, do NOT delete the Windows\n";
+        markerFile << "  EFI partition or Windows might reuse this partition.\n\n";
+        markerFile << "If Windows installer used this partition:\n";
+        markerFile << "1. Complete your Windows installation\n";
+        markerFile << "2. Run BootThatISO! again\n";
+        markerFile << "3. Click 'Recover my space' to clean up\n\n";
+        markerFile << "Created: " << timeStr << "\n";
+        markerFile << "Application: BootThatISO! by Andrey Rodriguez Araya\n";
+        markerFile << "Website: https://agsoft.co.cr\n";
+        markerFile << "===================================================\n";
+        markerFile.close();
+
+        logFile << getTimestamp() << "Created partition marker file: " << markerPath << std::endl;
+    } else {
+        logFile << getTimestamp() << "Warning: Could not create partition marker file" << std::endl;
+    }
 }

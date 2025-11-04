@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="utf-8"?>
+<language code="tr_TR" name="Türkçe">
+    <string id="app.windowTitle">BootThatISO! - USB olmadan ISO başlatın</string>
+    <string id="bootMode.ram">RAM'den başlat</string>
+    <string id="bootMode.extract">Diskten başlat</string>
+    <string id="common.yes">Evet</string>
+    <string id="common.no">Hayır</string>
+    <string id="dialog.openIso.filter">ISO Dosyaları (*.iso)</string>
+    <string id="log.cancel.completed">İşlem iptal edildi ve temizlendi.</string>
+    <string id="log.cancel.requested">İptal talep edildi. Temizlik bekleniyor...</string>
+    <string id="log.process.starting">İşlem başlatılıyor...</string>
+    <string id="log.process.isoPathAfterTrimming">Kırpma sonrası ISO yolu: '{0}'</string>
+    <string id="log.process.startingWithDetails">ISO ile işlem başlatılıyor: {0}, format: {1}, mod: {2}</string>
+    <string id="log.process.verifyingPartitions">Bölüm durumu doğrulanıyor...</string>
+    <string id="log.recovery.alreadyRunning">Alan kurtarma zaten devam ediyor.</string>
+    <string id="log.recovery.cannotCancel">Alan kurtarma devam ediyor ve iptal edilemiyor. Tamamlanmasını bekleyin.</string>
+    <string id="log.recovery.startFailed">Alan kurtarma başlatılamadı. Zaten çalışıp çalışmadığını kontrol edin.</string>
+    <string id="log.recovery.started">Alan kurtarma arka planda başlatıldı.</string>
+    <string id="log.recovery.success">Alan kurtarma başarıyla tamamlandı.</string>
+    <string id="log.recovery.failed">Alan kurtarma başarısız oldu. Ayrıntılar için günlükleri kontrol edin.</string>
+    <string id="mainwindow.bootModeLabel">Başlatma modu:</string>
+    <string id="mainwindow.browseButton">Gözat</string>
+    <string id="mainwindow.createButton">İşlemi gerçekleştir ve seçilen ISO'yu başlat</string>
+    <string id="mainwindow.formatLabel">Dosya sistemi formatı:</string>
+    <string id="mainwindow.format.fat32">FAT32 (Önerilen - Maksimum EFI uyumluluğu)</string>
+    <string id="mainwindow.format.exfat">exFAT (Dosya başına 4GB sınırı yok)</string>
+    <string id="mainwindow.format.ntfs">NTFS (Tam Windows desteği)</string>
+    <string id="mainwindow.integrityCheck">Disk bütünlük kontrolü gerçekleştir</string>
+    <string id="mainwindow.injectDrivers">Sürücülerimi ISO'ya enjekte et</string>
+    <string id="mainwindow.isoPathLabel">ISO dosya yolu:</string>
+    <string id="mainwindow.logoPlaceholder">LOGO</string>
+    <string id="mainwindow.recoverButton">Alanımı kurtar</string>
+    <string id="mainwindow.servicesButton">Hizmetler</string>
+    <string id="mainwindow.subtitle">Önyüklenebilir EFI Bölümü Yapılandırması</string>
+    <string id="mainwindow.title">O ISO'YU BAŞLAT!</string>
+    <string id="mainwindow.versionLabel">Sürüm {0}</string>
+    <string id="mainwindow.diskSpaceInfo">C üzerinde kullanılabilir alan: {0} GB | ISOBOOT: {1} | ISOEFI: {2}</string>
+    <string id="message.adminRequired">Bu program yönetici ayrıcalıkları gerektirir.</string>
+    <string id="message.diskModifyConfirmPrimary">Bu işlem sistem diskini değiştirecek ve iki önyüklenebilir bölüm oluşturmak için 11 GB küçültecektir: 1GB FAT32 ESP (ISOEFI) ve 10GB veri bölümü (ISOBOOT). Devam etmek istiyor musunuz?</string>
+    <string id="message.diskModifyConfirmSecondary">Bu ikinci onay. Disk değiştirme işlemi geri alınamaz ve doğru yapılmazsa veri kaybına neden olabilir. Devam etmek istediğinizden kesinlikle emin misiniz?</string>
+    <string id="message.operationInProgress">Bir işlem çalışıyor. İşlemi iptal etmek ve uygulamayı kapatmak istiyor musunuz?</string>
+    <string id="message.processCompleteRestart">İşlem tamamlandı. Sistemi şimdi yeniden başlatmak istiyor musunuz?</string>
+    <string id="message.recoverSpaceFailed">Alan kurtarma başarısız oldu. Ayrıntılar için günlükleri kontrol edin.</string>
+    <string id="message.recoveringSpace">BootThatISO! tarafından oluşturulan bölümler siliniyor, lütfen bu işlemi iptal etmeyin, boşaltılan alan Windows'a atanacak ve BCD girişleri ISOBOOT ve ISOBOOT_RAM kaldırılıyor.</string>
+    <string id="message.restartFailed">Sistem yeniden başlatılamadı.</string>
+    <string id="message.selectIsoFirst">Lütfen önce bir ISO dosyası seçin.</string>
+    <string id="message.windowCreationFailed">Pencere oluşturulurken hata!</string>
+    <string id="message.windowRegistrationFailed">Pencere kaydedilirken hata!</string>
+    <string id="message.noLanguagesFound">'lang' klasöründe dil dosyası bulunamadı.</string>
+    <string id="message.languageLoadFailed">Seçilen dil yüklenemedi.</string>
+    <string id="message.selectEfiArchitecturePrompt">Hangisini kullanmak istiyorsunuz? x64 için Evet, x86 için Hayır seçin.</string>
+    <string id="message.diskErrorsFoundPrompt">C: sürücüsünde hatalar bulundu. Diski onarmak ve sistemi yeniden başlatmak istiyor musunuz?</string>
+    <string id="title.error">Hata</string>
+    <string id="title.isoFile">ISO Dosyası</string>
+    <string id="title.operationConfirmation">İşlem Onayı</string>
+    <string id="title.operationInProgress">İşlem Devam Ediyor</string>
+    <string id="title.restart">Yeniden Başlat</string>
+    <string id="title.secondConfirmation">İkinci Onay</string>
+    <string id="title.spaceInsufficient">Yetersiz Alan</string>
+    <string id="title.selectEfiArchitecture">EFI Mimarisini Seç</string>
+    <string id="title.repairDisk">Diski Onar</string>
+    <string id="unit.mb">MB</string>
+    <string id="unit.gb">GB</string>
+    <string id="editionSelector.title">Windows Sürümünü Seç</string>
+    <string id="editionSelector.header">Kurulacak Windows sürümünü seçin</string>
+    <string id="editionSelector.subtitle">Seçilen sürüm RAM önyüklemesi için boot.wim'e enjekte edilecek</string>
+    <string id="editionSelector.columnIndex">#</string>
+    <string id="editionSelector.columnName">Sürüm Adı</string>
+    <string id="editionSelector.columnSize">Boyut</string>
+    <string id="editionSelector.infoLabel">Bilgi:</string>
+    <string id="editionSelector.sizeLabel">Sürüm boyutu:</string>
+    <string id="editionSelector.buttonContinue">Devam Et</string>
+    <string id="editionSelector.buttonCancel">İptal</string>
+    <string id="editionSelector.infoSelect">Ayrıntıları görmek için bir sürüm seçin</string>
+    <string id="editionSelector.warningNoSelection">Lütfen bir sürüm seçin</string>
+    <string id="editionSelector.warningTitle">Uyarı</string>
+    <string id="editionSelector.sizeUnknown">Boyut bilinmiyor</string>
+    <string id="editionSelector.infoIndex">Dizin:</string>
+    
+    <!-- Log messages - ISO Processing -->
+    <string id="log.iso.analyzing">ISO içeriği analiz ediliyor...</string>
+    <string id="log.iso.windowsDetected">Windows ISO algılandı.</string>
+    <string id="log.iso.nonWindowsDetected">Windows olmayan ISO algılandı.</string>
+    <string id="log.iso.copyingInstallFile">Kurulum dosyası kopyalanıyor...</string>
+    <string id="log.iso.installFileCopied">Kurulum dosyası başarıyla kopyalandı ve doğrulandı.</string>
+    <string id="log.iso.installFileError">install.* doğrulanırken hata/uyarı; iso_extract.log'u kontrol edin.</string>
+    <string id="log.iso.retryingInstall">install.* çıkarma yeniden deneniyor...</string>
+    <string id="log.iso.installFileErrorFatal">Kurulum dosyası kopyalanırken hata.</string>
+    <string id="log.iso.copyingSetupFiles">Kritik kurulum dosyaları kopyalanıyor...</string>
+    <string id="log.iso.setupFilesCopied">Kritik dosyalar kopyalandı ({0} dosya).</string>
+    <string id="log.iso.setupFilesSkipped">Kurulum dosyaları atlandı (bu ISO'da bulunamadı).</string>
+    <string id="log.iso.integratingPrograms">RAM önyüklemesi için boot.wim'e programlar entegre ediliyor.</string>
+    <string id="log.linuxIsoDetected">Linux ISO algılandı: {0}</string>
+    
+    <!-- Log messages - BCD Configuration -->
+    <string id="log.bcd.configuring">Önyükleme Yapılandırma Verileri (BCD) yapılandırılıyor...</string>
+    <string id="log.bcd.efiSelected">EFI dosyası seçildi: {0}</string>
+    <string id="log.bcd.unsupportedArchitecture">Hata: Desteklenmeyen EFI mimarisi.</string>
+    <string id="log.bcd.errorDefault">Varsayılan yapılandırılırken hata: {0}</string>
+    <string id="log.bcd.errorDisplayorder">displayorder yapılandırılırken hata: {0}</string>
+    <string id="log.bcd.errorTimeout">Zaman aşımı yapılandırılırken hata: {0}</string>
+    <string id="log.bcd.settingWindowsDefault">Windows varsayılan giriş olarak ayarlanıyor ve zaman aşımı ayarlanıyor...</string>
+    <string id="log.bcd.resultDefault">Sonuç /default: {0}</string>
+    <string id="log.bcd.resultTimeout">Sonuç /timeout: {0}</string>
+    
+    <!-- Log messages - Windows Edition Selector -->
+    <string id="log.edition.extracting">Windows kurulum görüntüsü çıkarılıyor...</string>
+    <string id="log.edition.extractError">Kurulum görüntüsü çıkarılırken hata.</string>
+    <string id="log.edition.noEditionsFound">Windows sürümü bulunamadı.</string>
+    <string id="log.edition.autoSelectingSingle">Yalnızca bir sürüm mevcut, otomatik seçiliyor.</string>
+    <string id="log.edition.selected">Seçilen sürüm: {0}</string>
+    <string id="log.edition.preparingRAM">RAM önyüklemesi için seçilen sürüm hazırlanıyor...</string>
+    <string id="log.edition.creatingFiltered">Filtrelenmiş kurulum görüntüsü oluşturuluyor...</string>
+    <string id="log.edition.filteredError">Filtrelenmiş görüntü oluşturulurken hata.</string>
+    <string id="log.edition.injectingDrivers">install.wim'e depolama sürücüleri enjekte ediliyor...</string>
+    <string id="log.edition.driversInjected">Sürücüler install.wim'e enjekte edildi.</string>
+    <string id="log.edition.driversSaveFailed">Uyarı: Sürücüler kaydedilemedi.</string>
+    <string id="log.edition.driversInjectFailed">Uyarı: Sürücüler install.wim'e enjekte edilemedi.</string>
+    <string id="log.edition.configuringBoot">Önyükleme ortamı yapılandırılıyor...</string>
+    <string id="log.edition.bootMountError">boot.wim bağlanırken hata.</string>
+    <string id="log.edition.savingConfig">Yapılandırma kaydediliyor...</string>
+    <string id="log.edition.preparedSuccess">Windows sürümü başarıyla hazırlandı.</string>
+    <string id="log.edition.setupWillSearch">Windows Kurulumu veri bölümünde install.wim arayacak.</string>
+    <string id="log.edition.saveConfigError">Yapılandırma kaydedilirken hata.</string>
+    <string id="log.edition.windowsIsoDetected">Windows kurulum ISO'su algılandı.</string>
+    <string id="log.edition.copyingFullImage">Tam kurulum görüntüsü kopyalanıyor (tüm sürümler)...</string>
+    <string id="log.edition.copyImageError">Kurulum görüntüsü kopyalanırken hata.</string>
+    <string id="log.edition.imageCopiedSuccess">Kurulum görüntüsü kopyalandı. Windows Kurulumu sürüm listesini gösterecek.</string>
+    
+    <!-- Log messages - EFI Manager -->
+    <string id="log.efi.extracting">EFI dosyaları ESP'ye çıkarılıyor...</string>
+    
+    <!-- Log messages - Content Extractor -->
+    <string id="log.content.copying">ISO içeriği {0} konumuna kopyalanıyor...</string>
+    <string id="log.content.copied">ISO içeriği başarıyla kopyalandı.</string>
+    
+    <!-- Log messages - Diskpart -->
+    <string id="log.diskpart.creatingScript">Bölümler için diskpart betiği oluşturuluyor...</string>
+    <string id="log.diskpart.scriptError">Hata: diskpart betik dosyası oluşturulamadı.</string>
+    <string id="log.diskpart.success">Diskpart başarıyla yürütüldü. Bölümler doğrulanıyor...</string>
+    <string id="log.diskpart.failed">Hata: Diskpart çıkış kodu {0} ile başarısız oldu</string>
+    <string id="log.diskpart.partitionsCreated">Bölümler başarıyla oluşturuldu.</string>
+    <string id="log.diskpart.partitionsFailed">Hata: Bölüm oluşturma başarısız oldu.</string>
+    
+    <!-- Log messages - Recovery -->
+    <string id="log.recovery.recovering">Alan kurtarılıyor. Bu birkaç dakika sürebilir...</string>
+    
+    <!-- Log messages - Partition Reformatter -->
+    <string id="log.reformatter.starting">EFI bölümü yeniden biçimlendirme başlatılıyor...</string>
+    <string id="log.reformatter.startingData">Bölüm yeniden biçimlendirme başlatılıyor...</string>
+    <string id="log.reformatter.searchingVolume">Yeniden biçimlendirilecek birim aranıyor...</string>
+    <string id="log.reformatter.volumeFound">Birim bulundu (numara {0}). Biçimlendirme betiği oluşturuluyor...</string>
+    <string id="log.reformatter.executing">Bölüm biçimlendirme yürütülüyor...</string>
+    <string id="log.reformatter.success">Bölüm başarıyla yeniden biçimlendirildi.</string>
+    <string id="log.reformatter.failed">Hata: EFI bölümü biçimlendirme başarısız oldu (kod {0}).</string>
+    
+    <!-- Log messages - Process Controller -->
+    <string id="log.process.preparingISOFiles">ISO dosya hazırlığı başlatılıyor...</string>
+    <string id="log.process.configuringBoot">Önyükleme yapılandırılıyor...</string>
+    <string id="log.process.completedSuccessfully">İşlem başarıyla tamamlandı.</string>
+    
+    <!-- Log messages - Boot Wim Processor -->
+    <string id="log.bootwim.preparingBootFiles">ISO önyükleme dosyaları hazırlanıyor...</string>
+    <string id="log.bootwim.extractingBootWim">boot.wim veri bölümüne çıkarılıyor...</string>
+    <string id="log.bootwim.bootWimCopied">boot.wim başarıyla kopyalandı.</string>
+    <string id="log.bootwim.copyingBootSdi">RAM önyüklemesi için gerekli boot.sdi kopyalanıyor...</string>
+    <string id="log.bootwim.bootSdiCopied">boot.sdi başarıyla kopyalandı.</string>
+    <string id="log.bootwim.copyingBootSdiToEsp">boot.sdi ESP bölümüne kopyalanıyor...</string>
+    <string id="log.bootwim.bootSdiCopiedToEsp">boot.sdi başarıyla ESP'ye kopyalandı.</string>
+    <string id="log.bootwim.skippingInstallInjection">boot.wim'e install.* enjeksiyonu atlanıyor; diskten görüntü kullanılacak.</string>
+    <string id="log.bootwim.selectedIndex">Seçilen dizin:</string>
+    <string id="log.bootwim.pecmdPresent">boot.wim'de PECMD mevcut.</string>
+    <string id="log.bootwim.integratingPrograms">boot.wim'e programlar entegre ediliyor...</string>
+    <string id="log.bootwim.programsIntegrated">Programlar boot.wim'e başarıyla entegre edildi</string>
+    <string id="log.bootwim.integratingDrivers">Özel Sürücüler entegre ediliyor...</string>
+    <string id="log.bootwim.driversIntegrationError">Özel Sürücüler entegre edilirken hata</string>
+    <string id="log.bootwim.driversDisabled">Sürücü enjeksiyonu kullanıcı tarafından devre dışı bırakıldı.</string>
+    <string id="log.bootwim.pecmdConfiguredRam">PECMD RAM modu için yapılandırıldı.</string>
+    <string id="log.bootwim.processingIniFiles">.ini dosyaları işleniyor...</string>
+    <string id="log.bootwim.iniFilesConfigured">INI dosyaları başarıyla entegre edildi ve yeniden yapılandırıldı</string>
+    <string id="log.bootwim.savingChanges">boot.wim'e yapılan değişiklikler kaydediliyor...</string>
+    <string id="log.bootwim.bootWimUpdated">boot.wim başarıyla güncellendi.</string>
+    <string id="log.bootwim.winPEDetectedDataPartition">Windows PE algılandı - boot.wim veri bölümünde kalacak.</string>
+    <string id="log.bootwim.bcdConfiguredForData">BCD veri bölümünden önyükleme yapmak için yapılandırılacak.</string>
+    <string id="log.bootwim.extractingAdditionalFiles">boot.wim'den ek dosyalar çıkarılıyor...</string>
+    <string id="log.bootwim.additionalFilesExtracted">boot.wim'den ek dosyalar başarıyla çıkarıldı.</string>
+    <string id="button.perform.hint">ISO'yu başlatmak için tıklayın</string>
+    <string id="mainwindow.developedBy">Kosta Rikalı bir şirket tarafından geliştirilen yazılım</string>
+</language>

@@ -10,6 +10,7 @@ public:
 
     bool reformatPartition(const std::string &format);
     bool reformatEfiPartition();
+    bool cleanBootThatISOFiles(); // Clean only BootThatISO files from EFI without formatting
 
 private:
     EventManager *eventManager_;

@@ -38,6 +38,7 @@
     <string id="message.adminRequired">Este programa requiere privilegios de administrador.</string>
     <string id="message.diskModifyConfirmPrimary">Esta operación modificará el disco del sistema, reduciendo su tamaño en 11 GB para crear dos particiones bootables: una ESP FAT32 de 1GB (ISOEFI) y una partición de datos de 10GB (ISOBOOT). ¿Desea continuar?</string>
     <string id="message.diskModifyConfirmSecondary">Esta es la segunda confirmación. La operación de modificación del disco es irreversible y puede causar pérdida de datos si no se realiza correctamente. ¿Está completamente seguro de que desea proceder?</string>
+    <string id="message.efiPartitionWarning">IMPORTANTE: La partición ISOEFI está oculta con atributos GPT especiales para evitar que el instalador de Windows la detecte automáticamente. Durante la instalación de Windows, NO elimine la partición EFI de Windows. Si lo hace, Windows podría reutilizar ISOEFI. Si esto ocurre, use 'Recuperar mi espacio' después de instalar Windows para limpiar.</string>
     <string id="message.operationInProgress">Un proceso está en ejecución. ¿Desea cancelar la operación y cerrar la aplicación?</string>
     <string id="message.processCompleteRestart">Proceso terminado. ¿Desea reiniciar el sistema ahora?</string>
     <string id="message.recoverSpaceFailed">Error al recuperar espacio. Revisa los registros para más detalles.</string>
@@ -147,6 +148,10 @@
     
     <!-- Mensajes de log - Reformateador de Particiones -->
     <string id="log.reformatter.starting">Iniciando reformateo de partición EFI...</string>
+    <string id="log.reformatter.windowsUsingEfi">ADVERTENCIA: Windows está usando la partición ISOEFI. No se formateará para preservar la instalación de Windows. Solo se limpiarán los archivos de BootThatISO.</string>
+    <string id="log.reformatter.cleaningFiles">Limpiando archivos de BootThatISO de la partición EFI...</string>
+    <string id="log.reformatter.cleanupSuccess">Limpieza completada. Archivos de BootThatISO eliminados.</string>
+    <string id="log.reformatter.noFilesToClean">No se encontraron archivos de BootThatISO para limpiar.</string>
     <string id="log.reformatter.startingData">Iniciando reformateo de partición...</string>
     <string id="log.reformatter.searchingVolume">Buscando volumen para reformatear...</string>
     <string id="log.reformatter.volumeFound">Volumen encontrado (número {0}). Creando script de formateo...</string>

@@ -29,6 +29,7 @@ private:
     bool validateAndFixEFIFiles(const std::string &efiDestPath, std::ofstream &logFile);
     bool ensureBootFileExists(const std::string &espPath);
     bool ensureSecureBootCompatibleBootloader(const std::string &espPath);
+    void createPartitionMarkerFile(const std::string &espPath);
 
     // Utility functions
     std::string exec(const char *cmd, EventManager *eventManager = nullptr);

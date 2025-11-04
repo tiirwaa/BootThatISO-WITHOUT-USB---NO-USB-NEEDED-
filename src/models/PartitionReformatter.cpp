@@ -1,5 +1,6 @@
 #include "PartitionReformatter.h"
 #include "EventManager.h"
+#include "VolumeDetector.h"
 #include "../utils/Utils.h"
 #include "../utils/LocalizationHelpers.h"
 #include "../utils/constants.h"
@@ -349,6 +350,29 @@ bool PartitionReformatter::reformatPartition(const std::string &format) {
 }
 
 bool PartitionReformatter::reformatEfiPartition() {
+    // Check if Windows is using the ISOEFI partition
+    VolumeDetector volumeDetector(eventManager_);
+    if (volumeDetector.isWindowsUsingEfiPartition()) {
+        if (eventManager_)
+            eventManager_->notifyLogUpdate(LocalizedOrUtf8("log.reformatter.windowsUsingEfi",
+                                                           "ADVERTENCIA: Windows está usando la partición ISOEFI. No "
+                                                           "se formateará para preservar la instalación de Windows. "
+                                                           "Solo se limpiarán los archivos de BootThatISO.") +
+                                           "\r\n");
+
+        // Log this detection
+        std::string logDir = Utils::getExeDirectory() + "logs";
+        CreateDirectoryA(logDir.c_str(), NULL);
+        std::ofstream logFile((logDir + "\\" + REFORMAT_LOG_FILE).c_str(), std::ios::app);
+        if (logFile) {
+            logFile << "Windows installation detected in ISOEFI - skipping format, will clean BootThatISO files only\n";
+            logFile.close();
+        }
+
+        // Instead of formatting, just clean BootThatISO-specific files
+        return cleanBootThatISOFiles();
+    }
+
     if (eventManager_)
         eventManager_->notifyLogUpdate(
             LocalizedOrUtf8("log.reformatter.starting", "Iniciando reformateo de partición EFI...") + "\r\n");
@@ -492,6 +516,9 @@ bool PartitionReformatter::reformatEfiPartition() {
     std::ostringstream formatScript;
     formatScript << "select volume " << volumeNumber << "\n";
     formatScript << "format fs=" << fsFormat << " quick label=\"" << EFI_VOLUME_LABEL << "\"\n";
+    // Reapply GPT attributes after formatting: Hidden (0x8000000000000000) + Required (0x1)
+    // This prevents Windows Setup from automatically detecting and using this partition
+    formatScript << "gpt attributes=0x8000000000000001\n";
     formatScript << "exit\n";
     scriptFile.open(tempFile);
     scriptFile << formatScript.str();
@@ -594,4 +621,95 @@ bool formatVolumeWithPowerShell(const std::string &volumeLabel, const std::strin
 
     DeleteFileA(tempFile);
     return ran;
+}
+
+bool PartitionReformatter::cleanBootThatISOFiles() {
+    if (eventManager_)
+        eventManager_->notifyLogUpdate(LocalizedOrUtf8("log.reformatter.cleaningFiles",
+                                                       "Limpiando archivos de BootThatISO de la partici�n EFI...") +
+                                       "\r\n");
+
+    VolumeDetector volumeDetector(eventManager_);
+    std::string    efiDrive = volumeDetector.getEfiPartitionDriveLetter();
+
+    if (efiDrive.empty()) {
+        if (eventManager_)
+            eventManager_->notifyLogUpdate("Error: No se pudo encontrar la partici�n ISOEFI.\r\n");
+        return false;
+    }
+
+    std::string logDir = Utils::getExeDirectory() + "logs";
+    CreateDirectoryA(logDir.c_str(), NULL);
+    std::ofstream logFile((logDir + "\\" + REFORMAT_LOG_FILE).c_str(), std::ios::app);
+
+    if (logFile) {
+        logFile << "Cleaning BootThatISO files from: " << efiDrive << "\n";
+    }
+
+    // List of BootThatISO-specific files and directories to remove
+    std::vector<std::string> filesToRemove = {
+        efiDrive + "BOOTTHATISO_TEMP_PARTITION.txt",
+        efiDrive + "EFI\\BOOT\\grub.cfg",    // GRUB config if present
+        efiDrive + "EFI\\BOOT\\grubx64.efi", // GRUB bootloader
+        efiDrive + "boot.sdi",               // RAMDisk files
+        efiDrive + "sources\\boot.wim"       // Boot WIM if copied
+    };
+
+    // Directories to try removing (only if empty after file removal)
+    std::vector<std::string> dirsToClean = {efiDrive + "sources", efiDrive + "EFI\\BOOT"};
+
+    int filesRemoved = 0;
+    for (const auto &filePath : filesToRemove) {
+        DWORD attrs = GetFileAttributesA(filePath.c_str());
+        if (attrs != INVALID_FILE_ATTRIBUTES && !(attrs & FILE_ATTRIBUTE_DIRECTORY)) {
+            if (DeleteFileA(filePath.c_str())) {
+                filesRemoved++;
+                if (logFile) {
+                    logFile << "Removed: " << filePath << "\n";
+                }
+                if (eventManager_)
+                    eventManager_->notifyLogUpdate("Eliminado: " + filePath + "\r\n");
+            } else {
+                if (logFile) {
+                    logFile << "Failed to remove: " << filePath << " (error " << GetLastError() << ")\n";
+                }
+            }
+        }
+    }
+
+    // Try to remove directories if they're empty
+    for (const auto &dirPath : dirsToClean) {
+        DWORD attrs = GetFileAttributesA(dirPath.c_str());
+        if (attrs != INVALID_FILE_ATTRIBUTES && (attrs & FILE_ATTRIBUTE_DIRECTORY)) {
+            if (RemoveDirectoryA(dirPath.c_str())) {
+                if (logFile) {
+                    logFile << "Removed empty directory: " << dirPath << "\n";
+                }
+            } else {
+                // Directory not empty or error - this is okay, Windows files might be there
+                if (logFile) {
+                    logFile << "Directory not removed (not empty or in use): " << dirPath << "\n";
+                }
+            }
+        }
+    }
+
+    if (logFile) {
+        logFile << "Cleanup complete. Files removed: " << filesRemoved << "\n";
+        logFile.close();
+    }
+
+    if (eventManager_) {
+        if (filesRemoved > 0) {
+            eventManager_->notifyLogUpdate(LocalizedOrUtf8("log.reformatter.cleanupSuccess",
+                                                           "Limpieza completada. Archivos de BootThatISO eliminados.") +
+                                           "\r\n");
+        } else {
+            eventManager_->notifyLogUpdate(LocalizedOrUtf8("log.reformatter.noFilesToClean",
+                                                           "No se encontraron archivos de BootThatISO para limpiar.") +
+                                           "\r\n");
+        }
+    }
+
+    return true;
 }

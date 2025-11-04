@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="utf-8"?>
+<language code="it_IT" name="Italiano">
+    <string id="app.windowTitle">BootThatISO! - Avvia ISO senza USB</string>
+    <string id="bootMode.ram">Avvia da RAM</string>
+    <string id="bootMode.extract">Avvia da disco</string>
+    <string id="common.yes">Sì</string>
+    <string id="common.no">No</string>
+    <string id="dialog.openIso.filter">File ISO (*.iso)</string>
+    <string id="log.cancel.completed">Operazione annullata e pulita.</string>
+    <string id="log.cancel.requested">Annullamento richiesto. In attesa della pulizia...</string>
+    <string id="log.process.starting">Avvio del processo...</string>
+    <string id="log.process.isoPathAfterTrimming">Percorso ISO dopo il taglio: '{0}'</string>
+    <string id="log.process.startingWithDetails">Avvio del processo con ISO: {0}, formato: {1}, modalità: {2}</string>
+    <string id="log.process.verifyingPartitions">Verifica dello stato della partizione...</string>
+    <string id="log.recovery.alreadyRunning">Il recupero dello spazio è già in corso.</string>
+    <string id="log.recovery.cannotCancel">Il recupero dello spazio è in corso e non può essere annullato. Attendere il completamento.</string>
+    <string id="log.recovery.startFailed">Impossibile avviare il recupero dello spazio. Verificare se è già in esecuzione.</string>
+    <string id="log.recovery.started">Recupero dello spazio avviato in background.</string>
+    <string id="log.recovery.success">Recupero dello spazio completato con successo.</string>
+    <string id="log.recovery.failed">Recupero dello spazio non riuscito. Controllare i log per i dettagli.</string>
+    <string id="mainwindow.bootModeLabel">Modalità di avvio:</string>
+    <string id="mainwindow.browseButton">Sfoglia</string>
+    <string id="mainwindow.createButton">Esegui il processo e avvia l'ISO selezionato</string>
+    <string id="mainwindow.formatLabel">Formato del file system:</string>
+    <string id="mainwindow.format.fat32">FAT32 (Consigliato - Massima compatibilità EFI)</string>
+    <string id="mainwindow.format.exfat">exFAT (Nessun limite di 4GB per file)</string>
+    <string id="mainwindow.format.ntfs">NTFS (Supporto completo di Windows)</string>
+    <string id="mainwindow.integrityCheck">Esegui controllo integrità disco</string>
+    <string id="mainwindow.injectDrivers">Inietta i miei driver nell'ISO</string>
+    <string id="mainwindow.isoPathLabel">Percorso file ISO:</string>
+    <string id="mainwindow.logoPlaceholder">LOGO</string>
+    <string id="mainwindow.recoverButton">Recupera il mio spazio</string>
+    <string id="mainwindow.servicesButton">Servizi</string>
+    <string id="mainwindow.subtitle">Configurazione Partizione EFI Avviabile</string>
+    <string id="mainwindow.title">AVVIA QUELL'ISO!</string>
+    <string id="mainwindow.versionLabel">Versione {0}</string>
+    <string id="mainwindow.diskSpaceInfo">Spazio disponibile su C: {0} GB | ISOBOOT: {1} | ISOEFI: {2}</string>
+    <string id="message.adminRequired">Questo programma richiede privilegi di amministratore.</string>
+    <string id="message.diskModifyConfirmPrimary">Questa operazione modificherà il disco di sistema, riducendolo di 11 GB per creare due partizioni avviabili: una ESP FAT32 da 1GB (ISOEFI) e una partizione dati da 10GB (ISOBOOT). Vuoi continuare?</string>
+    <string id="message.diskModifyConfirmSecondary">Questa è la seconda conferma. L'operazione di modifica del disco è irreversibile e può causare la perdita di dati se non eseguita correttamente. Sei assolutamente sicuro di voler procedere?</string>
+    <string id="message.operationInProgress">Un processo è in esecuzione. Vuoi annullare l'operazione e chiudere l'applicazione?</string>
+    <string id="message.processCompleteRestart">Processo completato. Vuoi riavviare il sistema ora?</string>
+    <string id="message.recoverSpaceFailed">Recupero dello spazio non riuscito. Controllare i log per i dettagli.</string>
+    <string id="message.recoveringSpace">Eliminazione delle partizioni create da BootThatISO!, si prega di non annullare questo processo, lo spazio liberato sarà assegnato a Windows e le voci BCD ISOBOOT e ISOBOOT_RAM vengono rimosse.</string>
+    <string id="message.restartFailed">Impossibile riavviare il sistema.</string>
+    <string id="message.selectIsoFirst">Seleziona prima un file ISO.</string>
+    <string id="message.windowCreationFailed">Errore nella creazione della finestra!</string>
+    <string id="message.windowRegistrationFailed">Errore nella registrazione della finestra!</string>
+    <string id="message.noLanguagesFound">Nessun file di lingua trovato nella cartella 'lang'.</string>
+    <string id="message.languageLoadFailed">Impossibile caricare la lingua selezionata.</string>
+    <string id="message.selectEfiArchitecturePrompt">Quale vuoi usare? Seleziona Sì per x64, No per x86.</string>
+    <string id="message.diskErrorsFoundPrompt">Sono stati trovati errori sull'unità C:. Vuoi riparare il disco e riavviare il sistema?</string>
+    <string id="title.error">Errore</string>
+    <string id="title.isoFile">File ISO</string>
+    <string id="title.operationConfirmation">Conferma Operazione</string>
+    <string id="title.operationInProgress">Operazione in Corso</string>
+    <string id="title.restart">Riavvia</string>
+    <string id="title.secondConfirmation">Seconda Conferma</string>
+    <string id="title.spaceInsufficient">Spazio Insufficiente</string>
+    <string id="title.selectEfiArchitecture">Seleziona Architettura EFI</string>
+    <string id="title.repairDisk">Ripara Disco</string>
+    <string id="unit.mb">MB</string>
+    <string id="unit.gb">GB</string>
+    <string id="editionSelector.title">Seleziona Edizione Windows</string>
+    <string id="editionSelector.header">Seleziona l'edizione di Windows da installare</string>
+    <string id="editionSelector.subtitle">L'edizione selezionata verrà iniettata in boot.wim per l'avvio RAM</string>
+    <string id="editionSelector.columnIndex">#</string>
+    <string id="editionSelector.columnName">Nome Edizione</string>
+    <string id="editionSelector.columnSize">Dimensione</string>
+    <string id="editionSelector.infoLabel">Informazioni:</string>
+    <string id="editionSelector.sizeLabel">Dimensione edizione:</string>
+    <string id="editionSelector.buttonContinue">Continua</string>
+    <string id="editionSelector.buttonCancel">Annulla</string>
+    <string id="editionSelector.infoSelect">Seleziona un'edizione per visualizzare i dettagli</string>
+    <string id="editionSelector.warningNoSelection">Seleziona un'edizione</string>
+    <string id="editionSelector.warningTitle">Avviso</string>
+    <string id="editionSelector.sizeUnknown">Dimensione sconosciuta</string>
+    <string id="editionSelector.infoIndex">Indice:</string>
+    
+    <!-- Log messages - ISO Processing -->
+    <string id="log.iso.analyzing">Analisi del contenuto ISO...</string>
+    <string id="log.iso.windowsDetected">Rilevato ISO Windows.</string>
+    <string id="log.iso.nonWindowsDetected">Rilevato ISO non-Windows.</string>
+    <string id="log.iso.copyingInstallFile">Copia del file di installazione...</string>
+    <string id="log.iso.installFileCopied">File di installazione copiato e validato con successo.</string>
+    <string id="log.iso.installFileError">Errore/Avviso nella validazione di install.*; controllare iso_extract.log.</string>
+    <string id="log.iso.retryingInstall">Nuovo tentativo di estrazione di install.*...</string>
+    <string id="log.iso.installFileErrorFatal">Errore nella copia del file di installazione.</string>
+    <string id="log.iso.copyingSetupFiles">Copia dei file di installazione critici...</string>
+    <string id="log.iso.setupFilesCopied">File critici copiati ({0} file).</string>
+    <string id="log.iso.setupFilesSkipped">File di installazione saltati (non trovati in questo ISO).</string>
+    <string id="log.iso.integratingPrograms">Integrazione di programmi in boot.wim per l'avvio RAM.</string>
+    <string id="log.linuxIsoDetected">Rilevato ISO Linux: {0}</string>
+    
+    <!-- Log messages - BCD Configuration -->
+    <string id="log.bcd.configuring">Configurazione dei dati di configurazione di avvio (BCD)...</string>
+    <string id="log.bcd.efiSelected">File EFI selezionato: {0}</string>
+    <string id="log.bcd.unsupportedArchitecture">Errore: Architettura EFI non supportata.</string>
+    <string id="log.bcd.errorDefault">Errore nella configurazione predefinita: {0}</string>
+    <string id="log.bcd.errorDisplayorder">Errore nella configurazione di displayorder: {0}</string>
+    <string id="log.bcd.errorTimeout">Errore nella configurazione del timeout: {0}</string>
+    <string id="log.bcd.settingWindowsDefault">Impostazione di Windows come voce predefinita e regolazione del timeout...</string>
+    <string id="log.bcd.resultDefault">Risultato /default: {0}</string>
+    <string id="log.bcd.resultTimeout">Risultato /timeout: {0}</string>
+    
+    <!-- Log messages - Windows Edition Selector -->
+    <string id="log.edition.extracting">Estrazione dell'immagine di installazione di Windows...</string>
+    <string id="log.edition.extractError">Errore nell'estrazione dell'immagine di installazione.</string>
+    <string id="log.edition.noEditionsFound">Nessuna edizione di Windows trovata.</string>
+    <string id="log.edition.autoSelectingSingle">Solo un'edizione disponibile, selezione automatica.</string>
+    <string id="log.edition.selected">Edizione selezionata: {0}</string>
+    <string id="log.edition.preparingRAM">Preparazione dell'edizione selezionata per l'avvio RAM...</string>
+    <string id="log.edition.creatingFiltered">Creazione dell'immagine di installazione filtrata...</string>
+    <string id="log.edition.filteredError">Errore nella creazione dell'immagine filtrata.</string>
+    <string id="log.edition.injectingDrivers">Iniezione dei driver di archiviazione in install.wim...</string>
+    <string id="log.edition.driversInjected">Driver iniettati in install.wim.</string>
+    <string id="log.edition.driversSaveFailed">Avviso: Impossibile salvare i driver.</string>
+    <string id="log.edition.driversInjectFailed">Avviso: Impossibile iniettare i driver in install.wim.</string>
+    <string id="log.edition.configuringBoot">Configurazione dell'ambiente di avvio...</string>
+    <string id="log.edition.bootMountError">Errore nel montaggio di boot.wim.</string>
+    <string id="log.edition.savingConfig">Salvataggio della configurazione...</string>
+    <string id="log.edition.preparedSuccess">Edizione di Windows preparata con successo.</string>
+    <string id="log.edition.setupWillSearch">L'installazione di Windows cercherà install.wim sulla partizione dati.</string>
+    <string id="log.edition.saveConfigError">Errore nel salvataggio della configurazione.</string>
+    <string id="log.edition.windowsIsoDetected">Rilevato ISO di installazione di Windows.</string>
+    <string id="log.edition.copyingFullImage">Copia dell'immagine di installazione completa (tutte le edizioni)...</string>
+    <string id="log.edition.copyImageError">Errore nella copia dell'immagine di installazione.</string>
+    <string id="log.edition.imageCopiedSuccess">Immagine di installazione copiata. L'installazione di Windows mostrerà l'elenco delle edizioni.</string>
+    
+    <!-- Log messages - EFI Manager -->
+    <string id="log.efi.extracting">Estrazione dei file EFI in ESP...</string>
+    
+    <!-- Log messages - Content Extractor -->
+    <string id="log.content.copying">Copia del contenuto ISO in {0}...</string>
+    <string id="log.content.copied">Contenuto ISO copiato con successo.</string>
+    
+    <!-- Log messages - Diskpart -->
+    <string id="log.diskpart.creatingScript">Creazione dello script diskpart per le partizioni...</string>
+    <string id="log.diskpart.scriptError">Errore: Impossibile creare il file di script diskpart.</string>
+    <string id="log.diskpart.success">Diskpart eseguito con successo. Verifica delle partizioni...</string>
+    <string id="log.diskpart.failed">Errore: Diskpart fallito con codice di uscita {0}</string>
+    <string id="log.diskpart.partitionsCreated">Partizioni create con successo.</string>
+    <string id="log.diskpart.partitionsFailed">Errore: Creazione della partizione fallita.</string>
+    
+    <!-- Log messages - Recovery -->
+    <string id="log.recovery.recovering">Recupero dello spazio. Potrebbero essere necessari diversi minuti...</string>
+    
+    <!-- Log messages - Partition Reformatter -->
+    <string id="log.reformatter.starting">Avvio della riformattazione della partizione EFI...</string>
+    <string id="log.reformatter.startingData">Avvio della riformattazione della partizione...</string>
+    <string id="log.reformatter.searchingVolume">Ricerca del volume da riformattare...</string>
+    <string id="log.reformatter.volumeFound">Volume trovato (numero {0}). Creazione dello script di formattazione...</string>
+    <string id="log.reformatter.executing">Esecuzione della formattazione della partizione...</string>
+    <string id="log.reformatter.success">Partizione riformattata con successo.</string>
+    <string id="log.reformatter.failed">Errore: Formattazione della partizione EFI fallita (codice {0}).</string>
+    
+    <!-- Log messages - Process Controller -->
+    <string id="log.process.preparingISOFiles">Avvio della preparazione del file ISO...</string>
+    <string id="log.process.configuringBoot">Configurazione dell'avvio...</string>
+    <string id="log.process.completedSuccessfully">Processo completato con successo.</string>
+    
+    <!-- Log messages - Boot Wim Processor -->
+    <string id="log.bootwim.preparingBootFiles">Preparazione dei file di avvio ISO...</string>
+    <string id="log.bootwim.extractingBootWim">Estrazione di boot.wim sulla partizione dati...</string>
+    <string id="log.bootwim.bootWimCopied">boot.wim copiato con successo.</string>
+    <string id="log.bootwim.copyingBootSdi">Copia di boot.sdi necessario per l'avvio RAM...</string>
+    <string id="log.bootwim.bootSdiCopied">boot.sdi copiato con successo.</string>
+    <string id="log.bootwim.copyingBootSdiToEsp">Copia di boot.sdi sulla partizione ESP...</string>
+    <string id="log.bootwim.bootSdiCopiedToEsp">boot.sdi copiato con successo su ESP.</string>
+    <string id="log.bootwim.skippingInstallInjection">Salto dell'iniezione di install.* in boot.wim; verrà utilizzata l'immagine dal disco.</string>
+    <string id="log.bootwim.selectedIndex">Indice selezionato:</string>
+    <string id="log.bootwim.pecmdPresent">PECMD presente in boot.wim.</string>
+    <string id="log.bootwim.integratingPrograms">Integrazione di programmi in boot.wim...</string>
+    <string id="log.bootwim.programsIntegrated">Programmi integrati in boot.wim con successo</string>
+    <string id="log.bootwim.integratingDrivers">Integrazione di driver personalizzati...</string>
+    <string id="log.bootwim.driversIntegrationError">Errore nell'integrazione dei driver personalizzati</string>
+    <string id="log.bootwim.driversDisabled">Iniezione dei driver disabilitata dall'utente.</string>
+    <string id="log.bootwim.pecmdConfiguredRam">PECMD configurato per la modalità RAM.</string>
+    <string id="log.bootwim.processingIniFiles">Elaborazione dei file .ini...</string>
+    <string id="log.bootwim.iniFilesConfigured">File INI integrati e riconfigurati con successo</string>
+    <string id="log.bootwim.savingChanges">Salvataggio delle modifiche in boot.wim...</string>
+    <string id="log.bootwim.bootWimUpdated">boot.wim aggiornato con successo.</string>
+    <string id="log.bootwim.winPEDetectedDataPartition">Rilevato Windows PE - boot.wim rimarrà sulla partizione dati.</string>
+    <string id="log.bootwim.bcdConfiguredForData">BCD verrà configurato per l'avvio dalla partizione dati.</string>
+    <string id="log.bootwim.extractingAdditionalFiles">Estrazione di file aggiuntivi da boot.wim...</string>
+    <string id="log.bootwim.additionalFilesExtracted">File aggiuntivi da boot.wim estratti con successo.</string>
+    <string id="button.perform.hint">Clicca per avviare l'ISO</string>
+    <string id="mainwindow.developedBy">Software sviluppato da un'azienda costaricana</string>
+</language>

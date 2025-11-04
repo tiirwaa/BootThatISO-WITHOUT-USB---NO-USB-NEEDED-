@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="utf-8"?>
+<language code="ko_KR" name="한국어">
+    <string id="app.windowTitle">BootThatISO! - USB 없이 ISO 부팅</string>
+    <string id="bootMode.ram">RAM에서 부팅</string>
+    <string id="bootMode.extract">디스크에서 부팅</string>
+    <string id="common.yes">예</string>
+    <string id="common.no">아니오</string>
+    <string id="dialog.openIso.filter">ISO 파일 (*.iso)</string>
+    <string id="log.cancel.completed">작업이 취소되고 정리되었습니다.</string>
+    <string id="log.cancel.requested">취소가 요청되었습니다. 정리 대기 중...</string>
+    <string id="log.process.starting">프로세스를 시작하는 중...</string>
+    <string id="log.process.isoPathAfterTrimming">트리밍 후 ISO 경로: '{0}'</string>
+    <string id="log.process.startingWithDetails">ISO: {0}, 형식: {1}, 모드: {2}로 프로세스 시작 중</string>
+    <string id="log.process.verifyingPartitions">파티션 상태를 확인하는 중...</string>
+    <string id="log.recovery.alreadyRunning">공간 복구가 이미 진행 중입니다.</string>
+    <string id="log.recovery.cannotCancel">공간 복구가 진행 중이며 취소할 수 없습니다. 완료될 때까지 기다려 주세요.</string>
+    <string id="log.recovery.startFailed">공간 복구를 시작하지 못했습니다. 이미 실행 중인지 확인하세요.</string>
+    <string id="log.recovery.started">공간 복구가 백그라운드에서 시작되었습니다.</string>
+    <string id="log.recovery.success">공간 복구가 성공적으로 완료되었습니다.</string>
+    <string id="log.recovery.failed">공간 복구에 실패했습니다. 자세한 내용은 로그를 확인하세요.</string>
+    <string id="mainwindow.bootModeLabel">부팅 모드:</string>
+    <string id="mainwindow.browseButton">찾아보기</string>
+    <string id="mainwindow.createButton">프로세스 수행 및 선택한 ISO 부팅</string>
+    <string id="mainwindow.formatLabel">파일 시스템 형식:</string>
+    <string id="mainwindow.format.fat32">FAT32 (권장 - 최대 EFI 호환성)</string>
+    <string id="mainwindow.format.exfat">exFAT (파일당 4GB 제한 없음)</string>
+    <string id="mainwindow.format.ntfs">NTFS (전체 Windows 지원)</string>
+    <string id="mainwindow.integrityCheck">디스크 무결성 검사 수행</string>
+    <string id="mainwindow.injectDrivers">ISO에 드라이버 주입</string>
+    <string id="mainwindow.isoPathLabel">ISO 파일 경로:</string>
+    <string id="mainwindow.logoPlaceholder">로고</string>
+    <string id="mainwindow.recoverButton">내 공간 복구</string>
+    <string id="mainwindow.servicesButton">서비스</string>
+    <string id="mainwindow.subtitle">부팅 가능한 EFI 파티션 구성</string>
+    <string id="mainwindow.title">그 ISO를 부팅하세요!</string>
+    <string id="mainwindow.versionLabel">버전 {0}</string>
+    <string id="mainwindow.diskSpaceInfo">C 드라이브 사용 가능 공간: {0} GB | ISOBOOT: {1} | ISOEFI: {2}</string>
+    <string id="message.adminRequired">이 프로그램은 관리자 권한이 필요합니다.</string>
+    <string id="message.diskModifyConfirmPrimary">이 작업은 시스템 디스크를 수정하고 11GB를 축소하여 두 개의 부팅 가능한 파티션을 생성합니다: 1GB FAT32 ESP (ISOEFI) 및 10GB 데이터 파티션 (ISOBOOT). 계속하시겠습니까?</string>
+    <string id="message.diskModifyConfirmSecondary">이것은 두 번째 확인입니다. 디스크 수정 작업은 되돌릴 수 없으며 올바르게 수행되지 않으면 데이터 손실이 발생할 수 있습니다. 정말로 계속하시겠습니까?</string>
+    <string id="message.operationInProgress">프로세스가 실행 중입니다. 작업을 취소하고 애플리케이션을 닫으시겠습니까?</string>
+    <string id="message.processCompleteRestart">프로세스가 완료되었습니다. 지금 시스템을 다시 시작하시겠습니까?</string>
+    <string id="message.recoverSpaceFailed">공간 복구에 실패했습니다. 자세한 내용은 로그를 확인하세요.</string>
+    <string id="message.recoveringSpace">BootThatISO!에서 생성한 파티션을 삭제하는 중입니다. 이 프로세스를 취소하지 마세요. 해제된 공간은 Windows에 할당되며 BCD 항목 ISOBOOT 및 ISOBOOT_RAM이 제거되고 있습니다.</string>
+    <string id="message.restartFailed">시스템을 다시 시작하지 못했습니다.</string>
+    <string id="message.selectIsoFirst">먼저 ISO 파일을 선택하세요.</string>
+    <string id="message.windowCreationFailed">창을 만드는 중 오류가 발생했습니다!</string>
+    <string id="message.windowRegistrationFailed">창을 등록하는 중 오류가 발생했습니다!</string>
+    <string id="message.noLanguagesFound">'lang' 폴더에서 언어 파일을 찾을 수 없습니다.</string>
+    <string id="message.languageLoadFailed">선택한 언어를 로드하지 못했습니다.</string>
+    <string id="message.selectEfiArchitecturePrompt">어느 것을 사용하시겠습니까? x64는 예, x86은 아니오를 선택하세요.</string>
+    <string id="message.diskErrorsFoundPrompt">C: 드라이브에서 오류가 발견되었습니다. 디스크를 복구하고 시스템을 다시 시작하시겠습니까?</string>
+    <string id="title.error">오류</string>
+    <string id="title.isoFile">ISO 파일</string>
+    <string id="title.operationConfirmation">작업 확인</string>
+    <string id="title.operationInProgress">작업 진행 중</string>
+    <string id="title.restart">다시 시작</string>
+    <string id="title.secondConfirmation">두 번째 확인</string>
+    <string id="title.spaceInsufficient">공간 부족</string>
+    <string id="title.selectEfiArchitecture">EFI 아키텍처 선택</string>
+    <string id="title.repairDisk">디스크 복구</string>
+    <string id="unit.mb">MB</string>
+    <string id="unit.gb">GB</string>
+    <string id="editionSelector.title">Windows 에디션 선택</string>
+    <string id="editionSelector.header">설치할 Windows 에디션을 선택하세요</string>
+    <string id="editionSelector.subtitle">선택한 에디션은 RAM 부팅을 위해 boot.wim에 주입됩니다</string>
+    <string id="editionSelector.columnIndex">#</string>
+    <string id="editionSelector.columnName">에디션 이름</string>
+    <string id="editionSelector.columnSize">크기</string>
+    <string id="editionSelector.infoLabel">정보:</string>
+    <string id="editionSelector.sizeLabel">에디션 크기:</string>
+    <string id="editionSelector.buttonContinue">계속</string>
+    <string id="editionSelector.buttonCancel">취소</string>
+    <string id="editionSelector.infoSelect">세부 정보를 보려면 에디션을 선택하세요</string>
+    <string id="editionSelector.warningNoSelection">에디션을 선택하세요</string>
+    <string id="editionSelector.warningTitle">경고</string>
+    <string id="editionSelector.sizeUnknown">크기 알 수 없음</string>
+    <string id="editionSelector.infoIndex">인덱스:</string>
+    
+    <!-- Log messages - ISO Processing -->
+    <string id="log.iso.analyzing">ISO 콘텐츠를 분석하는 중...</string>
+    <string id="log.iso.windowsDetected">Windows ISO가 감지되었습니다.</string>
+    <string id="log.iso.nonWindowsDetected">비Windows ISO가 감지되었습니다.</string>
+    <string id="log.iso.copyingInstallFile">설치 파일을 복사하는 중...</string>
+    <string id="log.iso.installFileCopied">설치 파일이 성공적으로 복사되고 검증되었습니다.</string>
+    <string id="log.iso.installFileError">install.* 검증 중 오류/경고; iso_extract.log를 확인하세요.</string>
+    <string id="log.iso.retryingInstall">install.* 추출을 다시 시도하는 중...</string>
+    <string id="log.iso.installFileErrorFatal">설치 파일을 복사하는 중 오류가 발생했습니다.</string>
+    <string id="log.iso.copyingSetupFiles">중요한 설치 파일을 복사하는 중...</string>
+    <string id="log.iso.setupFilesCopied">중요한 파일이 복사되었습니다 ({0}개 파일).</string>
+    <string id="log.iso.setupFilesSkipped">설치 파일을 건너뛰었습니다 (이 ISO에서 찾을 수 없음).</string>
+    <string id="log.iso.integratingPrograms">RAM 부팅을 위해 boot.wim에 프로그램을 통합하는 중.</string>
+    <string id="log.linuxIsoDetected">Linux ISO가 감지되었습니다: {0}</string>
+    
+    <!-- Log messages - BCD Configuration -->
+    <string id="log.bcd.configuring">부팅 구성 데이터(BCD)를 구성하는 중...</string>
+    <string id="log.bcd.efiSelected">EFI 파일이 선택되었습니다: {0}</string>
+    <string id="log.bcd.unsupportedArchitecture">오류: 지원되지 않는 EFI 아키텍처입니다.</string>
+    <string id="log.bcd.errorDefault">기본값 구성 중 오류: {0}</string>
+    <string id="log.bcd.errorDisplayorder">displayorder 구성 중 오류: {0}</string>
+    <string id="log.bcd.errorTimeout">시간 제한 구성 중 오류: {0}</string>
+    <string id="log.bcd.settingWindowsDefault">Windows를 기본 항목으로 설정하고 시간 제한을 조정하는 중...</string>
+    <string id="log.bcd.resultDefault">결과 /default: {0}</string>
+    <string id="log.bcd.resultTimeout">결과 /timeout: {0}</string>
+    
+    <!-- Log messages - Windows Edition Selector -->
+    <string id="log.edition.extracting">Windows 설치 이미지를 추출하는 중...</string>
+    <string id="log.edition.extractError">설치 이미지 추출 중 오류가 발생했습니다.</string>
+    <string id="log.edition.noEditionsFound">Windows 에디션을 찾을 수 없습니다.</string>
+    <string id="log.edition.autoSelectingSingle">사용 가능한 에디션이 하나뿐입니다. 자동 선택 중입니다.</string>
+    <string id="log.edition.selected">선택한 에디션: {0}</string>
+    <string id="log.edition.preparingRAM">RAM 부팅을 위해 선택한 에디션을 준비하는 중...</string>
+    <string id="log.edition.creatingFiltered">필터링된 설치 이미지를 생성하는 중...</string>
+    <string id="log.edition.filteredError">필터링된 이미지 생성 중 오류가 발생했습니다.</string>
+    <string id="log.edition.injectingDrivers">install.wim에 스토리지 드라이버를 주입하는 중...</string>
+    <string id="log.edition.driversInjected">install.wim에 드라이버가 주입되었습니다.</string>
+    <string id="log.edition.driversSaveFailed">경고: 드라이버를 저장할 수 없습니다.</string>
+    <string id="log.edition.driversInjectFailed">경고: install.wim에 드라이버를 주입할 수 없습니다.</string>
+    <string id="log.edition.configuringBoot">부팅 환경을 구성하는 중...</string>
+    <string id="log.edition.bootMountError">boot.wim 마운트 중 오류가 발생했습니다.</string>
+    <string id="log.edition.savingConfig">구성을 저장하는 중...</string>
+    <string id="log.edition.preparedSuccess">Windows 에디션이 성공적으로 준비되었습니다.</string>
+    <string id="log.edition.setupWillSearch">Windows 설치 프로그램이 데이터 파티션에서 install.wim을 검색합니다.</string>
+    <string id="log.edition.saveConfigError">구성 저장 중 오류가 발생했습니다.</string>
+    <string id="log.edition.windowsIsoDetected">Windows 설치 ISO가 감지되었습니다.</string>
+    <string id="log.edition.copyingFullImage">전체 설치 이미지를 복사하는 중 (모든 에디션)...</string>
+    <string id="log.edition.copyImageError">설치 이미지 복사 중 오류가 발생했습니다.</string>
+    <string id="log.edition.imageCopiedSuccess">설치 이미지가 복사되었습니다. Windows 설치 프로그램에 에디션 목록이 표시됩니다.</string>
+    
+    <!-- Log messages - EFI Manager -->
+    <string id="log.efi.extracting">EFI 파일을 ESP로 추출하는 중...</string>
+    
+    <!-- Log messages - Content Extractor -->
+    <string id="log.content.copying">ISO 콘텐츠를 {0}로 복사하는 중...</string>
+    <string id="log.content.copied">ISO 콘텐츠가 성공적으로 복사되었습니다.</string>
+    
+    <!-- Log messages - Diskpart -->
+    <string id="log.diskpart.creatingScript">파티션을 위한 diskpart 스크립트를 생성하는 중...</string>
+    <string id="log.diskpart.scriptError">오류: diskpart 스크립트 파일을 생성할 수 없습니다.</string>
+    <string id="log.diskpart.success">Diskpart가 성공적으로 실행되었습니다. 파티션을 확인하는 중...</string>
+    <string id="log.diskpart.failed">오류: Diskpart가 종료 코드 {0}로 실패했습니다</string>
+    <string id="log.diskpart.partitionsCreated">파티션이 성공적으로 생성되었습니다.</string>
+    <string id="log.diskpart.partitionsFailed">오류: 파티션 생성에 실패했습니다.</string>
+    
+    <!-- Log messages - Recovery -->
+    <string id="log.recovery.recovering">공간을 복구하는 중입니다. 몇 분 정도 걸릴 수 있습니다...</string>
+    
+    <!-- Log messages - Partition Reformatter -->
+    <string id="log.reformatter.starting">EFI 파티션 재포맷을 시작하는 중...</string>
+    <string id="log.reformatter.startingData">파티션 재포맷을 시작하는 중...</string>
+    <string id="log.reformatter.searchingVolume">재포맷할 볼륨을 검색하는 중...</string>
+    <string id="log.reformatter.volumeFound">볼륨을 찾았습니다 (번호 {0}). 포맷 스크립트를 생성하는 중...</string>
+    <string id="log.reformatter.executing">파티션 포맷을 실행하는 중...</string>
+    <string id="log.reformatter.success">파티션이 성공적으로 재포맷되었습니다.</string>
+    <string id="log.reformatter.failed">오류: EFI 파티션 포맷에 실패했습니다 (코드 {0}).</string>
+    
+    <!-- Log messages - Process Controller -->
+    <string id="log.process.preparingISOFiles">ISO 파일 준비를 시작하는 중...</string>
+    <string id="log.process.configuringBoot">부팅을 구성하는 중...</string>
+    <string id="log.process.completedSuccessfully">프로세스가 성공적으로 완료되었습니다.</string>
+    
+    <!-- Log messages - Boot Wim Processor -->
+    <string id="log.bootwim.preparingBootFiles">ISO 부팅 파일을 준비하는 중...</string>
+    <string id="log.bootwim.extractingBootWim">boot.wim을 데이터 파티션으로 추출하는 중...</string>
+    <string id="log.bootwim.bootWimCopied">boot.wim이 성공적으로 복사되었습니다.</string>
+    <string id="log.bootwim.copyingBootSdi">RAM 부팅에 필요한 boot.sdi를 복사하는 중...</string>
+    <string id="log.bootwim.bootSdiCopied">boot.sdi가 성공적으로 복사되었습니다.</string>
+    <string id="log.bootwim.copyingBootSdiToEsp">boot.sdi를 ESP 파티션으로 복사하는 중...</string>
+    <string id="log.bootwim.bootSdiCopiedToEsp">boot.sdi가 ESP로 성공적으로 복사되었습니다.</string>
+    <string id="log.bootwim.skippingInstallInjection">boot.wim에 install.* 주입을 건너뜁니다. 디스크의 이미지가 사용됩니다.</string>
+    <string id="log.bootwim.selectedIndex">선택한 인덱스:</string>
+    <string id="log.bootwim.pecmdPresent">boot.wim에 PECMD가 있습니다.</string>
+    <string id="log.bootwim.integratingPrograms">boot.wim에 프로그램을 통합하는 중...</string>
+    <string id="log.bootwim.programsIntegrated">boot.wim에 프로그램이 성공적으로 통합되었습니다</string>
+    <string id="log.bootwim.integratingDrivers">사용자 정의 드라이버를 통합하는 중...</string>
+    <string id="log.bootwim.driversIntegrationError">사용자 정의 드라이버 통합 중 오류</string>
+    <string id="log.bootwim.driversDisabled">사용자가 드라이버 주입을 비활성화했습니다.</string>
+    <string id="log.bootwim.pecmdConfiguredRam">PECMD가 RAM 모드로 구성되었습니다.</string>
+    <string id="log.bootwim.processingIniFiles">.ini 파일을 처리하는 중...</string>
+    <string id="log.bootwim.iniFilesConfigured">INI 파일이 성공적으로 통합되고 재구성되었습니다</string>
+    <string id="log.bootwim.savingChanges">boot.wim에 변경 사항을 저장하는 중...</string>
+    <string id="log.bootwim.bootWimUpdated">boot.wim이 성공적으로 업데이트되었습니다.</string>
+    <string id="log.bootwim.winPEDetectedDataPartition">Windows PE가 감지되었습니다 - boot.wim은 데이터 파티션에 남아 있습니다.</string>
+    <string id="log.bootwim.bcdConfiguredForData">BCD는 데이터 파티션에서 부팅하도록 구성됩니다.</string>
+    <string id="log.bootwim.extractingAdditionalFiles">boot.wim에서 추가 파일을 추출하는 중...</string>
+    <string id="log.bootwim.additionalFilesExtracted">boot.wim에서 추가 파일이 성공적으로 추출되었습니다.</string>
+    <string id="button.perform.hint">클릭하여 ISO 부팅</string>
+    <string id="mainwindow.developedBy">코스타리카 회사에서 개발한 소프트웨어</string>
+</language>

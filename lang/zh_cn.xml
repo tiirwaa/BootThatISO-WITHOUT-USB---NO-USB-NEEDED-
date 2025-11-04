@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="utf-8"?>
+<language code="zh_CN" name="中文 (简体)">
+    <string id="app.windowTitle">BootThatISO! - 无需USB启动ISO</string>
+    <string id="bootMode.ram">从内存启动</string>
+    <string id="bootMode.extract">从磁盘启动</string>
+    <string id="common.yes">是</string>
+    <string id="common.no">否</string>
+    <string id="dialog.openIso.filter">ISO文件 (*.iso)</string>
+    <string id="log.cancel.completed">操作已取消并清理完成。</string>
+    <string id="log.cancel.requested">已请求取消。正在等待清理...</string>
+    <string id="log.process.starting">正在启动进程...</string>
+    <string id="log.process.isoPathAfterTrimming">修整后的ISO路径：'{0}'</string>
+    <string id="log.process.startingWithDetails">正在启动进程，ISO：{0}，格式：{1}，模式：{2}</string>
+    <string id="log.process.verifyingPartitions">正在验证分区状态...</string>
+    <string id="log.recovery.alreadyRunning">空间恢复已在进行中。</string>
+    <string id="log.recovery.cannotCancel">空间恢复正在进行中，无法取消。请等待其完成。</string>
+    <string id="log.recovery.startFailed">启动空间恢复失败。请检查是否已在运行。</string>
+    <string id="log.recovery.started">空间恢复已在后台启动。</string>
+    <string id="log.recovery.success">空间恢复成功完成。</string>
+    <string id="log.recovery.failed">空间恢复失败。请查看日志了解详情。</string>
+    <string id="mainwindow.bootModeLabel">启动模式：</string>
+    <string id="mainwindow.browseButton">浏览</string>
+    <string id="mainwindow.createButton">执行进程并启动选定的ISO</string>
+    <string id="mainwindow.formatLabel">文件系统格式：</string>
+    <string id="mainwindow.format.fat32">FAT32（推荐 - 最大EFI兼容性）</string>
+    <string id="mainwindow.format.exfat">exFAT（无4GB单文件限制）</string>
+    <string id="mainwindow.format.ntfs">NTFS（完整Windows支持）</string>
+    <string id="mainwindow.integrityCheck">执行磁盘完整性检查</string>
+    <string id="mainwindow.injectDrivers">将我的驱动程序注入ISO</string>
+    <string id="mainwindow.isoPathLabel">ISO文件路径：</string>
+    <string id="mainwindow.logoPlaceholder">徽标</string>
+    <string id="mainwindow.recoverButton">恢复我的空间</string>
+    <string id="mainwindow.servicesButton">服务</string>
+    <string id="mainwindow.subtitle">可引导EFI分区配置</string>
+    <string id="mainwindow.title">启动那个ISO！</string>
+    <string id="mainwindow.versionLabel">版本 {0}</string>
+    <string id="mainwindow.diskSpaceInfo">C盘可用空间：{0} GB | ISOBOOT：{1} | ISOEFI：{2}</string>
+    <string id="message.adminRequired">此程序需要管理员权限。</string>
+    <string id="message.diskModifyConfirmPrimary">此操作将修改系统磁盘，将其缩小11GB以创建两个可引导分区：1GB FAT32 ESP（ISOEFI）和10GB数据分区（ISOBOOT）。您想继续吗？</string>
+    <string id="message.diskModifyConfirmSecondary">这是第二次确认。磁盘修改操作是不可逆的，如果操作不当可能会导致数据丢失。您完全确定要继续吗？</string>
+    <string id="message.operationInProgress">进程正在运行。您要取消操作并关闭应用程序吗？</string>
+    <string id="message.processCompleteRestart">进程完成。您想现在重启系统吗？</string>
+    <string id="message.recoverSpaceFailed">恢复空间失败。请查看日志了解详情。</string>
+    <string id="message.recoveringSpace">正在删除BootThatISO!创建的分区，请不要取消此进程，释放的空间将分配给Windows，BCD条目ISOBOOT和ISOBOOT_RAM正在被移除。</string>
+    <string id="message.restartFailed">重启系统失败。</string>
+    <string id="message.selectIsoFirst">请先选择一个ISO文件。</string>
+    <string id="message.windowCreationFailed">创建窗口时出错！</string>
+    <string id="message.windowRegistrationFailed">注册窗口时出错！</string>
+    <string id="message.noLanguagesFound">在'lang'文件夹中未找到语言文件。</string>
+    <string id="message.languageLoadFailed">加载所选语言失败。</string>
+    <string id="message.selectEfiArchitecturePrompt">您想使用哪个？选择"是"表示x64，选择"否"表示x86。</string>
+    <string id="message.diskErrorsFoundPrompt">在C盘上发现错误。您想修复磁盘并重启系统吗？</string>
+    <string id="title.error">错误</string>
+    <string id="title.isoFile">ISO文件</string>
+    <string id="title.operationConfirmation">操作确认</string>
+    <string id="title.operationInProgress">操作进行中</string>
+    <string id="title.restart">重启</string>
+    <string id="title.secondConfirmation">第二次确认</string>
+    <string id="title.spaceInsufficient">空间不足</string>
+    <string id="title.selectEfiArchitecture">选择EFI架构</string>
+    <string id="title.repairDisk">修复磁盘</string>
+    <string id="unit.mb">MB</string>
+    <string id="unit.gb">GB</string>
+    <string id="editionSelector.title">选择Windows版本</string>
+    <string id="editionSelector.header">选择要安装的Windows版本</string>
+    <string id="editionSelector.subtitle">所选版本将被注入boot.wim用于RAM启动</string>
+    <string id="editionSelector.columnIndex">#</string>
+    <string id="editionSelector.columnName">版本名称</string>
+    <string id="editionSelector.columnSize">大小</string>
+    <string id="editionSelector.infoLabel">信息：</string>
+    <string id="editionSelector.sizeLabel">版本大小：</string>
+    <string id="editionSelector.buttonContinue">继续</string>
+    <string id="editionSelector.buttonCancel">取消</string>
+    <string id="editionSelector.infoSelect">选择一个版本以查看详情</string>
+    <string id="editionSelector.warningNoSelection">请选择一个版本</string>
+    <string id="editionSelector.warningTitle">警告</string>
+    <string id="editionSelector.sizeUnknown">大小未知</string>
+    <string id="editionSelector.infoIndex">索引：</string>
+    
+    <!-- Log messages - ISO Processing -->
+    <string id="log.iso.analyzing">正在分析ISO内容...</string>
+    <string id="log.iso.windowsDetected">检测到Windows ISO。</string>
+    <string id="log.iso.nonWindowsDetected">检测到非Windows ISO。</string>
+    <string id="log.iso.copyingInstallFile">正在复制安装文件...</string>
+    <string id="log.iso.installFileCopied">安装文件已成功复制并验证。</string>
+    <string id="log.iso.installFileError">验证install.*时出错/警告；请检查iso_extract.log。</string>
+    <string id="log.iso.retryingInstall">正在重试提取install.*...</string>
+    <string id="log.iso.installFileErrorFatal">复制安装文件时出错。</string>
+    <string id="log.iso.copyingSetupFiles">正在复制关键安装文件...</string>
+    <string id="log.iso.setupFilesCopied">关键文件已复制（{0}个文件）。</string>
+    <string id="log.iso.setupFilesSkipped">安装文件已跳过（在此ISO中未找到）。</string>
+    <string id="log.iso.integratingPrograms">正在将程序集成到boot.wim用于RAM启动。</string>
+    <string id="log.linuxIsoDetected">检测到Linux ISO：{0}</string>
+    
+    <!-- Log messages - BCD Configuration -->
+    <string id="log.bcd.configuring">正在配置引导配置数据（BCD）...</string>
+    <string id="log.bcd.efiSelected">已选择EFI文件：{0}</string>
+    <string id="log.bcd.unsupportedArchitecture">错误：不支持的EFI架构。</string>
+    <string id="log.bcd.errorDefault">配置默认值时出错：{0}</string>
+    <string id="log.bcd.errorDisplayorder">配置显示顺序时出错：{0}</string>
+    <string id="log.bcd.errorTimeout">配置超时时出错：{0}</string>
+    <string id="log.bcd.settingWindowsDefault">正在将Windows设置为默认条目并调整超时...</string>
+    <string id="log.bcd.resultDefault">结果 /default：{0}</string>
+    <string id="log.bcd.resultTimeout">结果 /timeout：{0}</string>
+    
+    <!-- Log messages - Windows Edition Selector -->
+    <string id="log.edition.extracting">正在提取Windows安装映像...</string>
+    <string id="log.edition.extractError">提取安装映像时出错。</string>
+    <string id="log.edition.noEditionsFound">未找到Windows版本。</string>
+    <string id="log.edition.autoSelectingSingle">只有一个可用版本，自动选择。</string>
+    <string id="log.edition.selected">已选择版本：{0}</string>
+    <string id="log.edition.preparingRAM">正在为RAM启动准备所选版本...</string>
+    <string id="log.edition.creatingFiltered">正在创建过滤的安装映像...</string>
+    <string id="log.edition.filteredError">创建过滤映像时出错。</string>
+    <string id="log.edition.injectingDrivers">正在将存储驱动程序注入install.wim...</string>
+    <string id="log.edition.driversInjected">驱动程序已注入install.wim。</string>
+    <string id="log.edition.driversSaveFailed">警告：无法保存驱动程序。</string>
+    <string id="log.edition.driversInjectFailed">警告：无法将驱动程序注入install.wim。</string>
+    <string id="log.edition.configuringBoot">正在配置引导环境...</string>
+    <string id="log.edition.bootMountError">挂载boot.wim时出错。</string>
+    <string id="log.edition.savingConfig">正在保存配置...</string>
+    <string id="log.edition.preparedSuccess">Windows版本准备成功。</string>
+    <string id="log.edition.setupWillSearch">Windows安装程序将在数据分区上搜索install.wim。</string>
+    <string id="log.edition.saveConfigError">保存配置时出错。</string>
+    <string id="log.edition.windowsIsoDetected">检测到Windows安装ISO。</string>
+    <string id="log.edition.copyingFullImage">正在复制完整安装映像（所有版本）...</string>
+    <string id="log.edition.copyImageError">复制安装映像时出错。</string>
+    <string id="log.edition.imageCopiedSuccess">安装映像已复制。Windows安装程序将显示版本列表。</string>
+    
+    <!-- Log messages - EFI Manager -->
+    <string id="log.efi.extracting">正在将EFI文件提取到ESP...</string>
+    
+    <!-- Log messages - Content Extractor -->
+    <string id="log.content.copying">正在将ISO内容复制到{0}...</string>
+    <string id="log.content.copied">ISO内容已成功复制。</string>
+    
+    <!-- Log messages - Diskpart -->
+    <string id="log.diskpart.creatingScript">正在为分区创建diskpart脚本...</string>
+    <string id="log.diskpart.scriptError">错误：无法创建diskpart脚本文件。</string>
+    <string id="log.diskpart.success">Diskpart执行成功。正在验证分区...</string>
+    <string id="log.diskpart.failed">错误：Diskpart失败，退出代码{0}</string>
+    <string id="log.diskpart.partitionsCreated">分区创建成功。</string>
+    <string id="log.diskpart.partitionsFailed">错误：分区创建失败。</string>
+    
+    <!-- Log messages - Recovery -->
+    <string id="log.recovery.recovering">正在恢复空间。这可能需要几分钟...</string>
+    
+    <!-- Log messages - Partition Reformatter -->
+    <string id="log.reformatter.starting">正在开始EFI分区重新格式化...</string>
+    <string id="log.reformatter.startingData">正在开始分区重新格式化...</string>
+    <string id="log.reformatter.searchingVolume">正在搜索要重新格式化的卷...</string>
+    <string id="log.reformatter.volumeFound">找到卷（编号{0}）。正在创建格式化脚本...</string>
+    <string id="log.reformatter.executing">正在执行分区格式化...</string>
+    <string id="log.reformatter.success">分区重新格式化成功。</string>
+    <string id="log.reformatter.failed">错误：EFI分区格式化失败（代码{0}）。</string>
+    
+    <!-- Log messages - Process Controller -->
+    <string id="log.process.preparingISOFiles">正在开始ISO文件准备...</string>
+    <string id="log.process.configuringBoot">正在配置引导...</string>
+    <string id="log.process.completedSuccessfully">进程成功完成。</string>
+    
+    <!-- Log messages - Boot Wim Processor -->
+    <string id="log.bootwim.preparingBootFiles">正在准备ISO引导文件...</string>
+    <string id="log.bootwim.extractingBootWim">正在将boot.wim提取到数据分区...</string>
+    <string id="log.bootwim.bootWimCopied">boot.wim成功复制。</string>
+    <string id="log.bootwim.copyingBootSdi">正在复制RAM启动所需的boot.sdi...</string>
+    <string id="log.bootwim.bootSdiCopied">boot.sdi成功复制。</string>
+    <string id="log.bootwim.copyingBootSdiToEsp">正在将boot.sdi复制到ESP分区...</string>
+    <string id="log.bootwim.bootSdiCopiedToEsp">boot.sdi成功复制到ESP。</string>
+    <string id="log.bootwim.skippingInstallInjection">跳过将install.*注入boot.wim；将使用磁盘中的映像。</string>
+    <string id="log.bootwim.selectedIndex">已选择索引：</string>
+    <string id="log.bootwim.pecmdPresent">boot.wim中存在PECMD。</string>
+    <string id="log.bootwim.integratingPrograms">正在将程序集成到boot.wim...</string>
+    <string id="log.bootwim.programsIntegrated">程序已成功集成到boot.wim</string>
+    <string id="log.bootwim.integratingDrivers">正在集成自定义驱动程序...</string>
+    <string id="log.bootwim.driversIntegrationError">集成自定义驱动程序时出错</string>
+    <string id="log.bootwim.driversDisabled">用户已禁用驱动程序注入。</string>
+    <string id="log.bootwim.pecmdConfiguredRam">PECMD已配置为RAM模式。</string>
+    <string id="log.bootwim.processingIniFiles">正在处理.ini文件...</string>
+    <string id="log.bootwim.iniFilesConfigured">INI文件已成功集成并重新配置</string>
+    <string id="log.bootwim.savingChanges">正在保存对boot.wim的更改...</string>
+    <string id="log.bootwim.bootWimUpdated">boot.wim成功更新。</string>
+    <string id="log.bootwim.winPEDetectedDataPartition">检测到Windows PE - boot.wim将保留在数据分区上。</string>
+    <string id="log.bootwim.bcdConfiguredForData">BCD将配置为从数据分区启动。</string>
+    <string id="log.bootwim.extractingAdditionalFiles">正在从boot.wim提取其他文件...</string>
+    <string id="log.bootwim.additionalFilesExtracted">boot.wim中的其他文件已成功提取。</string>
+    <string id="button.perform.hint">点击以启动ISO</string>
+    <string id="mainwindow.developedBy">由哥斯达黎加公司开发的软件</string>
+</language>

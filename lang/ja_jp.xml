@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="utf-8"?>
+<language code="ja_JP" name="日本語">
+    <string id="app.windowTitle">BootThatISO! - USBなしでISOを起動</string>
+    <string id="bootMode.ram">RAMから起動</string>
+    <string id="bootMode.extract">ディスクから起動</string>
+    <string id="common.yes">はい</string>
+    <string id="common.no">いいえ</string>
+    <string id="dialog.openIso.filter">ISOファイル (*.iso)</string>
+    <string id="log.cancel.completed">操作がキャンセルされ、クリーンアップされました。</string>
+    <string id="log.cancel.requested">キャンセルが要求されました。クリーンアップを待っています...</string>
+    <string id="log.process.starting">プロセスを開始しています...</string>
+    <string id="log.process.isoPathAfterTrimming">トリミング後のISOパス：'{0}'</string>
+    <string id="log.process.startingWithDetails">ISO：{0}、フォーマット：{1}、モード：{2}でプロセスを開始しています</string>
+    <string id="log.process.verifyingPartitions">パーティションステータスを確認しています...</string>
+    <string id="log.recovery.alreadyRunning">空き領域の回復はすでに進行中です。</string>
+    <string id="log.recovery.cannotCancel">空き領域の回復が進行中で、キャンセルできません。完了するまでお待ちください。</string>
+    <string id="log.recovery.startFailed">空き領域の回復の開始に失敗しました。すでに実行中かどうか確認してください。</string>
+    <string id="log.recovery.started">空き領域の回復がバックグラウンドで開始されました。</string>
+    <string id="log.recovery.success">空き領域の回復が正常に完了しました。</string>
+    <string id="log.recovery.failed">空き領域の回復に失敗しました。詳細についてはログを確認してください。</string>
+    <string id="mainwindow.bootModeLabel">起動モード：</string>
+    <string id="mainwindow.browseButton">参照</string>
+    <string id="mainwindow.createButton">プロセスを実行して選択したISOを起動</string>
+    <string id="mainwindow.formatLabel">ファイルシステム形式：</string>
+    <string id="mainwindow.format.fat32">FAT32（推奨 - 最大EFI互換性）</string>
+    <string id="mainwindow.format.exfat">exFAT（ファイルあたり4GB制限なし）</string>
+    <string id="mainwindow.format.ntfs">NTFS（完全なWindowsサポート）</string>
+    <string id="mainwindow.integrityCheck">ディスク整合性チェックを実行</string>
+    <string id="mainwindow.injectDrivers">ISOにドライバーを注入</string>
+    <string id="mainwindow.isoPathLabel">ISOファイルパス：</string>
+    <string id="mainwindow.logoPlaceholder">ロゴ</string>
+    <string id="mainwindow.recoverButton">空き領域を回復</string>
+    <string id="mainwindow.servicesButton">サービス</string>
+    <string id="mainwindow.subtitle">起動可能なEFIパーティション構成</string>
+    <string id="mainwindow.title">そのISOを起動！</string>
+    <string id="mainwindow.versionLabel">バージョン {0}</string>
+    <string id="mainwindow.diskSpaceInfo">Cドライブの利用可能スペース：{0} GB | ISOBOOT：{1} | ISOEFI：{2}</string>
+    <string id="message.adminRequired">このプログラムには管理者権限が必要です。</string>
+    <string id="message.diskModifyConfirmPrimary">この操作はシステムディスクを変更し、11GBを縮小して2つの起動可能なパーティションを作成します：1GB FAT32 ESP（ISOEFI）と10GBデータパーティション（ISOBOOT）。続行しますか？</string>
+    <string id="message.diskModifyConfirmSecondary">これは2回目の確認です。ディスク変更操作は元に戻すことができず、正しく実行されない場合はデータ損失を引き起こす可能性があります。本当に続行してよろしいですか？</string>
+    <string id="message.operationInProgress">プロセスが実行中です。操作をキャンセルしてアプリケーションを閉じますか？</string>
+    <string id="message.processCompleteRestart">プロセスが完了しました。今すぐシステムを再起動しますか？</string>
+    <string id="message.recoverSpaceFailed">空き領域の回復に失敗しました。詳細についてはログを確認してください。</string>
+    <string id="message.recoveringSpace">BootThatISO!によって作成されたパーティションを削除しています。このプロセスをキャンセルしないでください。解放された領域はWindowsに割り当てられ、BCDエントリISOBOOTおよびISOBOOT_RAMが削除されています。</string>
+    <string id="message.restartFailed">システムの再起動に失敗しました。</string>
+    <string id="message.selectIsoFirst">最初にISOファイルを選択してください。</string>
+    <string id="message.windowCreationFailed">ウィンドウの作成中にエラーが発生しました！</string>
+    <string id="message.windowRegistrationFailed">ウィンドウの登録中にエラーが発生しました！</string>
+    <string id="message.noLanguagesFound">'lang'フォルダーに言語ファイルが見つかりませんでした。</string>
+    <string id="message.languageLoadFailed">選択した言語の読み込みに失敗しました。</string>
+    <string id="message.selectEfiArchitecturePrompt">どちらを使用しますか？x64の場合は「はい」、x86の場合は「いいえ」を選択してください。</string>
+    <string id="message.diskErrorsFoundPrompt">ドライブC:にエラーが見つかりました。ディスクを修復してシステムを再起動しますか？</string>
+    <string id="title.error">エラー</string>
+    <string id="title.isoFile">ISOファイル</string>
+    <string id="title.operationConfirmation">操作の確認</string>
+    <string id="title.operationInProgress">操作が進行中</string>
+    <string id="title.restart">再起動</string>
+    <string id="title.secondConfirmation">2回目の確認</string>
+    <string id="title.spaceInsufficient">空き容量不足</string>
+    <string id="title.selectEfiArchitecture">EFIアーキテクチャを選択</string>
+    <string id="title.repairDisk">ディスクの修復</string>
+    <string id="unit.mb">MB</string>
+    <string id="unit.gb">GB</string>
+    <string id="editionSelector.title">Windowsエディションを選択</string>
+    <string id="editionSelector.header">インストールするWindowsエディションを選択</string>
+    <string id="editionSelector.subtitle">選択したエディションはRAM起動用にboot.wimに注入されます</string>
+    <string id="editionSelector.columnIndex">#</string>
+    <string id="editionSelector.columnName">エディション名</string>
+    <string id="editionSelector.columnSize">サイズ</string>
+    <string id="editionSelector.infoLabel">情報：</string>
+    <string id="editionSelector.sizeLabel">エディションサイズ：</string>
+    <string id="editionSelector.buttonContinue">続行</string>
+    <string id="editionSelector.buttonCancel">キャンセル</string>
+    <string id="editionSelector.infoSelect">エディションを選択して詳細を表示</string>
+    <string id="editionSelector.warningNoSelection">エディションを選択してください</string>
+    <string id="editionSelector.warningTitle">警告</string>
+    <string id="editionSelector.sizeUnknown">サイズ不明</string>
+    <string id="editionSelector.infoIndex">インデックス：</string>
+    
+    <!-- Log messages - ISO Processing -->
+    <string id="log.iso.analyzing">ISOコンテンツを分析しています...</string>
+    <string id="log.iso.windowsDetected">Windows ISOが検出されました。</string>
+    <string id="log.iso.nonWindowsDetected">非Windows ISOが検出されました。</string>
+    <string id="log.iso.copyingInstallFile">インストールファイルをコピーしています...</string>
+    <string id="log.iso.installFileCopied">インストールファイルが正常にコピーおよび検証されました。</string>
+    <string id="log.iso.installFileError">install.*の検証中にエラー/警告が発生しました。iso_extract.logを確認してください。</string>
+    <string id="log.iso.retryingInstall">install.*の抽出を再試行しています...</string>
+    <string id="log.iso.installFileErrorFatal">インストールファイルのコピー中にエラーが発生しました。</string>
+    <string id="log.iso.copyingSetupFiles">重要なセットアップファイルをコピーしています...</string>
+    <string id="log.iso.setupFilesCopied">重要なファイルがコピーされました（{0}ファイル）。</string>
+    <string id="log.iso.setupFilesSkipped">セットアップファイルがスキップされました（このISOに見つかりません）。</string>
+    <string id="log.iso.integratingPrograms">RAM起動用にboot.wimにプログラムを統合しています。</string>
+    <string id="log.linuxIsoDetected">Linux ISOが検出されました：{0}</string>
+    
+    <!-- Log messages - BCD Configuration -->
+    <string id="log.bcd.configuring">ブート構成データ（BCD）を構成しています...</string>
+    <string id="log.bcd.efiSelected">EFIファイルが選択されました：{0}</string>
+    <string id="log.bcd.unsupportedArchitecture">エラー：サポートされていないEFIアーキテクチャ。</string>
+    <string id="log.bcd.errorDefault">デフォルトの構成中にエラーが発生しました：{0}</string>
+    <string id="log.bcd.errorDisplayorder">displayorderの構成中にエラーが発生しました：{0}</string>
+    <string id="log.bcd.errorTimeout">タイムアウトの構成中にエラーが発生しました：{0}</string>
+    <string id="log.bcd.settingWindowsDefault">Windowsをデフォルトエントリとして設定し、タイムアウトを調整しています...</string>
+    <string id="log.bcd.resultDefault">結果 /default：{0}</string>
+    <string id="log.bcd.resultTimeout">結果 /timeout：{0}</string>
+    
+    <!-- Log messages - Windows Edition Selector -->
+    <string id="log.edition.extracting">Windowsインストールイメージを抽出しています...</string>
+    <string id="log.edition.extractError">インストールイメージの抽出中にエラーが発生しました。</string>
+    <string id="log.edition.noEditionsFound">Windowsエディションが見つかりませんでした。</string>
+    <string id="log.edition.autoSelectingSingle">利用可能なエディションは1つのみです。自動選択しています。</string>
+    <string id="log.edition.selected">選択されたエディション：{0}</string>
+    <string id="log.edition.preparingRAM">RAM起動用に選択したエディションを準備しています...</string>
+    <string id="log.edition.creatingFiltered">フィルタリングされたインストールイメージを作成しています...</string>
+    <string id="log.edition.filteredError">フィルタリングされたイメージの作成中にエラーが発生しました。</string>
+    <string id="log.edition.injectingDrivers">install.wimにストレージドライバーを注入しています...</string>
+    <string id="log.edition.driversInjected">install.wimにドライバーが注入されました。</string>
+    <string id="log.edition.driversSaveFailed">警告：ドライバーを保存できませんでした。</string>
+    <string id="log.edition.driversInjectFailed">警告：install.wimにドライバーを注入できませんでした。</string>
+    <string id="log.edition.configuringBoot">起動環境を構成しています...</string>
+    <string id="log.edition.bootMountError">boot.wimのマウント中にエラーが発生しました。</string>
+    <string id="log.edition.savingConfig">構成を保存しています...</string>
+    <string id="log.edition.preparedSuccess">Windowsエディションが正常に準備されました。</string>
+    <string id="log.edition.setupWillSearch">Windowsセットアップはデータパーティションでinstall.wimを検索します。</string>
+    <string id="log.edition.saveConfigError">構成の保存中にエラーが発生しました。</string>
+    <string id="log.edition.windowsIsoDetected">Windowsインストール ISOが検出されました。</string>
+    <string id="log.edition.copyingFullImage">完全なインストールイメージをコピーしています（すべてのエディション）...</string>
+    <string id="log.edition.copyImageError">インストールイメージのコピー中にエラーが発生しました。</string>
+    <string id="log.edition.imageCopiedSuccess">インストールイメージがコピーされました。Windowsセットアップにエディションリストが表示されます。</string>
+    
+    <!-- Log messages - EFI Manager -->
+    <string id="log.efi.extracting">EFIファイルをESPに抽出しています...</string>
+    
+    <!-- Log messages - Content Extractor -->
+    <string id="log.content.copying">ISOコンテンツを{0}にコピーしています...</string>
+    <string id="log.content.copied">ISOコンテンツが正常にコピーされました。</string>
+    
+    <!-- Log messages - Diskpart -->
+    <string id="log.diskpart.creatingScript">パーティション用のdiskpartスクリプトを作成しています...</string>
+    <string id="log.diskpart.scriptError">エラー：diskpartスクリプトファイルを作成できませんでした。</string>
+    <string id="log.diskpart.success">Diskpartが正常に実行されました。パーティションを確認しています...</string>
+    <string id="log.diskpart.failed">エラー：Diskpartが終了コード{0}で失敗しました</string>
+    <string id="log.diskpart.partitionsCreated">パーティションが正常に作成されました。</string>
+    <string id="log.diskpart.partitionsFailed">エラー：パーティションの作成に失敗しました。</string>
+    
+    <!-- Log messages - Recovery -->
+    <string id="log.recovery.recovering">空き領域を回復しています。これには数分かかる場合があります...</string>
+    
+    <!-- Log messages - Partition Reformatter -->
+    <string id="log.reformatter.starting">EFIパーティションの再フォーマットを開始しています...</string>
+    <string id="log.reformatter.startingData">パーティションの再フォーマットを開始しています...</string>
+    <string id="log.reformatter.searchingVolume">再フォーマットするボリュームを検索しています...</string>
+    <string id="log.reformatter.volumeFound">ボリュームが見つかりました（番号{0}）。フォーマットスクリプトを作成しています...</string>
+    <string id="log.reformatter.executing">パーティションのフォーマットを実行しています...</string>
+    <string id="log.reformatter.success">パーティションが正常に再フォーマットされました。</string>
+    <string id="log.reformatter.failed">エラー：EFIパーティションのフォーマットが失敗しました（コード{0}）。</string>
+    
+    <!-- Log messages - Process Controller -->
+    <string id="log.process.preparingISOFiles">ISOファイルの準備を開始しています...</string>
+    <string id="log.process.configuringBoot">起動を構成しています...</string>
+    <string id="log.process.completedSuccessfully">プロセスが正常に完了しました。</string>
+    
+    <!-- Log messages - Boot Wim Processor -->
+    <string id="log.bootwim.preparingBootFiles">ISO起動ファイルを準備しています...</string>
+    <string id="log.bootwim.extractingBootWim">boot.wimをデータパーティションに抽出しています...</string>
+    <string id="log.bootwim.bootWimCopied">boot.wimが正常にコピーされました。</string>
+    <string id="log.bootwim.copyingBootSdi">RAM起動に必要なboot.sdiをコピーしています...</string>
+    <string id="log.bootwim.bootSdiCopied">boot.sdiが正常にコピーされました。</string>
+    <string id="log.bootwim.copyingBootSdiToEsp">boot.sdiをESPパーティションにコピーしています...</string>
+    <string id="log.bootwim.bootSdiCopiedToEsp">boot.sdiが正常にESPにコピーされました。</string>
+    <string id="log.bootwim.skippingInstallInjection">boot.wimへのinstall.*の注入をスキップしています。ディスクからのイメージが使用されます。</string>
+    <string id="log.bootwim.selectedIndex">選択されたインデックス：</string>
+    <string id="log.bootwim.pecmdPresent">boot.wimにPECMDが存在します。</string>
+    <string id="log.bootwim.integratingPrograms">boot.wimにプログラムを統合しています...</string>
+    <string id="log.bootwim.programsIntegrated">boot.wimにプログラムが正常に統合されました</string>
+    <string id="log.bootwim.integratingDrivers">カスタムドライバーを統合しています...</string>
+    <string id="log.bootwim.driversIntegrationError">カスタムドライバーの統合中にエラーが発生しました</string>
+    <string id="log.bootwim.driversDisabled">ドライバーの注入がユーザーによって無効にされています。</string>
+    <string id="log.bootwim.pecmdConfiguredRam">PECMDがRAMモード用に構成されました。</string>
+    <string id="log.bootwim.processingIniFiles">.iniファイルを処理しています...</string>
+    <string id="log.bootwim.iniFilesConfigured">INIファイルが正常に統合および再構成されました</string>
+    <string id="log.bootwim.savingChanges">boot.wimへの変更を保存しています...</string>
+    <string id="log.bootwim.bootWimUpdated">boot.wimが正常に更新されました。</string>
+    <string id="log.bootwim.winPEDetectedDataPartition">Windows PEが検出されました - boot.wimはデータパーティションに残ります。</string>
+    <string id="log.bootwim.bcdConfiguredForData">BCDはデータパーティションから起動するように構成されます。</string>
+    <string id="log.bootwim.extractingAdditionalFiles">boot.wimから追加ファイルを抽出しています...</string>
+    <string id="log.bootwim.additionalFilesExtracted">boot.wimから追加ファイルが正常に抽出されました。</string>
+    <string id="button.perform.hint">クリックしてISOを起動</string>
+    <string id="mainwindow.developedBy">コスタリカの会社によって開発されたソフトウェア</string>
+</language>

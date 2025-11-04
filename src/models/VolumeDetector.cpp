@@ -475,3 +475,51 @@ int VolumeDetector::getEfiPartitionSizeMB() {
     debugLog.close();
     return 0; // Could not determine size
 }
+bool VolumeDetector::isWindowsUsingEfiPartition() {
+    // Check if Windows is installed and using the ISOEFI partition
+    std::string logDir = Utils::getExeDirectory() + "logs";
+    CreateDirectoryA(logDir.c_str(), NULL);
+    std::ofstream debugLog((logDir + "\\windows_efi_detection.log").c_str());
+
+    debugLog << "Checking if Windows is using ISOEFI partition...\n";
+
+    std::string efiDrive = getEfiPartitionDriveLetter();
+
+    if (efiDrive.empty()) {
+        debugLog << "ISOEFI partition not found or not mounted\n";
+        debugLog.close();
+        return false;
+    }
+
+    debugLog << "ISOEFI partition found at: " << efiDrive << "\n";
+
+    std::vector<std::string> windowsBootFiles = {efiDrive + "EFI\\Microsoft\\Boot\\bootmgfw.efi",
+                                                 efiDrive + "EFI\\Microsoft\\Boot\\BCD",
+                                                 efiDrive + "EFI\\Microsoft\\Boot\\bootmgr.efi"};
+
+    int foundFiles = 0;
+    for (const auto &filePath : windowsBootFiles) {
+        DWORD attrs      = GetFileAttributesA(filePath.c_str());
+        bool  fileExists = (attrs != INVALID_FILE_ATTRIBUTES && !(attrs & FILE_ATTRIBUTE_DIRECTORY));
+
+        debugLog << "Checking: " << filePath << " - " << (fileExists ? "EXISTS" : "NOT FOUND") << "\n";
+
+        if (fileExists) {
+            foundFiles++;
+        }
+    }
+
+    std::string markerPath  = efiDrive + "BOOTTHATISO_TEMP_PARTITION.txt";
+    DWORD       markerAttrs = GetFileAttributesA(markerPath.c_str());
+    bool        hasMarker   = (markerAttrs != INVALID_FILE_ATTRIBUTES && !(markerAttrs & FILE_ATTRIBUTE_DIRECTORY));
+
+    debugLog << "BootThatISO marker file: " << (hasMarker ? "PRESENT" : "ABSENT") << "\n";
+    debugLog << "Windows boot files found: " << foundFiles << " out of " << windowsBootFiles.size() << "\n";
+
+    bool windowsIsUsing = (foundFiles >= 2);
+
+    debugLog << "Conclusion: Windows is " << (windowsIsUsing ? "USING" : "NOT USING") << " ISOEFI\n";
+    debugLog.close();
+
+    return windowsIsUsing;
+}

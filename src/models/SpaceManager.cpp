@@ -1,4 +1,5 @@
 #include "SpaceManager.h"
+#include "VolumeDetector.h"
 #include <windows.h>
 #include <fstream>
 #include <sstream>
@@ -100,6 +101,16 @@ bool SpaceManager::recoverSpace() {
     if (eventManager_)
         eventManager_->notifyLogUpdate("Iniciando recuperación de espacio...\r\n");
 
+    // Check if Windows is using the ISOEFI partition
+    VolumeDetector volumeDetector(eventManager_);
+    bool           windowsUsingEfi = volumeDetector.isWindowsUsingEfiPartition();
+
+    if (windowsUsingEfi) {
+        if (eventManager_)
+            eventManager_->notifyLogUpdate("ADVERTENCIA: Windows está usando la partición ISOEFI. "
+                                           "Solo se eliminará ISOBOOT, ISOEFI se preservará.\r\n");
+    }
+
     // Create PowerShell script to recover space
     char tempPath[MAX_PATH];
     GetTempPathA(MAX_PATH, tempPath);
@@ -111,8 +122,15 @@ bool SpaceManager::recoverSpace() {
     if (!scriptFile) {
         return false;
     }
-    scriptFile << "$volumes = Get-Volume | Where-Object { $_.FileSystemLabel -eq '" << VOLUME_LABEL
-               << "' -or $_.FileSystemLabel -eq '" << EFI_VOLUME_LABEL << "' }\n";
+
+    // Build the volume filter - if Windows is using EFI, only remove ISOBOOT
+    if (windowsUsingEfi) {
+        scriptFile << "$volumes = Get-Volume | Where-Object { $_.FileSystemLabel -eq '" << VOLUME_LABEL << "' }\n";
+    } else {
+        scriptFile << "$volumes = Get-Volume | Where-Object { $_.FileSystemLabel -eq '" << VOLUME_LABEL
+                   << "' -or $_.FileSystemLabel -eq '" << EFI_VOLUME_LABEL << "' }\n";
+    }
+
     scriptFile << "foreach ($vol in $volumes) {\n";
     scriptFile << "    $part = Get-Partition | Where-Object { $_.AccessPaths -contains $vol.Path }\n";
     scriptFile << "    if ($part) {\n";

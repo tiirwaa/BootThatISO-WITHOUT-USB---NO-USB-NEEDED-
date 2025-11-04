@@ -38,6 +38,7 @@
     <string id="message.adminRequired">This program requires administrator privileges.</string>
     <string id="message.diskModifyConfirmPrimary">This operation will modify the system disk, shrinking it by 11 GB to create two bootable partitions: a 1GBMB FAT32 ESP (ISOEFI) and a 10GB data partition (ISOBOOT). Do you want to continue?</string>
     <string id="message.diskModifyConfirmSecondary">This is the second confirmation. The disk modification operation is irreversible and may cause data loss if not performed correctly. Are you completely sure you want to proceed?</string>
+    <string id="message.efiPartitionWarning">IMPORTANT: The ISOEFI partition is hidden with special GPT attributes to prevent Windows installer from automatically detecting it. During Windows installation, DO NOT delete the Windows EFI partition. If you do, Windows might reuse ISOEFI. If this happens, use 'Recover my space' after installing Windows to clean up.</string>
     <string id="message.operationInProgress">A process is running. Do you want to cancel the operation and close the application?</string>
     <string id="message.processCompleteRestart">Process completed. Do you want to restart the system now?</string>
     <string id="message.recoverSpaceFailed">Failed to recover space. Check the logs for details.</string>
@@ -146,8 +147,12 @@
     <string id="log.recovery.recovering">Recovering space. This may take several minutes...</string>
     
     <!-- Log messages - Partition Reformatter -->
-    <string id="log.reformatter.starting">Starting EFI partition reformatting...</string>
-    <string id="log.reformatter.startingData">Starting partition reformatting...</string>
+    <string id="log.reformatter.starting">Starting EFI partition reformat...</string>
+    <string id="log.reformatter.windowsUsingEfi">WARNING: Windows is using the ISOEFI partition. Will not format to preserve Windows installation. Only BootThatISO files will be cleaned.</string>
+    <string id="log.reformatter.cleaningFiles">Cleaning BootThatISO files from EFI partition...</string>
+    <string id="log.reformatter.cleanupSuccess">Cleanup completed. BootThatISO files removed.</string>
+    <string id="log.reformatter.noFilesToClean">No BootThatISO files found to clean.</string>
+    <string id="log.reformatter.startingData">Starting partition reformat...</string>
     <string id="log.reformatter.searchingVolume">Searching for volume to reformat...</string>
     <string id="log.reformatter.volumeFound">Volume found (number {0}). Creating format script...</string>
     <string id="log.reformatter.executing">Executing partition formatting...</string>

@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="utf-8"?>
+<language code="de_DE" name="Deutsch">
+    <string id="app.windowTitle">BootThatISO! - ISO ohne USB booten</string>
+    <string id="bootMode.ram">Von RAM booten</string>
+    <string id="bootMode.extract">Von Festplatte booten</string>
+    <string id="common.yes">Ja</string>
+    <string id="common.no">Nein</string>
+    <string id="dialog.openIso.filter">ISO-Dateien (*.iso)</string>
+    <string id="log.cancel.completed">Vorgang abgebrochen und bereinigt.</string>
+    <string id="log.cancel.requested">Abbruch angefordert. Warte auf Bereinigung...</string>
+    <string id="log.process.starting">Prozess wird gestartet...</string>
+    <string id="log.process.isoPathAfterTrimming">ISO-Pfad nach Trimmen: '{0}'</string>
+    <string id="log.process.startingWithDetails">Prozess wird gestartet mit ISO: {0}, Format: {1}, Modus: {2}</string>
+    <string id="log.process.verifyingPartitions">Partitionsstatus wird überprüft...</string>
+    <string id="log.recovery.alreadyRunning">Speicherwiederherstellung läuft bereits.</string>
+    <string id="log.recovery.cannotCancel">Speicherwiederherstellung läuft und kann nicht abgebrochen werden. Warten Sie, bis sie abgeschlossen ist.</string>
+    <string id="log.recovery.startFailed">Speicherwiederherstellung konnte nicht gestartet werden. Überprüfen Sie, ob sie bereits läuft.</string>
+    <string id="log.recovery.started">Speicherwiederherstellung im Hintergrund gestartet.</string>
+    <string id="log.recovery.success">Speicherwiederherstellung erfolgreich abgeschlossen.</string>
+    <string id="log.recovery.failed">Speicherwiederherstellung fehlgeschlagen. Überprüfen Sie die Protokolle für Details.</string>
+    <string id="mainwindow.bootModeLabel">Boot-Modus:</string>
+    <string id="mainwindow.browseButton">Durchsuchen</string>
+    <string id="mainwindow.createButton">Prozess durchführen und ausgewähltes ISO booten</string>
+    <string id="mainwindow.formatLabel">Dateisystemformat:</string>
+    <string id="mainwindow.format.fat32">FAT32 (Empfohlen - Maximale EFI-Kompatibilität)</string>
+    <string id="mainwindow.format.exfat">exFAT (Keine 4-GB-Begrenzung pro Datei)</string>
+    <string id="mainwindow.format.ntfs">NTFS (Vollständige Windows-Unterstützung)</string>
+    <string id="mainwindow.integrityCheck">Festplattenintegritätsprüfung durchführen</string>
+    <string id="mainwindow.injectDrivers">Meine Treiber in ISO einbetten</string>
+    <string id="mainwindow.isoPathLabel">ISO-Dateipfad:</string>
+    <string id="mainwindow.logoPlaceholder">LOGO</string>
+    <string id="mainwindow.recoverButton">Meinen Speicherplatz wiederherstellen</string>
+    <string id="mainwindow.servicesButton">Dienste</string>
+    <string id="mainwindow.subtitle">Bootfähige EFI-Partitionskonfiguration</string>
+    <string id="mainwindow.title">BOOTE DIESES ISO!</string>
+    <string id="mainwindow.versionLabel">Version {0}</string>
+    <string id="mainwindow.diskSpaceInfo">Verfügbarer Speicherplatz auf C: {0} GB | ISOBOOT: {1} | ISOEFI: {2}</string>
+    <string id="message.adminRequired">Dieses Programm erfordert Administratorrechte.</string>
+    <string id="message.diskModifyConfirmPrimary">Dieser Vorgang wird die Systemfestplatte ändern und um 11 GB verkleinern, um zwei bootfähige Partitionen zu erstellen: eine 1 GB FAT32 ESP (ISOEFI) und eine 10 GB Datenpartition (ISOBOOT). Möchten Sie fortfahren?</string>
+    <string id="message.diskModifyConfirmSecondary">Dies ist die zweite Bestätigung. Der Festplattenänderungsvorgang ist irreversibel und kann bei unsachgemäßer Durchführung zu Datenverlust führen. Sind Sie absolut sicher, dass Sie fortfahren möchten?</string>
+    <string id="message.operationInProgress">Ein Prozess läuft. Möchten Sie den Vorgang abbrechen und die Anwendung schließen?</string>
+    <string id="message.processCompleteRestart">Prozess abgeschlossen. Möchten Sie das System jetzt neu starten?</string>
+    <string id="message.recoverSpaceFailed">Speicherwiederherstellung fehlgeschlagen. Überprüfen Sie die Protokolle für Details.</string>
+    <string id="message.recoveringSpace">Von BootThatISO! erstellte Partitionen werden gelöscht. Bitte brechen Sie diesen Vorgang nicht ab. Der freigegebene Speicherplatz wird Windows zugewiesen und die BCD-Einträge ISOBOOT und ISOBOOT_RAM werden entfernt.</string>
+    <string id="message.restartFailed">Systemneustart fehlgeschlagen.</string>
+    <string id="message.selectIsoFirst">Bitte wählen Sie zuerst eine ISO-Datei aus.</string>
+    <string id="message.windowCreationFailed">Fehler beim Erstellen des Fensters!</string>
+    <string id="message.windowRegistrationFailed">Fehler beim Registrieren des Fensters!</string>
+    <string id="message.noLanguagesFound">Keine Sprachdateien im 'lang'-Ordner gefunden.</string>
+    <string id="message.languageLoadFailed">Laden der ausgewählten Sprache fehlgeschlagen.</string>
+    <string id="message.selectEfiArchitecturePrompt">Welches möchten Sie verwenden? Wählen Sie Ja für x64, Nein für x86.</string>
+    <string id="message.diskErrorsFoundPrompt">Fehler wurden auf Laufwerk C: gefunden. Möchten Sie die Festplatte reparieren und das System neu starten?</string>
+    <string id="title.error">Fehler</string>
+    <string id="title.isoFile">ISO-Datei</string>
+    <string id="title.operationConfirmation">Vorgangsbestätigung</string>
+    <string id="title.operationInProgress">Vorgang läuft</string>
+    <string id="title.restart">Neustart</string>
+    <string id="title.secondConfirmation">Zweite Bestätigung</string>
+    <string id="title.spaceInsufficient">Unzureichender Speicherplatz</string>
+    <string id="title.selectEfiArchitecture">EFI-Architektur auswählen</string>
+    <string id="title.repairDisk">Festplatte reparieren</string>
+    <string id="unit.mb">MB</string>
+    <string id="unit.gb">GB</string>
+    <string id="editionSelector.title">Windows-Edition auswählen</string>
+    <string id="editionSelector.header">Wählen Sie die zu installierende Windows-Edition</string>
+    <string id="editionSelector.subtitle">Die ausgewählte Edition wird für RAM-Boot in boot.wim eingefügt</string>
+    <string id="editionSelector.columnIndex">#</string>
+    <string id="editionSelector.columnName">Editionsname</string>
+    <string id="editionSelector.columnSize">Größe</string>
+    <string id="editionSelector.infoLabel">Information:</string>
+    <string id="editionSelector.sizeLabel">Editionsgröße:</string>
+    <string id="editionSelector.buttonContinue">Fortfahren</string>
+    <string id="editionSelector.buttonCancel">Abbrechen</string>
+    <string id="editionSelector.infoSelect">Wählen Sie eine Edition, um Details anzuzeigen</string>
+    <string id="editionSelector.warningNoSelection">Bitte wählen Sie eine Edition</string>
+    <string id="editionSelector.warningTitle">Warnung</string>
+    <string id="editionSelector.sizeUnknown">Größe unbekannt</string>
+    <string id="editionSelector.infoIndex">Index:</string>
+    
+    <!-- Log messages - ISO Processing -->
+    <string id="log.iso.analyzing">ISO-Inhalt wird analysiert...</string>
+    <string id="log.iso.windowsDetected">Windows-ISO erkannt.</string>
+    <string id="log.iso.nonWindowsDetected">Nicht-Windows-ISO erkannt.</string>
+    <string id="log.iso.copyingInstallFile">Installationsdatei wird kopiert...</string>
+    <string id="log.iso.installFileCopied">Installationsdatei erfolgreich kopiert und validiert.</string>
+    <string id="log.iso.installFileError">Fehler/Warnung beim Validieren von install.*; überprüfen Sie iso_extract.log.</string>
+    <string id="log.iso.retryingInstall">Extraktion von install.* wird wiederholt...</string>
+    <string id="log.iso.installFileErrorFatal">Fehler beim Kopieren der Installationsdatei.</string>
+    <string id="log.iso.copyingSetupFiles">Kritische Setup-Dateien werden kopiert...</string>
+    <string id="log.iso.setupFilesCopied">Kritische Dateien kopiert ({0} Dateien).</string>
+    <string id="log.iso.setupFilesSkipped">Setup-Dateien übersprungen (in diesem ISO nicht gefunden).</string>
+    <string id="log.iso.integratingPrograms">Programme werden für RAM-Boot in boot.wim integriert.</string>
+    <string id="log.linuxIsoDetected">Linux-ISO erkannt: {0}</string>
+    
+    <!-- Log messages - BCD Configuration -->
+    <string id="log.bcd.configuring">Startkonfigurationsdaten (BCD) werden konfiguriert...</string>
+    <string id="log.bcd.efiSelected">EFI-Datei ausgewählt: {0}</string>
+    <string id="log.bcd.unsupportedArchitecture">Fehler: Nicht unterstützte EFI-Architektur.</string>
+    <string id="log.bcd.errorDefault">Fehler beim Konfigurieren von Standard: {0}</string>
+    <string id="log.bcd.errorDisplayorder">Fehler beim Konfigurieren von displayorder: {0}</string>
+    <string id="log.bcd.errorTimeout">Fehler beim Konfigurieren von Timeout: {0}</string>
+    <string id="log.bcd.settingWindowsDefault">Windows wird als Standardeintrag festgelegt und Timeout angepasst...</string>
+    <string id="log.bcd.resultDefault">Ergebnis /default: {0}</string>
+    <string id="log.bcd.resultTimeout">Ergebnis /timeout: {0}</string>
+    
+    <!-- Log messages - Windows Edition Selector -->
+    <string id="log.edition.extracting">Windows-Installationsabbild wird extrahiert...</string>
+    <string id="log.edition.extractError">Fehler beim Extrahieren des Installationsabbilds.</string>
+    <string id="log.edition.noEditionsFound">Keine Windows-Editionen gefunden.</string>
+    <string id="log.edition.autoSelectingSingle">Nur eine Edition verfügbar, automatische Auswahl.</string>
+    <string id="log.edition.selected">Ausgewählte Edition: {0}</string>
+    <string id="log.edition.preparingRAM">Ausgewählte Edition wird für RAM-Boot vorbereitet...</string>
+    <string id="log.edition.creatingFiltered">Gefiltertes Installationsabbild wird erstellt...</string>
+    <string id="log.edition.filteredError">Fehler beim Erstellen des gefilterten Abbilds.</string>
+    <string id="log.edition.injectingDrivers">Speichertreiber werden in install.wim eingefügt...</string>
+    <string id="log.edition.driversInjected">Treiber in install.wim eingefügt.</string>
+    <string id="log.edition.driversSaveFailed">Warnung: Treiber konnten nicht gespeichert werden.</string>
+    <string id="log.edition.driversInjectFailed">Warnung: Treiber konnten nicht in install.wim eingefügt werden.</string>
+    <string id="log.edition.configuringBoot">Boot-Umgebung wird konfiguriert...</string>
+    <string id="log.edition.bootMountError">Fehler beim Mounten von boot.wim.</string>
+    <string id="log.edition.savingConfig">Konfiguration wird gespeichert...</string>
+    <string id="log.edition.preparedSuccess">Windows-Edition erfolgreich vorbereitet.</string>
+    <string id="log.edition.setupWillSearch">Windows-Setup sucht nach install.wim auf der Datenpartition.</string>
+    <string id="log.edition.saveConfigError">Fehler beim Speichern der Konfiguration.</string>
+    <string id="log.edition.windowsIsoDetected">Windows-Installations-ISO erkannt.</string>
+    <string id="log.edition.copyingFullImage">Vollständiges Installationsabbild wird kopiert (alle Editionen)...</string>
+    <string id="log.edition.copyImageError">Fehler beim Kopieren des Installationsabbilds.</string>
+    <string id="log.edition.imageCopiedSuccess">Installationsabbild kopiert. Windows-Setup zeigt Editionsliste an.</string>
+    
+    <!-- Log messages - EFI Manager -->
+    <string id="log.efi.extracting">EFI-Dateien werden nach ESP extrahiert...</string>
+    
+    <!-- Log messages - Content Extractor -->
+    <string id="log.content.copying">ISO-Inhalt wird nach {0} kopiert...</string>
+    <string id="log.content.copied">ISO-Inhalt erfolgreich kopiert.</string>
+    
+    <!-- Log messages - Diskpart -->
+    <string id="log.diskpart.creatingScript">Diskpart-Skript für Partitionen wird erstellt...</string>
+    <string id="log.diskpart.scriptError">Fehler: Diskpart-Skriptdatei konnte nicht erstellt werden.</string>
+    <string id="log.diskpart.success">Diskpart erfolgreich ausgeführt. Partitionen werden überprüft...</string>
+    <string id="log.diskpart.failed">Fehler: Diskpart fehlgeschlagen mit Exit-Code {0}</string>
+    <string id="log.diskpart.partitionsCreated">Partitionen erfolgreich erstellt.</string>
+    <string id="log.diskpart.partitionsFailed">Fehler: Partitionserstellung fehlgeschlagen.</string>
+    
+    <!-- Log messages - Recovery -->
+    <string id="log.recovery.recovering">Speicherplatz wird wiederhergestellt. Dies kann mehrere Minuten dauern...</string>
+    
+    <!-- Log messages - Partition Reformatter -->
+    <string id="log.reformatter.starting">EFI-Partitionsneuformatierung wird gestartet...</string>
+    <string id="log.reformatter.startingData">Partitionsneuformatierung wird gestartet...</string>
+    <string id="log.reformatter.searchingVolume">Volume zur Neuformatierung wird gesucht...</string>
+    <string id="log.reformatter.volumeFound">Volume gefunden (Nummer {0}). Formatierungsskript wird erstellt...</string>
+    <string id="log.reformatter.executing">Partitionsformatierung wird ausgeführt...</string>
+    <string id="log.reformatter.success">Partition erfolgreich neu formatiert.</string>
+    <string id="log.reformatter.failed">Fehler: EFI-Partitionsformatierung fehlgeschlagen (Code {0}).</string>
+    
+    <!-- Log messages - Process Controller -->
+    <string id="log.process.preparingISOFiles">ISO-Dateivorbereitung wird gestartet...</string>
+    <string id="log.process.configuringBoot">Boot wird konfiguriert...</string>
+    <string id="log.process.completedSuccessfully">Prozess erfolgreich abgeschlossen.</string>
+    
+    <!-- Log messages - Boot Wim Processor -->
+    <string id="log.bootwim.preparingBootFiles">ISO-Boot-Dateien werden vorbereitet...</string>
+    <string id="log.bootwim.extractingBootWim">boot.wim wird auf Datenpartition extrahiert...</string>
+    <string id="log.bootwim.bootWimCopied">boot.wim erfolgreich kopiert.</string>
+    <string id="log.bootwim.copyingBootSdi">boot.sdi wird für RAM-Boot benötigt und kopiert...</string>
+    <string id="log.bootwim.bootSdiCopied">boot.sdi erfolgreich kopiert.</string>
+    <string id="log.bootwim.copyingBootSdiToEsp">boot.sdi wird auf ESP-Partition kopiert...</string>
+    <string id="log.bootwim.bootSdiCopiedToEsp">boot.sdi erfolgreich auf ESP kopiert.</string>
+    <string id="log.bootwim.skippingInstallInjection">Einfügen von install.* in boot.wim wird übersprungen; Abbild von Festplatte wird verwendet.</string>
+    <string id="log.bootwim.selectedIndex">Ausgewählter Index:</string>
+    <string id="log.bootwim.pecmdPresent">PECMD in boot.wim vorhanden.</string>
+    <string id="log.bootwim.integratingPrograms">Programme werden in boot.wim integriert...</string>
+    <string id="log.bootwim.programsIntegrated">Programme erfolgreich in boot.wim integriert</string>
+    <string id="log.bootwim.integratingDrivers">Benutzerdefinierte Treiber werden integriert...</string>
+    <string id="log.bootwim.driversIntegrationError">Fehler beim Integrieren benutzerdefinierter Treiber</string>
+    <string id="log.bootwim.driversDisabled">Treiber-Einbettung vom Benutzer deaktiviert.</string>
+    <string id="log.bootwim.pecmdConfiguredRam">PECMD für RAM-Modus konfiguriert.</string>
+    <string id="log.bootwim.processingIniFiles">.ini-Dateien werden verarbeitet...</string>
+    <string id="log.bootwim.iniFilesConfigured">INI-Dateien erfolgreich integriert und neu konfiguriert</string>
+    <string id="log.bootwim.savingChanges">Änderungen an boot.wim werden gespeichert...</string>
+    <string id="log.bootwim.bootWimUpdated">boot.wim erfolgreich aktualisiert.</string>
+    <string id="log.bootwim.winPEDetectedDataPartition">Windows PE erkannt - boot.wim bleibt auf Datenpartition.</string>
+    <string id="log.bootwim.bcdConfiguredForData">BCD wird für Boot von Datenpartition konfiguriert.</string>
+    <string id="log.bootwim.extractingAdditionalFiles">Zusätzliche Dateien werden aus boot.wim extrahiert...</string>
+    <string id="log.bootwim.additionalFilesExtracted">Zusätzliche Dateien aus boot.wim erfolgreich extrahiert.</string>
+    <string id="button.perform.hint">Klicken Sie, um das ISO zu booten</string>
+    <string id="mainwindow.developedBy">Software entwickelt von einem costa-ricanischen Unternehmen</string>
+</language>

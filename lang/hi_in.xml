@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="utf-8"?>
+<language code="hi_IN" name="हिन्दी">
+    <string id="app.windowTitle">BootThatISO! - USB के बिना ISO बूट करें</string>
+    <string id="bootMode.ram">RAM से बूट करें</string>
+    <string id="bootMode.extract">डिस्क से बूट करें</string>
+    <string id="common.yes">हाँ</string>
+    <string id="common.no">नहीं</string>
+    <string id="dialog.openIso.filter">ISO फ़ाइलें (*.iso)</string>
+    <string id="log.cancel.completed">ऑपरेशन रद्द किया गया और साफ़ किया गया।</string>
+    <string id="log.cancel.requested">रद्दीकरण का अनुरोध किया गया। सफाई की प्रतीक्षा में...</string>
+    <string id="log.process.starting">प्रक्रिया शुरू हो रही है...</string>
+    <string id="log.process.isoPathAfterTrimming">ट्रिमिंग के बाद ISO पथ: '{0}'</string>
+    <string id="log.process.startingWithDetails">ISO के साथ प्रक्रिया शुरू हो रही है: {0}, प्रारूप: {1}, मोड: {2}</string>
+    <string id="log.process.verifyingPartitions">विभाजन स्थिति सत्यापित की जा रही है...</string>
+    <string id="log.recovery.alreadyRunning">स्थान पुनर्प्राप्ति पहले से ही प्रगति पर है।</string>
+    <string id="log.recovery.cannotCancel">स्थान पुनर्प्राप्ति प्रगति पर है और इसे रद्द नहीं किया जा सकता। इसके समाप्त होने की प्रतीक्षा करें।</string>
+    <string id="log.recovery.startFailed">स्थान पुनर्प्राप्ति शुरू करने में विफल। जांचें कि क्या यह पहले से ही चल रही है।</string>
+    <string id="log.recovery.started">स्थान पुनर्प्राप्ति पृष्ठभूमि में शुरू हुई।</string>
+    <string id="log.recovery.success">स्थान पुनर्प्राप्ति सफलतापूर्वक पूर्ण हुई।</string>
+    <string id="log.recovery.failed">स्थान पुनर्प्राप्ति विफल। विवरण के लिए लॉग देखें।</string>
+    <string id="mainwindow.bootModeLabel">बूट मोड:</string>
+    <string id="mainwindow.browseButton">ब्राउज़ करें</string>
+    <string id="mainwindow.createButton">प्रक्रिया करें और चयनित ISO बूट करें</string>
+    <string id="mainwindow.formatLabel">फ़ाइल सिस्टम प्रारूप:</string>
+    <string id="mainwindow.format.fat32">FAT32 (अनुशंसित - अधिकतम EFI संगतता)</string>
+    <string id="mainwindow.format.exfat">exFAT (4GB प्रति-फ़ाइल सीमा नहीं)</string>
+    <string id="mainwindow.format.ntfs">NTFS (पूर्ण Windows समर्थन)</string>
+    <string id="mainwindow.integrityCheck">डिस्क अखंडता जांच करें</string>
+    <string id="mainwindow.injectDrivers">ISO में मेरे ड्राइवर इंजेक्ट करें</string>
+    <string id="mainwindow.isoPathLabel">ISO फ़ाइल पथ:</string>
+    <string id="mainwindow.logoPlaceholder">लोगो</string>
+    <string id="mainwindow.recoverButton">मेरा स्थान पुनर्प्राप्त करें</string>
+    <string id="mainwindow.servicesButton">सेवाएं</string>
+    <string id="mainwindow.subtitle">बूट करने योग्य EFI विभाजन कॉन्फ़िगरेशन</string>
+    <string id="mainwindow.title">बूट करो उस ISO को!</string>
+    <string id="mainwindow.versionLabel">संस्करण {0}</string>
+    <string id="mainwindow.diskSpaceInfo">C पर उपलब्ध स्थान: {0} GB | ISOBOOT: {1} | ISOEFI: {2}</string>
+    <string id="message.adminRequired">इस प्रोग्राम को व्यवस्थापक विशेषाधिकारों की आवश्यकता है।</string>
+    <string id="message.diskModifyConfirmPrimary">यह ऑपरेशन सिस्टम डिस्क को संशोधित करेगा, इसे 11 GB तक सिकोड़कर दो बूट करने योग्य विभाजन बनाएगा: 1GB FAT32 ESP (ISOEFI) और 10GB डेटा विभाजन (ISOBOOT)। क्या आप जारी रखना चाहते हैं?</string>
+    <string id="message.diskModifyConfirmSecondary">यह दूसरी पुष्टि है। डिस्क संशोधन ऑपरेशन अपरिवर्तनीय है और यदि सही ढंग से प्रदर्शन नहीं किया गया तो डेटा हानि का कारण बन सकता है। क्या आप पूरी तरह से निश्चित हैं कि आप आगे बढ़ना चाहते हैं?</string>
+    <string id="message.operationInProgress">एक प्रक्रिया चल रही है। क्या आप ऑपरेशन रद्द करना और एप्लिकेशन बंद करना चाहते हैं?</string>
+    <string id="message.processCompleteRestart">प्रक्रिया पूर्ण हुई। क्या आप अब सिस्टम को पुनः प्रारंभ करना चाहते हैं?</string>
+    <string id="message.recoverSpaceFailed">स्थान पुनर्प्राप्त करने में विफल। विवरण के लिए लॉग देखें।</string>
+    <string id="message.recoveringSpace">BootThatISO! द्वारा बनाए गए विभाजन हटाए जा रहे हैं, कृपया इस प्रक्रिया को रद्द न करें, मुक्त स्थान Windows को सौंपा जाएगा और BCD प्रविष्टियां ISOBOOT और ISOBOOT_RAM हटाई जा रही हैं।</string>
+    <string id="message.restartFailed">सिस्टम को पुनः प्रारंभ करने में विफल।</string>
+    <string id="message.selectIsoFirst">कृपया पहले एक ISO फ़ाइल चुनें।</string>
+    <string id="message.windowCreationFailed">विंडो बनाने में त्रुटि!</string>
+    <string id="message.windowRegistrationFailed">विंडो पंजीकृत करने में त्रुटि!</string>
+    <string id="message.noLanguagesFound">'lang' फ़ोल्डर में कोई भाषा फ़ाइलें नहीं मिलीं।</string>
+    <string id="message.languageLoadFailed">चयनित भाषा लोड करने में विफल।</string>
+    <string id="message.selectEfiArchitecturePrompt">आप किसका उपयोग करना चाहते हैं? x64 के लिए हाँ चुनें, x86 के लिए नहीं।</string>
+    <string id="message.diskErrorsFoundPrompt">ड्राइव C: पर त्रुटियां मिलीं। क्या आप डिस्क की मरम्मत करना और सिस्टम को पुनः प्रारंभ करना चाहते हैं?</string>
+    <string id="title.error">त्रुटि</string>
+    <string id="title.isoFile">ISO फ़ाइल</string>
+    <string id="title.operationConfirmation">ऑपरेशन पुष्टि</string>
+    <string id="title.operationInProgress">ऑपरेशन प्रगति में</string>
+    <string id="title.restart">पुनः प्रारंभ करें</string>
+    <string id="title.secondConfirmation">दूसरी पुष्टि</string>
+    <string id="title.spaceInsufficient">अपर्याप्त स्थान</string>
+    <string id="title.selectEfiArchitecture">EFI आर्किटेक्चर चुनें</string>
+    <string id="title.repairDisk">डिस्क की मरम्मत करें</string>
+    <string id="unit.mb">MB</string>
+    <string id="unit.gb">GB</string>
+    <string id="editionSelector.title">Windows संस्करण चुनें</string>
+    <string id="editionSelector.header">इंस्टॉल करने के लिए Windows संस्करण चुनें</string>
+    <string id="editionSelector.subtitle">चयनित संस्करण को RAM बूट के लिए boot.wim में इंजेक्ट किया जाएगा</string>
+    <string id="editionSelector.columnIndex">#</string>
+    <string id="editionSelector.columnName">संस्करण का नाम</string>
+    <string id="editionSelector.columnSize">आकार</string>
+    <string id="editionSelector.infoLabel">जानकारी:</string>
+    <string id="editionSelector.sizeLabel">संस्करण आकार:</string>
+    <string id="editionSelector.buttonContinue">जारी रखें</string>
+    <string id="editionSelector.buttonCancel">रद्द करें</string>
+    <string id="editionSelector.infoSelect">विवरण देखने के लिए एक संस्करण चुनें</string>
+    <string id="editionSelector.warningNoSelection">कृपया एक संस्करण चुनें</string>
+    <string id="editionSelector.warningTitle">चेतावनी</string>
+    <string id="editionSelector.sizeUnknown">आकार अज्ञात</string>
+    <string id="editionSelector.infoIndex">सूचकांक:</string>
+    
+    <!-- Log messages - ISO Processing -->
+    <string id="log.iso.analyzing">ISO सामग्री का विश्लेषण किया जा रहा है...</string>
+    <string id="log.iso.windowsDetected">Windows ISO पता चला।</string>
+    <string id="log.iso.nonWindowsDetected">गैर-Windows ISO पता चला।</string>
+    <string id="log.iso.copyingInstallFile">इंस्टॉलेशन फ़ाइल कॉपी की जा रही है...</string>
+    <string id="log.iso.installFileCopied">इंस्टॉलेशन फ़ाइल सफलतापूर्वक कॉपी और सत्यापित की गई।</string>
+    <string id="log.iso.installFileError">install.* सत्यापित करने में त्रुटि/चेतावनी; iso_extract.log जांचें।</string>
+    <string id="log.iso.retryingInstall">install.* निष्कर्षण पुनः प्रयास किया जा रहा है...</string>
+    <string id="log.iso.installFileErrorFatal">इंस्टॉलेशन फ़ाइल कॉपी करने में त्रुटि।</string>
+    <string id="log.iso.copyingSetupFiles">महत्वपूर्ण सेटअप फ़ाइलें कॉपी की जा रही हैं...</string>
+    <string id="log.iso.setupFilesCopied">महत्वपूर्ण फ़ाइलें कॉपी की गईं ({0} फ़ाइलें)।</string>
+    <string id="log.iso.setupFilesSkipped">सेटअप फ़ाइलें छोड़ी गईं (इस ISO में नहीं मिलीं)।</string>
+    <string id="log.iso.integratingPrograms">RAM बूट के लिए boot.wim में प्रोग्राम एकीकृत किए जा रहे हैं।</string>
+    <string id="log.linuxIsoDetected">Linux ISO पता चला: {0}</string>
+    
+    <!-- Log messages - BCD Configuration -->
+    <string id="log.bcd.configuring">बूट कॉन्फ़िगरेशन डेटा (BCD) कॉन्फ़िगर किया जा रहा है...</string>
+    <string id="log.bcd.efiSelected">EFI फ़ाइल चयनित: {0}</string>
+    <string id="log.bcd.unsupportedArchitecture">त्रुटि: असमर्थित EFI आर्किटेक्चर।</string>
+    <string id="log.bcd.errorDefault">डिफ़ॉल्ट कॉन्फ़िगर करने में त्रुटि: {0}</string>
+    <string id="log.bcd.errorDisplayorder">displayorder कॉन्फ़िगर करने में त्रुटि: {0}</string>
+    <string id="log.bcd.errorTimeout">टाइमआउट कॉन्फ़िगर करने में त्रुटि: {0}</string>
+    <string id="log.bcd.settingWindowsDefault">Windows को डिफ़ॉल्ट प्रविष्टि के रूप में सेट किया जा रहा है और टाइमआउट समायोजित किया जा रहा है...</string>
+    <string id="log.bcd.resultDefault">परिणाम /default: {0}</string>
+    <string id="log.bcd.resultTimeout">परिणाम /timeout: {0}</string>
+    
+    <!-- Log messages - Windows Edition Selector -->
+    <string id="log.edition.extracting">Windows इंस्टॉलेशन छवि निकाली जा रही है...</string>
+    <string id="log.edition.extractError">इंस्टॉलेशन छवि निकालने में त्रुटि।</string>
+    <string id="log.edition.noEditionsFound">कोई Windows संस्करण नहीं मिला।</string>
+    <string id="log.edition.autoSelectingSingle">केवल एक संस्करण उपलब्ध, स्वतः चयन हो रहा है।</string>
+    <string id="log.edition.selected">चयनित संस्करण: {0}</string>
+    <string id="log.edition.preparingRAM">RAM बूट के लिए चयनित संस्करण तैयार किया जा रहा है...</string>
+    <string id="log.edition.creatingFiltered">फ़िल्टर की गई इंस्टॉलेशन छवि बनाई जा रही है...</string>
+    <string id="log.edition.filteredError">फ़िल्टर की गई छवि बनाने में त्रुटि।</string>
+    <string id="log.edition.injectingDrivers">install.wim में स्टोरेज ड्राइवर इंजेक्ट किए जा रहे हैं...</string>
+    <string id="log.edition.driversInjected">install.wim में ड्राइवर इंजेक्ट किए गए।</string>
+    <string id="log.edition.driversSaveFailed">चेतावनी: ड्राइवर सहेजे नहीं जा सके।</string>
+    <string id="log.edition.driversInjectFailed">चेतावनी: install.wim में ड्राइवर इंजेक्ट नहीं किए जा सके।</string>
+    <string id="log.edition.configuringBoot">बूट वातावरण कॉन्फ़िगर किया जा रहा है...</string>
+    <string id="log.edition.bootMountError">boot.wim माउंट करने में त्रुटि।</string>
+    <string id="log.edition.savingConfig">कॉन्फ़िगरेशन सहेजा जा रहा है...</string>
+    <string id="log.edition.preparedSuccess">Windows संस्करण सफलतापूर्वक तैयार किया गया।</string>
+    <string id="log.edition.setupWillSearch">Windows सेटअप डेटा विभाजन पर install.wim खोजेगा।</string>
+    <string id="log.edition.saveConfigError">कॉन्फ़िगरेशन सहेजने में त्रुटि।</string>
+    <string id="log.edition.windowsIsoDetected">Windows इंस्टॉलेशन ISO पता चला।</string>
+    <string id="log.edition.copyingFullImage">पूर्ण इंस्टॉलेशन छवि कॉपी की जा रही है (सभी संस्करण)...</string>
+    <string id="log.edition.copyImageError">इंस्टॉलेशन छवि कॉपी करने में त्रुटि।</string>
+    <string id="log.edition.imageCopiedSuccess">इंस्टॉलेशन छवि कॉपी की गई। Windows सेटअप संस्करण सूची दिखाएगा।</string>
+    
+    <!-- Log messages - EFI Manager -->
+    <string id="log.efi.extracting">ESP में EFI फ़ाइलें निकाली जा रही हैं...</string>
+    
+    <!-- Log messages - Content Extractor -->
+    <string id="log.content.copying">ISO सामग्री {0} में कॉपी की जा रही है...</string>
+    <string id="log.content.copied">ISO सामग्री सफलतापूर्वक कॉपी की गई।</string>
+    
+    <!-- Log messages - Diskpart -->
+    <string id="log.diskpart.creatingScript">विभाजनों के लिए diskpart स्क्रिप्ट बनाई जा रही है...</string>
+    <string id="log.diskpart.scriptError">त्रुटि: diskpart स्क्रिप्ट फ़ाइल नहीं बनाई जा सकी।</string>
+    <string id="log.diskpart.success">Diskpart सफलतापूर्वक निष्पादित हुआ। विभाजनों को सत्यापित किया जा रहा है...</string>
+    <string id="log.diskpart.failed">त्रुटि: Diskpart विफल, एग्जिट कोड {0}</string>
+    <string id="log.diskpart.partitionsCreated">विभाजन सफलतापूर्वक बनाए गए।</string>
+    <string id="log.diskpart.partitionsFailed">त्रुटि: विभाजन निर्माण विफल।</string>
+    
+    <!-- Log messages - Recovery -->
+    <string id="log.recovery.recovering">स्थान पुनर्प्राप्त किया जा रहा है। इसमें कई मिनट लग सकते हैं...</string>
+    
+    <!-- Log messages - Partition Reformatter -->
+    <string id="log.reformatter.starting">EFI विभाजन पुनः स्वरूपण शुरू हो रहा है...</string>
+    <string id="log.reformatter.startingData">विभाजन पुनः स्वरूपण शुरू हो रहा है...</string>
+    <string id="log.reformatter.searchingVolume">पुनः स्वरूपित करने के लिए वॉल्यूम खोजा जा रहा है...</string>
+    <string id="log.reformatter.volumeFound">वॉल्यूम मिला (संख्या {0})। प्रारूप स्क्रिप्ट बनाई जा रही है...</string>
+    <string id="log.reformatter.executing">विभाजन स्वरूपण निष्पादित किया जा रहा है...</string>
+    <string id="log.reformatter.success">विभाजन सफलतापूर्वक पुनः स्वरूपित किया गया।</string>
+    <string id="log.reformatter.failed">त्रुटि: EFI विभाजन स्वरूपण विफल (कोड {0})।</string>
+    
+    <!-- Log messages - Process Controller -->
+    <string id="log.process.preparingISOFiles">ISO फ़ाइल तैयारी शुरू हो रही है...</string>
+    <string id="log.process.configuringBoot">बूट कॉन्फ़िगर किया जा रहा है...</string>
+    <string id="log.process.completedSuccessfully">प्रक्रिया सफलतापूर्वक पूर्ण हुई।</string>
+    
+    <!-- Log messages - Boot Wim Processor -->
+    <string id="log.bootwim.preparingBootFiles">ISO बूट फ़ाइलें तैयार की जा रही हैं...</string>
+    <string id="log.bootwim.extractingBootWim">boot.wim डेटा विभाजन में निकाली जा रही है...</string>
+    <string id="log.bootwim.bootWimCopied">boot.wim सफलतापूर्वक कॉपी की गई।</string>
+    <string id="log.bootwim.copyingBootSdi">RAM बूट के लिए आवश्यक boot.sdi कॉपी की जा रही है...</string>
+    <string id="log.bootwim.bootSdiCopied">boot.sdi सफलतापूर्वक कॉपी की गई।</string>
+    <string id="log.bootwim.copyingBootSdiToEsp">boot.sdi ESP विभाजन में कॉपी की जा रही है...</string>
+    <string id="log.bootwim.bootSdiCopiedToEsp">boot.sdi सफलतापूर्वक ESP में कॉपी की गई।</string>
+    <string id="log.bootwim.skippingInstallInjection">boot.wim में install.* इंजेक्शन छोड़ा जा रहा है; डिस्क से छवि का उपयोग किया जाएगा।</string>
+    <string id="log.bootwim.selectedIndex">चयनित सूचकांक:</string>
+    <string id="log.bootwim.pecmdPresent">boot.wim में PECMD मौजूद है।</string>
+    <string id="log.bootwim.integratingPrograms">boot.wim में प्रोग्राम एकीकृत किए जा रहे हैं...</string>
+    <string id="log.bootwim.programsIntegrated">boot.wim में प्रोग्राम सफलतापूर्वक एकीकृत किए गए</string>
+    <string id="log.bootwim.integratingDrivers">कस्टम ड्राइवर एकीकृत किए जा रहे हैं...</string>
+    <string id="log.bootwim.driversIntegrationError">कस्टम ड्राइवर एकीकृत करने में त्रुटि</string>
+    <string id="log.bootwim.driversDisabled">उपयोगकर्ता द्वारा ड्राइवर इंजेक्शन अक्षम किया गया।</string>
+    <string id="log.bootwim.pecmdConfiguredRam">PECMD RAM मोड के लिए कॉन्फ़िगर किया गया।</string>
+    <string id="log.bootwim.processingIniFiles">.ini फ़ाइलें संसाधित की जा रही हैं...</string>
+    <string id="log.bootwim.iniFilesConfigured">INI फ़ाइलें सफलतापूर्वक एकीकृत और पुनः कॉन्फ़िगर की गईं</string>
+    <string id="log.bootwim.savingChanges">boot.wim में परिवर्तन सहेजे जा रहे हैं...</string>
+    <string id="log.bootwim.bootWimUpdated">boot.wim सफलतापूर्वक अपडेट की गई।</string>
+    <string id="log.bootwim.winPEDetectedDataPartition">Windows PE पता चला - boot.wim डेटा विभाजन पर रहेगी।</string>
+    <string id="log.bootwim.bcdConfiguredForData">BCD को डेटा विभाजन से बूट करने के लिए कॉन्फ़िगर किया जाएगा।</string>
+    <string id="log.bootwim.extractingAdditionalFiles">boot.wim से अतिरिक्त फ़ाइलें निकाली जा रही हैं...</string>
+    <string id="log.bootwim.additionalFilesExtracted">boot.wim से अतिरिक्त फ़ाइलें सफलतापूर्वक निकाली गईं।</string>
+    <string id="button.perform.hint">ISO बूट करने के लिए क्लिक करें</string>
+    <string id="mainwindow.developedBy">कोस्टा रिकन कंपनी द्वारा विकसित सॉफ़्टवेयर</string>
+</language>
