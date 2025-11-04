@@ -1,6 +1,7 @@
 #include "SpaceManager.h"
 #include "VolumeDetector.h"
 #include "../services/bcdmanager.h"
+#include "../utils/LocalizationHelpers.h"
 #include <windows.h>
 #include <fstream>
 #include <sstream>
@@ -92,7 +93,8 @@ bool SpaceManager::performSpaceRecovery() {
         eventManager_->notifyLogUpdate("Recuperando espacio para particiones...\r\n");
     if (!recoverSpace()) {
         if (eventManager_)
-            eventManager_->notifyLogUpdate("Error: Falló la recuperación de espacio.\r\n");
+            eventManager_->notifyLogUpdate(LocalizedOrUtf8("log.partition.space_recovery_failed",
+                                           "Error: Falló la recuperación de espacio.\r\n"));
         return false;
     }
     return true;
@@ -100,7 +102,7 @@ bool SpaceManager::performSpaceRecovery() {
 
 bool SpaceManager::recoverSpace() {
     if (eventManager_)
-        eventManager_->notifyLogUpdate("Iniciando recuperación de espacio...\r\n");
+        eventManager_->notifyLogUpdate(LocalizedOrUtf8("log.space.starting_recovery", "Iniciando recuperación de espacio...\r\n"));
 
     // Check if Windows is using the ISOEFI partition
     VolumeDetector volumeDetector(eventManager_);
@@ -108,8 +110,9 @@ bool SpaceManager::recoverSpace() {
 
     if (windowsUsingEfi) {
         if (eventManager_)
-            eventManager_->notifyLogUpdate("ADVERTENCIA: Windows está usando la partición ISOEFI. "
-                                           "Solo se eliminará ISOBOOT, ISOEFI se preservará.\r\n");
+            eventManager_->notifyLogUpdate(LocalizedOrUtf8("log.partition.windows_using_efi",
+                                           "ADVERTENCIA: Windows está usando la partición ISOEFI. "
+                                           "Solo se eliminará ISOBOOT, ISOEFI se preservará.\r\n"));
     }
 
     // Create PowerShell script to recover space
@@ -168,7 +171,7 @@ bool SpaceManager::recoverSpace() {
         logScriptFile.close();
     }
     if (eventManager_)
-        eventManager_->notifyLogUpdate("Script de recuperación creado.\r\n");
+        eventManager_->notifyLogUpdate(LocalizedOrUtf8("log.space.script_created", "Script de recuperación creado.\r\n"));
 
     // Execute PowerShell script
     STARTUPINFOA        si = {sizeof(si)};
@@ -186,7 +189,8 @@ bool SpaceManager::recoverSpace() {
     if (!CreatePipe(&hRead, &hWrite, &sa, 0)) {
         DeleteFileA(psFile.c_str());
         if (eventManager_)
-            eventManager_->notifyLogUpdate("Error: No se pudo crear pipe para recuperación.\r\n");
+            eventManager_->notifyLogUpdate(LocalizedOrUtf8("log.partition.pipe_creation_failed",
+                                           "Error: No se pudo crear pipe para recuperación.\r\n"));
         return false;
     }
 
@@ -202,14 +206,16 @@ bool SpaceManager::recoverSpace() {
         CloseHandle(hWrite);
         DeleteFileA(psFile.c_str());
         if (eventManager_)
-            eventManager_->notifyLogUpdate("Error: No se pudo ejecutar PowerShell para recuperación.\r\n");
+            eventManager_->notifyLogUpdate(LocalizedOrUtf8("log.partition.powershell_execution_failed",
+                                           "Error: No se pudo ejecutar PowerShell para recuperación.\r\n"));
         return false;
     }
 
     CloseHandle(hWrite);
 
     if (eventManager_) {
-        eventManager_->notifyLogUpdate("Ejecutando script de PowerShell para recuperar espacio...\r\n");
+        eventManager_->notifyLogUpdate(LocalizedOrUtf8("log.space.executing_script",
+                                       "Ejecutando script de PowerShell para recuperar espacio...\r\n"));
     }
 
     output.clear();
@@ -262,7 +268,7 @@ bool SpaceManager::recoverSpace() {
 
     // Clean BCD entries created by BootThatISO
     if (eventManager_)
-        eventManager_->notifyLogUpdate("Limpiando entradas BCD...\r\n");
+        eventManager_->notifyLogUpdate(LocalizedOrUtf8("log.space.cleaning_bcd", "Limpiando entradas BCD...\r\n"));
 
     BCDManager &bcdManager = BCDManager::getInstance();
     bcdManager.setEventManager(eventManager_);
@@ -270,12 +276,13 @@ bool SpaceManager::recoverSpace() {
 
     if (exitCode == 0) {
         if (eventManager_)
-            eventManager_->notifyLogUpdate("Espacio recuperado exitosamente.\r\n");
+            eventManager_->notifyLogUpdate(LocalizedOrUtf8("log.space.recovery_successful", "Espacio recuperado exitosamente.\r\n"));
         return true;
     } else {
         if (eventManager_)
-            eventManager_->notifyLogUpdate("Error: Falló la recuperación de espacio (código " +
-                                           std::to_string(exitCode) + ").\r\n");
+            eventManager_->notifyLogUpdate(LocalizedFormatUtf8("log.space.recovery_failed",
+                                           {Utils::utf8_to_wstring(std::to_string(exitCode))},
+                                           "Error: Falló la recuperación de espacio (código {0}).\r\n"));
         return false;
     }
 }

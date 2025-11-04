@@ -216,6 +216,23 @@
     <string id="log.partition.skippingCreation">Saltando creación de particiones: las particiones ya existen.</string>
     <string id="log.partition.verificationWarning">Advertencia: No se pudo verificar la creación de particiones, pero diskpart reportó éxito.</string>
     
+    <!-- Mensajes de log - Recuperación de Espacio -->
+    <string id="log.space.starting_recovery">Iniciando recuperación de espacio...</string>
+    <string id="log.space.script_created">Script de recuperación creado.</string>
+    <string id="log.space.executing_script">Ejecutando script de PowerShell para recuperar espacio...</string>
+    <string id="log.space.cleaning_bcd">Limpiando entradas BCD...</string>
+    <string id="log.space.recovery_successful">Espacio recuperado exitosamente.</string>
+    <string id="log.space.recovery_failed">Error: Falló la recuperación de espacio (código {0}).</string>
+    
+    <!-- Mensajes de log - Administrador BCD -->
+    <string id="log.bcd.cleaning_entries">Limpiando entradas BCD de BootThatISO...</string>
+    <string id="log.bcd.no_entries_found">No se encontraron entradas BCD de BootThatISO para eliminar.</string>
+    <string id="log.bcd.entry_deleted">Eliminada entrada BCD: {0}</string>
+    <string id="log.bcd.cleanup_complete">Limpieza BCD completada. Entradas eliminadas: {0}</string>
+    
+    <!-- Mensajes de log - Reformateador de Particiones (adicional) -->
+    <string id="log.reformat.efi_found">Volumen EFI encontrado (número {0}). Creando script de formateo...</string>
+    
 </language>
     <string id="button.perform.hint">Clic para Bootear el ISO</string>
     <string id="mainwindow.developedBy">Desarrollado por una empresa Costarricense</string>

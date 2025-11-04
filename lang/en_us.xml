@@ -216,6 +216,23 @@
     <string id="log.partition.skippingCreation">Skipping partition creation: partitions already exist.</string>
     <string id="log.partition.verificationWarning">Warning: Could not verify partition creation, but diskpart reported success.</string>
     
+    <!-- Log messages - Space Recovery -->
+    <string id="log.space.starting_recovery">Starting space recovery...</string>
+    <string id="log.space.script_created">Recovery script created.</string>
+    <string id="log.space.executing_script">Executing PowerShell script to recover space...</string>
+    <string id="log.space.cleaning_bcd">Cleaning BCD entries...</string>
+    <string id="log.space.recovery_successful">Space recovered successfully.</string>
+    <string id="log.space.recovery_failed">Error: Space recovery failed (code {0}).</string>
+    
+    <!-- Log messages - BCD Manager -->
+    <string id="log.bcd.cleaning_entries">Cleaning BootThatISO BCD entries...</string>
+    <string id="log.bcd.no_entries_found">No BootThatISO BCD entries found to delete.</string>
+    <string id="log.bcd.entry_deleted">Deleted BCD entry: {0}</string>
+    <string id="log.bcd.cleanup_complete">BCD cleanup completed. Entries deleted: {0}</string>
+    
+    <!-- Log messages - Partition Reformatter (additional) -->
+    <string id="log.reformat.efi_found">EFI volume found (number {0}). Creating format script...</string>
+    
 </language>
     <string id="button.perform.hint">Click to boot the ISO</string>
     <string id="mainwindow.developedBy">Software developed by a Costa Rican company</string>

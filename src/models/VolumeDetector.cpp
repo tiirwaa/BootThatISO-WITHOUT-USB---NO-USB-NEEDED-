@@ -564,7 +564,8 @@ bool VolumeDetector::isWindowsUsingEfiPartition() {
 
     debugLog << "Checking if Windows SYSTEM EFI partition is labeled as ISOEFI...\n";
 
-    // Use PowerShell to get the actual system EFI partition (not just any EFI labeled partition)
+    // Use PowerShell to get the actual system EFI partition
+    // IMPORTANT: Don't rely on IsActive flag, as it may not be set in UEFI systems
     char tempPath[MAX_PATH];
     GetTempPathA(MAX_PATH, tempPath);
     char tempFile[MAX_PATH];
@@ -579,15 +580,36 @@ bool VolumeDetector::isWindowsUsingEfiPartition() {
         return false;
     }
 
-    // Get the actual system EFI partition (partition with GptType EFI and with ESP attribute)
-    scriptFile << "$systemEfi = Get-Partition | Where-Object { $_.GptType -eq '{c12a7328-f81f-11d2-ba4b-00a0c93ec93b}' "
-                  "-and $_.IsActive -eq $true } | Select-Object -First 1\n";
-    scriptFile << "if ($systemEfi) {\n";
-    scriptFile << "    $vol = Get-Volume | Where-Object { $_.Path -in (Get-Partition -DiskNumber $systemEfi.DiskNumber "
-                  "-PartitionNumber $systemEfi.PartitionNumber).AccessPaths }\n";
-    scriptFile << "    if ($vol) {\n";
-    scriptFile << "        $vol.FileSystemLabel | Out-File -FilePath '" << outFile << "' -Encoding ASCII\n";
+    // Get ALL EFI System Partitions (GptType EFI) and check their labels
+    // Then check if any ISOEFI partition is in the system's boot path
+    scriptFile << "# Get all EFI partitions with ISOEFI label\n";
+    scriptFile << "$efiPartitions = Get-Partition | Where-Object { $_.GptType -eq '{c12a7328-f81f-11d2-ba4b-00a0c93ec93b}' }\n";
+    scriptFile << "$isoefiFound = $false\n";
+    scriptFile << "foreach ($part in $efiPartitions) {\n";
+    scriptFile << "    $vol = Get-Volume | Where-Object { $_.Path -in (Get-Partition -DiskNumber $part.DiskNumber -PartitionNumber $part.PartitionNumber).AccessPaths }\n";
+    scriptFile << "    if ($vol -and $vol.FileSystemLabel -eq 'ISOEFI') {\n";
+    scriptFile << "        $isoefiFound = $true\n";
+    scriptFile << "        break\n";
     scriptFile << "    }\n";
+    scriptFile << "}\n";
+    scriptFile << "\n";
+    scriptFile << "# If we found an ISOEFI partition with EFI type, check if it's critical\n";
+    scriptFile << "if ($isoefiFound) {\n";
+    scriptFile << "    # Try to check if partition is system/critical by attempting to get its boot files\n";
+    scriptFile << "    # If ISOEFI contains \\EFI\\Microsoft\\Boot\\bootmgfw.efi, it's likely the system EFI\n";
+    scriptFile << "    $vol = Get-Volume | Where-Object { $_.FileSystemLabel -eq 'ISOEFI' }\n";
+    scriptFile << "    if ($vol -and $vol.DriveLetter) {\n";
+    scriptFile << "        $efiPath = $vol.DriveLetter + ':\\EFI\\Microsoft\\Boot\\bootmgfw.efi'\n";
+    scriptFile << "        if (Test-Path $efiPath) {\n";
+    scriptFile << "            'SYSTEM_EFI' | Out-File -FilePath '" << outFile << "' -Encoding ASCII\n";
+    scriptFile << "        } else {\n";
+    scriptFile << "            'NOT_SYSTEM' | Out-File -FilePath '" << outFile << "' -Encoding ASCII\n";
+    scriptFile << "        }\n";
+    scriptFile << "    } else {\n";
+    scriptFile << "        'NO_DRIVE_LETTER' | Out-File -FilePath '" << outFile << "' -Encoding ASCII\n";
+    scriptFile << "    }\n";
+    scriptFile << "} else {\n";
+    scriptFile << "    'NOT_FOUND' | Out-File -FilePath '" << outFile << "' -Encoding ASCII\n";
     scriptFile << "}\n";
     scriptFile.close();
 
@@ -612,24 +634,32 @@ bool VolumeDetector::isWindowsUsingEfiPartition() {
     if (!scriptRan) {
         debugLog << "Failed to run PowerShell script\n";
         debugLog.close();
-        return false;
+        // IMPORTANT: If we can't run the script, assume it's NOT safe to delete
+        // Better to be cautious
+        return true;  // Return true to prevent deletion
     }
 
     // Read the result
     std::ifstream resultFile(outFile);
-    std::string   systemEfiLabel;
+    std::string   result;
     if (resultFile) {
-        std::getline(resultFile, systemEfiLabel);
+        std::getline(resultFile, result);
         // Trim whitespace
-        systemEfiLabel.erase(0, systemEfiLabel.find_first_not_of(" \t\r\n"));
-        systemEfiLabel.erase(systemEfiLabel.find_last_not_of(" \t\r\n") + 1);
+        result.erase(0, result.find_first_not_of(" \t\r\n"));
+        result.erase(result.find_last_not_of(" \t\r\n") + 1);
         resultFile.close();
     }
     DeleteFileA(outFile.c_str());
 
-    debugLog << "System EFI partition label: '" << systemEfiLabel << "'\n";
+    debugLog << "Detection result: '" << result << "'\n";
 
-    bool isUsingIsoefi = (_stricmp(systemEfiLabel.c_str(), EFI_VOLUME_LABEL) == 0);
+    bool isUsingIsoefi = (result == "SYSTEM_EFI");
+
+    if (result == "NO_DRIVE_LETTER") {
+        debugLog << "WARNING: ISOEFI partition has no drive letter, cannot verify if it's system EFI\n";
+        debugLog << "Assuming it IS system EFI for safety\n";
+        isUsingIsoefi = true;  // Be cautious
+    }
 
     debugLog << "Conclusion: Windows " << (isUsingIsoefi ? "IS" : "IS NOT")
              << " using ISOEFI as system EFI partition\n";

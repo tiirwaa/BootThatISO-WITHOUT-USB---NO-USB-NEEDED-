@@ -507,8 +507,9 @@ bool PartitionReformatter::reformatEfiPartition() {
     }
 
     if (eventManager_)
-        eventManager_->notifyLogUpdate("Volumen EFI encontrado (número " + std::to_string(volumeNumber) +
-                                       "). Creando script de formateo...\r\n");
+        eventManager_->notifyLogUpdate(LocalizedFormatUtf8("log.reformat.efi_found",
+                                       {Utils::utf8_to_wstring(std::to_string(volumeNumber))},
+                                       "Volumen EFI encontrado (número {0}). Creando script de formateo...\r\n"));
 
     // Now, create script to select and format EFI
     const std::string fsFormat = "fat32";
