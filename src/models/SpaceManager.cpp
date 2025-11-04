@@ -147,30 +147,74 @@ bool SpaceManager::recoverSpace() {
         scriptFile << "    }\n";
         scriptFile << "}\n";
 
-        // Delete ISOEFI partitions that DON'T contain bootmgfw.efi (system EFI marker)
-        scriptFile << "$efiVolumes = Get-Volume | Where-Object { $_.FileSystemLabel -eq '" << EFI_VOLUME_LABEL
-                   << "' }\n";
-        scriptFile << "foreach ($vol in $efiVolumes) {\n";
+        // Delete EFI partitions that DON'T contain bootmgfw.efi (system EFI marker)
+        scriptFile << "Write-Host \"Starting EFI partition detection...\"\n";
+        scriptFile << "Write-Host \"Checking if running as admin...\"\n";
+        scriptFile << "$isAdmin = "
+                      "([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent())."
+                      "IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)\n";
+        scriptFile << "Write-Host \"Is admin: $isAdmin\"\n";
+        scriptFile << "Write-Host \"Getting all partitions...\"\n";
+        scriptFile << "$allPartitions = Get-Partition\n";
+        scriptFile << "Write-Host \"Total partitions found: $($allPartitions.Count)\"\n";
+        scriptFile << "foreach ($p in $allPartitions) { Write-Host \"Partition $($p.PartitionNumber): Type=$($p.Type), "
+                      "Size=$($p.Size)\" }\n";
+        scriptFile << "$efiPartitions = Get-Partition | Where-Object { $_.Type -eq 'System' }\n";
+        scriptFile << "Write-Host \"Found $($efiPartitions.Count) EFI partitions to check\"\n";
+        scriptFile << "foreach ($part in $efiPartitions) {\n";
         scriptFile << "    $isSystemEfi = $false\n";
-        scriptFile << "    if ($vol.DriveLetter) {\n";
-        scriptFile << "        $bootmgfwPath = $vol.DriveLetter + ':\\EFI\\Microsoft\\Boot\\bootmgfw.efi'\n";
-        scriptFile << "        if (Test-Path $bootmgfwPath) {\n";
-        scriptFile << "            $isSystemEfi = $true\n";
+        scriptFile << "    Write-Host \"Checking EFI partition: $($part.PartitionNumber) - Size: $($part.Size)\"\n";
+        scriptFile << "    \n";
+        scriptFile << "    # Try to find existing drive letter\n";
+        scriptFile << "    $driveLetter = $null\n";
+        scriptFile << "    if ($part.DriveLetter) {\n";
+        scriptFile << "        $driveLetter = $part.DriveLetter\n";
+        scriptFile << "        Write-Host \"Partition has drive letter: $driveLetter\"\n";
+        scriptFile << "    } else {\n";
+        scriptFile << "        # Assign temp drive letter\n";
+        scriptFile << "        $availableLetters = 90..67 | ForEach-Object { [char]$_ } | Where-Object { -not "
+                      "(Get-Volume | Where-Object { $_.DriveLetter -eq $_ }) }\n";
+        scriptFile << "        if ($availableLetters) {\n";
+        scriptFile << "            $driveLetter = $availableLetters[0]\n";
+        scriptFile
+            << "            Write-Host \"Assigning temp drive $driveLetter to partition $($part.PartitionNumber)\"\n";
+        scriptFile << "            Add-PartitionAccessPath -DiskNumber 0 -PartitionNumber $part.PartitionNumber "
+                      "-AccessPath ($driveLetter + ':') 2>&1 | Out-Null\n";
         scriptFile << "        }\n";
         scriptFile << "    }\n";
-        scriptFile << "    if (-not $isSystemEfi) {\n";
-        scriptFile << "        $part = Get-Partition | Where-Object { $_.AccessPaths -contains $vol.Path }\n";
-        scriptFile << "        if ($part) {\n";
-        scriptFile << "            $accessPaths = $part.AccessPaths | Where-Object { $_ -match '^[A-Z]:\\\\$' }\n";
-        scriptFile << "            foreach ($path in $accessPaths) {\n";
-        scriptFile << "                try {\n";
-        scriptFile << "                    Remove-PartitionAccessPath -DiskNumber 0 -PartitionNumber "
-                      "$part.PartitionNumber -AccessPath $path -Confirm:$false -ErrorAction SilentlyContinue\n";
-        scriptFile << "                } catch { }\n";
-        scriptFile << "            }\n";
-        scriptFile << "            Remove-Partition -DiskNumber 0 -PartitionNumber $part.PartitionNumber "
-                      "-Confirm:$false\n";
+        scriptFile << "    \n";
+        scriptFile << "    if ($driveLetter) {\n";
+        scriptFile << "        $bootmgfwPath = $driveLetter + ':\\EFI\\Microsoft\\Boot\\bootmgfw.efi'\n";
+        scriptFile << "        Write-Host \"Checking path: $bootmgfwPath\"\n";
+        scriptFile << "        if (Test-Path $bootmgfwPath) {\n";
+        scriptFile << "            Write-Host \"Found bootmgfw.efi - This is SYSTEM EFI partition\"\n";
+        scriptFile << "            $isSystemEfi = $true\n";
+        scriptFile << "        } else {\n";
+        scriptFile << "            Write-Host \"bootmgfw.efi NOT found\"\n";
         scriptFile << "        }\n";
+        scriptFile << "        \n";
+        scriptFile << "        # Remove temp drive if assigned\n";
+        scriptFile << "        if (-not $part.DriveLetter) {\n";
+        scriptFile << "            Write-Host \"Removing temp drive $driveLetter\"\n";
+        scriptFile << "            Remove-PartitionAccessPath -DiskNumber 0 -PartitionNumber $part.PartitionNumber "
+                      "-AccessPath ($driveLetter + ':') 2>&1 | Out-Null\n";
+        scriptFile << "        }\n";
+        scriptFile << "    } else {\n";
+        scriptFile << "        Write-Host \"Could not assign drive letter to partition\"\n";
+        scriptFile << "    }\n";
+        scriptFile << "    \n";
+        scriptFile << "    if (-not $isSystemEfi) {\n";
+        scriptFile << "        Write-Host \"Deleting non-system EFI partition $($part.PartitionNumber)\"\n";
+        scriptFile << "        # Remove all access paths\n";
+        scriptFile << "        foreach ($path in $part.AccessPaths) {\n";
+        scriptFile << "            if ($path -match '^[A-Z]:\\\\$') {\n";
+        scriptFile << "                Remove-PartitionAccessPath -DiskNumber 0 -PartitionNumber $part.PartitionNumber "
+                      "-AccessPath $path -Confirm:$false -ErrorAction SilentlyContinue\n";
+        scriptFile << "            }\n";
+        scriptFile << "        }\n";
+        scriptFile << "        Remove-Partition -DiskNumber 0 -PartitionNumber $part.PartitionNumber -Confirm:$false\n";
+        scriptFile << "    } else {\n";
+        scriptFile << "        Write-Host \"Preserving system EFI partition $($part.PartitionNumber)\"\n";
         scriptFile << "    }\n";
         scriptFile << "}\n";
     } else {
