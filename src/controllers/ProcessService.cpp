@@ -163,9 +163,14 @@ bool ProcessService::copyISO(const std::string &isoPath, const std::string &dest
             return true;
         }
     } else {
-        // In disk mode, we still need install.wim on disk
-        if (isoCopyManager->extractISOContents(eventManager, isoPath, drive, espDriveLocal, true, true, true, modeKey,
-                                               format, injectDrivers)) {
+        // In disk mode (EXTRACT):
+        // - Windows ISOs: Extract all content, process boot.wim, and copy install.wim
+        // - Non-Windows ISOs: Just extract all content, no Windows-specific processing
+        bool extractBootWim = isWindowsISO;  // Only process boot.wim for Windows ISOs
+        bool copyInstallWim = isWindowsISO;  // Only copy install.wim/esd for Windows ISOs
+        
+        if (isoCopyManager->extractISOContents(eventManager, isoPath, drive, espDriveLocal, true, extractBootWim, 
+                                               copyInstallWim, modeKey, format, injectDrivers)) {
             return true;
         }
     }
