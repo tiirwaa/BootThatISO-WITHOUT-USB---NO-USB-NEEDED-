@@ -93,8 +93,8 @@ bool SpaceManager::performSpaceRecovery() {
         eventManager_->notifyLogUpdate("Recuperando espacio para particiones...\r\n");
     if (!recoverSpace()) {
         if (eventManager_)
-            eventManager_->notifyLogUpdate(LocalizedOrUtf8("log.partition.space_recovery_failed",
-                                           "Error: Falló la recuperación de espacio.\r\n"));
+            eventManager_->notifyLogUpdate(
+                LocalizedOrUtf8("log.partition.space_recovery_failed", "Error: Falló la recuperación de espacio.\r\n"));
         return false;
     }
     return true;
@@ -102,7 +102,8 @@ bool SpaceManager::performSpaceRecovery() {
 
 bool SpaceManager::recoverSpace() {
     if (eventManager_)
-        eventManager_->notifyLogUpdate(LocalizedOrUtf8("log.space.starting_recovery", "Iniciando recuperación de espacio...\r\n"));
+        eventManager_->notifyLogUpdate(
+            LocalizedOrUtf8("log.space.starting_recovery", "Iniciando recuperación de espacio...\r\n"));
 
     // Check if Windows is using the ISOEFI partition
     VolumeDetector volumeDetector(eventManager_);
@@ -111,8 +112,8 @@ bool SpaceManager::recoverSpace() {
     if (windowsUsingEfi) {
         if (eventManager_)
             eventManager_->notifyLogUpdate(LocalizedOrUtf8("log.partition.windows_using_efi",
-                                           "ADVERTENCIA: Windows está usando la partición ISOEFI. "
-                                           "Solo se eliminará ISOBOOT, ISOEFI se preservará.\r\n"));
+                                                           "ADVERTENCIA: Windows está usando la partición ISOEFI. "
+                                                           "Solo se eliminará ISOBOOT, ISOEFI se preservará.\r\n"));
     }
 
     // Create PowerShell script to recover space
@@ -127,28 +128,69 @@ bool SpaceManager::recoverSpace() {
         return false;
     }
 
-    // Build the volume filter - if Windows is using EFI, only remove ISOBOOT
+    // Build the volume filter and deletion logic
     if (windowsUsingEfi) {
+        // Windows is using one ISOEFI as system partition
+        // Delete all ISOBOOT partitions
         scriptFile << "$volumes = Get-Volume | Where-Object { $_.FileSystemLabel -eq '" << VOLUME_LABEL << "' }\n";
+        scriptFile << "foreach ($vol in $volumes) {\n";
+        scriptFile << "    $part = Get-Partition | Where-Object { $_.AccessPaths -contains $vol.Path }\n";
+        scriptFile << "    if ($part) {\n";
+        scriptFile << "        $accessPaths = $part.AccessPaths | Where-Object { $_ -match '^[A-Z]:\\\\$' }\n";
+        scriptFile << "        foreach ($path in $accessPaths) {\n";
+        scriptFile << "            try {\n";
+        scriptFile << "                Remove-PartitionAccessPath -DiskNumber 0 -PartitionNumber "
+                      "$part.PartitionNumber -AccessPath $path -Confirm:$false -ErrorAction SilentlyContinue\n";
+        scriptFile << "            } catch { }\n";
+        scriptFile << "        }\n";
+        scriptFile << "        Remove-Partition -DiskNumber 0 -PartitionNumber $part.PartitionNumber -Confirm:$false\n";
+        scriptFile << "    }\n";
+        scriptFile << "}\n";
+
+        // Delete ISOEFI partitions that DON'T contain bootmgfw.efi (system EFI marker)
+        scriptFile << "$efiVolumes = Get-Volume | Where-Object { $_.FileSystemLabel -eq '" << EFI_VOLUME_LABEL
+                   << "' }\n";
+        scriptFile << "foreach ($vol in $efiVolumes) {\n";
+        scriptFile << "    $isSystemEfi = $false\n";
+        scriptFile << "    if ($vol.DriveLetter) {\n";
+        scriptFile << "        $bootmgfwPath = $vol.DriveLetter + ':\\EFI\\Microsoft\\Boot\\bootmgfw.efi'\n";
+        scriptFile << "        if (Test-Path $bootmgfwPath) {\n";
+        scriptFile << "            $isSystemEfi = $true\n";
+        scriptFile << "        }\n";
+        scriptFile << "    }\n";
+        scriptFile << "    if (-not $isSystemEfi) {\n";
+        scriptFile << "        $part = Get-Partition | Where-Object { $_.AccessPaths -contains $vol.Path }\n";
+        scriptFile << "        if ($part) {\n";
+        scriptFile << "            $accessPaths = $part.AccessPaths | Where-Object { $_ -match '^[A-Z]:\\\\$' }\n";
+        scriptFile << "            foreach ($path in $accessPaths) {\n";
+        scriptFile << "                try {\n";
+        scriptFile << "                    Remove-PartitionAccessPath -DiskNumber 0 -PartitionNumber "
+                      "$part.PartitionNumber -AccessPath $path -Confirm:$false -ErrorAction SilentlyContinue\n";
+        scriptFile << "                } catch { }\n";
+        scriptFile << "            }\n";
+        scriptFile << "            Remove-Partition -DiskNumber 0 -PartitionNumber $part.PartitionNumber "
+                      "-Confirm:$false\n";
+        scriptFile << "        }\n";
+        scriptFile << "    }\n";
+        scriptFile << "}\n";
     } else {
+        // Windows is NOT using ISOEFI - safe to delete all ISOBOOT and ISOEFI partitions
         scriptFile << "$volumes = Get-Volume | Where-Object { $_.FileSystemLabel -eq '" << VOLUME_LABEL
                    << "' -or $_.FileSystemLabel -eq '" << EFI_VOLUME_LABEL << "' }\n";
+        scriptFile << "foreach ($vol in $volumes) {\n";
+        scriptFile << "    $part = Get-Partition | Where-Object { $_.AccessPaths -contains $vol.Path }\n";
+        scriptFile << "    if ($part) {\n";
+        scriptFile << "        $accessPaths = $part.AccessPaths | Where-Object { $_ -match '^[A-Z]:\\\\$' }\n";
+        scriptFile << "        foreach ($path in $accessPaths) {\n";
+        scriptFile << "            try {\n";
+        scriptFile << "                Remove-PartitionAccessPath -DiskNumber 0 -PartitionNumber "
+                      "$part.PartitionNumber -AccessPath $path -Confirm:$false -ErrorAction SilentlyContinue\n";
+        scriptFile << "            } catch { }\n";
+        scriptFile << "        }\n";
+        scriptFile << "        Remove-Partition -DiskNumber 0 -PartitionNumber $part.PartitionNumber -Confirm:$false\n";
+        scriptFile << "    }\n";
+        scriptFile << "}\n";
     }
-
-    scriptFile << "foreach ($vol in $volumes) {\n";
-    scriptFile << "    $part = Get-Partition | Where-Object { $_.AccessPaths -contains $vol.Path }\n";
-    scriptFile << "    if ($part) {\n";
-    // Only remove drive letter access paths, not GUID paths
-    scriptFile << "        $accessPaths = $part.AccessPaths | Where-Object { $_ -match '^[A-Z]:\\\\$' }\n";
-    scriptFile << "        foreach ($path in $accessPaths) {\n";
-    scriptFile << "            try {\n";
-    scriptFile << "                Remove-PartitionAccessPath -DiskNumber 0 -PartitionNumber $part.PartitionNumber "
-                  "-AccessPath $path -Confirm:$false -ErrorAction SilentlyContinue\n";
-    scriptFile << "            } catch { }\n";
-    scriptFile << "        }\n";
-    scriptFile << "        Remove-Partition -DiskNumber 0 -PartitionNumber $part.PartitionNumber -Confirm:$false\n";
-    scriptFile << "    }\n";
-    scriptFile << "}\n";
     scriptFile << "$systemPartition = Get-Partition | Where-Object { $_.DriveLetter -eq 'C' }\n";
     scriptFile << "if ($systemPartition) {\n";
     scriptFile << "    $supportedSize = Get-PartitionSupportedSize -DiskNumber 0 -PartitionNumber "
@@ -171,7 +213,8 @@ bool SpaceManager::recoverSpace() {
         logScriptFile.close();
     }
     if (eventManager_)
-        eventManager_->notifyLogUpdate(LocalizedOrUtf8("log.space.script_created", "Script de recuperación creado.\r\n"));
+        eventManager_->notifyLogUpdate(
+            LocalizedOrUtf8("log.space.script_created", "Script de recuperación creado.\r\n"));
 
     // Execute PowerShell script
     STARTUPINFOA        si = {sizeof(si)};
@@ -190,7 +233,7 @@ bool SpaceManager::recoverSpace() {
         DeleteFileA(psFile.c_str());
         if (eventManager_)
             eventManager_->notifyLogUpdate(LocalizedOrUtf8("log.partition.pipe_creation_failed",
-                                           "Error: No se pudo crear pipe para recuperación.\r\n"));
+                                                           "Error: No se pudo crear pipe para recuperación.\r\n"));
         return false;
     }
 
@@ -206,16 +249,17 @@ bool SpaceManager::recoverSpace() {
         CloseHandle(hWrite);
         DeleteFileA(psFile.c_str());
         if (eventManager_)
-            eventManager_->notifyLogUpdate(LocalizedOrUtf8("log.partition.powershell_execution_failed",
-                                           "Error: No se pudo ejecutar PowerShell para recuperación.\r\n"));
+            eventManager_->notifyLogUpdate(
+                LocalizedOrUtf8("log.partition.powershell_execution_failed",
+                                "Error: No se pudo ejecutar PowerShell para recuperación.\r\n"));
         return false;
     }
 
     CloseHandle(hWrite);
 
     if (eventManager_) {
-        eventManager_->notifyLogUpdate(LocalizedOrUtf8("log.space.executing_script",
-                                       "Ejecutando script de PowerShell para recuperar espacio...\r\n"));
+        eventManager_->notifyLogUpdate(LocalizedOrUtf8(
+            "log.space.executing_script", "Ejecutando script de PowerShell para recuperar espacio...\r\n"));
     }
 
     output.clear();
@@ -276,13 +320,14 @@ bool SpaceManager::recoverSpace() {
 
     if (exitCode == 0) {
         if (eventManager_)
-            eventManager_->notifyLogUpdate(LocalizedOrUtf8("log.space.recovery_successful", "Espacio recuperado exitosamente.\r\n"));
+            eventManager_->notifyLogUpdate(
+                LocalizedOrUtf8("log.space.recovery_successful", "Espacio recuperado exitosamente.\r\n"));
         return true;
     } else {
         if (eventManager_)
-            eventManager_->notifyLogUpdate(LocalizedFormatUtf8("log.space.recovery_failed",
-                                           {Utils::utf8_to_wstring(std::to_string(exitCode))},
-                                           "Error: Falló la recuperación de espacio (código {0}).\r\n"));
+            eventManager_->notifyLogUpdate(
+                LocalizedFormatUtf8("log.space.recovery_failed", {Utils::utf8_to_wstring(std::to_string(exitCode))},
+                                    "Error: Falló la recuperación de espacio (código {0}).\r\n"));
         return false;
     }
 }

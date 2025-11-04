@@ -830,7 +830,8 @@ void BCDManager::cleanBootThatISOEntries() {
     }
 
     if (eventManager) {
-        eventManager->notifyLogUpdate(LocalizedOrUtf8("log.bcd.cleaning_entries", "Limpiando entradas BCD de BootThatISO...\r\n"));
+        eventManager->notifyLogUpdate(
+            LocalizedOrUtf8("log.bcd.cleaning_entries", "Limpiando entradas BCD de BootThatISO...\r\n"));
     }
 
     // Enumerate all BCD entries
@@ -918,9 +919,8 @@ void BCDManager::cleanBootThatISOEntries() {
                     }
 
                     if (eventManager) {
-                        eventManager->notifyLogUpdate(LocalizedFormatUtf8("log.bcd.entry_deleted",
-                                                      {Utils::utf8_to_wstring(guid)},
-                                                      "Eliminada entrada BCD: {0}\r\n"));
+                        eventManager->notifyLogUpdate(LocalizedFormatUtf8(
+                            "log.bcd.entry_deleted", {Utils::utf8_to_wstring(guid)}, "Eliminada entrada BCD: {0}\r\n"));
                     }
 
                     deletedCount++;
@@ -937,11 +937,11 @@ void BCDManager::cleanBootThatISOEntries() {
     if (eventManager) {
         if (deletedCount > 0) {
             eventManager->notifyLogUpdate(LocalizedFormatUtf8("log.bcd.cleanup_complete",
-                {Utils::utf8_to_wstring(std::to_string(deletedCount))},
-                "Limpieza BCD completada. Entradas eliminadas: {0}\r\n"));
+                                                              {Utils::utf8_to_wstring(std::to_string(deletedCount))},
+                                                              "Limpieza BCD completada. Entradas eliminadas: {0}\r\n"));
         } else {
-            eventManager->notifyLogUpdate(LocalizedOrUtf8("log.bcd.no_entries_found",
-                                          "No se encontraron entradas BCD de BootThatISO para eliminar.\r\n"));
+            eventManager->notifyLogUpdate(LocalizedOrUtf8(
+                "log.bcd.no_entries_found", "No se encontraron entradas BCD de BootThatISO para eliminar.\r\n"));
         }
     }
 }

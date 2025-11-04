@@ -583,10 +583,12 @@ bool VolumeDetector::isWindowsUsingEfiPartition() {
     // Get ALL EFI System Partitions (GptType EFI) and check their labels
     // Then check if any ISOEFI partition is in the system's boot path
     scriptFile << "# Get all EFI partitions with ISOEFI label\n";
-    scriptFile << "$efiPartitions = Get-Partition | Where-Object { $_.GptType -eq '{c12a7328-f81f-11d2-ba4b-00a0c93ec93b}' }\n";
+    scriptFile << "$efiPartitions = Get-Partition | Where-Object { $_.GptType -eq "
+                  "'{c12a7328-f81f-11d2-ba4b-00a0c93ec93b}' }\n";
     scriptFile << "$isoefiFound = $false\n";
     scriptFile << "foreach ($part in $efiPartitions) {\n";
-    scriptFile << "    $vol = Get-Volume | Where-Object { $_.Path -in (Get-Partition -DiskNumber $part.DiskNumber -PartitionNumber $part.PartitionNumber).AccessPaths }\n";
+    scriptFile << "    $vol = Get-Volume | Where-Object { $_.Path -in (Get-Partition -DiskNumber $part.DiskNumber "
+                  "-PartitionNumber $part.PartitionNumber).AccessPaths }\n";
     scriptFile << "    if ($vol -and $vol.FileSystemLabel -eq 'ISOEFI') {\n";
     scriptFile << "        $isoefiFound = $true\n";
     scriptFile << "        break\n";
@@ -636,7 +638,7 @@ bool VolumeDetector::isWindowsUsingEfiPartition() {
         debugLog.close();
         // IMPORTANT: If we can't run the script, assume it's NOT safe to delete
         // Better to be cautious
-        return true;  // Return true to prevent deletion
+        return true; // Return true to prevent deletion
     }
 
     // Read the result
@@ -658,7 +660,7 @@ bool VolumeDetector::isWindowsUsingEfiPartition() {
     if (result == "NO_DRIVE_LETTER") {
         debugLog << "WARNING: ISOEFI partition has no drive letter, cannot verify if it's system EFI\n";
         debugLog << "Assuming it IS system EFI for safety\n";
-        isUsingIsoefi = true;  // Be cautious
+        isUsingIsoefi = true; // Be cautious
     }
 
     debugLog << "Conclusion: Windows " << (isUsingIsoefi ? "IS" : "IS NOT")
