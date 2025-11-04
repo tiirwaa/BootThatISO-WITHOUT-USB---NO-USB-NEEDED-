@@ -4,6 +4,7 @@
 #include <cstring>
 #include <algorithm>
 #include <cctype>
+#include <set>
 #include "../utils/Utils.h"
 #include "../utils/constants.h"
 
@@ -478,7 +479,8 @@ int VolumeDetector::getEfiPartitionSizeMB() {
 
 int VolumeDetector::countEfiPartitions() {
     // Count how many ISOEFI partitions exist (detects duplicates)
-    int count = 0;
+    int             count = 0;
+    std::set<DWORD> processedSerials; // Track serial numbers to avoid counting same partition twice
 
     std::string logDir = Utils::getExeDirectory() + "logs";
     CreateDirectoryA(logDir.c_str(), NULL);
@@ -499,15 +501,23 @@ int VolumeDetector::countEfiPartitions() {
             if (GetVolumeInformationA(drive, volumeName, sizeof(volumeName), &serialNumber, &maxComponentLen,
                                       &fileSystemFlags, fileSystem, sizeof(fileSystem))) {
                 if (_stricmp(volumeName, EFI_VOLUME_LABEL) == 0) {
-                    count++;
-                    debugLog << "Found ISOEFI partition #" << count << " at " << drive << "\n";
+                    // Only count if we haven't seen this serial number before
+                    if (processedSerials.find(serialNumber) == processedSerials.end()) {
+                        processedSerials.insert(serialNumber);
+                        count++;
+                        debugLog << "Found ISOEFI partition #" << count << " at " << drive << " (Serial: " << std::hex
+                                 << serialNumber << std::dec << ")\n";
+                    } else {
+                        debugLog << "Skipped duplicate ISOEFI at " << drive
+                                 << " (already counted with Serial: " << std::hex << serialNumber << std::dec << ")\n";
+                    }
                 }
             }
         }
         drive += strlen(drive) + 1;
     }
 
-    // Check unassigned volumes
+    // Check unassigned volumes (those without drive letters)
     char   volumeNameCheck[MAX_PATH];
     HANDLE hVolume = FindFirstVolumeA(volumeNameCheck, sizeof(volumeNameCheck));
     if (hVolume != INVALID_HANDLE_VALUE) {
@@ -524,8 +534,16 @@ int VolumeDetector::countEfiPartitions() {
             if (GetVolumeInformationA(volPath.c_str(), volName, sizeof(volName), &serial, &maxComp, &flags, fsName,
                                       sizeof(fsName))) {
                 if (_stricmp(volName, EFI_VOLUME_LABEL) == 0) {
-                    count++;
-                    debugLog << "Found unassigned ISOEFI partition #" << count << "\n";
+                    // Only count if we haven't seen this serial number before
+                    if (processedSerials.find(serial) == processedSerials.end()) {
+                        processedSerials.insert(serial);
+                        count++;
+                        debugLog << "Found unassigned ISOEFI partition #" << count << " (Serial: " << std::hex << serial
+                                 << std::dec << ")\n";
+                    } else {
+                        debugLog << "Skipped duplicate unassigned ISOEFI (already counted with Serial: " << std::hex
+                                 << serial << std::dec << ")\n";
+                    }
                 }
             }
         } while (FindNextVolumeA(hVolume, volumeNameCheck, sizeof(volumeNameCheck)));
