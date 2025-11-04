@@ -150,7 +150,7 @@ BootThatISO!.exe ^
 El proceso registra eventos y finaliza sin mostrar la ventana principal.
 
 ## Flujo interno resumido
-1. **Validacion y particiones** (`PartitionManager`): verifica espacio disponible, ejecuta `chkdsk` opcional, reduce `C:` ~10.5 GB, crea `ISOEFI` (500 MB FAT32) y `ISOBOOT` (10 GB) o reformatea las existentes, y expone metodos de recuperacion.
+1. **Validacion y particiones** (`PartitionManager`): verifica espacio disponible, ejecuta `chkdsk` opcional, reduce `C:` ~10.5 GB, crea `ISOEFI` (1024 MB FAT32) y `ISOBOOT` (10 GB) o reformatea las existentes, y expone metodos de recuperacion.
 2. **Preparacion de contenidos** (`ISOCopyManager`): lee el contenido del ISO usando el SDK de 7‑Zip (manejador ISO), clasifica si es Windows, lista el contenido, copia archivos a las unidades de destino y delega el manejo EFI a `EFIManager`.
 3. **Procesamiento de Arranque** (`BootWimProcessor`): orquesta la extracción y procesamiento de boot.wim, coordina con módulos especializados:
    - `WimMounter`: maneja operaciones DISM para montar/desmontar archivos WIM

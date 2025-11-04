@@ -185,8 +185,9 @@ bool PartitionManager::createPartition(const std::string &format, bool skipInteg
     if (efiPartitionExists()) {
         int currentEfiSizeMB = getEfiPartitionSizeMB();
         if (eventManager)
-            eventManager->notifyLogUpdate("Partición EFI detectada con tamaño: " + std::to_string(currentEfiSizeMB) +
-                                          " MB\r\n");
+            eventManager->notifyLogUpdate(
+                LocalizedFormatUtf8("log.partition.efiDetectedSize", {Utils::utf8_to_wstring(std::to_string(currentEfiSizeMB))},
+                                    "EFI partition detected with size: {0} MB\r\n"));
 
         // CRITICAL: Check if Windows is using this ISOEFI partition
         bool windowsIsUsingEfi = volumeDetector->isWindowsUsingEfiPartition();
@@ -195,16 +196,17 @@ bool PartitionManager::createPartition(const std::string &format, bool skipInteg
             if (eventManager) {
                 eventManager->notifyLogUpdate("\r\n");
                 eventManager->notifyLogUpdate("========================================\r\n");
-                eventManager->notifyLogUpdate("ADVERTENCIA CRÍTICA:\r\n");
-                eventManager->notifyLogUpdate(
-                    "Windows está usando la partición ISOEFI como partición EFI del sistema.\r\n");
-                eventManager->notifyLogUpdate(
-                    "NO se puede eliminar ni modificar esta partición sin hacer el sistema no booteable.\r\n");
+                eventManager->notifyLogUpdate(LocalizedOrUtf8("log.partition.criticalWarning", "CRITICAL WARNING:\r\n"));
+                eventManager->notifyLogUpdate(LocalizedOrUtf8("log.partition.windowsUsingEfi",
+                                                              "Windows is using the ISOEFI partition as system EFI partition.\r\n"));
+                eventManager->notifyLogUpdate(LocalizedOrUtf8("log.partition.cannotDeleteEfi",
+                                                              "CANNOT delete or modify this partition without making the system unbootable.\r\n"));
                 eventManager->notifyLogUpdate("========================================\r\n");
                 eventManager->notifyLogUpdate("\r\n");
-                eventManager->notifyLogUpdate("Solución: La partición ISOEFI será reutilizada sin modificaciones.\r\n");
-                eventManager->notifyLogUpdate(
-                    "NOTA: Esto significa que cualquier contenido previo en ISOEFI se mantendrá.\r\n");
+                eventManager->notifyLogUpdate(LocalizedOrUtf8("log.partition.solution",
+                                                              "Solution: The ISOEFI partition will be reused without modifications.\r\n"));
+                eventManager->notifyLogUpdate(LocalizedOrUtf8("log.partition.contentWillRemain",
+                                                              "NOTE: Any previous content in ISOEFI will be preserved.\r\n"));
                 eventManager->notifyLogUpdate("\r\n");
             }
 
@@ -214,26 +216,32 @@ bool PartitionManager::createPartition(const std::string &format, bool skipInteg
             // Windows is not using this partition, safe to modify
             if (currentEfiSizeMB > 0 && currentEfiSizeMB != REQUIRED_EFI_SIZE_MB) {
                 if (eventManager)
-                    eventManager->notifyLogUpdate("ADVERTENCIA: Partición EFI con tamaño incorrecto (" +
-                                                  std::to_string(currentEfiSizeMB) + " MB, se requieren " +
-                                                  std::to_string(REQUIRED_EFI_SIZE_MB) + " MB)\r\n");
+                    eventManager->notifyLogUpdate(
+                        LocalizedFormatUtf8("log.partition.efiWrongSize",
+                                            {Utils::utf8_to_wstring(std::to_string(currentEfiSizeMB)),
+                                             Utils::utf8_to_wstring(std::to_string(REQUIRED_EFI_SIZE_MB))},
+                                            "WARNING: EFI partition with incorrect size ({0} MB, required {1} MB)\r\n"));
                 if (eventManager)
-                    eventManager->notifyLogUpdate("Windows NO está usando esta partición. Eliminando AMBAS particiones "
-                                                  "para recrearlas con el nuevo tamaño...\r\n");
+                    eventManager->notifyLogUpdate(LocalizedOrUtf8("log.partition.windowsNotUsingDeleting",
+                                                                  "Windows is NOT using this partition. Deleting BOTH partitions to recreate with new size...\r\n"));
 
                 // Delete both partitions to recreate with correct size
                 if (!spaceManager->recoverSpace()) {
                     if (eventManager)
-                        eventManager->notifyLogUpdate("Error: No se pudieron eliminar las particiones antiguas.\r\n");
+                        eventManager->notifyLogUpdate(LocalizedOrUtf8("log.partition.errorDeletingOld",
+                                                                      "Error: Could not delete old partitions.\r\n"));
                     return false;
                 }
 
                 if (eventManager)
-                    eventManager->notifyLogUpdate("Particiones antiguas eliminadas exitosamente.\r\n");
+                    eventManager->notifyLogUpdate(LocalizedOrUtf8("log.partition.oldPartitionsDeleted",
+                                                                  "Old partitions deleted successfully.\r\n"));
             } else if (currentEfiSizeMB == REQUIRED_EFI_SIZE_MB) {
                 if (eventManager)
-                    eventManager->notifyLogUpdate("Partición EFI tiene el tamaño correcto (" +
-                                                  std::to_string(REQUIRED_EFI_SIZE_MB) + " MB).\r\n");
+                    eventManager->notifyLogUpdate(
+                        LocalizedFormatUtf8("log.partition.efiCorrectSize",
+                                            {Utils::utf8_to_wstring(std::to_string(REQUIRED_EFI_SIZE_MB))},
+                                            "EFI partition has correct size ({0} MB).\r\n"));
             }
         }
     }
@@ -248,13 +256,13 @@ bool PartitionManager::createPartition(const std::string &format, bool skipInteg
     // Step 2: Verify disk is GPT
     if (!diskpartExecutor->isDiskGpt()) {
         if (eventManager)
-            eventManager->notifyLogUpdate(
-                "Error: El disco no es GPT. La aplicación requiere un disco GPT para crear particiones EFI.\r\n");
+            eventManager->notifyLogUpdate(LocalizedOrUtf8("log.partition.diskNotGpt",
+                                                          "Error: Disk is not GPT. Application requires GPT disk to create EFI partitions.\r\n"));
         return false;
     } else {
         if (eventManager)
-            eventManager->notifyLogUpdate(
-                "Disco confirmado como GPT. Procediendo con la creación de particiones...\r\n");
+            eventManager->notifyLogUpdate(LocalizedOrUtf8("log.partition.diskConfirmedGpt",
+                                                          "Disk confirmed as GPT. Proceeding with partition creation...\r\n"));
     }
 
     // Step 3: Recover space for partitions (if not already done in Step 0)
@@ -263,25 +271,29 @@ bool PartitionManager::createPartition(const std::string &format, bool skipInteg
     if (!partitionExists() && !efiPartitionExists()) {
         // No partitions exist, need to create them
         if (eventManager)
-            eventManager->notifyLogUpdate("No se detectaron particiones existentes. Creando nuevas particiones...\r\n");
+            eventManager->notifyLogUpdate(LocalizedOrUtf8("log.partition.noPartitionsDetected",
+                                                          "No existing partitions detected. Creating new partitions...\r\n"));
 
         if (!spaceManager->recoverSpace()) {
             if (eventManager)
-                eventManager->notifyLogUpdate("Error: Falló la recuperación de espacio.\r\n");
+                eventManager->notifyLogUpdate(LocalizedOrUtf8("log.partition.errorRecoveringSpace",
+                                                              "Error: Space recovery failed.\r\n"));
             return false;
         }
         needsToCreatePartitions = true;
     } else if (partitionExists() && efiPartitionExists()) {
         // Both partitions exist - check if they have correct sizes
         if (eventManager)
-            eventManager->notifyLogUpdate("Particiones ISOBOOT e ISOEFI ya existen. Verificando integridad...\r\n");
+            eventManager->notifyLogUpdate(LocalizedOrUtf8("log.partition.bothPartitionsExist",
+                                                          "ISOBOOT and ISOEFI partitions already exist. Verifying integrity...\r\n"));
 
         // Partitions already exist and have been validated in Step 0
         // No need to create them again
         needsToCreatePartitions = false;
 
         if (eventManager)
-            eventManager->notifyLogUpdate("Usando particiones existentes.\r\n");
+            eventManager->notifyLogUpdate(LocalizedOrUtf8("log.partition.usingExistingPartitions",
+                                                          "Using existing partitions.\r\n"));
     } else {
         // Only one partition exists - this is an inconsistent state
         // CRITICAL: Check if Windows is using the EFI partition before attempting to delete it
@@ -291,10 +303,13 @@ bool PartitionManager::createPartition(const std::string &format, bool skipInteg
             if (eventManager) {
                 eventManager->notifyLogUpdate("\r\n");
                 eventManager->notifyLogUpdate("========================================\r\n");
-                eventManager->notifyLogUpdate("CRITICAL ERROR:\r\n");
-                eventManager->notifyLogUpdate("Windows is using the ISOEFI partition as its system EFI partition.\r\n");
-                eventManager->notifyLogUpdate("Cannot delete or recreate this partition - it would break Windows boot.\r\n");
-                eventManager->notifyLogUpdate("Please manually recover space and ensure both partitions exist.\r\n");
+                eventManager->notifyLogUpdate(LocalizedOrUtf8("log.partition.criticalError", "CRITICAL ERROR:\r\n"));
+                eventManager->notifyLogUpdate(LocalizedOrUtf8("log.partition.windowsUsingEfiSystem",
+                                                              "Windows is using the ISOEFI partition as its system EFI partition.\r\n"));
+                eventManager->notifyLogUpdate(LocalizedOrUtf8("log.partition.cannotDeleteBreakBoot",
+                                                              "Cannot delete or recreate this partition - it would break Windows boot.\r\n"));
+                eventManager->notifyLogUpdate(LocalizedOrUtf8("log.partition.manualRecovery",
+                                                              "Please manually recover space and ensure both partitions exist.\r\n"));
                 eventManager->notifyLogUpdate("========================================\r\n");
                 eventManager->notifyLogUpdate("\r\n");
             }
@@ -302,11 +317,13 @@ bool PartitionManager::createPartition(const std::string &format, bool skipInteg
         }
         
         if (eventManager)
-            eventManager->notifyLogUpdate("Estado inconsistente: Solo una partición existe. Recreando ambas...\r\n");
+            eventManager->notifyLogUpdate(LocalizedOrUtf8("log.partition.inconsistentState",
+                                                          "Inconsistent state: Only one partition exists. Recreating both...\r\n"));
 
         if (!spaceManager->recoverSpace()) {
             if (eventManager)
-                eventManager->notifyLogUpdate("Error: Falló la recuperación de espacio.\r\n");
+                eventManager->notifyLogUpdate(LocalizedOrUtf8("log.partition.errorRecoveringSpace",
+                                                              "Error: Space recovery failed.\r\n"));
             return false;
         }
         needsToCreatePartitions = true;
@@ -321,12 +338,13 @@ bool PartitionManager::createPartition(const std::string &format, bool skipInteg
         // Step 5: Verify partitions were created successfully
         if (!partitionCreator->verifyPartitionsCreated()) {
             if (eventManager)
-                eventManager->notifyLogUpdate(
-                    "Advertencia: No se pudo verificar la creación de particiones, pero diskpart reportó éxito.\r\n");
+                eventManager->notifyLogUpdate(LocalizedOrUtf8("log.partition.verificationWarning",
+                                                              "Warning: Could not verify partition creation, but diskpart reported success.\r\n"));
         }
     } else {
         if (eventManager)
-            eventManager->notifyLogUpdate("Saltando creación de particiones: las particiones ya existen.\r\n");
+            eventManager->notifyLogUpdate(LocalizedOrUtf8("log.partition.skippingCreation",
+                                                          "Skipping partition creation: partitions already exist.\r\n"));
     }
 
     return true;

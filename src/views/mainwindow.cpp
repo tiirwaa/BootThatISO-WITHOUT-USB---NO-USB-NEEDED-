@@ -692,7 +692,7 @@ void MainWindow::OnCreatePartition() {
         std::wstring confirmStepOneMessage =
             LocalizedOrW("message.diskModifyConfirmPrimary",
                          L"Esta operacion modificara el disco del sistema, reduciendo su tamano en 10.5 GB para crear "
-                         L"dos particiones bootables: una ESP FAT32 de 500MB (ISOEFI) y una particion de datos de 10GB "
+                         L"dos particiones bootables: una ESP FAT32 de 1024MB (ISOEFI) y una particion de datos de 10GB "
                          L"(ISOBOOT). Desea continuar?");
         std::wstring confirmStepOneTitle = LocalizedOrW("title.operationConfirmation", L"Confirmacion de Operacion");
         if (MessageBoxW(NULL, confirmStepOneMessage.c_str(), confirmStepOneTitle.c_str(), MB_YESNO) != IDYES)

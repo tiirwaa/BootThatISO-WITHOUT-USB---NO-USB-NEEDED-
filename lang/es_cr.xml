@@ -189,6 +189,33 @@
     <string id="log.bootwim.bcdConfiguredForData">BCD se configurará para arrancar desde partición de datos.</string>
     <string id="log.bootwim.extractingAdditionalFiles">Extrayendo archivos adicionales desde boot.wim...</string>
     <string id="log.bootwim.additionalFilesExtracted">Archivos adicionales desde boot.wim extraidos correctamente.</string>
+    
+    <!-- Mensajes de log - Administrador de Particiones -->
+    <string id="log.partition.efiDetectedSize">Partición EFI detectada con tamaño: {0} MB</string>
+    <string id="log.partition.criticalWarning">ADVERTENCIA CRÍTICA:</string>
+    <string id="log.partition.windowsUsingEfi">Windows está usando la partición ISOEFI como partición EFI del sistema.</string>
+    <string id="log.partition.cannotDeleteEfi">NO se puede eliminar ni modificar esta partición sin hacer el sistema no booteable.</string>
+    <string id="log.partition.solution">Solución: La partición ISOEFI será reutilizada sin modificaciones.</string>
+    <string id="log.partition.contentWillRemain">NOTA: Esto significa que cualquier contenido previo en ISOEFI se mantendrá.</string>
+    <string id="log.partition.efiWrongSize">ADVERTENCIA: Partición EFI con tamaño incorrecto ({0} MB, se requieren {1} MB)</string>
+    <string id="log.partition.windowsNotUsingDeleting">Windows NO está usando esta partición. Eliminando AMBAS particiones para recrearlas con el nuevo tamaño...</string>
+    <string id="log.partition.errorDeletingOld">Error: No se pudieron eliminar las particiones antiguas.</string>
+    <string id="log.partition.oldPartitionsDeleted">Particiones antiguas eliminadas exitosamente.</string>
+    <string id="log.partition.efiCorrectSize">Partición EFI tiene el tamaño correcto ({0} MB).</string>
+    <string id="log.partition.diskNotGpt">Error: El disco no es GPT. La aplicación requiere un disco GPT para crear particiones EFI.</string>
+    <string id="log.partition.diskConfirmedGpt">Disco confirmado como GPT. Procediendo con la creación de particiones...</string>
+    <string id="log.partition.noPartitionsDetected">No se detectaron particiones existentes. Creando nuevas particiones...</string>
+    <string id="log.partition.errorRecoveringSpace">Error: Falló la recuperación de espacio.</string>
+    <string id="log.partition.bothPartitionsExist">Particiones ISOBOOT e ISOEFI ya existen. Verificando integridad...</string>
+    <string id="log.partition.usingExistingPartitions">Usando particiones existentes.</string>
+    <string id="log.partition.inconsistentState">Estado inconsistente: Solo una partición existe. Recreando ambas...</string>
+    <string id="log.partition.criticalError">ERROR CRÍTICO:</string>
+    <string id="log.partition.windowsUsingEfiSystem">Windows está usando la partición ISOEFI como su partición EFI del sistema.</string>
+    <string id="log.partition.cannotDeleteBreakBoot">No se puede eliminar ni recrear esta partición - rompería el arranque de Windows.</string>
+    <string id="log.partition.manualRecovery">Por favor, recupere el espacio manualmente y asegúrese de que ambas particiones existan.</string>
+    <string id="log.partition.skippingCreation">Saltando creación de particiones: las particiones ya existen.</string>
+    <string id="log.partition.verificationWarning">Advertencia: No se pudo verificar la creación de particiones, pero diskpart reportó éxito.</string>
+    
 </language>
     <string id="button.perform.hint">Clic para Bootear el ISO</string>
     <string id="mainwindow.developedBy">Desarrollado por una empresa Costarricense</string>
