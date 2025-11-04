@@ -19,6 +19,8 @@ Esta utilidad es especialmente útil para:
 
 Proyecto desarrollado por **Andrey Rodríguez Araya**.
 
+**Nota:** Herramientas como Ventoy o Rufus funcionan muy bien con memorias USB, pero BootThatISO arranca las ISOs directamente desde el disco interno, sin necesidad de USB ni formatear nada. Además puede cargar el entorno en RAM (por ejemplo, con Hiren’s todo corre desde memoria). Desde un NVMe, el arranque es muchísimo más rápido que desde un USB, por ejemplo para instalar Windows también es más rápido. Si no tiene una USB a mano también podría instalar Windows por ejemplo. El software tiene una opción para borrar las particiones usadas y deja el disco como originalmente estaba asignando el espacio a Windows.
+
 Sitio web: [Inglés](https://agsoft.co.cr/en/software-and-services/) | [Español](https://agsoft.co.cr/servicios/)
 
 ![Screenshot](screenshot.png?v=1)
