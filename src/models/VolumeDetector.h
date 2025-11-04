@@ -11,6 +11,7 @@ public:
     bool        partitionExists();
     bool        efiPartitionExists();
     bool        isWindowsUsingEfiPartition(); // Check if Windows is using ISOEFI
+    int         countEfiPartitions();         // Count how many ISOEFI partitions exist
     std::string getPartitionDriveLetter();
     std::string getEfiPartitionDriveLetter();
     std::string getPartitionFileSystem();

@@ -23,6 +23,26 @@ ProcessService::ProcessService(PartitionManager *pm, ISOCopyManager *icm, BCDMan
 
 ProcessService::ProcessResult ProcessService::validateAndPrepare(const std::string &isoPath, const std::string &format,
                                                                  bool skipIntegrityCheck) {
+    // CRITICAL: Check for duplicate ISOEFI partitions
+    int efiCount = partitionManager->countEfiPartitions();
+    if (efiCount > 1) {
+        eventManager.notifyLogUpdate("\r\n");
+        eventManager.notifyLogUpdate("========================================\r\n");
+        eventManager.notifyLogUpdate("ADVERTENCIA CRÍTICA:\r\n");
+        eventManager.notifyLogUpdate("Se detectaron " + std::to_string(efiCount) +
+                                     " particiones ISOEFI duplicadas.\r\n");
+        eventManager.notifyLogUpdate("Esto puede causar problemas de arranque.\r\n");
+        eventManager.notifyLogUpdate("========================================\r\n");
+        eventManager.notifyLogUpdate("\r\n");
+        eventManager.notifyLogUpdate("Eliminando TODAS las particiones para recrearlas correctamente...\r\n");
+
+        // Force cleanup and recreation
+        if (!partitionManager->recoverSpace()) {
+            return {false, "Error al limpiar particiones duplicadas."};
+        }
+        // After cleanup, continue with normal creation
+    }
+
     bool partitionExists = partitionManager->partitionExists();
 
     // CRITICAL: Check EFI partition size for backward compatibility

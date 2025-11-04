@@ -475,6 +475,68 @@ int VolumeDetector::getEfiPartitionSizeMB() {
     debugLog.close();
     return 0; // Could not determine size
 }
+
+int VolumeDetector::countEfiPartitions() {
+    // Count how many ISOEFI partitions exist (detects duplicates)
+    int count = 0;
+
+    std::string logDir = Utils::getExeDirectory() + "logs";
+    CreateDirectoryA(logDir.c_str(), NULL);
+    std::ofstream debugLog((logDir + "\\efi_partition_count.log").c_str());
+
+    debugLog << "Counting ISOEFI partitions...\n";
+
+    // Check drives with assigned letters
+    char drives[256];
+    GetLogicalDriveStringsA(sizeof(drives), drives);
+
+    char *drive = drives;
+    while (*drive) {
+        if (GetDriveTypeA(drive) == DRIVE_FIXED) {
+            char  volumeName[MAX_PATH];
+            char  fileSystem[MAX_PATH];
+            DWORD serialNumber, maxComponentLen, fileSystemFlags;
+            if (GetVolumeInformationA(drive, volumeName, sizeof(volumeName), &serialNumber, &maxComponentLen,
+                                      &fileSystemFlags, fileSystem, sizeof(fileSystem))) {
+                if (_stricmp(volumeName, EFI_VOLUME_LABEL) == 0) {
+                    count++;
+                    debugLog << "Found ISOEFI partition #" << count << " at " << drive << "\n";
+                }
+            }
+        }
+        drive += strlen(drive) + 1;
+    }
+
+    // Check unassigned volumes
+    char   volumeNameCheck[MAX_PATH];
+    HANDLE hVolume = FindFirstVolumeA(volumeNameCheck, sizeof(volumeNameCheck));
+    if (hVolume != INVALID_HANDLE_VALUE) {
+        do {
+            size_t len = strlen(volumeNameCheck);
+            if (len > 0 && volumeNameCheck[len - 1] == '\\') {
+                volumeNameCheck[len - 1] = '\0';
+            }
+
+            char        volName[MAX_PATH] = {0};
+            char        fsName[MAX_PATH]  = {0};
+            DWORD       serial, maxComp, flags;
+            std::string volPath = std::string(volumeNameCheck) + "\\";
+            if (GetVolumeInformationA(volPath.c_str(), volName, sizeof(volName), &serial, &maxComp, &flags, fsName,
+                                      sizeof(fsName))) {
+                if (_stricmp(volName, EFI_VOLUME_LABEL) == 0) {
+                    count++;
+                    debugLog << "Found unassigned ISOEFI partition #" << count << "\n";
+                }
+            }
+        } while (FindNextVolumeA(hVolume, volumeNameCheck, sizeof(volumeNameCheck)));
+        FindVolumeClose(hVolume);
+    }
+
+    debugLog << "Total ISOEFI partitions found: " << count << "\n";
+    debugLog.close();
+    return count;
+}
+
 bool VolumeDetector::isWindowsUsingEfiPartition() {
     // Check if Windows is installed and using the ISOEFI partition
     std::string logDir = Utils::getExeDirectory() + "logs";

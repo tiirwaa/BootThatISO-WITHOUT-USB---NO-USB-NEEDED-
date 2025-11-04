@@ -50,6 +50,7 @@ public:
     std::string           getEfiPartitionDriveLetter();
     std::string           getPartitionFileSystem();
     int                   getEfiPartitionSizeMB(); // Get EFI partition size in MB
+    int                   countEfiPartitions();    // Count how many ISOEFI partitions exist
     bool                  reformatPartition(const std::string &format);
     bool                  reformatEfiPartition();
     bool                  recoverSpace();

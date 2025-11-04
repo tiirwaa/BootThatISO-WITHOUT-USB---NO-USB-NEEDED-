@@ -339,6 +339,10 @@ int PartitionManager::getEfiPartitionSizeMB() {
     return volumeDetector->getEfiPartitionSizeMB();
 }
 
+int PartitionManager::countEfiPartitions() {
+    return volumeDetector->countEfiPartitions();
+}
+
 bool PartitionManager::reformatPartition(const std::string &format) {
     return partitionReformatter->reformatPartition(format);
 }
