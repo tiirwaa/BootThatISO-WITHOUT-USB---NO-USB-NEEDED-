@@ -157,20 +157,32 @@ void EditionSelectorDialog::initDialog(HWND hDlg, DialogData *data) {
     if (data->editions && !data->editions->empty()) {
         initListView(data->hListView, *data->editions);
 
-        // Auto-select recommended edition (Pro or Home)
+        // Auto-select recommended edition (Pro, Home, Professional, etc.)
+        // Search for common edition keywords in multiple languages
         int selectedIndex = -1;
         for (size_t i = 0; i < data->editions->size(); ++i) {
             const auto &ed        = (*data->editions)[i];
             std::string nameLower = ed.name;
             std::transform(nameLower.begin(), nameLower.end(), nameLower.begin(), ::tolower);
 
-            if (nameLower.find("pro") != std::string::npos || nameLower.find("home") != std::string::npos) {
+            // Check for Pro/Professional variants (English, Spanish, Portuguese, French, German)
+            bool isPro = nameLower.find("pro") != std::string::npos ||
+                         nameLower.find("profesional") != std::string::npos ||
+                         nameLower.find("profissional") != std::string::npos ||
+                         nameLower.find("professionnel") != std::string::npos;
+
+            // Check for Home variants (English, Spanish, Portuguese, French, German)
+            bool isHome = nameLower.find("home") != std::string::npos || nameLower.find("hogar") != std::string::npos ||
+                          nameLower.find("residencial") != std::string::npos ||
+                          nameLower.find("famille") != std::string::npos || nameLower.find("heim") != std::string::npos;
+
+            if (isPro || isHome) {
                 selectedIndex = static_cast<int>(i);
                 break;
             }
         }
 
-        // If no Pro/Home found, select first
+        // If no Pro/Home found, select first non-setup edition
         if (selectedIndex == -1) {
             selectedIndex = 0;
         }

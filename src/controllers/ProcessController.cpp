@@ -151,7 +151,9 @@ bool ProcessController::recoverSpace() {
 }
 
 void ProcessController::recoverSpaceInThread() {
-    eventManager.notifyLogUpdate("Recuperando espacio. Esto puede tardar varios minutos...\r\n");
+    eventManager.notifyLogUpdate(
+        LocalizedOrUtf8("log.recovery.recovering", "Recuperando espacio. Esto puede tardar varios minutos...") +
+        "\r\n");
     bool success = partitionManager->recoverSpace();
     if (success) {
         // Remove BCD entries

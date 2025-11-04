@@ -120,15 +120,29 @@ bool LocalizationManager::loadLanguageByIndex(size_t index) {
 bool LocalizationManager::loadLanguageByCode(const std::wstring &code) {
     std::wstring normalized = code;
     std::replace(normalized.begin(), normalized.end(), L'-', L'_');
+
     for (const auto &language : languages) {
         std::wstring languageCode = language.code;
         std::replace(languageCode.begin(), languageCode.end(), L'-', L'_');
+
         if (_wcsicmp(languageCode.c_str(), normalized.c_str()) == 0) {
+            // Check if language is already in cache
+            auto cacheIt = languageCache.find(language.code);
+            if (cacheIt != languageCache.end()) {
+                // Use cached data (fast path)
+                strings         = cacheIt->second;
+                currentLanguage = language;
+                return true;
+            }
+
+            // Parse and cache language file (slow path, only first time)
             std::unordered_map<std::string, std::wstring> loadedStrings;
             LanguageInfo                                  info;
             if (parseLanguageFile(language.resourceId, loadedStrings, info)) {
-                strings         = std::move(loadedStrings);
-                currentLanguage = language;
+                // Store in cache for future use
+                languageCache[language.code] = loadedStrings;
+                strings                      = loadedStrings;
+                currentLanguage              = language;
                 return true;
             }
             return false;
@@ -292,7 +306,7 @@ bool LocalizationManager::promptForLanguageSelection(HINSTANCE hInstance, HWND p
 }
 
 bool LocalizationManager::parseLanguageFile(int resourceId, std::unordered_map<std::string, std::wstring> &outStrings,
-                                            LanguageInfo &metadata) const {
+                                            LanguageInfo &metadata) {
     HRSRC hRes = FindResource(NULL, MAKEINTRESOURCE(resourceId), RT_RCDATA);
     if (!hRes) {
         return false;
@@ -368,6 +382,14 @@ bool LocalizationManager::parseLanguageFile(int resourceId, std::unordered_map<s
     }
 
     return !outStrings.empty();
+}
+
+void LocalizationManager::clearCache() {
+    languageCache.clear();
+}
+
+size_t LocalizationManager::getCacheSize() const {
+    return languageCache.size();
 }
 
 std::wstring LocalizationManager::decodeEntities(const std::wstring &input) {

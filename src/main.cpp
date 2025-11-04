@@ -145,10 +145,14 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 
         EventManager      eventManager;
         ProcessController processController(eventManager);
-        std::string       unattendedFallback =
-            modeKey.empty() ? "" : (modeKey == AppKeys::BootModeRam ? "Boot desde Memoria" : "Boot desde Disco");
-        std::string unattendedLabel = LocalizedOrUtf8(
-            "bootMode." + modeKey, unattendedFallback.empty() ? modeKey.c_str() : unattendedFallback.c_str());
+
+        // Default to RAM mode if not specified
+        if (modeKey.empty()) {
+            modeKey = AppKeys::BootModeRam;
+        }
+
+        std::string unattendedFallback = (modeKey == AppKeys::BootModeRam ? "Boot desde Memoria" : "Boot desde Disco");
+        std::string unattendedLabel    = LocalizedOrUtf8("bootMode." + modeKey, unattendedFallback.c_str());
         processController.startProcess(isoPath, format, modeKey, unattendedLabel, !chkdsk, true);
         return 0;
     }

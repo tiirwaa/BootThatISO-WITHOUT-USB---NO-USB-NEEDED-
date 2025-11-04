@@ -512,13 +512,15 @@ LRESULT MainWindow::HandleCommand(UINT msg, WPARAM wParam, LPARAM lParam) {
         EnableWindow(recoverButton, TRUE);
         HideRecoverDialog();
         if (success) {
-            LogMessage("Recuperacion de espacio finalizada correctamente.\r\n");
+            LogMessage(
+                LocalizedOrUtf8("log.recovery.success", "Recuperacion de espacio finalizada correctamente.\r\n"));
             WCHAR exePath[MAX_PATH];
             GetModuleFileNameW(NULL, exePath, MAX_PATH);
             ShellExecuteW(NULL, L"open", exePath, NULL, NULL, SW_SHOWNORMAL);
             PostQuitMessage(0);
         } else {
-            LogMessage("Recuperacion de espacio fallida. Revisa los detalles en los registros.\r\n");
+            LogMessage(LocalizedOrUtf8("log.recovery.failed",
+                                       "Recuperacion de espacio fallida. Revisa los detalles en los registros.\r\n"));
             std::wstring recoverErrorTitle   = LocalizedOrW("title.error", L"Error");
             std::wstring recoverErrorMessage = LocalizedOrW(
                 "message.recoverSpaceFailed", L"Error al recuperar espacio. Revisa los registros para mas detalles.");
@@ -712,8 +714,8 @@ void MainWindow::OnCreatePartition() {
     int         len = WideCharToMultiByte(CP_UTF8, 0, isoPath, -1, NULL, 0, NULL, NULL);
     std::string isoPathStr(len, '\0');
     WideCharToMultiByte(CP_UTF8, 0, isoPath, -1, &isoPathStr[0], len, NULL, NULL);
-    std::string bootModeFallback =
-        (selectedBootModeKey == AppKeys::BootModeRam) ? "Boot desde Memoria" : "Boot desde Disco";
+    // Use English as fallback to maintain consistency across languages
+    std::string bootModeFallback = (selectedBootModeKey == AppKeys::BootModeRam) ? "Boot from RAM" : "Boot from Disk";
     std::string bootModeLabelStr = LocalizedOrUtf8("bootMode." + selectedBootModeKey, bootModeFallback.c_str());
     processController->startProcess(isoPathStr, selectedFormat, selectedBootModeKey, bootModeLabelStr,
                                     skipIntegrityCheck, injectDriversIntoISO);

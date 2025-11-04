@@ -226,7 +226,8 @@ std::string BCDManager::configureBCD(const std::string &driveLetter, const std::
     captureBootmgrStateIfNeeded();
     const std::string BCD_CMD = "C:\\Windows\\System32\\bcdedit.exe";
     if (eventManager)
-        eventManager->notifyLogUpdate("Configurando Boot Configuration Data (BCD)...\r\n");
+        eventManager->notifyLogUpdate(
+            LocalizedOrUtf8("log.bcd.configuring", "Configurando Boot Configuration Data (BCD)...") + "\r\n");
 
     // Get volume GUID for data partition
     WCHAR        dataVolumeName[MAX_PATH];
@@ -420,7 +421,9 @@ std::string BCDManager::configureBCD(const std::string &driveLetter, const std::
         output = Utils::exec((BCD_CMD + " /copy {default} /d \"" + bcdLabel + "\"").c_str());
     }
 
-    if (output.find("error") != std::string::npos || output.find("{") == std::string::npos)
+    // Validate by checking for GUID pattern (more reliable than searching for localized "error")
+    // bcdedit always returns a GUID like {xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx} on success
+    if (output.find("{") == std::string::npos || output.find("}") == std::string::npos)
         return "Error al crear/copiar entrada BCD";
     size_t pos = output.find("{");
     size_t end = output.find("}", pos);
@@ -524,7 +527,8 @@ std::string BCDManager::configureBCD(const std::string &driveLetter, const std::
     WORD machine = GetMachineType(efiBootFile);
     if (machine != IMAGE_FILE_MACHINE_AMD64 && machine != IMAGE_FILE_MACHINE_I386) {
         if (eventManager)
-            eventManager->notifyLogUpdate("Error: Arquitectura EFI no soportada.\r\n");
+            eventManager->notifyLogUpdate(
+                LocalizedOrUtf8("log.bcd.unsupportedArchitecture", "Error: Arquitectura EFI no soportada.") + "\r\n");
         return "Arquitectura EFI no soportada";
     }
 
@@ -579,8 +583,14 @@ std::string BCDManager::configureBCD(const std::string &driveLetter, const std::
         }
     }
 
-    if (eventManager)
-        eventManager->notifyLogUpdate("Archivo EFI seleccionado: " + efiBootFile + "\r\n");
+    if (eventManager) {
+        std::string message = LocalizedOrUtf8("log.bcd.efiSelected", "Archivo EFI seleccionado: {0}");
+        size_t      pos     = message.find("{0}");
+        if (pos != std::string::npos) {
+            message.replace(pos, 3, efiBootFile);
+        }
+        eventManager->notifyLogUpdate(message + "\r\n");
+    }
 
     // Compute the relative path for BCD
     std::string efiPath = efiBootFile.substr(espDriveLetter.length());
@@ -647,9 +657,21 @@ std::string BCDManager::configureBCD(const std::string &driveLetter, const std::
     std::string cmd6    = BCD_CMD + " /default " + guid;
     std::string result6 = Utils::exec(cmd6.c_str());
     logFile << "Set default command: " << cmd6 << "\nResult: " << result6 << "\n";
-    if (result6.find("error") != std::string::npos || result6.find("Error") != std::string::npos) {
-        if (eventManager)
-            eventManager->notifyLogUpdate("Error al configurar default: " + result6 + "\r\n");
+    // Check for common error indicators in multiple languages
+    // Note: bcdedit typically produces minimal output on success, verbose output on error
+    bool hasError = (result6.find("error") != std::string::npos || result6.find("Error") != std::string::npos ||
+                     result6.find("Fehler") != std::string::npos || // German
+                     result6.find("erreur") != std::string::npos || // French
+                     result6.find("erro") != std::string::npos);    // Portuguese
+    if (hasError && result6.length() > 50) {                        // If verbose error message
+        if (eventManager) {
+            std::string message = LocalizedOrUtf8("log.bcd.errorDefault", "Error al configurar default: {0}");
+            size_t      pos     = message.find("{0}");
+            if (pos != std::string::npos) {
+                message.replace(pos, 3, result6);
+            }
+            eventManager->notifyLogUpdate(message + "\r\n");
+        }
         logFile << "ERROR: Failed to set default boot entry. Result: " << result6 << "\n";
         logFile.close();
         return "Error al configurar default: " + result6;
@@ -659,9 +681,20 @@ std::string BCDManager::configureBCD(const std::string &driveLetter, const std::
     std::string cmdDisplay    = BCD_CMD + " /displayorder " + guid + " /addfirst";
     std::string resultDisplay = Utils::exec(cmdDisplay.c_str());
     logFile << "Displayorder command: " << cmdDisplay << "\nResult: " << resultDisplay << "\n";
-    if (resultDisplay.find("error") != std::string::npos || resultDisplay.find("Error") != std::string::npos) {
-        if (eventManager)
-            eventManager->notifyLogUpdate("Error al configurar displayorder: " + resultDisplay + "\r\n");
+    // Check for error indicators in multiple languages
+    bool hasDisplayError =
+        (resultDisplay.find("error") != std::string::npos || resultDisplay.find("Error") != std::string::npos ||
+         resultDisplay.find("Fehler") != std::string::npos || resultDisplay.find("erreur") != std::string::npos ||
+         resultDisplay.find("erro") != std::string::npos);
+    if (hasDisplayError && resultDisplay.length() > 50) {
+        if (eventManager) {
+            std::string message = LocalizedOrUtf8("log.bcd.errorDisplayorder", "Error al configurar displayorder: {0}");
+            size_t      pos     = message.find("{0}");
+            if (pos != std::string::npos) {
+                message.replace(pos, 3, resultDisplay);
+            }
+            eventManager->notifyLogUpdate(message + "\r\n");
+        }
         logFile << "ERROR: Failed to add to displayorder. Result: " << resultDisplay << "\n";
         logFile.close();
         return "Error al configurar displayorder: " + resultDisplay;
@@ -671,9 +704,20 @@ std::string BCDManager::configureBCD(const std::string &driveLetter, const std::
     std::string cmdTimeout    = BCD_CMD + " /set {bootmgr} timeout 30";
     std::string resultTimeout = Utils::exec(cmdTimeout.c_str());
     logFile << "Set timeout command: " << cmdTimeout << "\nResult: " << resultTimeout << "\n";
-    if (resultTimeout.find("error") != std::string::npos || resultTimeout.find("Error") != std::string::npos) {
-        if (eventManager)
-            eventManager->notifyLogUpdate("Error al configurar timeout: " + resultTimeout + "\r\n");
+    // Check for error indicators in multiple languages
+    bool hasTimeoutError =
+        (resultTimeout.find("error") != std::string::npos || resultTimeout.find("Error") != std::string::npos ||
+         resultTimeout.find("Fehler") != std::string::npos || resultTimeout.find("erreur") != std::string::npos ||
+         resultTimeout.find("erro") != std::string::npos);
+    if (hasTimeoutError && resultTimeout.length() > 50) {
+        if (eventManager) {
+            std::string message = LocalizedOrUtf8("log.bcd.errorTimeout", "Error al configurar timeout: {0}");
+            size_t      pos     = message.find("{0}");
+            if (pos != std::string::npos) {
+                message.replace(pos, 3, resultTimeout);
+            }
+            eventManager->notifyLogUpdate(message + "\r\n");
+        }
         logFile << "ERROR: Failed to set timeout. Result: " << resultTimeout << "\n";
         logFile.close();
         return "Error al configurar timeout: " + resultTimeout;
@@ -745,8 +789,9 @@ bool BCDManager::restoreBCD() {
 
     if (shouldResetDefaults) {
         if (eventManager) {
-            eventManager->notifyLogUpdate("Estableciendo Windows como entrada predeterminada y ajustando el tiempo de "
-                                          "espera a 0 segundos...\r\n");
+            eventManager->notifyLogUpdate(LocalizedOrUtf8("log.bcd.settingWindowsDefault",
+                                                          "Estableciendo Windows como entrada predeterminada...") +
+                                          "\r\n");
         }
         std::string defaultResult = Utils::exec((BCD_CMD + " /default {current}").c_str());
         std::string timeoutResult = Utils::exec((BCD_CMD + " /timeout 0").c_str());

@@ -10,6 +10,7 @@
 #include <filesystem>
 #include "../utils/Utils.h"
 #include "../utils/constants.h"
+#include "../utils/LocalizationHelpers.h"
 #include "filecopymanager.h"
 #include "ISOReader.h"
 
@@ -24,7 +25,7 @@ bool EFIManager::extractEFI(const std::string &sourcePath, const std::string &es
     CreateDirectoryA(logDir.c_str(), NULL);
     std::ofstream logFile(logDir + "\\" + ISO_EXTRACT_LOG_FILE, std::ios::app);
     logFile << getTimestamp() << "Extracting EFI directory to ESP" << std::endl;
-    eventManager.notifyLogUpdate("Extrayendo archivos EFI al ESP...\r\n");
+    eventManager.notifyLogUpdate(LocalizedOrUtf8("log.efi.extracting", "Extrayendo archivos EFI al ESP...") + "\r\n");
 
     // Create destination EFI directory on ESP
     std::string efiDestPath = espPath + "EFI";
@@ -151,7 +152,7 @@ bool EFIManager::extractBootFilesFromWIM(const std::string &sourcePath, const st
             count++;
             p += 7;
         }
-        // Try to find a block that mentions setup/instalacion
+        // Try to find a block that mentions setup (language-independent check)
         int upperBound = (count > 2 ? count : 2);
         for (int cand = 1; cand <= upperBound; ++cand) {
             std::string marker = lowerize("Index : " + std::to_string(cand));
@@ -160,8 +161,8 @@ bool EFIManager::extractBootFilesFromWIM(const std::string &sourcePath, const st
                 continue;
             size_t      e     = low.find("index :", s + marker.size());
             std::string block = low.substr(s, e == std::string::npos ? std::string::npos : e - s);
-            bool        isSetup =
-                (block.find("setup") != std::string::npos) || (block.find("instalacion") != std::string::npos);
+            // Look for "setup" keyword which appears in most languages in WIM image names
+            bool isSetup = (block.find("setup") != std::string::npos);
             if (isSetup) {
                 preferredIndex = cand;
                 break;
@@ -176,8 +177,10 @@ bool EFIManager::extractBootFilesFromWIM(const std::string &sourcePath, const st
                            "\" /index:" + std::to_string(preferredIndex) + " /MountDir:\"" +
                            tempDir.substr(0, tempDir.size() - 1) + "\" /ReadOnly";
     logFile << getTimestamp() << "Mount command: " << mountCmd << std::endl;
-    std::string mountResult     = exec(mountCmd.c_str(), &eventManager);
-    bool        mountSuccessWim = mountResult.find("The operation completed successfully") != std::string::npos;
+    std::string mountResult = exec(mountCmd.c_str(), &eventManager);
+    // Check mount success based on exit code instead of localized message
+    // Note: exec() function should be modified to return exit code, but for now we check the result
+    bool mountSuccessWim = !mountResult.empty() && mountResult.find("error") == std::string::npos;
     logFile << getTimestamp() << "Mount WIM " << (mountSuccessWim ? "successful" : "failed") << std::endl;
 
     if (!mountSuccessWim) {
@@ -253,8 +256,10 @@ bool EFIManager::extractBootFilesFromWIM(const std::string &sourcePath, const st
     std::string unmountCmd =
         "cmd /c dism /Unmount-Wim /MountDir:\"" + tempDir.substr(0, tempDir.size() - 1) + "\" /discard";
     logFile << getTimestamp() << "Unmount command: " << unmountCmd << std::endl;
-    std::string unmountResult  = exec(unmountCmd.c_str(), &eventManager);
-    bool        unmountSuccess = unmountResult.find("The operation completed successfully") != std::string::npos;
+    std::string unmountResult = exec(unmountCmd.c_str(), &eventManager);
+    // Check unmount success based on absence of error messages (more reliable than localized success message)
+    bool unmountSuccess = !unmountResult.empty() && unmountResult.find("error") == std::string::npos &&
+                          unmountResult.find("failed") == std::string::npos;
     logFile << getTimestamp() << "Unmount WIM " << (unmountSuccess ? "successful" : "failed") << std::endl;
     if (!unmountSuccess) {
         logFile << getTimestamp() << "DISM unmount output: " << unmountResult << std::endl;

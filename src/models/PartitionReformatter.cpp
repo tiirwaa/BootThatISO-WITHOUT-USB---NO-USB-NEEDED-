@@ -1,6 +1,7 @@
 #include "PartitionReformatter.h"
 #include "EventManager.h"
 #include "../utils/Utils.h"
+#include "../utils/LocalizationHelpers.h"
 #include "../utils/constants.h"
 #include <windows.h>
 #include <iostream>
@@ -344,7 +345,8 @@ bool PartitionReformatter::reformatPartition(const std::string &format) {
 
 bool PartitionReformatter::reformatEfiPartition() {
     if (eventManager_)
-        eventManager_->notifyLogUpdate("Iniciando reformateo de partición EFI...\r\n");
+        eventManager_->notifyLogUpdate(
+            LocalizedOrUtf8("log.reformatter.starting", "Iniciando reformateo de partición EFI...") + "\r\n");
 
     // First, find the volume number by running diskpart list volume
     char tempPath[MAX_PATH];
@@ -506,7 +508,8 @@ bool PartitionReformatter::reformatEfiPartition() {
     }
 
     if (eventManager_)
-        eventManager_->notifyLogUpdate("Ejecutando formateo de partición EFI...\r\n");
+        eventManager_->notifyLogUpdate(
+            LocalizedOrUtf8("log.reformatter.executing", "Ejecutando formateo de partición EFI...") + "\r\n");
 
     WaitForSingleObject(pi.hProcess, 300000); // 5 minutes
 
@@ -531,12 +534,19 @@ bool PartitionReformatter::reformatEfiPartition() {
 
     if (exitCode == 0) {
         if (eventManager_)
-            eventManager_->notifyLogUpdate("Partición EFI reformateada exitosamente.\r\n");
+            eventManager_->notifyLogUpdate(
+                LocalizedOrUtf8("log.reformatter.success", "Partición EFI reformateada exitosamente.") + "\r\n");
         return true;
     } else {
-        if (eventManager_)
-            eventManager_->notifyLogUpdate("Error: Falló el formateo de la partición EFI (código " +
-                                           std::to_string(exitCode) + ").\r\n");
+        if (eventManager_) {
+            std::string message =
+                LocalizedOrUtf8("log.reformatter.failed", "Error: Falló el formateo de la partición EFI (código {0}).");
+            size_t pos = message.find("{0}");
+            if (pos != std::string::npos) {
+                message.replace(pos, 3, std::to_string(exitCode));
+            }
+            eventManager_->notifyLogUpdate(message + "\r\n");
+        }
         return false;
     }
 }

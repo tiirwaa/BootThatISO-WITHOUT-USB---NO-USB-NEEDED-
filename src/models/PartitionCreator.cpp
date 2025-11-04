@@ -1,6 +1,7 @@
 #include "PartitionCreator.h"
 #include "EventManager.h"
 #include "../utils/Utils.h"
+#include "../utils/LocalizationHelpers.h"
 #include "../utils/constants.h"
 #include <windows.h>
 #include <iostream>
@@ -13,7 +14,8 @@ bool PartitionCreator::performDiskpartOperations(const std::string &format) {
     std::string logDir = Utils::getExeDirectory() + "logs";
     CreateDirectoryA(logDir.c_str(), NULL);
     if (eventManager)
-        eventManager->notifyLogUpdate("Creando script de diskpart para particiones...\r\n");
+        eventManager->notifyLogUpdate(
+            LocalizedOrUtf8("log.diskpart.creatingScript", "Creando script de diskpart para particiones...") + "\r\n");
     char tempPath[MAX_PATH];
     GetTempPathA(MAX_PATH, tempPath);
     char tempFile[MAX_PATH];
@@ -22,7 +24,9 @@ bool PartitionCreator::performDiskpartOperations(const std::string &format) {
     std::ofstream scriptFile(tempFile);
     if (!scriptFile) {
         if (eventManager)
-            eventManager->notifyLogUpdate("Error: No se pudo crear el archivo de script de diskpart.\r\n");
+            eventManager->notifyLogUpdate(LocalizedOrUtf8("log.diskpart.scriptError",
+                                                          "Error: No se pudo crear el archivo de script de diskpart.") +
+                                          "\r\n");
         return false;
     }
 
@@ -106,10 +110,17 @@ bool PartitionCreator::performDiskpartOperations(const std::string &format) {
 
     if (eventManager) {
         if (exitCode == 0) {
-            eventManager->notifyLogUpdate("Diskpart ejecutado exitosamente. Verificando particiones...\r\n");
+            eventManager->notifyLogUpdate(
+                LocalizedOrUtf8("log.diskpart.success", "Diskpart ejecutado exitosamente. Verificando particiones...") +
+                "\r\n");
         } else {
-            eventManager->notifyLogUpdate("Error: Diskpart falló con código de salida " + std::to_string(exitCode) +
-                                          ".\r\n");
+            std::string message =
+                LocalizedOrUtf8("log.diskpart.failed", "Error: Diskpart falló con código de salida {0}");
+            size_t pos = message.find("{0}");
+            if (pos != std::string::npos) {
+                message.replace(pos, 3, std::to_string(exitCode));
+            }
+            eventManager->notifyLogUpdate(message + ".\r\n");
         }
     }
 
@@ -136,11 +147,13 @@ bool PartitionCreator::performDiskpartOperations(const std::string &format) {
 
     if (exitCode == 0) {
         if (eventManager)
-            eventManager->notifyLogUpdate("Particiones creadas exitosamente.\r\n");
+            eventManager->notifyLogUpdate(
+                LocalizedOrUtf8("log.diskpart.partitionsCreated", "Particiones creadas exitosamente.") + "\r\n");
         return true;
     } else {
         if (eventManager)
-            eventManager->notifyLogUpdate("Error: Falló la creación de particiones.\r\n");
+            eventManager->notifyLogUpdate(
+                LocalizedOrUtf8("log.diskpart.partitionsFailed", "Error: Falló la creación de particiones.") + "\r\n");
         return false;
     }
 }

@@ -34,20 +34,29 @@ public:
 
     bool promptForLanguageSelection(HINSTANCE hInstance, HWND parent = NULL);
 
+    // Cache management
+    void   clearCache();
+    size_t getCacheSize() const;
+
 private:
     LocalizationManager()                                       = default;
     LocalizationManager(const LocalizationManager &)            = delete;
     LocalizationManager &operator=(const LocalizationManager &) = delete;
 
     bool                parseLanguageFile(int resourceId, std::unordered_map<std::string, std::wstring> &outStrings,
-                                          LanguageInfo &metadata) const;
+                                          LanguageInfo &metadata);
     static std::wstring decodeEntities(const std::wstring &input);
     static std::wstring trim(const std::wstring &input);
     static void         replaceAll(std::wstring &target, const std::wstring &from, const std::wstring &to);
 
+    // Current active strings
     std::unordered_map<std::string, std::wstring> strings;
-    std::vector<LanguageInfo>                     languages;
-    LanguageInfo                                  currentLanguage;
+
+    // Cache: language code -> parsed strings
+    std::unordered_map<std::wstring, std::unordered_map<std::string, std::wstring>> languageCache;
+
+    std::vector<LanguageInfo> languages;
+    LanguageInfo              currentLanguage;
 };
 
 #endif // LOCALIZATION_MANAGER_H

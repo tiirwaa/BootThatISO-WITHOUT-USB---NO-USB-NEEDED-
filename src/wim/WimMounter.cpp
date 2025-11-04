@@ -33,12 +33,13 @@ std::vector<WimMounter::WimImageInfo> WimMounter::parseWimInfo(const std::string
     std::vector<WimImageInfo> images;
     std::string               normalized = normalizeString(dismOutput);
 
-    // Count indices
+    // Parse DISM output using pattern matching that works in any language
+    // DISM format is consistent: field : value, with "Index :" always being first
     size_t pos = 0;
     while ((pos = normalized.find("index :", pos)) != std::string::npos) {
         WimImageInfo info;
         info.index = (int)images.size() + 1;
-        info.size  = 0; // Default to 0 if not found
+        info.size  = 0;
 
         // Find the block for this index
         size_t      blockStart = pos;
@@ -46,54 +47,60 @@ std::vector<WimMounter::WimImageInfo> WimMounter::parseWimInfo(const std::string
         std::string block      = (blockEnd == std::string::npos) ? normalized.substr(blockStart)
                                                                  : normalized.substr(blockStart, blockEnd - blockStart);
 
-        // Extract name
-        size_t namePos = block.find("name :");
-        if (namePos == std::string::npos)
-            namePos = block.find("nombre :");
-        if (namePos != std::string::npos) {
-            size_t nameEnd = block.find_first_of("\r\n", namePos);
-            info.name      = dismOutput.substr(blockStart + namePos,
-                                          (nameEnd == std::string::npos) ? std::string::npos : nameEnd - namePos);
-        }
+        // Strategy: Look for pattern ": <value>" after index line
+        // The second line after "Index :" is typically "Name :" (or localized equivalent)
+        // We look for lines with ": " pattern to extract values
+        std::istringstream blockStream(
+            dismOutput.substr(blockStart, (blockEnd == std::string::npos) ? std::string::npos : blockEnd - blockStart));
+        std::string line;
+        int         lineNum = 0;
 
-        // Extract description
-        size_t descPos = block.find("description :");
-        if (descPos == std::string::npos)
-            descPos = block.find("descripcion :");
-        if (descPos != std::string::npos) {
-            size_t descEnd   = block.find_first_of("\r\n", descPos);
-            info.description = dismOutput.substr(
-                blockStart + descPos, (descEnd == std::string::npos) ? std::string::npos : descEnd - descPos);
-        }
+        while (std::getline(blockStream, line)) {
+            lineNum++;
+            size_t colonPos = line.find(" : ");
+            if (colonPos == std::string::npos)
+                continue;
 
-        // Extract size (looking for "Size :" or "Tamaño :" or similar)
-        size_t sizePos = block.find("size :");
-        if (sizePos == std::string::npos)
-            sizePos = block.find("tamano :");
-        if (sizePos != std::string::npos) {
-            size_t sizeEnd = block.find_first_of("\r\n", sizePos);
-            if (sizeEnd != std::string::npos) {
-                std::string sizeStr = dismOutput.substr(blockStart + sizePos, sizeEnd - sizePos);
-                // Extract numbers from the string (e.g., "Size : 4,567,890,123 bytes")
+            std::string value = line.substr(colonPos + 3);
+            // Trim value
+            value.erase(0, value.find_first_not_of(" \t\r\n"));
+            value.erase(value.find_last_not_of(" \t\r\n") + 1);
+
+            // Line 2 is typically Name (in any language)
+            if (lineNum == 2 && info.name.empty()) {
+                info.name = value;
+            }
+            // Line 3 is typically Description
+            else if (lineNum == 3 && info.description.empty()) {
+                info.description = value;
+            }
+            // Look for lines with large numbers (size in bytes)
+            else if (value.length() > 5) {
                 std::string numStr;
-                for (char c : sizeStr) {
-                    if (isdigit(c)) {
+                for (char c : value) {
+                    if (isdigit(c))
                         numStr += c;
-                    }
                 }
-                if (!numStr.empty()) {
+                if (numStr.length() >= 8) { // Size is typically 8+ digits
                     try {
-                        info.size = std::stoll(numStr);
+                        long long size = std::stoll(numStr);
+                        if (size > 100000000) { // > 100MB, likely the size field
+                            info.size = size;
+                        }
                     } catch (...) {
-                        info.size = 0;
                     }
                 }
             }
         }
 
-        // Detect if this is a Windows Setup image
-        info.isSetupImage =
-            (block.find("setup") != std::string::npos) || (block.find("instalacion") != std::string::npos);
+        // Detect Windows Setup image by checking if name/description contains setup-related keywords
+        // Use normalized (lowercase) version for case-insensitive matching
+        std::string normalizedName = normalizeString(info.name);
+        std::string normalizedDesc = normalizeString(info.description);
+        info.isSetupImage          = (normalizedName.find("setup") != std::string::npos) ||
+                            (normalizedName.find("instalacion") != std::string::npos) ||
+                            (normalizedDesc.find("setup") != std::string::npos) ||
+                            (normalizedDesc.find("instalacion") != std::string::npos);
 
         images.push_back(info);
         pos += 7;
@@ -103,7 +110,8 @@ std::vector<WimMounter::WimImageInfo> WimMounter::parseWimInfo(const std::string
 }
 
 std::vector<WimMounter::WimImageInfo> WimMounter::getWimImageInfo(const std::string &wimPath) {
-    std::string dism    = Utils::getDismPath();
+    std::string dism = Utils::getDismPath();
+    // Use standard DISM command - we parse by structure, not by language-specific keywords
     std::string command = "\"" + dism + "\" /Get-WimInfo /WimFile:\"" + wimPath + "\"";
     std::string output;
 

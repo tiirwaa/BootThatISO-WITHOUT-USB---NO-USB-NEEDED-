@@ -178,16 +178,8 @@ bool ISOCopyManager::extractISOContents(EventManager &eventManager, const std::s
     bootWimProcessor = std::make_unique<BootWimProcessor>(eventManager, *fileCopyManager);
     contentExtractor = std::make_unique<ContentExtractor>(eventManager, *fileCopyManager);
 
-    std::string modeLabel = LocalizationManager::getInstance().getUtf8String("bootMode." + mode);
-    if (modeLabel.empty()) {
-        if (mode == AppKeys::BootModeRam) {
-            modeLabel = "Boot desde Memoria";
-        } else if (mode == AppKeys::BootModeExtract) {
-            modeLabel = "Boot desde Disco";
-        } else {
-            modeLabel = mode;
-        }
-    }
+    std::string fallback  = mode == AppKeys::BootModeRam ? "Boot desde Memoria" : "Boot desde Disco";
+    std::string modeLabel = LocalizedOrUtf8("bootMode." + mode, fallback.c_str());
 
     std::string logDir = Utils::getExeDirectory() + "logs";
     CreateDirectoryA(logDir.c_str(), NULL);
@@ -222,7 +214,7 @@ bool ISOCopyManager::extractISOContents(EventManager &eventManager, const std::s
         logFile << getTimestamp() << "File: " << files[i] << std::endl;
     }
 
-    eventManager.notifyLogUpdate("Analizando contenido del ISO...\r\n");
+    eventManager.notifyLogUpdate(LocalizedOrUtf8("log.iso.analyzing", "Analizando contenido del ISO...") + "\r\n");
 
     // Check if it's Windows ISO
     bool isWindowsISO  = false;
@@ -257,9 +249,10 @@ bool ISOCopyManager::extractISOContents(EventManager &eventManager, const std::s
     logFile << getTimestamp() << "Is Windows ISO: " << (isWindowsISO ? "Yes" : "No") << std::endl;
 
     if (isWindowsISO) {
-        eventManager.notifyLogUpdate("ISO de Windows detectado.\r\n");
+        eventManager.notifyLogUpdate(LocalizedOrUtf8("log.iso.windowsDetected", "ISO de Windows detectado.") + "\r\n");
     } else {
-        eventManager.notifyLogUpdate("ISO no-Windows detectado.\r\n");
+        eventManager.notifyLogUpdate(LocalizedOrUtf8("log.iso.nonWindowsDetected", "ISO no-Windows detectado.") +
+                                     "\r\n");
     }
 
     isWindowsISODetected = isWindowsISO;
@@ -288,7 +281,9 @@ bool ISOCopyManager::extractISOContents(EventManager &eventManager, const std::s
             integratePrograms = true;
             programsSrc       = destPath + "Programs";
             logFile << getTimestamp() << "Programs integration scheduled for RAM boot (no pre-extraction)" << std::endl;
-            eventManager.notifyLogUpdate("Integracion de Programs en boot.wim para arranque RAM.\r\n");
+            eventManager.notifyLogUpdate(LocalizedOrUtf8("log.iso.integratingPrograms",
+                                                         "Integración de Programs en boot.wim para arranque RAM.") +
+                                         "\r\n");
         }
     } else {
         logFile << getTimestamp() << "Skipping content extraction (" << modeLabel << " mode)" << std::endl;
@@ -309,8 +304,10 @@ bool ISOCopyManager::extractISOContents(EventManager &eventManager, const std::s
         std::string installFile  = esdPreferred ? "sources/install.esd" : "sources/install.wim";
         std::string installDest  = destPath + "sources\\" + installFile.substr(installFile.find_last_of('/') + 1);
 
-        eventManager.notifyDetailedProgress(75, 100, "Copiando archivo de instalacion");
-        eventManager.notifyLogUpdate("Copiando archivo de instalacion...\r\n");
+        eventManager.notifyDetailedProgress(
+            75, 100, LocalizedOrUtf8("log.iso.copyingInstallFile", "Copiando archivo de instalación"));
+        eventManager.notifyLogUpdate(LocalizedOrUtf8("log.iso.copyingInstallFile", "Copiando archivo de instalación") +
+                                     "...\r\n");
         bool extracted = isoReader->extractFile(isoPath, installFile, installDest);
         if (extracted) {
             auto validateInstall = [&](bool logOnWarn) -> bool {
@@ -338,19 +335,24 @@ bool ISOCopyManager::extractISOContents(EventManager &eventManager, const std::s
                 int         infoCode   = Utils::execWithExitCode(infoCmd.c_str(), infoOut);
                 int         indexCount = 0;
                 size_t      p          = 0;
-                while ((p = infoOut.find("Index :", p)) != std::string::npos) {
+                // Count indices in a case-insensitive way (works in any language)
+                std::string lowerOut = infoOut;
+                std::transform(lowerOut.begin(), lowerOut.end(), lowerOut.begin(), ::tolower);
+                while ((p = lowerOut.find("index :", p)) != std::string::npos) {
                     ++indexCount;
                     p += 7;
                 }
-                bool dismOk =
-                    (infoCode == 0) &&
-                    (indexCount >= 1 || infoOut.find("The operation completed successfully") != std::string::npos ||
-                     infoOut.find("correctamente") != std::string::npos);
+                // Validate based on exit code and index count only (language-independent)
+                // Don't rely on success messages as they are localized
+                bool dismOk = (infoCode == 0) && (indexCount >= 1);
 
                 if (sizeOk && dismOk) {
                     logFile << getTimestamp() << "Install image validation: OK (indices=" << indexCount << ")"
                             << std::endl;
-                    eventManager.notifyLogUpdate("Archivo de instalacion copiado y validado correctamente.\r\n");
+                    eventManager.notifyLogUpdate(
+                        LocalizedOrUtf8("log.iso.installFileCopied",
+                                        "Archivo de instalación copiado y validado correctamente.") +
+                        "\r\n");
                     return true;
                 }
 
@@ -358,14 +360,18 @@ bool ISOCopyManager::extractISOContents(EventManager &eventManager, const std::s
                         << ", sizeOk=" << (sizeOk ? "true" : "false") << ", indices=" << indexCount << ")\nOutput:\n"
                         << infoOut << std::endl;
                 if (logOnWarn) {
-                    eventManager.notifyLogUpdate("Error/Advertencia al validar install.*; revise iso_extract.log.\r\n");
+                    eventManager.notifyLogUpdate(
+                        LocalizedOrUtf8("log.iso.installFileError",
+                                        "Error/Advertencia al validar install.*; revise iso_extract.log.") +
+                        "\r\n");
                 }
                 return false;
             };
 
             bool ok = validateInstall(true);
             if (!ok) {
-                eventManager.notifyLogUpdate("Reintentando extraccion de install.*...\r\n");
+                eventManager.notifyLogUpdate(
+                    LocalizedOrUtf8("log.iso.retryingInstall", "Reintentando extracción de install.*...") + "\r\n");
                 DeleteFileA(installDest.c_str());
                 if (isoReader->extractFile(isoPath, installFile, installDest)) {
                     validateInstall(false);
@@ -373,12 +379,14 @@ bool ISOCopyManager::extractISOContents(EventManager &eventManager, const std::s
             }
         } else {
             logFile << getTimestamp() << "Failed to extract install file" << std::endl;
-            eventManager.notifyLogUpdate("Error al copiar archivo de instalacion.\r\n");
+            eventManager.notifyLogUpdate(
+                LocalizedOrUtf8("log.iso.installFileErrorFatal", "Error al copiar archivo de instalación.") + "\r\n");
         }
 
         // Copy setup.exe and critical files for Windows Setup to work from data partition
         logFile << getTimestamp() << "Copying setup.exe and critical files to data partition" << std::endl;
-        eventManager.notifyLogUpdate("Copiando archivos criticos de Setup...\r\n");
+        eventManager.notifyLogUpdate(
+            LocalizedOrUtf8("log.iso.copyingSetupFiles", "Copiando archivos críticos de Setup...") + "\r\n");
 
         // Extract setup.exe to root
         if (isoReader->fileExists(isoPath, "setup.exe")) {
@@ -450,7 +458,13 @@ bool ISOCopyManager::extractISOContents(EventManager &eventManager, const std::s
 
         logFile << getTimestamp() << "Extracted " << copiedCount << " files from sources ("
                 << (totalSizeBytes / (1024 * 1024)) << " MB)" << std::endl;
-        eventManager.notifyLogUpdate("Archivos criticos copiados (" + std::to_string(copiedCount) + " archivos).\r\n");
+        std::string formatArgs = std::to_string(copiedCount);
+        std::string message = LocalizedOrUtf8("log.iso.setupFilesCopied", "Archivos críticos copiados ({0} archivos).");
+        size_t      pos     = message.find("{0}");
+        if (pos != std::string::npos) {
+            message.replace(pos, 3, formatArgs);
+        }
+        eventManager.notifyLogUpdate(message + "\r\n");
         eventManager.notifyDetailedProgress(0, 0, "");
     }
 

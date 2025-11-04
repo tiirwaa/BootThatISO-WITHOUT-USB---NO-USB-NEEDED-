@@ -13,6 +13,8 @@
     <string id="log.recovery.cannotCancel">Space recovery is in progress and cannot be canceled. Wait for it to finish.</string>
     <string id="log.recovery.startFailed">Failed to start space recovery. Check if it's already running.</string>
     <string id="log.recovery.started">Space recovery started in the background.</string>
+    <string id="log.recovery.success">Space recovery completed successfully.</string>
+    <string id="log.recovery.failed">Space recovery failed. Check the logs for details.</string>
     <string id="mainwindow.bootModeLabel">Boot mode:</string>
     <string id="mainwindow.browseButton">Browse</string>
     <string id="mainwindow.createButton">Perform process and boot the selected ISO</string>
@@ -71,6 +73,77 @@
     <string id="editionSelector.warningTitle">Warning</string>
     <string id="editionSelector.sizeUnknown">Size unknown</string>
     <string id="editionSelector.infoIndex">Index:</string>
+    
+    <!-- Log messages - ISO Processing -->
+    <string id="log.iso.analyzing">Analyzing ISO content...</string>
+    <string id="log.iso.windowsDetected">Windows ISO detected.</string>
+    <string id="log.iso.nonWindowsDetected">Non-Windows ISO detected.</string>
+    <string id="log.iso.copyingInstallFile">Copying installation file...</string>
+    <string id="log.iso.installFileCopied">Installation file copied and validated successfully.</string>
+    <string id="log.iso.installFileError">Error/Warning validating install.*; check iso_extract.log.</string>
+    <string id="log.iso.retryingInstall">Retrying install.* extraction...</string>
+    <string id="log.iso.installFileErrorFatal">Error copying installation file.</string>
+    <string id="log.iso.copyingSetupFiles">Copying critical Setup files...</string>
+    <string id="log.iso.setupFilesCopied">Critical files copied ({0} files).</string>
+    <string id="log.iso.integratingPrograms">Integrating Programs into boot.wim for RAM boot.</string>
+    <string id="log.linuxIsoDetected">Linux ISO detected: {0}</string>
+    
+    <!-- Log messages - BCD Configuration -->
+    <string id="log.bcd.configuring">Configuring Boot Configuration Data (BCD)...</string>
+    <string id="log.bcd.efiSelected">EFI file selected: {0}</string>
+    <string id="log.bcd.unsupportedArchitecture">Error: Unsupported EFI architecture.</string>
+    <string id="log.bcd.errorDefault">Error configuring default: {0}</string>
+    <string id="log.bcd.errorDisplayorder">Error configuring displayorder: {0}</string>
+    <string id="log.bcd.errorTimeout">Error configuring timeout: {0}</string>
+    <string id="log.bcd.settingWindowsDefault">Setting Windows as default entry and adjusting timeout...</string>
+    
+    <!-- Log messages - Windows Edition Selector -->
+    <string id="log.edition.extracting">Extracting Windows installation image...</string>
+    <string id="log.edition.extractError">Error extracting installation image.</string>
+    <string id="log.edition.noEditionsFound">No Windows editions found.</string>
+    <string id="log.edition.autoSelectingSingle">Only one edition available, auto-selecting.</string>
+    <string id="log.edition.selected">Selected edition: {0}</string>
+    <string id="log.edition.preparingRAM">Preparing selected edition for RAM boot...</string>
+    <string id="log.edition.creatingFiltered">Creating filtered installation image...</string>
+    <string id="log.edition.filteredError">Error creating filtered image.</string>
+    <string id="log.edition.injectingDrivers">Injecting storage drivers into install.wim...</string>
+    <string id="log.edition.driversInjected">Drivers injected into install.wim.</string>
+    <string id="log.edition.driversSaveFailed">Warning: Could not save drivers.</string>
+    <string id="log.edition.driversInjectFailed">Warning: Could not inject drivers into install.wim.</string>
+    <string id="log.edition.configuringBoot">Configuring boot environment...</string>
+    <string id="log.edition.bootMountError">Error mounting boot.wim.</string>
+    <string id="log.edition.savingConfig">Saving configuration...</string>
+    <string id="log.edition.preparedSuccess">Windows edition prepared successfully.</string>
+    <string id="log.edition.setupWillSearch">Windows Setup will search for install.wim on data partition.</string>
+    <string id="log.edition.saveConfigError">Error saving configuration.</string>
+    <string id="log.edition.windowsIsoDetected">Windows installation ISO detected.</string>
+    <string id="log.edition.copyingFullImage">Copying complete installation image (all editions)...</string>
+    <string id="log.edition.copyImageError">Error copying installation image.</string>
+    <string id="log.edition.imageCopiedSuccess">Installation image copied. Windows Setup will show edition list.</string>
+    
+    <!-- Log messages - EFI Manager -->
+    <string id="log.efi.extracting">Extracting EFI files to ESP...</string>
+    
+    <!-- Log messages - Content Extractor -->
+    <string id="log.content.copying">Copying ISO content to {0}...</string>
+    <string id="log.content.copied">ISO content copied successfully.</string>
+    
+    <!-- Log messages - Diskpart -->
+    <string id="log.diskpart.creatingScript">Creating diskpart script for partitions...</string>
+    <string id="log.diskpart.scriptError">Error: Could not create diskpart script file.</string>
+    <string id="log.diskpart.success">Diskpart executed successfully. Verifying partitions...</string>
+    <string id="log.diskpart.failed">Error: Diskpart failed with exit code {0}</string>
+    <string id="log.diskpart.partitionsCreated">Partitions created successfully.</string>
+    <string id="log.diskpart.partitionsFailed">Error: Partition creation failed.</string>
+    
+    <!-- Log messages - Recovery -->
+    <string id="log.recovery.recovering">Recovering space. This may take several minutes...</string>
+    
+    <!-- Log messages - Partition Reformatter -->
+    <string id="log.reformatter.starting">Starting EFI partition reformatting...</string>
+    <string id="log.reformatter.executing">Executing EFI partition formatting...</string>
+    <string id="log.reformatter.success">EFI partition reformatted successfully.</string>
+    <string id="log.reformatter.failed">Error: EFI partition formatting failed (code {0}).</string>
 </language>
     <string id="button.perform.hint">Click to boot the ISO</string>
     <string id="mainwindow.developedBy">Software developed by a Costa Rican company</string>

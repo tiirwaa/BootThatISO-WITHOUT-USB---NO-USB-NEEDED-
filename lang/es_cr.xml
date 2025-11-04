@@ -10,9 +10,11 @@
     <string id="log.cancel.requested">Solicitud de cancelación enviada. Esperando limpieza...</string>
     <string id="log.process.starting">Iniciando proceso...</string>
     <string id="log.recovery.alreadyRunning">La recuperación de espacio ya está en progreso.</string>
-    <string id="log.recovery.cannotCancel">La recuperación de espacio está en curso y no se puede cancelar. Espera a que finalice.</string>
-    <string id="log.recovery.startFailed">No se pudo iniciar la recuperación de espacio. Verifica si ya está en curso.</string>
+    <string id="log.recovery.cannotCancel">La recuperación de espacio está en progreso y no puede cancelarse. Espera a que finalice.</string>
+    <string id="log.recovery.startFailed">No se pudo iniciar la recuperación de espacio. Verifica si ya está en ejecución.</string>
     <string id="log.recovery.started">Recuperación de espacio iniciada en segundo plano.</string>
+    <string id="log.recovery.success">Recuperación de espacio finalizada correctamente.</string>
+    <string id="log.recovery.failed">Recuperación de espacio fallida. Revisa los detalles en los registros.</string>
     <string id="mainwindow.bootModeLabel">Modo de arranque:</string>
     <string id="mainwindow.browseButton">Buscar</string>
     <string id="mainwindow.createButton">Realizar proceso y Bootear ISO seleccionado</string>
@@ -26,7 +28,7 @@
     <string id="mainwindow.logoPlaceholder">LOGO</string>
     <string id="mainwindow.recoverButton">Recuperar mi espacio</string>
     <string id="mainwindow.servicesButton">Servicios</string>
-    <string id="mainwindow.subtitle">Configuración de Particiones Bootables EFI</string>
+    <string id="mainwindow.subtitle">Configuracion de Particiones Bootables EFI</string>
     <string id="mainwindow.title">BOOT THAT ISO!</string>
     <string id="mainwindow.versionLabel">Versión {0}</string>
     <string id="mainwindow.diskSpaceInfo">Espacio disponible en C: {0} GB | ISOBOOT: {1} | ISOEFI: {2}</string>
@@ -71,6 +73,77 @@
     <string id="editionSelector.warningTitle">Advertencia</string>
     <string id="editionSelector.sizeUnknown">Tamaño desconocido</string>
     <string id="editionSelector.infoIndex">Índice:</string>
+    
+    <!-- Mensajes de log - Procesamiento ISO -->
+    <string id="log.iso.analyzing">Analizando contenido del ISO...</string>
+    <string id="log.iso.windowsDetected">ISO de Windows detectado.</string>
+    <string id="log.iso.nonWindowsDetected">ISO no-Windows detectado.</string>
+    <string id="log.iso.copyingInstallFile">Copiando archivo de instalación...</string>
+    <string id="log.iso.installFileCopied">Archivo de instalación copiado y validado correctamente.</string>
+    <string id="log.iso.installFileError">Error/Advertencia al validar install.*; revise iso_extract.log.</string>
+    <string id="log.iso.retryingInstall">Reintentando extracción de install.*...</string>
+    <string id="log.iso.installFileErrorFatal">Error al copiar archivo de instalación.</string>
+    <string id="log.iso.copyingSetupFiles">Copiando archivos críticos de Setup...</string>
+    <string id="log.iso.setupFilesCopied">Archivos críticos copiados ({0} archivos).</string>
+    <string id="log.iso.integratingPrograms">Integrando programas en boot.wim para arranque en RAM.</string>
+    <string id="log.linuxIsoDetected">ISO de Linux detectada: {0}</string>
+    
+    <!-- Mensajes de log - Configuración BCD -->
+    <string id="log.bcd.configuring">Configurando Boot Configuration Data (BCD)...</string>
+    <string id="log.bcd.efiSelected">Archivo EFI seleccionado: {0}</string>
+    <string id="log.bcd.unsupportedArchitecture">Error: Arquitectura EFI no soportada.</string>
+    <string id="log.bcd.errorDefault">Error al configurar default: {0}</string>
+    <string id="log.bcd.errorDisplayorder">Error al configurar displayorder: {0}</string>
+    <string id="log.bcd.errorTimeout">Error al configurar timeout: {0}</string>
+    <string id="log.bcd.settingWindowsDefault">Estableciendo Windows como entrada predeterminada y ajustando timeout...</string>
+    
+    <!-- Mensajes de log - Selector de Ediciones Windows -->
+    <string id="log.edition.extracting">Extrayendo imagen de instalación de Windows...</string>
+    <string id="log.edition.extractError">Error al extraer imagen de instalación.</string>
+    <string id="log.edition.noEditionsFound">No se encontraron ediciones de Windows.</string>
+    <string id="log.edition.autoSelectingSingle">Solo hay una edición disponible, seleccionando automáticamente.</string>
+    <string id="log.edition.selected">Seleccionada edición: {0}</string>
+    <string id="log.edition.preparingRAM">Preparando edición seleccionada para arranque RAM...</string>
+    <string id="log.edition.creatingFiltered">Creando imagen de instalación filtrada...</string>
+    <string id="log.edition.filteredError">Error al crear imagen filtrada.</string>
+    <string id="log.edition.injectingDrivers">Inyectando controladores de almacenamiento en install.wim...</string>
+    <string id="log.edition.driversInjected">Controladores inyectados en install.wim.</string>
+    <string id="log.edition.driversSaveFailed">Advertencia: No se pudieron guardar los controladores.</string>
+    <string id="log.edition.driversInjectFailed">Advertencia: No se pudo inyectar controladores en install.wim.</string>
+    <string id="log.edition.configuringBoot">Configurando entorno de arranque...</string>
+    <string id="log.edition.bootMountError">Error al montar boot.wim.</string>
+    <string id="log.edition.savingConfig">Guardando configuración...</string>
+    <string id="log.edition.preparedSuccess">Edición de Windows preparada correctamente.</string>
+    <string id="log.edition.setupWillSearch">Windows Setup buscará install.wim en la partición de datos.</string>
+    <string id="log.edition.saveConfigError">Error al guardar configuración.</string>
+    <string id="log.edition.windowsIsoDetected">Detectado ISO de instalación de Windows.</string>
+    <string id="log.edition.copyingFullImage">Copiando imagen de instalación completa (todas las ediciones)...</string>
+    <string id="log.edition.copyImageError">Error al copiar imagen de instalación.</string>
+    <string id="log.edition.imageCopiedSuccess">Imagen de instalación copiada. Windows Setup mostrará lista de ediciones.</string>
+    
+    <!-- Mensajes de log - Gestor EFI -->
+    <string id="log.efi.extracting">Extrayendo archivos EFI al ESP...</string>
+    
+    <!-- Mensajes de log - Extractor de Contenido -->
+    <string id="log.content.copying">Copiando contenido del ISO a {0}...</string>
+    <string id="log.content.copied">Contenido del ISO copiado correctamente.</string>
+    
+    <!-- Mensajes de log - Diskpart -->
+    <string id="log.diskpart.creatingScript">Creando script de diskpart para particiones...</string>
+    <string id="log.diskpart.scriptError">Error: No se pudo crear el archivo de script de diskpart.</string>
+    <string id="log.diskpart.success">Diskpart ejecutado exitosamente. Verificando particiones...</string>
+    <string id="log.diskpart.failed">Error: Diskpart falló con código de salida {0}</string>
+    <string id="log.diskpart.partitionsCreated">Particiones creadas exitosamente.</string>
+    <string id="log.diskpart.partitionsFailed">Error: Falló la creación de particiones.</string>
+    
+    <!-- Mensajes de log - Recuperación -->
+    <string id="log.recovery.recovering">Recuperando espacio. Esto puede tardar varios minutos...</string>
+    
+    <!-- Mensajes de log - Reformateador de Particiones -->
+    <string id="log.reformatter.starting">Iniciando reformateo de partición EFI...</string>
+    <string id="log.reformatter.executing">Ejecutando formateo de partición EFI...</string>
+    <string id="log.reformatter.success">Partición EFI reformateada exitosamente.</string>
+    <string id="log.reformatter.failed">Error: Falló el formateo de la partición EFI (código {0}).</string>
 </language>
     <string id="button.perform.hint">Clic para Bootear el ISO</string>
     <string id="mainwindow.developedBy">Desarrollado por una empresa Costarricense</string>

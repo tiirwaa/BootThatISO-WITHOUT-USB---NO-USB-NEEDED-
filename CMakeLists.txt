@@ -361,5 +361,22 @@ if(MSVC)
     set_target_properties(ListFormats PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
 
+# Translation validation tool
+add_executable(ValidateTranslations
+    tools/validate_translations.cpp
+)
+
+target_include_directories(ValidateTranslations
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/include
+)
+
+if(MSVC)
+    target_compile_options(ValidateTranslations PRIVATE /utf-8 /W4 /permissive- /EHsc /Zc:__cplusplus)
+    set_target_properties(ValidateTranslations PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+else()
+    target_compile_options(ValidateTranslations PRIVATE -Wall -Wextra -Wpedantic -Wconversion -Wshadow)
+endif()
 
 
