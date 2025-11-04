@@ -35,8 +35,32 @@ bool StartnetConfigurator::createMinimalStartnet(const std::string &mountDir, st
 
     std::string startnetPath = getStartnetPath(mountDir);
 
-    // Create minimal startnet.cmd for standard WinPE
-    std::string minimalContent = "@echo off\r\nwpeinit\r\n";
+    // Create enhanced startnet.cmd for Windows ISO installation
+    // CRITICAL: Mount all partitions so Windows Setup can find install.esd on data partition
+    // Unlike USB boot (auto-mounts), internal disk boot requires explicit diskpart scripting
+    std::string enhancedContent =
+        "@echo off\r\n"
+        "rem Mount all partitions for Windows Setup to find install.esd\r\n"
+        "echo select disk 0 > X:\\mountall.txt\r\n"
+        "echo list partition >> X:\\mountall.txt\r\n"
+        "diskpart /s X:\\mountall.txt > X:\\partitions.txt\r\n"
+        "\r\n"
+        "rem Assign letters to partitions 1-4 (skip system/reserved partitions)\r\n"
+        "for /L %%i in (1,1,4) do (\r\n"
+        "  echo select disk 0 > X:\\assign%%i.txt\r\n"
+        "  echo select partition %%i >> X:\\assign%%i.txt\r\n"
+        "  echo assign >> X:\\assign%%i.txt\r\n"
+        "  diskpart /s X:\\assign%%i.txt > nul 2>&1\r\n"
+        "  del X:\\assign%%i.txt\r\n"
+        ")\r\n"
+        "\r\n"
+        "rem Search for install.esd/wim in all mounted drives\r\n"
+        "for %%d in (C D E F G H I J K L M N O P Q R S T U V W Y Z) do (\r\n"
+        "  if exist %%d:\\sources\\install.esd echo Found install.esd on %%d: >> X:\\found.txt\r\n"
+        "  if exist %%d:\\sources\\install.wim echo Found install.wim on %%d: >> X:\\found.txt\r\n"
+        ")\r\n"
+        "\r\n"
+        "wpeinit\r\n";
 
     std::ofstream snOut(startnetPath, std::ios::out | std::ios::binary | std::ios::trunc);
     if (!snOut) {
@@ -45,10 +69,11 @@ bool StartnetConfigurator::createMinimalStartnet(const std::string &mountDir, st
         return false;
     }
 
-    snOut.write(minimalContent.data(), (std::streamsize)minimalContent.size());
+    snOut.write(enhancedContent.data(), (std::streamsize)enhancedContent.size());
     snOut.flush();
 
-    logFile << ISOCopyManager::getTimestamp() << "Created minimal startnet.cmd for WinPE" << std::endl;
+    logFile << ISOCopyManager::getTimestamp() << "Created enhanced startnet.cmd with partition mounting for WinPE"
+            << std::endl;
 
     return true;
 }
