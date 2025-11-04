@@ -1,5 +1,71 @@
 # Arquitectura del Sistema - BootThatISO
 
+## Visión General
+
+BootThatISO es una aplicación Windows que permite arrancar sistemas operativos desde archivos ISO sin necesidad de USB. La arquitectura sigue principios SOLID y patrones de diseño establecidos para mantener código limpio, modular y extensible.
+
+## Arquitectura de Alto Nivel
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                         PRESENTATION LAYER                       │
+│  ┌──────────────────────┐        ┌───────────────────────┐     │
+│  │   MainWindow         │        │ EditionSelectorDialog │     │
+│  │   (Win32 UI)         │        │                       │     │
+│  └──────────────────────┘        └───────────────────────┘     │
+└────────────────────────┬─────────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                       CONTROLLER LAYER                           │
+│  ┌──────────────────────────────────────────────────────┐       │
+│  │              ProcessController                        │       │
+│  │         (Main Workflow Orchestrator)                  │       │
+│  └──────────────────────────────────────────────────────┘       │
+└────────────────────────┬─────────────────────────────────────────┘
+                         │
+         ┌───────────────┼───────────────┐
+         │               │               │
+         ▼               ▼               ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                        SERVICE LAYER                             │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐         │
+│  │ Partition    │  │ ISOCopy      │  │ BCD          │         │
+│  │ Manager      │  │ Manager      │  │ Manager      │         │
+│  └──────────────┘  └──────────────┘  └──────────────┘         │
+└────────────────────────┬─────────────────────────────────────────┘
+                         │
+         ┌───────────────┼───────────────┐
+         │               │               │
+         ▼               ▼               ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                        DOMAIN LAYER                              │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐         │
+│  │ Boot         │  │ WIM          │  │ Driver       │         │
+│  │ Processor    │  │ Mounter      │  │ Integrator   │         │
+│  ├──────────────┤  ├──────────────┤  ├──────────────┤         │
+│  │ ISO          │  │ Content      │  │ Hash         │         │
+│  │ Reader       │  │ Extractor    │  │ Verifier     │         │
+│  ├──────────────┤  ├──────────────┤  ├──────────────┤         │
+│  │ File         │  │ Programs     │  │ Volume       │         │
+│  │ CopyManager  │  │ Integrator   │  │ Detector     │         │
+│  └──────────────┘  └──────────────┘  └──────────────┘         │
+└────────────────────────┬─────────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────────────┐
+│                    INFRASTRUCTURE LAYER                          │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐         │
+│  │ Logger       │  │ Utils        │  │ Localization │         │
+│  │              │  │              │  │ Manager      │         │
+│  └──────────────┘  └──────────────┘  └──────────────┘         │
+│  ┌──────────────┐  ┌──────────────┐                            │
+│  │ Event        │  │ 7-Zip SDK    │                            │
+│  │ Manager      │  │ (ISO Reader) │                            │
+│  └──────────────┘  └──────────────┘                            │
+└─────────────────────────────────────────────────────────────────┘
+```
+
 ## Diagrama de Clases (Módulo Boot)
 
 ```
@@ -15,19 +81,25 @@
                             │
                             │ coordina
                             ▼
-    ┌───────────────────────────────────────────────────────┐
-    │                                                         │
-    ▼                  ▼                 ▼                   ▼
-┌─────────┐    ┌─────────────┐   ┌──────────────┐   ┌─────────────┐
-│WimMounter│    │DriverInteg. │   │PecmdConfig.  │   │IniFileProc. │
-└─────────┘    └─────────────┘   └──────────────┘   └─────────────┘
+    ┌────────────────────────────────────────────────────────────┐
+    │                                                              │
+    ▼                  ▼                 ▼                        ▼
+┌─────────┐    ┌─────────────┐   ┌──────────────┐   ┌──────────────┐
+│WimMounter│    │DriverInteg. │   │PecmdConfig.  │   │IniFileProc.  │
+└─────────┘    └─────────────┘   └──────────────┘   └──────────────┘
      │                │                   │                   │
      │                │                   │                   │
      ▼                ▼                   ▼                   ▼
-┌─────────┐    ┌─────────────┐   ┌──────────────┐   ┌─────────────┐
-│DISM API │    │Windows      │   │Startnet      │   │Programs     │
-│         │    │DriverStore  │   │Configurator  │   │Integrator   │
-└─────────┘    └─────────────┘   └──────────────┘   └─────────────┘
+┌─────────┐    ┌─────────────┐   ┌──────────────┐   ┌──────────────┐
+│DISM API │    │Windows      │   │Startnet      │   │Programs      │
+│         │    │DriverStore  │   │Configurator  │   │Integrator    │
+└─────────┘    └─────────────┘   └──────────────┘   └──────────────┘
+                                          │
+                                          ▼
+                                   ┌──────────────┐
+                                   │Windows       │
+                                   │EditionSel.   │
+                                   └──────────────┘
 ```
 
 ## Estructura de Directorios Detallada
@@ -36,12 +108,14 @@
 src/
 │
 ├── boot/                           # 🎯 Coordinación de arranque
-│   ├── BootWimProcessor.cpp       ← REFACTORIZADO (250 líneas)
+│   ├── BootWimProcessor.cpp       ← Orquestador principal (~250 líneas)
 │   └── BootWimProcessor.h         ← Interface principal
 │
 ├── wim/                            # 💿 Operaciones WIM/DISM
 │   ├── WimMounter.cpp             ← Mount/Unmount WIM
-│   └── WimMounter.h               ← DISM wrapper
+│   ├── WimMounter.h               ← DISM wrapper
+│   ├── WindowsEditionSelector.cpp ← Selección de edición Windows
+│   └── WindowsEditionSelector.h   ← Lógica de detección de ediciones
 │
 ├── drivers/                        # 🔧 Integración de drivers
 │   ├── DriverIntegrator.cpp       ← System + Custom drivers
@@ -60,28 +134,45 @@ src/
 │   └── ProgramsIntegrator.h
 │
 ├── models/                         # 📦 Modelos de dominio
-│   ├── ISOReader.cpp              ← 7-Zip wrapper
+│   ├── ISOReader.cpp              ← 7-Zip wrapper para lectura ISO
 │   ├── IniConfigurator.cpp        ← Drive letter replacement
 │   ├── FileCopyManager.cpp        ← Progress tracking
-│   ├── EventManager.h             ← Observer pattern
-│   └── ... (otros modelos)
+│   ├── ContentExtractor.cpp       ← Extracción de contenido ISO
+│   ├── HashVerifier.cpp           ← Verificación MD5
+│   ├── efimanager.cpp             ← Gestión partición EFI
+│   ├── isomounter.cpp             ← Montaje de ISO
+│   ├── DiskIntegrityChecker.cpp   ← Verificación integridad disco
+│   ├── VolumeDetector.cpp         ← Detección de volúmenes
+│   ├── SpaceManager.cpp           ← Gestión de espacio
+│   ├── DiskpartExecutor.cpp       ← Ejecución de diskpart
+│   ├── PartitionReformatter.cpp   ← Reformateo de particiones
+│   ├── PartitionCreator.cpp       ← Creación de particiones
+│   └── EventManager.h             ← Observer pattern
 │
 ├── services/                       # 🔨 Servicios de aplicación
-│   ├── ISOCopyManager.cpp         ← ISO copying logic
-│   ├── BCDManager.cpp             ← BCD configuration
-│   └── PartitionManager.cpp       ← Disk operations
+│   ├── ISOCopyManager.cpp         ← Orquestación copia ISO
+│   ├── BCDManager.cpp             ← Configuración BCD
+│   ├── PartitionManager.cpp       ← Operaciones de disco
+│   ├── PartitionDetector.cpp      ← Detección de particiones
+│   ├── VolumeManager.cpp          ← Gestión de volúmenes
+│   └── isotypedetector.cpp        ← Detección tipo ISO (Windows/Linux)
 │
 ├── controllers/                    # 🎮 Controladores
-│   ├── ProcessController.cpp      ← Main workflow
+│   ├── ProcessController.cpp      ← Workflow principal
+│   ├── ProcessController.h
 │   └── ProcessService.cpp
 │
 ├── utils/                          # 🛠️ Utilidades
-│   ├── Utils.cpp
-│   ├── Logger.cpp
-│   └── LocalizationManager.cpp
+│   ├── Utils.cpp                  ← Utilidades generales
+│   ├── Logger.cpp                 ← Sistema de logging
+│   └── LocalizationManager.cpp    ← Gestión de idiomas
 │
-└── views/                          # 🖼️ UI
-    └── mainwindow.cpp             ← MFC interface
+├── views/                          # 🖼️ UI
+│   ├── mainwindow.cpp             ← Ventana principal Win32
+│   └── EditionSelectorDialog.cpp  ← Diálogo selección edición
+│
+├── main.cpp                        # 🚀 Punto de entrada
+└── SevenZipGuids.cpp              ← Definiciones GUID 7-Zip
 ```
 
 ## Flujo de Ejecución
@@ -95,11 +186,25 @@ Usuario inicia proceso
 │ (Main Workflow)     │
 └─────────────────────┘
          │
+         ├─→ PartitionManager
+         │   ├─→ VolumeDetector
+         │   ├─→ PartitionDetector
+         │   ├─→ DiskIntegrityChecker
+         │   ├─→ SpaceManager
+         │   ├─→ DiskpartExecutor
+         │   └─→ PartitionCreator
+         │
          ▼
 ┌─────────────────────┐
 │ ISOCopyManager      │
 │ (Orchestrator)      │
 └─────────────────────┘
+         │
+         ├─→ ISOTypeDetector
+         ├─→ ISOReader (7-Zip)
+         ├─→ ContentExtractor
+         ├─→ HashVerifier
+         └─→ FileCopyManager
          │
          ▼
 ┌─────────────────────────────────────┐
@@ -112,6 +217,7 @@ Usuario inicia proceso
          │
          ├─→ mountAndProcessWim()
          │   ├─→ WimMounter::mountWim()
+         │   ├─→ WindowsEditionSelector::selectEdition()
          │   ├─→ PecmdConfigurator::isPecmdPE()
          │   │   ├─→ YES: configurePecmdForRamBoot()
          │   │   └─→ NO:  StartnetConfigurator::configure()
@@ -122,6 +228,14 @@ Usuario inicia proceso
          │   └─→ WimMounter::unmountWim(commit=true)
          │
          └─→ extractAdditionalBootFiles()
+         │
+         ▼
+┌─────────────────────┐
+│ BCDManager          │
+│ (BCD Config)        │
+└─────────────────────┘
+         │
+         └─→ Configuración arranque BCD
 ```
 
 ## Dependencias entre Módulos
@@ -132,6 +246,7 @@ Usuario inicia proceso
 └────────┬────────┘
          │
          ├──uses──→ WimMounter
+         ├──uses──→ WindowsEditionSelector
          ├──uses──→ DriverIntegrator
          ├──uses──→ PecmdConfigurator
          ├──uses──→ StartnetConfigurator
@@ -146,6 +261,41 @@ Usuario inicia proceso
     │ISOReader│                  │FileCopy   │
     │         │                  │Manager    │
     └─────────┘                  └───────────┘
+
+┌──────────────┐
+│ISOCopyManager│
+└──────┬───────┘
+       │
+       ├──uses──→ ISOReader
+       ├──uses──→ ISOTypeDetector
+       ├──uses──→ ContentExtractor
+       ├──uses──→ HashVerifier
+       ├──uses──→ FileCopyManager
+       ├──uses──→ EFIManager
+       ├──uses──→ IniConfigurator
+       └──uses──→ BootWimProcessor
+
+┌──────────────────┐
+│PartitionManager  │
+└────────┬─────────┘
+         │
+         ├──uses──→ VolumeDetector
+         ├──uses──→ PartitionDetector
+         ├──uses──→ VolumeManager
+         ├──uses──→ DiskIntegrityChecker
+         ├──uses──→ SpaceManager
+         ├──uses──→ DiskpartExecutor
+         ├──uses──→ PartitionReformatter
+         └──uses──→ PartitionCreator
+
+┌──────────────────┐
+│ProcessController │
+└────────┬─────────┘
+         │
+         ├──uses──→ PartitionManager
+         ├──uses──→ ISOCopyManager
+         ├──uses──→ BCDManager
+         └──uses──→ EventManager
 ```
 
 ## Patrones de Diseño en Acción
@@ -155,7 +305,18 @@ Usuario inicia proceso
 BootWimProcessor // Fachada simple
     ├─→ WimMounter          (oculta complejidad DISM)
     ├─→ DriverIntegrator    (oculta lógica de drivers)
-    └─→ PecmdConfigurator   (oculta configuración PECMD)
+    ├─→ PecmdConfigurator   (oculta configuración PECMD)
+    └─→ WindowsEditionSelector (oculta selección de edición)
+
+ISOCopyManager // Fachada de orquestación
+    ├─→ ISOReader           (oculta SDK 7-Zip)
+    ├─→ ContentExtractor    (oculta extracción)
+    └─→ HashVerifier        (oculta verificación MD5)
+
+PartitionManager // Fachada de gestión de disco
+    ├─→ VolumeDetector      (oculta detección volúmenes)
+    ├─→ SpaceManager        (oculta gestión espacio)
+    └─→ DiskpartExecutor    (oculta comandos diskpart)
 ```
 
 ### 2. Strategy Pattern
@@ -168,6 +329,10 @@ WimMounter::mountWim(
     wimPath, mountDir, index,
     [](int percent, const std::string& msg) { /* callback */ }
 );
+
+BCDManager // Diferentes estrategias de configuración BCD
+    ├─→ configureBCD_RAM()      (estrategia RAMDisk)
+    └─→ configureBCD_EXTRACT()  (estrategia instalación completa)
 ```
 
 ### 3. Chain of Responsibility
@@ -176,6 +341,11 @@ ProgramsIntegrator::integratePrograms()
     ├─→ Intento 1: programsSrc
     ├─→ Intento 2: fallbackProgramsSrc
     └─→ Intento 3: extractFromISO()
+
+WindowsEditionSelector::selectEdition()
+    ├─→ Intento 1: Detectar ediciones vía DISM
+    ├─→ Intento 2: Selección manual por usuario
+    └─→ Intento 3: Usar edición por defecto
 ```
 
 ### 4. Observer Pattern
@@ -184,6 +354,24 @@ EventManager::notifyProgress()
     └─→ Notifica a todos los EventObservers
         ├─→ UI actualiza barra de progreso
         └─→ Logger escribe en archivo
+
+FileCopyManager // Propaga eventos de copia
+    └─→ EventManager::notifyProgress()
+        ├─→ MainWindow::updateProgress()
+        └─→ Logger::logProgress()
+```
+
+### 5. Template Method Pattern
+```cpp
+PartitionCreator::createPartition()
+    ├─→ validateSpace()        (paso común)
+    ├─→ executeDiskpart()      (paso común)
+    └─→ verifyCreation()       (paso común)
+
+ISOCopyManager::copyISO()
+    ├─→ detectISOType()        (paso común)
+    ├─→ extractContent()       (variable según tipo)
+    └─→ configureEFI()         (paso común)
 ```
 
 ## Métricas de Calidad
@@ -209,15 +397,21 @@ Después:
 
 ### Líneas de Código por Clase
 ```
-WimMounter:           ~200 LOC
-DriverIntegrator:     ~350 LOC
-PecmdConfigurator:    ~180 LOC
-StartnetConfigurator: ~80 LOC
-IniFileProcessor:     ~180 LOC
-ProgramsIntegrator:   ~120 LOC
-BootWimProcessor:     ~250 LOC (reducido de ~900)
-────────────────────────────
-Total:                ~1360 LOC (más mantenible que 900 monolíticas)
+WimMounter:                   ~200 LOC
+DriverIntegrator:             ~350 LOC
+PecmdConfigurator:            ~180 LOC
+StartnetConfigurator:          ~80 LOC
+IniFileProcessor:             ~180 LOC
+ProgramsIntegrator:           ~120 LOC
+WindowsEditionSelector:       ~200 LOC
+BootWimProcessor:             ~250 LOC (reducido de ~900)
+PartitionManager:             ~400 LOC
+ISOCopyManager:               ~600 LOC
+BCDManager:                   ~350 LOC
+FileCopyManager:              ~300 LOC
+ISOReader:                    ~450 LOC
+────────────────────────────────────
+Total módulos core:           ~3660 LOC (bien distribuido y mantenible)
 ```
 
 ## Beneficios Tangibles
@@ -258,6 +452,75 @@ if (pecmdConfigurator_->isPecmdPE(mountDir)) {
 } else if (ventoyConfigurator_->isVentoyPE(mountDir)) {
     ventoyConfigurator_->configureVentoy(...);
 }
+```
+
+### Agregar nuevo idioma
+```xml
+<!-- Crear nuevo archivo lang/fr_fr.xml -->
+<?xml version="1.0" encoding="UTF-8"?>
+<translations language="fr_fr">
+    <item key="APP_TITLE">BootThatISO! - Créer une partition amorçable</item>
+    <!-- ... más traducciones ... -->
+</translations>
+```
+
+El sistema de localización (`LocalizationManager`) detectará automáticamente el nuevo archivo y lo cargará según la configuración del usuario.
+
+## Sistema de Localización
+
+### Arquitectura
+```
+┌─────────────────────────────────────┐
+│    LocalizationManager              │
+│  (Singleton Pattern)                │
+├─────────────────────────────────────┤
+│  - currentLanguage_                 │
+│  - translations_ (map)              │
+│  - availableLanguages_ (vector)     │
+├─────────────────────────────────────┤
+│  + loadLanguage(code)               │
+│  + getString(key)                   │
+│  + getAvailableLanguages()          │
+│  + setLanguage(code)                │
+└─────────────────────────────────────┘
+         │
+         │ lee archivos XML
+         ▼
+┌─────────────────────────────────────┐
+│      lang/ directory                │
+│  - en_us.xml (Inglés)               │
+│  - es_cr.xml (Español)              │
+│  - [otros idiomas]                  │
+└─────────────────────────────────────┘
+```
+
+### Flujo de Traducción
+```
+App Inicio
+    │
+    ├─→ LocalizationManager::getInstance()
+    ├─→ scanAvailableLanguages()
+    │   └─→ busca archivos *.xml en lang/
+    │
+    ├─→ loadLanguage(defaultLang)
+    │   ├─→ abre archivo XML
+    │   ├─→ parsea con tinyxml2
+    │   └─→ almacena en translations_ map
+    │
+    └─→ UI usa getString(key) para obtener textos
+        └─→ devuelve traducción o key si no existe
+```
+
+### Validación de Traducciones
+El proyecto incluye una herramienta de validación (`ValidateTranslations`) que:
+- Verifica que todos los archivos de idioma tengan las mismas claves
+- Detecta claves faltantes o duplicadas
+- Valida formato XML correcto
+- Se ejecuta como parte del proceso de construcción
+
+```bash
+# Validar traducciones
+build\Release\ValidateTranslations.exe
 ```
 
 ## Conclusión

@@ -204,27 +204,93 @@ Review these logs when diagnosing failures or sharing reports.
 ## Repository Structure
 ```
 BootThatISO!/
-|- build/               # CMake/Visual Studio generated files
-|- include/             # Shared headers
-|  |- models/           # Model interfaces (HashInfo, PartitionDetector, etc.)
-|  |- version.h.in      # Version template
+|- build/                      # CMake/Visual Studio generated files
+|- include/                    # Shared headers
+|  |- models/                  # Model interfaces (HashInfo, etc.)
+|  |- version.h.in             # Version template
 |- src/
-|  |- boot/             # Boot coordination (BootWimProcessor)
-|  |- wim/              # WIM/DISM operations (WimMounter)
-|  |- drivers/          # Driver integration (DriverIntegrator)
-|  |- config/           # PE configuration (PecmdConfigurator, StartnetConfigurator, IniFileProcessor)
-|  |- filesystem/       # Filesystem operations (ProgramsIntegrator)
-|  |- controllers/      # Flow orchestration (ProcessController, ProcessService)
-|  |- models/           # Domain models (ISOReader, FileCopyManager, EventManager, etc.)
-|  |- services/         # Application services (PartitionManager, ISOCopyManager, BCDManager)
-|  |- utils/            # Utilities (Logger, LocalizationManager, Utils, constants)
-|  |- views/            # Win32 UI (MainWindow)
-|- tests/               # Unit tests
-|- third-party/         # 7-Zip SDK
-|- lang/                # Localization files (en_us.xml, es_cr.xml)
-|- CMakeLists.txt
-|- compilar.bat
-|- .clang-format        # Code formatting configuration
+|  |- boot/                    # Boot coordination (BootWimProcessor)
+|  |  |- BootWimProcessor.cpp  # Main orchestrator for boot.wim processing
+|  |  |- BootWimProcessor.h
+|  |- wim/                     # WIM/DISM operations
+|  |  |- WimMounter.cpp        # WIM mount/unmount with DISM
+|  |  |- WimMounter.h
+|  |  |- WindowsEditionSelector.cpp  # Windows edition selection logic
+|  |  |- WindowsEditionSelector.h
+|  |- drivers/                 # Driver integration
+|  |  |- DriverIntegrator.cpp  # System + custom driver integration
+|  |  |- DriverIntegrator.h
+|  |- config/                  # PE configuration
+|  |  |- PecmdConfigurator.cpp # Hiren's BootCD PE configuration
+|  |  |- PecmdConfigurator.h
+|  |  |- StartnetConfigurator.cpp  # Standard WinPE configuration
+|  |  |- StartnetConfigurator.h
+|  |  |- IniFileProcessor.cpp  # INI file processing
+|  |  |- IniFileProcessor.h
+|  |- filesystem/              # Filesystem operations
+|  |  |- ProgramsIntegrator.cpp  # Programs folder integration
+|  |  |- ProgramsIntegrator.h
+|  |- controllers/             # Flow orchestration
+|  |  |- ProcessController.cpp
+|  |  |- ProcessController.h
+|  |  |- ProcessService.cpp
+|  |- models/                  # Domain models
+|  |  |- ISOReader.cpp         # 7-Zip wrapper for ISO reading
+|  |  |- IniConfigurator.cpp   # Drive letter replacement in INI files
+|  |  |- FileCopyManager.cpp   # Progress tracking for file operations
+|  |  |- EventManager.h        # Observer pattern for events
+|  |  |- ContentExtractor.cpp  # ISO content extraction
+|  |  |- HashVerifier.cpp      # Hash verification (MD5)
+|  |  |- efimanager.cpp        # EFI partition management
+|  |  |- isomounter.cpp        # ISO mounting operations
+|  |  |- DiskIntegrityChecker.cpp
+|  |  |- VolumeDetector.cpp
+|  |  |- SpaceManager.cpp
+|  |  |- DiskpartExecutor.cpp
+|  |  |- PartitionReformatter.cpp
+|  |  |- PartitionCreator.cpp
+|  |- services/                # Application services
+|  |  |- ISOCopyManager.cpp    # ISO copying orchestration
+|  |  |- BCDManager.cpp        # BCD configuration
+|  |  |- PartitionManager.cpp  # Partition operations
+|  |  |- PartitionDetector.cpp # Partition detection
+|  |  |- VolumeManager.cpp     # Volume management
+|  |  |- isotypedetector.cpp   # ISO type detection (Windows/Linux)
+|  |- utils/                   # Utilities
+|  |  |- Utils.cpp             # General utilities
+|  |  |- Logger.cpp            # Logging system
+|  |  |- LocalizationManager.cpp  # Multi-language support
+|  |- views/                   # Win32 UI
+|  |  |- mainwindow.cpp        # Main application window
+|  |  |- EditionSelectorDialog.cpp  # Edition selection dialog
+|  |- main.cpp                 # Application entry point
+|  |- SevenZipGuids.cpp        # 7-Zip GUID definitions
+|- tests/                      # Unit tests
+|  |- utils_tests.cpp
+|  |- test_recover_space.cpp
+|- tools/                      # Build and validation tools
+|  |- validate_translations.cpp
+|- third-party/                # 7-Zip SDK
+|  |- C/                       # C implementation files
+|  |- CPP/                     # C++ implementation files
+|  |- DOC/                     # License and documentation
+|- lang/                       # Localization files
+|  |- en_us.xml                # English (US)
+|  |- es_cr.xml                # Spanish (Costa Rica)
+|- isos/                       # Test ISOs directory
+|- release-assets/             # Release assets
+|- res/                        # Resources (icons, images)
+|- test_ini_replacer.cpp       # INI replacer test
+|- test_iso_detection.cpp      # ISO detection test
+|- test_iso_reader.cpp         # ISO reader test
+|- test_list_formats.cpp       # Format listing test
+|- CMakeLists.txt              # CMake build configuration
+|- compilar.bat                # Windows build script
+|- .clang-format               # Code formatting configuration
+|- LICENSE                     # GPL 3.0 License
+|- README.md                   # This file
+|- ARCHITECTURE.md             # Architecture documentation
+|- release_notes.md            # Release notes
 ```
 ## Credits
 Developed by **Andrey Rodríguez Araya** in 2025.
@@ -438,27 +504,93 @@ Revisa estas bitacoras al diagnosticar fallos o al compartir reportes.
 ## Estructura del repositorio
 ```
 BootThatISO!/
-|- build/               # Archivos generados por CMake/Visual Studio
-|- include/             # Cabeceras compartidas
-|  |- models/           # Interfaces de modelos (HashInfo, PartitionDetector, etc.)
-|  |- version.h.in      # Plantilla de versión
+|- build/                      # Archivos generados por CMake/Visual Studio
+|- include/                    # Cabeceras compartidas
+|  |- models/                  # Interfaces de modelos (HashInfo, etc.)
+|  |- version.h.in             # Plantilla de versión
 |- src/
-|  |- boot/             # Coordinación de arranque (BootWimProcessor)
-|  |- wim/              # Operaciones WIM/DISM (WimMounter)
-|  |- drivers/          # Integración de drivers (DriverIntegrator)
-|  |- config/           # Configuración PE (PecmdConfigurator, StartnetConfigurator, IniFileProcessor)
-|  |- filesystem/       # Operaciones de sistema de archivos (ProgramsIntegrator)
-|  |- controllers/      # Orquestación del flujo (ProcessController, ProcessService)
-|  |- models/           # Modelos de dominio (ISOReader, FileCopyManager, EventManager, etc.)
-|  |- services/         # Servicios de aplicación (PartitionManager, ISOCopyManager, BCDManager)
-|  |- utils/            # Utilidades (Logger, LocalizationManager, Utils, constantes)
-|  |- views/            # UI Win32 (MainWindow)
-|- tests/               # Pruebas unitarias
-|- third-party/         # SDK de 7-Zip
-|- lang/                # Archivos de localización (en_us.xml, es_cr.xml)
-|- CMakeLists.txt
-|- compilar.bat
-|- .clang-format        # Configuración de formato de código
+|  |- boot/                    # Coordinación de arranque
+|  |  |- BootWimProcessor.cpp  # Orquestador principal para procesamiento boot.wim
+|  |  |- BootWimProcessor.h
+|  |- wim/                     # Operaciones WIM/DISM
+|  |  |- WimMounter.cpp        # Montaje/desmontaje WIM con DISM
+|  |  |- WimMounter.h
+|  |  |- WindowsEditionSelector.cpp  # Lógica de selección de edición Windows
+|  |  |- WindowsEditionSelector.h
+|  |- drivers/                 # Integración de drivers
+|  |  |- DriverIntegrator.cpp  # Integración de drivers del sistema + personalizados
+|  |  |- DriverIntegrator.h
+|  |- config/                  # Configuración PE
+|  |  |- PecmdConfigurator.cpp # Configuración de Hiren's BootCD PE
+|  |  |- PecmdConfigurator.h
+|  |  |- StartnetConfigurator.cpp  # Configuración WinPE estándar
+|  |  |- StartnetConfigurator.h
+|  |  |- IniFileProcessor.cpp  # Procesamiento de archivos INI
+|  |  |- IniFileProcessor.h
+|  |- filesystem/              # Operaciones de sistema de archivos
+|  |  |- ProgramsIntegrator.cpp  # Integración de carpeta Programs
+|  |  |- ProgramsIntegrator.h
+|  |- controllers/             # Orquestación del flujo
+|  |  |- ProcessController.cpp
+|  |  |- ProcessController.h
+|  |  |- ProcessService.cpp
+|  |- models/                  # Modelos de dominio
+|  |  |- ISOReader.cpp         # Wrapper de 7-Zip para lectura de ISO
+|  |  |- IniConfigurator.cpp   # Reemplazo de letras de unidad en archivos INI
+|  |  |- FileCopyManager.cpp   # Seguimiento de progreso para operaciones de archivos
+|  |  |- EventManager.h        # Patrón Observer para eventos
+|  |  |- ContentExtractor.cpp  # Extracción de contenido ISO
+|  |  |- HashVerifier.cpp      # Verificación de hash (MD5)
+|  |  |- efimanager.cpp        # Gestión de partición EFI
+|  |  |- isomounter.cpp        # Operaciones de montaje ISO
+|  |  |- DiskIntegrityChecker.cpp
+|  |  |- VolumeDetector.cpp
+|  |  |- SpaceManager.cpp
+|  |  |- DiskpartExecutor.cpp
+|  |  |- PartitionReformatter.cpp
+|  |  |- PartitionCreator.cpp
+|  |- services/                # Servicios de aplicación
+|  |  |- ISOCopyManager.cpp    # Orquestación de copia de ISO
+|  |  |- BCDManager.cpp        # Configuración BCD
+|  |  |- PartitionManager.cpp  # Operaciones de particiones
+|  |  |- PartitionDetector.cpp # Detección de particiones
+|  |  |- VolumeManager.cpp     # Gestión de volúmenes
+|  |  |- isotypedetector.cpp   # Detección de tipo de ISO (Windows/Linux)
+|  |- utils/                   # Utilidades
+|  |  |- Utils.cpp             # Utilidades generales
+|  |  |- Logger.cpp            # Sistema de registro
+|  |  |- LocalizationManager.cpp  # Soporte multi-idioma
+|  |- views/                   # UI Win32
+|  |  |- mainwindow.cpp        # Ventana principal de la aplicación
+|  |  |- EditionSelectorDialog.cpp  # Diálogo de selección de edición
+|  |- main.cpp                 # Punto de entrada de la aplicación
+|  |- SevenZipGuids.cpp        # Definiciones GUID de 7-Zip
+|- tests/                      # Pruebas unitarias
+|  |- utils_tests.cpp
+|  |- test_recover_space.cpp
+|- tools/                      # Herramientas de construcción y validación
+|  |- validate_translations.cpp
+|- third-party/                # SDK de 7-Zip
+|  |- C/                       # Archivos de implementación C
+|  |- CPP/                     # Archivos de implementación C++
+|  |- DOC/                     # Licencia y documentación
+|- lang/                       # Archivos de localización
+|  |- en_us.xml                # Inglés (US)
+|  |- es_cr.xml                # Español (Costa Rica)
+|- isos/                       # Directorio de ISOs de prueba
+|- release-assets/             # Recursos de release
+|- res/                        # Recursos (iconos, imágenes)
+|- test_ini_replacer.cpp       # Prueba de reemplazo INI
+|- test_iso_detection.cpp      # Prueba de detección ISO
+|- test_iso_reader.cpp         # Prueba de lector ISO
+|- test_list_formats.cpp       # Prueba de listado de formatos
+|- CMakeLists.txt              # Configuración de construcción CMake
+|- compilar.bat                # Script de construcción Windows
+|- .clang-format               # Configuración de formato de código
+|- LICENSE                     # Licencia GPL 3.0
+|- README.md                   # Este archivo
+|- ARCHITECTURE.md             # Documentación de arquitectura
+|- release_notes.md            # Notas de versión
 ```
 ## Creditos
 Desarrollado por **Andrey Rodríguez Araya** en 2025.
