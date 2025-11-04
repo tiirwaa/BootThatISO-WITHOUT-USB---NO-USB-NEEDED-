@@ -283,7 +283,24 @@ bool PartitionManager::createPartition(const std::string &format, bool skipInteg
         if (eventManager)
             eventManager->notifyLogUpdate("Usando particiones existentes.\r\n");
     } else {
-        // Only one partition exists - this is an inconsistent state, recreate both
+        // Only one partition exists - this is an inconsistent state
+        // CRITICAL: Check if Windows is using the EFI partition before attempting to delete it
+        bool windowsUsingEfi = volumeDetector->isWindowsUsingEfiPartition();
+        
+        if (windowsUsingEfi) {
+            if (eventManager) {
+                eventManager->notifyLogUpdate("\r\n");
+                eventManager->notifyLogUpdate("========================================\r\n");
+                eventManager->notifyLogUpdate("CRITICAL ERROR:\r\n");
+                eventManager->notifyLogUpdate("Windows is using the ISOEFI partition as its system EFI partition.\r\n");
+                eventManager->notifyLogUpdate("Cannot delete or recreate this partition - it would break Windows boot.\r\n");
+                eventManager->notifyLogUpdate("Please manually recover space and ensure both partitions exist.\r\n");
+                eventManager->notifyLogUpdate("========================================\r\n");
+                eventManager->notifyLogUpdate("\r\n");
+            }
+            return false;
+        }
+        
         if (eventManager)
             eventManager->notifyLogUpdate("Estado inconsistente: Solo una partición existe. Recreando ambas...\r\n");
 
