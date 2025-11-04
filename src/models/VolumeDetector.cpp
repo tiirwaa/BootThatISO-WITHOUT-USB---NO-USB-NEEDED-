@@ -538,50 +538,84 @@ int VolumeDetector::countEfiPartitions() {
 }
 
 bool VolumeDetector::isWindowsUsingEfiPartition() {
-    // Check if Windows is installed and using the ISOEFI partition
+    // Check if the SYSTEM'S ACTUAL EFI partition has the ISOEFI label
+    // This prevents false positives when ISOEFI contains copied Windows files but isn't the active EFI
     std::string logDir = Utils::getExeDirectory() + "logs";
     CreateDirectoryA(logDir.c_str(), NULL);
     std::ofstream debugLog((logDir + "\\windows_efi_detection.log").c_str());
 
-    debugLog << "Checking if Windows is using ISOEFI partition...\n";
+    debugLog << "Checking if Windows SYSTEM EFI partition is labeled as ISOEFI...\n";
 
-    std::string efiDrive = getEfiPartitionDriveLetter();
+    // Use PowerShell to get the actual system EFI partition (not just any EFI labeled partition)
+    char tempPath[MAX_PATH];
+    GetTempPathA(MAX_PATH, tempPath);
+    char tempFile[MAX_PATH];
+    GetTempFileNameA(tempPath, "efi_check", 0, tempFile);
+    std::string psFile  = std::string(tempFile) + ".ps1";
+    std::string outFile = std::string(tempFile) + "_out.txt";
 
-    if (efiDrive.empty()) {
-        debugLog << "ISOEFI partition not found or not mounted\n";
+    std::ofstream scriptFile(psFile);
+    if (!scriptFile) {
+        debugLog << "Failed to create PowerShell script\n";
         debugLog.close();
         return false;
     }
 
-    debugLog << "ISOEFI partition found at: " << efiDrive << "\n";
+    // Get the actual system EFI partition (partition with GptType EFI and with ESP attribute)
+    scriptFile << "$systemEfi = Get-Partition | Where-Object { $_.GptType -eq '{c12a7328-f81f-11d2-ba4b-00a0c93ec93b}' "
+                  "-and $_.IsActive -eq $true } | Select-Object -First 1\n";
+    scriptFile << "if ($systemEfi) {\n";
+    scriptFile << "    $vol = Get-Volume | Where-Object { $_.Path -in (Get-Partition -DiskNumber $systemEfi.DiskNumber "
+                  "-PartitionNumber $systemEfi.PartitionNumber).AccessPaths }\n";
+    scriptFile << "    if ($vol) {\n";
+    scriptFile << "        $vol.FileSystemLabel | Out-File -FilePath '" << outFile << "' -Encoding ASCII\n";
+    scriptFile << "    }\n";
+    scriptFile << "}\n";
+    scriptFile.close();
 
-    std::vector<std::string> windowsBootFiles = {efiDrive + "EFI\\Microsoft\\Boot\\bootmgfw.efi",
-                                                 efiDrive + "EFI\\Microsoft\\Boot\\BCD",
-                                                 efiDrive + "EFI\\Microsoft\\Boot\\bootmgr.efi"};
+    // Execute PowerShell script
+    std::string         cmd = "powershell -ExecutionPolicy Bypass -NoProfile -File \"" + psFile + "\"";
+    STARTUPINFOA        si  = {sizeof(si)};
+    PROCESS_INFORMATION pi;
+    si.dwFlags     = STARTF_USESHOWWINDOW;
+    si.wShowWindow = SW_HIDE;
 
-    int foundFiles = 0;
-    for (const auto &filePath : windowsBootFiles) {
-        DWORD attrs      = GetFileAttributesA(filePath.c_str());
-        bool  fileExists = (attrs != INVALID_FILE_ATTRIBUTES && !(attrs & FILE_ATTRIBUTE_DIRECTORY));
-
-        debugLog << "Checking: " << filePath << " - " << (fileExists ? "EXISTS" : "NOT FOUND") << "\n";
-
-        if (fileExists) {
-            foundFiles++;
-        }
+    bool scriptRan = false;
+    if (CreateProcessA(NULL, const_cast<char *>(cmd.c_str()), NULL, NULL, FALSE, CREATE_NO_WINDOW, NULL, NULL, &si,
+                       &pi)) {
+        WaitForSingleObject(pi.hProcess, 10000); // 10 seconds timeout
+        CloseHandle(pi.hProcess);
+        CloseHandle(pi.hThread);
+        scriptRan = true;
     }
 
-    std::string markerPath  = efiDrive + "BOOTTHATISO_TEMP_PARTITION.txt";
-    DWORD       markerAttrs = GetFileAttributesA(markerPath.c_str());
-    bool        hasMarker   = (markerAttrs != INVALID_FILE_ATTRIBUTES && !(markerAttrs & FILE_ATTRIBUTE_DIRECTORY));
+    DeleteFileA(psFile.c_str());
 
-    debugLog << "BootThatISO marker file: " << (hasMarker ? "PRESENT" : "ABSENT") << "\n";
-    debugLog << "Windows boot files found: " << foundFiles << " out of " << windowsBootFiles.size() << "\n";
+    if (!scriptRan) {
+        debugLog << "Failed to run PowerShell script\n";
+        debugLog.close();
+        return false;
+    }
 
-    bool windowsIsUsing = (foundFiles >= 2);
+    // Read the result
+    std::ifstream resultFile(outFile);
+    std::string   systemEfiLabel;
+    if (resultFile) {
+        std::getline(resultFile, systemEfiLabel);
+        // Trim whitespace
+        systemEfiLabel.erase(0, systemEfiLabel.find_first_not_of(" \t\r\n"));
+        systemEfiLabel.erase(systemEfiLabel.find_last_not_of(" \t\r\n") + 1);
+        resultFile.close();
+    }
+    DeleteFileA(outFile.c_str());
 
-    debugLog << "Conclusion: Windows is " << (windowsIsUsing ? "USING" : "NOT USING") << " ISOEFI\n";
+    debugLog << "System EFI partition label: '" << systemEfiLabel << "'\n";
+
+    bool isUsingIsoefi = (_stricmp(systemEfiLabel.c_str(), EFI_VOLUME_LABEL) == 0);
+
+    debugLog << "Conclusion: Windows " << (isUsingIsoefi ? "IS" : "IS NOT")
+             << " using ISOEFI as system EFI partition\n";
     debugLog.close();
 
-    return windowsIsUsing;
+    return isUsingIsoefi;
 }

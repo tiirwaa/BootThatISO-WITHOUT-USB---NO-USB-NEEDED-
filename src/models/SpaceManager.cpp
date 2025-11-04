@@ -135,8 +135,14 @@ bool SpaceManager::recoverSpace() {
     scriptFile << "foreach ($vol in $volumes) {\n";
     scriptFile << "    $part = Get-Partition | Where-Object { $_.AccessPaths -contains $vol.Path }\n";
     scriptFile << "    if ($part) {\n";
-    scriptFile << "        Remove-PartitionAccessPath -DiskNumber 0 -PartitionNumber $part.PartitionNumber -AccessPath "
-                  "$vol.Path -Confirm:$false\n";
+    // Only remove drive letter access paths, not GUID paths
+    scriptFile << "        $accessPaths = $part.AccessPaths | Where-Object { $_ -match '^[A-Z]:\\\\$' }\n";
+    scriptFile << "        foreach ($path in $accessPaths) {\n";
+    scriptFile << "            try {\n";
+    scriptFile << "                Remove-PartitionAccessPath -DiskNumber 0 -PartitionNumber $part.PartitionNumber "
+                  "-AccessPath $path -Confirm:$false -ErrorAction SilentlyContinue\n";
+    scriptFile << "            } catch { }\n";
+    scriptFile << "        }\n";
     scriptFile << "        Remove-Partition -DiskNumber 0 -PartitionNumber $part.PartitionNumber -Confirm:$false\n";
     scriptFile << "    }\n";
     scriptFile << "}\n";
