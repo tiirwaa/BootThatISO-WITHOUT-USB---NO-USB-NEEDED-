@@ -10,7 +10,7 @@ public:
     explicit PartitionCreator(EventManager *eventManager);
     ~PartitionCreator() = default;
 
-    bool performDiskpartOperations(const std::string &format);
+    bool performDiskpartOperations(const std::string &format, bool createIsoBoot = true, bool createEfi = true);
     bool verifyPartitionsCreated();
 
 private:

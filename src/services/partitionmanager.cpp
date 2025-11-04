@@ -303,46 +303,60 @@ bool PartitionManager::createPartition(const std::string &format, bool skipInteg
                 LocalizedOrUtf8("log.partition.usingExistingPartitions", "Using existing partitions.\r\n"));
     } else {
         // Only one partition exists - this is an inconsistent state
-        // CRITICAL: Check if Windows is using the EFI partition before attempting to delete it
         bool windowsUsingEfi = volumeDetector->isWindowsUsingEfiPartition();
 
-        if (windowsUsingEfi) {
-            if (eventManager) {
-                eventManager->notifyLogUpdate("\r\n");
-                eventManager->notifyLogUpdate("========================================\r\n");
-                eventManager->notifyLogUpdate(LocalizedOrUtf8("log.partition.criticalError", "CRITICAL ERROR:\r\n"));
-                eventManager->notifyLogUpdate(
-                    LocalizedOrUtf8("log.partition.windowsUsingEfiSystem",
-                                    "Windows is using the ISOEFI partition as its system EFI partition.\r\n"));
-                eventManager->notifyLogUpdate(
-                    LocalizedOrUtf8("log.partition.cannotDeleteBreakBoot",
-                                    "Cannot delete or recreate this partition - it would break Windows boot.\r\n"));
-                eventManager->notifyLogUpdate(
-                    LocalizedOrUtf8("log.partition.manualRecovery",
-                                    "Please manually recover space and ensure both partitions exist.\r\n"));
-                eventManager->notifyLogUpdate("========================================\r\n");
-                eventManager->notifyLogUpdate("\r\n");
-            }
-            return false;
-        }
-
-        if (eventManager)
-            eventManager->notifyLogUpdate(
-                LocalizedOrUtf8("log.partition.inconsistentState",
-                                "Inconsistent state: Only one partition exists. Recreating both...\r\n"));
-
-        if (!spaceManager->recoverSpace()) {
+        if (partitionExists() && !efiPartitionExists()) {
+            // Only ISOBOOT exists, no EFI - recreate both
             if (eventManager)
                 eventManager->notifyLogUpdate(
-                    LocalizedOrUtf8("log.partition.errorRecoveringSpace", "Error: Space recovery failed.\r\n"));
-            return false;
+                    LocalizedOrUtf8("log.partition.onlyIsoBootExists",
+                                    "Only ISOBOOT partition exists. Recreating both partitions...\r\n"));
+
+            if (!spaceManager->recoverSpace()) {
+                if (eventManager)
+                    eventManager->notifyLogUpdate(
+                        LocalizedOrUtf8("log.partition.errorRecoveringSpace", "Error: Space recovery failed.\r\n"));
+                return false;
+            }
+            needsToCreatePartitions = true;
+        } else if (!partitionExists() && efiPartitionExists()) {
+            // Only EFI exists
+            if (windowsUsingEfi) {
+                // Windows is using the EFI partition - reuse it and create ISOBOOT
+                if (eventManager) {
+                    eventManager->notifyLogUpdate(
+                        LocalizedOrUtf8("log.partition.onlyEfiExistsWindowsUsing",
+                                        "Only EFI partition exists and Windows is using it as system EFI.\r\n"));
+                    eventManager->notifyLogUpdate(
+                        LocalizedOrUtf8("log.partition.reuseEfiCreateIsoBoot",
+                                        "EFI partition will be reused. Creating ISOBOOT partition...\r\n"));
+                }
+                // Don't run space recovery since we want to keep the EFI partition
+                // Just create the ISOBOOT partition
+                needsToCreatePartitions = true;
+            } else {
+                // Windows is not using EFI - safe to recreate both
+                if (eventManager)
+                    eventManager->notifyLogUpdate(
+                        LocalizedOrUtf8("log.partition.onlyEfiExistsRecreating",
+                                        "Only EFI partition exists (not used by Windows). Recreating both...\r\n"));
+
+                if (!spaceManager->recoverSpace()) {
+                    if (eventManager)
+                        eventManager->notifyLogUpdate(
+                            LocalizedOrUtf8("log.partition.errorRecoveringSpace", "Error: Space recovery failed.\r\n"));
+                    return false;
+                }
+                needsToCreatePartitions = true;
+            }
         }
-        needsToCreatePartitions = true;
     }
 
     // Step 4: Create partitions using diskpart (only if needed)
     if (needsToCreatePartitions) {
-        if (!partitionCreator->performDiskpartOperations(format)) {
+        bool createIsoBoot = !partitionExists();    // Create ISOBOOT if it doesn't exist
+        bool createEfi     = !efiPartitionExists(); // Create EFI if it doesn't exist
+        if (!partitionCreator->performDiskpartOperations(format, createIsoBoot, createEfi)) {
             return false;
         }
 
