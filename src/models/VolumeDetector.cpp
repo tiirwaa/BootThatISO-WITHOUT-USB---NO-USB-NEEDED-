@@ -417,3 +417,61 @@ std::string VolumeDetector::getPartitionFileSystem() {
 
     return "";
 }
+
+int VolumeDetector::getEfiPartitionSizeMB() {
+    std::string logDir = Utils::getExeDirectory() + "logs";
+    CreateDirectoryA(logDir.c_str(), NULL);
+    std::ofstream debugLog((logDir + "\\efi_partition_size.log").c_str());
+
+    debugLog << "Getting EFI partition size...\n";
+
+    // First try to get drive letter
+    std::string efiDrive = getEfiPartitionDriveLetter();
+    if (!efiDrive.empty()) {
+        debugLog << "EFI drive found: " << efiDrive << "\n";
+
+        // Remove trailing backslash for CreateFile
+        std::string driveForHandle = efiDrive;
+        if (!driveForHandle.empty() && driveForHandle.back() == '\\') {
+            driveForHandle.pop_back();
+        }
+
+        // Open volume handle
+        std::string volumePath = "\\\\.\\" + driveForHandle;
+        HANDLE      hVolume    = CreateFileA(volumePath.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
+                                             OPEN_EXISTING, 0, NULL);
+
+        if (hVolume != INVALID_HANDLE_VALUE) {
+            debugLog << "Volume handle opened successfully\n";
+
+            // Get partition information
+            PARTITION_INFORMATION_EX partInfo;
+            DWORD                    bytesReturned = 0;
+
+            if (DeviceIoControl(hVolume, IOCTL_DISK_GET_PARTITION_INFO_EX, NULL, 0, &partInfo, sizeof(partInfo),
+                                &bytesReturned, NULL)) {
+
+                ULONGLONG sizeBytes = partInfo.PartitionLength.QuadPart;
+                int       sizeMB    = static_cast<int>(sizeBytes / (1024 * 1024));
+
+                debugLog << "Partition size: " << sizeBytes << " bytes (" << sizeMB << " MB)\n";
+                CloseHandle(hVolume);
+                debugLog.close();
+                return sizeMB;
+            } else {
+                debugLog << "DeviceIoControl IOCTL_DISK_GET_PARTITION_INFO_EX failed, error: " << GetLastError()
+                         << "\n";
+            }
+
+            CloseHandle(hVolume);
+        } else {
+            debugLog << "Failed to open volume handle, error: " << GetLastError() << "\n";
+        }
+    } else {
+        debugLog << "EFI partition not found\n";
+    }
+
+    debugLog << "Returning 0 (could not determine size)\n";
+    debugLog.close();
+    return 0; // Could not determine size
+}

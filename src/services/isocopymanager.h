@@ -29,7 +29,8 @@ public:
 
     bool extractISOContents(EventManager &eventManager, const std::string &isoPath, const std::string &destPath,
                             const std::string &espPath, bool extractContent = true, bool extractBootWim = false,
-                            bool copyInstallWim = false, const std::string &mode = "", const std::string &format = "");
+                            bool copyInstallWim = false, const std::string &mode = "", const std::string &format = "",
+                            bool injectDrivers = false);
     bool copyISOFile(EventManager &eventManager, const std::string &isoPath, const std::string &destPath);
 
     bool               getIsWindowsISO() const;

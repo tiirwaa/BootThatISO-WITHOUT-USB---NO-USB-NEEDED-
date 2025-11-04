@@ -170,7 +170,7 @@ void ISOCopyManager::listDirectoryRecursive(std::ofstream &log, const std::strin
 bool ISOCopyManager::extractISOContents(EventManager &eventManager, const std::string &isoPath,
                                         const std::string &destPath, const std::string &espPath, bool extractContent,
                                         bool extractBootWim, bool copyInstallWim, const std::string &mode,
-                                        const std::string &format) {
+                                        const std::string &format, bool injectDrivers) {
     // Initialize managers with EventManager
     fileCopyManager  = std::make_unique<FileCopyManager>(eventManager);
     efiManager       = std::make_unique<EFIManager>(eventManager, *fileCopyManager);
@@ -265,12 +265,13 @@ bool ISOCopyManager::extractISOContents(EventManager &eventManager, const std::s
 
     // Calculate MD5 of the ISO
     std::string hashFilePath = destPath + "\\ISOBOOTHASH";
-    bool        skipCopy     = hashVerifier->shouldSkipCopy(isoPath, hashFilePath, mode, format);
+    bool        skipCopy     = hashVerifier->shouldSkipCopy(isoPath, hashFilePath, mode, format, injectDrivers);
     if (skipCopy) {
-        logFile << getTimestamp() << "ISO hash, version, mode and format match existing, skipping content copy"
+        logFile << getTimestamp()
+                << "ISO hash, version, mode, format and drivers flag match existing, skipping content copy"
                 << std::endl;
         eventManager.notifyLogUpdate(
-            "Hash, version, modo y formato del ISO coinciden, omitiendo copia de contenido.\r\n");
+            "Hash, version, modo, formato y drivers del ISO coinciden, omitiendo copia de contenido.\r\n");
     }
 
     if (extractContent && !skipCopy) {
@@ -295,8 +296,9 @@ bool ISOCopyManager::extractISOContents(EventManager &eventManager, const std::s
     // Extract boot.wim if requested
     bool bootWimSuccess = true;
     if (extractBootWim) {
-        bootWimSuccess = bootWimProcessor->processBootWim(isoPath, destPath, espPath, integratePrograms, programsSrc,
-                                                          copiedSoFar, extractBootWim, copyInstallWim, logFile);
+        bootWimSuccess =
+            bootWimProcessor->processBootWim(isoPath, destPath, espPath, integratePrograms, programsSrc, copiedSoFar,
+                                             extractBootWim, copyInstallWim, logFile, injectDrivers);
     }
 
     // Copy install file if requested
@@ -390,8 +392,8 @@ bool ISOCopyManager::extractISOContents(EventManager &eventManager, const std::s
 
     bool overallSuccess = efiSuccess && bootWimSuccess;
     if (overallSuccess) {
-        // Write the current ISO hash, mode and format to the file
-        hashVerifier->saveHashInfo(hashFilePath, Utils::calculateMD5(isoPath), mode, format);
+        // Write the current ISO hash, mode, format and drivers flag to the file
+        hashVerifier->saveHashInfo(hashFilePath, Utils::calculateMD5(isoPath), mode, format, injectDrivers);
     }
 
     eventManager.notifyDetailedProgress(100, 100, "");
@@ -471,13 +473,14 @@ static BOOL copyFileUtf8(const std::string &src, const std::string &dst) {
 
 // Helper function to read hash info from file
 static HashInfo readHashInfo(const std::string &path) {
-    HashInfo      info = {"", "", "", ""};
+    HashInfo      info = {"", "", "", "", ""};
     std::ifstream file(path);
     if (file.is_open()) {
         std::getline(file, info.hash);
         std::getline(file, info.version);
         std::getline(file, info.mode);
         std::getline(file, info.format);
+        std::getline(file, info.driversInjected);
     }
     return info;
 }

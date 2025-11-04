@@ -34,7 +34,17 @@ public:
         bool          isUEFI = gotFw && (fwType == FirmwareTypeUefi);
         winloadPath          = isUEFI ? "\\Windows\\System32\\Boot\\winload.efi" : "\\Windows\\System32\\winload.exe";
 
-        std::string ramdiskValue = "[" + dataDevice + "]" + bootWimRelative + "," + ramdiskOptionsId;
+        // Detect if boot.wim was copied to ESP (Windows Install ISOs) or remains on data partition (PE standalone)
+        std::string bootWimDevice   = dataDevice; // Default: Z: (data partition)
+        std::string bootWimCheckEsp = espDevice + bootWimRelative;
+        DWORD       fileAttributes  = GetFileAttributesA(bootWimCheckEsp.c_str());
+        if (fileAttributes != INVALID_FILE_ATTRIBUTES && !(fileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+            // boot.wim found on ESP - Windows Install ISO case
+            bootWimDevice = espDevice; // Use Y: (ESP)
+        }
+        // else: boot.wim not on ESP - PE standalone case, stays on Z:
+
+        std::string ramdiskValue = "[" + bootWimDevice + "]" + bootWimRelative + "," + ramdiskOptionsId;
 
         std::string logDir = Utils::getExeDirectory() + "logs";
         CreateDirectoryA(logDir.c_str(), NULL);
@@ -42,6 +52,8 @@ public:
         std::ofstream logFile(logFilePath.c_str(), std::ios::app);
         if (logFile) {
             logFile << "Executing BCD commands for RamdiskBootStrategy (boot.wim ramdisk mode):" << std::endl;
+            logFile << "  boot.wim device: " << bootWimDevice << " (detected from file presence)" << std::endl;
+            logFile << "  boot.sdi device: " << espDevice << " (always on ESP)" << std::endl;
         }
 
         auto execAndLog = [&](const std::string &cmd, bool allowExists = false) {
@@ -62,7 +74,8 @@ public:
         };
 
         execAndLog(BCD_CMD + " /create " + ramdiskOptionsId, true);
-        execAndLog(BCD_CMD + " /set " + ramdiskOptionsId + " ramdisksdidevice partition=" + dataDevice);
+        // boot.sdi is ALWAYS on ESP (Y:), regardless of where boot.wim is
+        execAndLog(BCD_CMD + " /set " + ramdiskOptionsId + " ramdisksdidevice partition=" + espDevice);
         execAndLog(BCD_CMD + " /set " + ramdiskOptionsId + " ramdisksdipath " + sdiRelative);
 
         execAndLog(BCD_CMD + " /set " + guid + " inherit {bootloadersettings}");

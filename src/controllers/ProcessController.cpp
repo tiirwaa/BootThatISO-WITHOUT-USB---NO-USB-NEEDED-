@@ -37,7 +37,7 @@ void ProcessController::requestCancel() {
 
 void ProcessController::startProcess(const std::string &isoPath, const std::string &selectedFormat,
                                      const std::string &selectedBootModeKey, const std::string &selectedBootModeLabel,
-                                     bool skipIntegrityCheck, bool synchronous) {
+                                     bool skipIntegrityCheck, bool injectDrivers, bool synchronous) {
     Logger::instance().resetProcessLogs();
     const std::string logDir = Logger::instance().logDirectory();
 
@@ -81,19 +81,21 @@ void ProcessController::startProcess(const std::string &isoPath, const std::stri
     }
 
     if (synchronous) {
-        processInThread(trimmedIsoPath, selectedFormat, selectedBootModeKey, selectedBootModeLabel, skipIntegrityCheck);
+        processInThread(trimmedIsoPath, selectedFormat, selectedBootModeKey, selectedBootModeLabel, skipIntegrityCheck,
+                        injectDrivers);
     } else {
         if (workerThread.joinable()) {
             workerThread.join();
         }
         workerThread = std::thread(&ProcessController::processInThread, this, trimmedIsoPath, selectedFormat,
-                                   selectedBootModeKey, selectedBootModeLabel, skipIntegrityCheck);
+                                   selectedBootModeKey, selectedBootModeLabel, skipIntegrityCheck, injectDrivers);
     }
 }
 
 void ProcessController::processInThread(const std::string &isoPath, const std::string &selectedFormat,
                                         const std::string &selectedBootModeKey,
-                                        const std::string &selectedBootModeLabel, bool skipIntegrityCheck) {
+                                        const std::string &selectedBootModeLabel, bool skipIntegrityCheck,
+                                        bool injectDrivers) {
     eventManager.notifyLogUpdate("Verificando estado de particiones...\r\n");
     eventManager.notifyProgressUpdate(10);
 
@@ -107,8 +109,8 @@ void ProcessController::processInThread(const std::string &isoPath, const std::s
     eventManager.notifyProgressUpdate(30);
 
     eventManager.notifyLogUpdate("Iniciando preparación de archivos del ISO...\r\n");
-    auto copyResult =
-        processService->copyIsoContent(isoPath, selectedFormat, selectedBootModeKey, selectedBootModeLabel);
+    auto copyResult = processService->copyIsoContent(isoPath, selectedFormat, selectedBootModeKey,
+                                                     selectedBootModeLabel, injectDrivers);
     if (!copyResult.success) {
         eventManager.notifyLogUpdate("Error: " + copyResult.errorMessage + "\r\n");
         eventManager.notifyError("Error: " + copyResult.errorMessage);

@@ -24,6 +24,7 @@
 #define IDC_BOOTMODE_EXTRACTED 1008
 #define IDC_RECOVER_BUTTON 1009
 #define IDC_INTEGRITY_CHECKBOX 1010
+#define IDC_INJECT_DRIVERS_CHECKBOX 1011
 
 #define WM_UPDATE_PROGRESS (WM_USER + 1)
 #define WM_UPDATE_LOG (WM_USER + 2)
@@ -85,6 +86,8 @@ private:
     std::string selectedBootModeKey;
     // Skip integrity check
     bool skipIntegrityCheck;
+    // Inject drivers into ISO (Windows Install ISOs only)
+    bool injectDriversIntoISO;
 
     // Localized texts
     std::wstring logoText;
@@ -100,6 +103,7 @@ private:
     std::wstring bootRamText;
     std::wstring bootDiskText;
     std::wstring integrityText;
+    std::wstring injectDriversText;
     std::wstring createButtonText;
     std::wstring versionText;
     std::wstring servicesText;
@@ -131,6 +135,7 @@ private:
     HWND detailedProgressBar;
     HWND recoverButton;
     HWND integrityCheckBox;
+    HWND injectDriversCheckBox;
     HWND performHintLabel;
     HWND developedByLabel;
 

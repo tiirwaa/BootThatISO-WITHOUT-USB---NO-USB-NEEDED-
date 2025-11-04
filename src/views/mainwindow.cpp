@@ -107,6 +107,7 @@ Gdiplus::Bitmap *ResizeBitmap(Gdiplus::Bitmap *source, int targetWidth, int targ
 MainWindow::MainWindow(HWND parent)
     : hInst(GetModuleHandle(NULL)), hWndParent(parent), selectedFormat("NTFS"),
       selectedBootModeKey(AppKeys::BootModeRam), isProcessing(false), isRecovering(false), skipIntegrityCheck(true),
+      injectDriversIntoISO(false), // Desactivado por defecto - inyección opcional
       logoBitmap(nullptr), logoHIcon(nullptr), buttonHIcon(nullptr), buttonBitmap(nullptr), buttonRotationAngle(0.0),
       buttonSpinTimerId(0), hRecoverDialog(nullptr), performHintLabel(nullptr), developedByLabel(nullptr) {
     partitionManager = &PartitionManager::getInstance();
@@ -152,20 +153,21 @@ void MainWindow::requestCancel() {
 }
 
 void MainWindow::LoadTexts() {
-    logoText         = LocalizedOrW("mainwindow.logoPlaceholder", L"LOGO");
-    titleText        = LocalizedOrW("mainwindow.title", L"BOOT THAT ISO!");
-    subtitleText     = LocalizedOrW("mainwindow.subtitle", L"Configuracion de Particiones Bootables EFI");
-    isoLabelText     = LocalizedOrW("mainwindow.isoPathLabel", L"Ruta del archivo ISO:");
-    browseText       = LocalizedOrW("mainwindow.browseButton", L"Buscar");
-    formatText       = LocalizedOrW("mainwindow.formatLabel", L"Formato del sistema de archivos:");
-    fat32Text        = LocalizedOrW("mainwindow.format.fat32", L"FAT32 (Recomendado - Maxima compatibilidad EFI)");
-    exfatText        = LocalizedOrW("mainwindow.format.exfat", L"exFAT (Sin limite de 4GB por archivo)");
-    ntfsText         = LocalizedOrW("mainwindow.format.ntfs", L"NTFS (Soporte completo de Windows)");
-    bootModeText     = LocalizedOrW("mainwindow.bootModeLabel", L"Modo de arranque:");
-    bootRamText      = LocalizedOrW("bootMode.ram", L"Boot desde RAM");
-    bootDiskText     = LocalizedOrW("bootMode.extract", L"Boot desde Disco");
-    integrityText    = LocalizedOrW("mainwindow.integrityCheck", L"Realizar verificacion de la integridad del disco");
-    createButtonText = LocalizedOrW("mainwindow.createButton", L"Realizar proceso y Bootear ISO seleccionado");
+    logoText          = LocalizedOrW("mainwindow.logoPlaceholder", L"LOGO");
+    titleText         = LocalizedOrW("mainwindow.title", L"BOOT THAT ISO!");
+    subtitleText      = LocalizedOrW("mainwindow.subtitle", L"Configuracion de Particiones Bootables EFI");
+    isoLabelText      = LocalizedOrW("mainwindow.isoPathLabel", L"Ruta del archivo ISO:");
+    browseText        = LocalizedOrW("mainwindow.browseButton", L"Buscar");
+    formatText        = LocalizedOrW("mainwindow.formatLabel", L"Formato del sistema de archivos:");
+    fat32Text         = LocalizedOrW("mainwindow.format.fat32", L"FAT32 (Recomendado - Maxima compatibilidad EFI)");
+    exfatText         = LocalizedOrW("mainwindow.format.exfat", L"exFAT (Sin limite de 4GB por archivo)");
+    ntfsText          = LocalizedOrW("mainwindow.format.ntfs", L"NTFS (Soporte completo de Windows)");
+    bootModeText      = LocalizedOrW("mainwindow.bootModeLabel", L"Modo de arranque:");
+    bootRamText       = LocalizedOrW("bootMode.ram", L"Boot desde RAM");
+    bootDiskText      = LocalizedOrW("bootMode.extract", L"Boot desde Disco");
+    integrityText     = LocalizedOrW("mainwindow.integrityCheck", L"Realizar verificacion de la integridad del disco");
+    injectDriversText = LocalizedOrW("mainwindow.injectDrivers", L"Cargar mis drivers al ISO");
+    createButtonText  = LocalizedOrW("mainwindow.createButton", L"Realizar proceso y Bootear ISO seleccionado");
     versionText  = LocalizedFormatW("mainwindow.versionLabel", {Utils::utf8_to_wstring(APP_VERSION)}, L"Version {0}");
     servicesText = LocalizedOrW("mainwindow.servicesButton", L"Services");
     recoverText  = LocalizedOrW("mainwindow.recoverButton", L"Recover my space");
@@ -288,9 +290,19 @@ void MainWindow::CreateControls(HWND parent) {
                       contentWidth, 40, parent, (HMENU)IDC_BOOTMODE_EXTRACTED, hInst, NULL);
     SendMessage(bootExtractedRadio, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
-    integrityCheckBox =
-        CreateWindowW(L"BUTTON", integrityText.c_str(), WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX, contentLeft, 310,
-                      contentWidth, 20, parent, (HMENU)IDC_INTEGRITY_CHECKBOX, hInst, NULL);
+    // Ambos checkboxes en la misma línea horizontal
+    int checkboxWidth = contentWidth / 2 - 10; // Dividir espacio en dos columnas
+
+    injectDriversCheckBox =
+        CreateWindowW(L"BUTTON", injectDriversText.c_str(), WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX, contentLeft, 310,
+                      checkboxWidth, 20, parent, (HMENU)IDC_INJECT_DRIVERS_CHECKBOX, hInst, NULL);
+    SendMessage(injectDriversCheckBox, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
+    // Desactivado por defecto - inyectar drivers es opcional y más lento
+    SendMessage(injectDriversCheckBox, BM_SETCHECK, BST_UNCHECKED, 0);
+
+    integrityCheckBox = CreateWindowW(L"BUTTON", integrityText.c_str(), WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX,
+                                      contentLeft + checkboxWidth + 20, 310, checkboxWidth, 20, parent,
+                                      (HMENU)IDC_INTEGRITY_CHECKBOX, hInst, NULL);
     SendMessage(integrityCheckBox, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
 
     diskSpaceLabel = CreateWindowW(L"STATIC", L"", WS_CHILD | WS_VISIBLE, contentLeft, 340, contentWidth, 20, parent,
@@ -429,6 +441,12 @@ LRESULT MainWindow::HandleCommand(UINT msg, WPARAM wParam, LPARAM lParam) {
             if (HIWORD(wParam) == BN_CLICKED) {
                 LRESULT check      = SendMessage((HWND)lParam, BM_GETCHECK, 0, 0);
                 skipIntegrityCheck = (check == BST_UNCHECKED);
+            }
+            break;
+        case IDC_INJECT_DRIVERS_CHECKBOX:
+            if (HIWORD(wParam) == BN_CLICKED) {
+                LRESULT check        = SendMessage((HWND)lParam, BM_GETCHECK, 0, 0);
+                injectDriversIntoISO = (check == BST_CHECKED); // true si está marcado
             }
             break;
         }
@@ -698,7 +716,7 @@ void MainWindow::OnCreatePartition() {
         (selectedBootModeKey == AppKeys::BootModeRam) ? "Boot desde Memoria" : "Boot desde Disco";
     std::string bootModeLabelStr = LocalizedOrUtf8("bootMode." + selectedBootModeKey, bootModeFallback.c_str());
     processController->startProcess(isoPathStr, selectedFormat, selectedBootModeKey, bootModeLabelStr,
-                                    skipIntegrityCheck);
+                                    skipIntegrityCheck, injectDriversIntoISO);
 }
 
 void MainWindow::OnOpenServicesPage() {
@@ -779,8 +797,16 @@ bool MainWindow::RestartSystem() {
     AdjustTokenPrivileges(hToken, FALSE, &tkp, 0, (PTOKEN_PRIVILEGES)NULL, 0);
     if (GetLastError() != ERROR_SUCCESS)
         return false;
-    if (!ExitWindowsEx(EWX_REBOOT, 0))
-        return false;
+
+    // Use InitiateShutdown with SHUTDOWN_RESTART flag
+    // dwReason = SHTDN_REASON_MAJOR_APPLICATION | SHTDN_REASON_MINOR_MAINTENANCE | SHTDN_REASON_FLAG_PLANNED
+    // This prevents Windows Update from installing updates during restart
+    DWORD dwReason = SHTDN_REASON_MAJOR_APPLICATION | SHTDN_REASON_MINOR_MAINTENANCE | SHTDN_REASON_FLAG_PLANNED;
+    if (InitiateShutdownW(NULL, NULL, 0, SHUTDOWN_RESTART, dwReason) != ERROR_SUCCESS) {
+        // Fallback to ExitWindowsEx if InitiateShutdown fails
+        if (!ExitWindowsEx(EWX_REBOOT | EWX_FORCE, dwReason))
+            return false;
+    }
     return true;
 }
 

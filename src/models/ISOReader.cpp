@@ -102,8 +102,9 @@ bool GetIsoHandlerClsid(GUID &outClsid) {
 class ExtractCallback : public IArchiveExtractCallback {
 public:
     explicit ExtractCallback(IInArchive *arc, const std::wstring &base,
-                             const std::unordered_map<UInt32, std::wstring> *overridePaths = nullptr)
-        : _ref(1), _archive(arc), _baseDir(base), _overridePaths(overridePaths) {
+                             const std::unordered_map<UInt32, std::wstring>             *overridePaths = nullptr,
+                             std::function<void(unsigned long long, unsigned long long)> progressCb    = nullptr)
+        : _ref(1), _archive(arc), _baseDir(base), _overridePaths(overridePaths), _progressCallback(progressCb) {
         if (!_baseDir.empty() && (_baseDir.back() == L'/' || _baseDir.back() == L'\\')) {
             _baseDir.pop_back();
         }
@@ -136,10 +137,14 @@ public:
     }
 
     // IProgress
-    STDMETHOD(SetTotal)(UInt64) override {
+    STDMETHOD(SetTotal)(UInt64 total) override {
+        _totalBytes = total;
         return S_OK;
     }
-    STDMETHOD(SetCompleted)(const UInt64 *) override {
+    STDMETHOD(SetCompleted)(const UInt64 *completeValue) override {
+        if (completeValue && _progressCallback) {
+            _progressCallback(*completeValue, _totalBytes);
+        }
         return S_OK;
     }
 
@@ -210,10 +215,12 @@ public:
 
 private:
     ~ExtractCallback() = default;
-    LONG                                            _ref;
-    IInArchive                                     *_archive; // not owning; Archive manages its lifetime
-    std::wstring                                    _baseDir;
-    const std::unordered_map<UInt32, std::wstring> *_overridePaths;
+    LONG                                                        _ref;
+    IInArchive                                                 *_archive; // not owning; Archive manages its lifetime
+    std::wstring                                                _baseDir;
+    const std::unordered_map<UInt32, std::wstring>             *_overridePaths;
+    std::function<void(unsigned long long, unsigned long long)> _progressCallback;
+    UInt64                                                      _totalBytes = 0;
 };
 
 struct OpenResult {
@@ -387,7 +394,8 @@ bool ISOReader::fileExists(const std::string &isoPath, const std::string &filePa
     return false;
 }
 
-bool ISOReader::extractFile(const std::string &isoPath, const std::string &filePathInISO, const std::string &destPath) {
+bool ISOReader::extractFile(const std::string &isoPath, const std::string &filePathInISO, const std::string &destPath,
+                            std::function<void(unsigned long long, unsigned long long)> progressCallback) {
     const std::wstring wIso   = Utf8ToWide(isoPath);
     auto               opened = OpenIsoArchive(wIso);
     if (!opened.ok)
@@ -430,9 +438,10 @@ bool ISOReader::extractFile(const std::string &isoPath, const std::string &fileP
     // Extract only that item into the requested destination path
     std::unordered_map<UInt32, std::wstring> overrides;
     overrides.emplace(static_cast<UInt32>(found), Utf8ToWide(destPath));
-    CMyComPtr<IArchiveExtractCallback> cb    = new ExtractCallback(opened.archive, Utf8ToWide(destDir), &overrides);
-    UInt32                             index = (UInt32)found;
-    HRESULT                            hr    = opened.archive->Extract(&index, 1, 0, cb);
+    CMyComPtr<IArchiveExtractCallback> cb =
+        new ExtractCallback(opened.archive, Utf8ToWide(destDir), &overrides, progressCallback);
+    UInt32  index = (UInt32)found;
+    HRESULT hr    = opened.archive->Extract(&index, 1, 0, cb);
     opened.archive->Close();
     return hr == S_OK;
 }

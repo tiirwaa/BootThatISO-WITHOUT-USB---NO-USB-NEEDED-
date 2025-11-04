@@ -1,6 +1,7 @@
 #include "PartitionCreator.h"
 #include "EventManager.h"
 #include "../utils/Utils.h"
+#include "../utils/constants.h"
 #include <windows.h>
 #include <iostream>
 #include <fstream>
@@ -39,7 +40,7 @@ bool PartitionCreator::performDiskpartOperations(const std::string &format) {
     scriptFile << "shrink desired=12000 minimum=12000\n";
     scriptFile << "create partition primary size=10000\n";
     scriptFile << "format fs=" << fsFormat << " quick label=\"" << VOLUME_LABEL << "\"\n";
-    scriptFile << "create partition efi size=500\n";
+    scriptFile << "create partition efi size=" << REQUIRED_EFI_SIZE_MB << "\n";
     scriptFile << "format fs=fat32 quick label=\"" << EFI_VOLUME_LABEL << "\"\n";
     scriptFile << "exit\n";
     scriptFile.close();
@@ -123,7 +124,7 @@ bool PartitionCreator::performDiskpartOperations(const std::string &format) {
         logFile << "shrink desired=12000 minimum=12000\n";
         logFile << "create partition primary size=10000\n";
         logFile << "format fs=" << fsFormat << " quick label=\"" << VOLUME_LABEL << "\"\n";
-        logFile << "create partition efi size=500\n";
+        logFile << "create partition efi size=" << REQUIRED_EFI_SIZE_MB << "\n";
         logFile << "format fs=fat32 quick label=\"" << EFI_VOLUME_LABEL << "\"\n";
         logFile << "exit\n";
         logFile << "\nExit code: " << exitCode << "\n";

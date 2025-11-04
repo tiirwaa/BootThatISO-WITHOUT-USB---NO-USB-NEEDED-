@@ -181,6 +181,38 @@ bool PartitionManager::createPartition(const std::string &format, bool skipInteg
     std::string logDir = Utils::getExeDirectory() + "logs";
     CreateDirectoryA(logDir.c_str(), NULL);
 
+    // Step 0: Check if EFI partition exists with wrong size (backward compatibility)
+    if (efiPartitionExists()) {
+        int currentEfiSizeMB = getEfiPartitionSizeMB();
+        if (eventManager)
+            eventManager->notifyLogUpdate("Partición EFI detectada con tamaño: " + std::to_string(currentEfiSizeMB) +
+                                          " MB\r\n");
+
+        if (currentEfiSizeMB > 0 && currentEfiSizeMB != REQUIRED_EFI_SIZE_MB) {
+            if (eventManager)
+                eventManager->notifyLogUpdate("ADVERTENCIA: Partición EFI con tamaño incorrecto (" +
+                                              std::to_string(currentEfiSizeMB) + " MB, se requieren " +
+                                              std::to_string(REQUIRED_EFI_SIZE_MB) + " MB)\r\n");
+            if (eventManager)
+                eventManager->notifyLogUpdate(
+                    "Eliminando AMBAS particiones para recrearlas con el nuevo tamaño...\r\n");
+
+            // Delete both partitions to recreate with correct size
+            if (!spaceManager->recoverSpace()) {
+                if (eventManager)
+                    eventManager->notifyLogUpdate("Error: No se pudieron eliminar las particiones antiguas.\r\n");
+                return false;
+            }
+
+            if (eventManager)
+                eventManager->notifyLogUpdate("Particiones antiguas eliminadas exitosamente.\r\n");
+        } else if (currentEfiSizeMB == REQUIRED_EFI_SIZE_MB) {
+            if (eventManager)
+                eventManager->notifyLogUpdate("Partición EFI tiene el tamaño correcto (" +
+                                              std::to_string(REQUIRED_EFI_SIZE_MB) + " MB).\r\n");
+        }
+    }
+
     // Step 1: Perform disk integrity check (unless skipped)
     if (!skipIntegrityCheck) {
         if (!diskIntegrityChecker->performDiskIntegrityCheck()) {
@@ -200,13 +232,15 @@ bool PartitionManager::createPartition(const std::string &format, bool skipInteg
                 "Disco confirmado como GPT. Procediendo con la creación de particiones...\r\n");
     }
 
-    // Step 3: Recover space for partitions
-    if (eventManager)
-        eventManager->notifyLogUpdate("Recuperando espacio para particiones...\r\n");
-    if (!spaceManager->recoverSpace()) {
+    // Step 3: Recover space for partitions (if not already done in Step 0)
+    if (!partitionExists() && !efiPartitionExists()) {
         if (eventManager)
-            eventManager->notifyLogUpdate("Error: Falló la recuperación de espacio.\r\n");
-        return false;
+            eventManager->notifyLogUpdate("Recuperando espacio para particiones...\r\n");
+        if (!spaceManager->recoverSpace()) {
+            if (eventManager)
+                eventManager->notifyLogUpdate("Error: Falló la recuperación de espacio.\r\n");
+            return false;
+        }
     }
 
     // Step 4: Create partitions using diskpart
@@ -242,6 +276,10 @@ std::string PartitionManager::getEfiPartitionDriveLetter() {
 
 std::string PartitionManager::getPartitionFileSystem() {
     return volumeDetector->getPartitionFileSystem();
+}
+
+int PartitionManager::getEfiPartitionSizeMB() {
+    return volumeDetector->getEfiPartitionSizeMB();
 }
 
 bool PartitionManager::reformatPartition(const std::string &format) {
@@ -286,13 +324,20 @@ bool PartitionManager::RestartComputer() {
     CloseHandle(hToken);
 
     // Attempt to restart the computer
-    if (ExitWindowsEx(EWX_REBOOT, 0)) {
+    // Use InitiateShutdown to prevent Windows Update from installing during restart
+    DWORD dwReason = SHTDN_REASON_MAJOR_APPLICATION | SHTDN_REASON_MINOR_MAINTENANCE | SHTDN_REASON_FLAG_PLANNED;
+    if (InitiateShutdownW(NULL, NULL, 0, SHUTDOWN_RESTART, dwReason) == ERROR_SUCCESS) {
         return true;
     } else {
-        DWORD error = GetLastError();
-        if (eventManager)
-            eventManager->notifyLogUpdate(
-                "Error: No se pudo reiniciar el sistema. Código de error: " + std::to_string(error) + "\r\n");
-        return false;
+        // Fallback to ExitWindowsEx if InitiateShutdown fails
+        if (ExitWindowsEx(EWX_REBOOT | EWX_FORCE, dwReason)) {
+            return true;
+        } else {
+            DWORD error = GetLastError();
+            if (eventManager)
+                eventManager->notifyLogUpdate(
+                    "Error: No se pudo reiniciar el sistema. Código de error: " + std::to_string(error) + "\r\n");
+            return false;
+        }
     }
 }

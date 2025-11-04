@@ -31,7 +31,7 @@ BootWimProcessor::BootWimProcessor(EventManager &eventManager, FileCopyManager &
 BootWimProcessor::~BootWimProcessor() {}
 
 bool BootWimProcessor::extractBootFiles(const std::string &sourcePath, const std::string &destPath,
-                                        std::ofstream &logFile) {
+                                        const std::string &espDriveLetter, std::ofstream &logFile) {
     bool bootWimSuccess = true;
     bool bootSdiSuccess = true;
 
@@ -111,13 +111,38 @@ bool BootWimProcessor::extractBootFiles(const std::string &sourcePath, const std
         }
     }
 
+    // Copy boot.sdi to ESP partition for boot compatibility (always - only 3 MB)
+    if (bootSdiSuccess && !espDriveLetter.empty()) {
+        std::string espBootDir = espDriveLetter + "\\boot";
+        CreateDirectoryA(espBootDir.c_str(), NULL);
+
+        std::string sourceBootSdi = destPath + "boot\\boot.sdi";
+        std::string espBootSdi    = espBootDir + "\\boot.sdi";
+
+        logFile << ISOCopyManager::getTimestamp() << "Copying boot.sdi to ESP partition: " << espBootSdi << std::endl;
+        eventManager_.notifyLogUpdate("Copiando boot.sdi a particion ESP...\r\n");
+
+        if (!CopyFileA(sourceBootSdi.c_str(), espBootSdi.c_str(), FALSE)) {
+            logFile << ISOCopyManager::getTimestamp() << "Error: Failed to copy boot.sdi to ESP partition"
+                    << " (Error code: " << GetLastError() << ")" << std::endl;
+            eventManager_.notifyLogUpdate("Error al copiar boot.sdi a ESP.\r\n");
+            bootSdiSuccess = false;
+        } else {
+            logFile << ISOCopyManager::getTimestamp() << "boot.sdi copied successfully to ESP" << std::endl;
+            eventManager_.notifyLogUpdate("boot.sdi copiado exitosamente a ESP.\r\n");
+        }
+    }
+
+    // NOTE: boot.wim will be copied to ESP later (after processing) only if it's NOT Hiren's PE
+    // Hiren's PE boot.wim can be ~4 GB after Programs/ integration, too large for ESP
+
     return bootWimSuccess && bootSdiSuccess;
 }
 
 bool BootWimProcessor::mountAndProcessWim(const std::string &bootWimDest, const std::string &destPath,
                                           const std::string &sourcePath, bool integratePrograms,
                                           const std::string &programsSrc, long long &copiedSoFar,
-                                          std::ofstream &logFile) {
+                                          std::ofstream &logFile, bool injectDrivers) {
     std::string driveLetter = destPath.substr(0, 2);
     std::string mountDir =
         std::string(bootWimDest.begin(), bootWimDest.end() - std::string("sources\\boot.wim").length()) + "temp_mount";
@@ -193,10 +218,16 @@ bool BootWimProcessor::mountAndProcessWim(const std::string &bootWimDest, const 
         }
     }
 
-    // Integrate system drivers
-    eventManager_.notifyDetailedProgress(47, 100, "Integrando controladores locales en boot.wim");
-    driverIntegrator_->integrateSystemDrivers(mountDir, DriverIntegrator::DriverCategory::All, logFile, driverProgress);
-    eventManager_.notifyLogUpdate(driverIntegrator_->getIntegrationStats() + "\r\n");
+    // Integrate system drivers (only if user requested via checkbox)
+    if (injectDrivers) {
+        eventManager_.notifyDetailedProgress(47, 100, "Integrando controladores de almacenamiento en boot.wim");
+        driverIntegrator_->integrateSystemDrivers(mountDir, DriverIntegrator::DriverCategory::Storage, logFile,
+                                                  driverProgress);
+        eventManager_.notifyLogUpdate(driverIntegrator_->getIntegrationStats() + "\r\n");
+    } else {
+        logFile << ISOCopyManager::getTimestamp() << "Driver injection disabled by user" << std::endl;
+        eventManager_.notifyLogUpdate("Inyección de drivers desactivada por el usuario.\r\n");
+    }
 
     // Configure PECMD or startnet.cmd
     if (isPecmdPE) {
@@ -235,6 +266,82 @@ bool BootWimProcessor::mountAndProcessWim(const std::string &bootWimDest, const 
     return true;
 }
 
+bool BootWimProcessor::copyBootWimToEspIfNeeded(const std::string &destPath, const std::string &espDriveLetter,
+                                                std::ofstream &logFile) {
+    if (espDriveLetter.empty()) {
+        logFile << ISOCopyManager::getTimestamp() << "ESP drive letter not provided, skipping boot.wim copy to ESP"
+                << std::endl;
+        return true;
+    }
+
+    std::string sourceBootWim = destPath + "sources\\boot.wim";
+
+    // Check if boot.wim exists
+    if (GetFileAttributesA(sourceBootWim.c_str()) == INVALID_FILE_ATTRIBUTES) {
+        logFile << ISOCopyManager::getTimestamp() << "boot.wim not found at " << sourceBootWim << std::endl;
+        return false;
+    }
+
+    // === DETECTION LOGIC: Determine if this is a Windows Install ISO or a standalone Windows PE ===
+
+    // Check: Does install.wim or install.esd exist? (Windows Install ISO)
+    std::string installWimPath  = destPath + "sources\\install.wim";
+    std::string installEsdPath  = destPath + "sources\\install.esd";
+    bool        hasInstallImage = (GetFileAttributesA(installWimPath.c_str()) != INVALID_FILE_ATTRIBUTES) ||
+                           (GetFileAttributesA(installEsdPath.c_str()) != INVALID_FILE_ATTRIBUTES);
+
+    if (hasInstallImage) {
+        // This is a Windows Install ISO (Windows 10/11/Server setup)
+        // Windows Setup REQUIRES boot.wim in ESP to boot correctly
+        logFile << ISOCopyManager::getTimestamp()
+                << "Windows Install ISO detected (install.wim/esd present) - boot.wim MUST be copied to ESP"
+                << std::endl;
+        eventManager_.notifyLogUpdate("ISO de instalacion de Windows detectado - copiando boot.wim a ESP...\r\n");
+    } else {
+        // This is a standalone Windows PE (Hiren's, recovery tools, WinPE, etc.)
+        // PE can boot directly from data partition (Z:) - no need to copy to ESP
+        logFile << ISOCopyManager::getTimestamp()
+                << "Standalone Windows PE detected (no install.wim/esd) - boot.wim will remain on data partition only"
+                << std::endl;
+        logFile << ISOCopyManager::getTimestamp()
+                << "PE environments boot correctly from data partition (Z:) without needing ESP copy" << std::endl;
+        logFile << ISOCopyManager::getTimestamp() << "BCD will be configured to point to data partition for boot.wim"
+                << std::endl;
+        eventManager_.notifyLogUpdate("Windows PE detectado - boot.wim permanecera en particion de datos.\r\n");
+        eventManager_.notifyLogUpdate("BCD se configurara para arrancar desde particion de datos.\r\n");
+        return true; // Skip copying - not an error, intentional for PE ISOs
+    }
+
+    // Copy boot.wim to ESP for standard Windows ISOs
+    std::string espSourcesDir = espDriveLetter + "\\sources";
+    CreateDirectoryA(espSourcesDir.c_str(), NULL);
+
+    std::string espBootWim = espSourcesDir + "\\boot.wim";
+
+    logFile << ISOCopyManager::getTimestamp() << "Copying boot.wim to ESP partition: " << espBootWim << std::endl;
+    eventManager_.notifyLogUpdate("Copiando boot.wim a particion ESP (esto puede tardar)...\r\n");
+    eventManager_.notifyDetailedProgress(35, 100, "Copiando boot.wim a ESP");
+
+    BOOL copyResult = CopyFileExA(sourceBootWim.c_str(), espBootWim.c_str(), nullptr, nullptr, nullptr, 0);
+
+    eventManager_.notifyDetailedProgress(0, 0, "");
+
+    if (!copyResult) {
+        logFile << ISOCopyManager::getTimestamp() << "Error: Failed to copy boot.wim to ESP partition"
+                << " (Error code: " << GetLastError() << ")" << std::endl;
+        eventManager_.notifyLogUpdate("Error al copiar boot.wim a ESP.\r\n");
+        return false;
+    }
+
+    logFile << ISOCopyManager::getTimestamp() << "boot.wim copied successfully to ESP" << std::endl;
+    logFile << ISOCopyManager::getTimestamp() << "Boot files are now accessible from both partitions (ESP and Data)"
+            << std::endl;
+    eventManager_.notifyLogUpdate("boot.wim copiado exitosamente a ESP.\r\n");
+    eventManager_.notifyLogUpdate("Archivos de arranque accesibles desde ambas particiones.\r\n");
+
+    return true;
+}
+
 bool BootWimProcessor::extractAdditionalBootFiles(const std::string &sourcePath, const std::string &espPath,
                                                   const std::string &destPath, long long &copiedSoFar,
                                                   long long isoSize, std::ofstream &logFile) {
@@ -249,7 +356,7 @@ bool BootWimProcessor::extractAdditionalBootFiles(const std::string &sourcePath,
 bool BootWimProcessor::processBootWim(const std::string &sourcePath, const std::string &destPath,
                                       const std::string &espPath, bool integratePrograms,
                                       const std::string &programsSrc, long long &copiedSoFar, bool extractBootWim,
-                                      bool copyInstallWim, std::ofstream &logFile) {
+                                      bool copyInstallWim, std::ofstream &logFile, bool injectDrivers) {
     if (!extractBootWim) {
         logFile << ISOCopyManager::getTimestamp() << "Boot WIM extraction disabled; skipping processing" << std::endl;
         return true;
@@ -259,7 +366,7 @@ bool BootWimProcessor::processBootWim(const std::string &sourcePath, const std::
     eventManager_.notifyLogUpdate("Preparando archivos de arranque del ISO...\r\n");
 
     // Extract boot files
-    if (!extractBootFiles(sourcePath, destPath, logFile)) {
+    if (!extractBootFiles(sourcePath, destPath, espPath, logFile)) {
         return false;
     }
 
@@ -304,8 +411,15 @@ bool BootWimProcessor::processBootWim(const std::string &sourcePath, const std::
     }
 
     // Mount and process boot.wim
-    if (!mountAndProcessWim(bootWimDest, destPath, sourcePath, integratePrograms, programsSrc, copiedSoFar, logFile)) {
+    if (!mountAndProcessWim(bootWimDest, destPath, sourcePath, integratePrograms, programsSrc, copiedSoFar, logFile,
+                            injectDrivers)) {
         return false;
+    }
+
+    // Copy boot.wim to ESP if it's not too large (skip for Hiren's PE)
+    if (!copyBootWimToEspIfNeeded(destPath, espPath, logFile)) {
+        logFile << ISOCopyManager::getTimestamp() << "Warning: Failed to copy boot.wim to ESP" << std::endl;
+        // Non-fatal - boot.wim is still on data partition
     }
 
     // If install.wim/esd exists on disk (copyInstallWim mode), inject drivers into it as well

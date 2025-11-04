@@ -8,6 +8,9 @@ const char *const EFI_VOLUME_LABEL    = "ISOEFI";
 const char *const RAMDISK_BCD_LABEL   = "ISOBOOT_RAM";
 const char *const EXTRACTED_BCD_LABEL = "ISOBOOT";
 
+// Partition sizes (MB)
+constexpr int REQUIRED_EFI_SIZE_MB = 1024; // 1 GB - standard for all ISOs
+
 // Log file names
 const char *const GENERAL_LOG_FILE          = "general_log.log";
 const char *const COPY_ERROR_LOG_FILE       = "copy_error_log.log";

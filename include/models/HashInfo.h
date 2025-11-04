@@ -8,6 +8,7 @@ struct HashInfo {
     std::string version;
     std::string mode;
     std::string format;
+    std::string driversInjected; // "1" = drivers injected, "0" = no drivers
 };
 
 #endif // HASHINFO_H

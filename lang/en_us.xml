@@ -21,6 +21,7 @@
     <string id="mainwindow.format.exfat">exFAT (No 4GB per-file limit)</string>
     <string id="mainwindow.format.ntfs">NTFS (Full Windows support)</string>
     <string id="mainwindow.integrityCheck">Perform disk integrity check</string>
+    <string id="mainwindow.injectDrivers">Inject my drivers into ISO</string>
     <string id="mainwindow.isoPathLabel">ISO file path:</string>
     <string id="mainwindow.logoPlaceholder">LOGO</string>
     <string id="mainwindow.recoverButton">Recover my space</string>
@@ -30,7 +31,7 @@
     <string id="mainwindow.versionLabel">Version {0}</string>
     <string id="mainwindow.diskSpaceInfo">Available space on C: {0} GB | ISOBOOT: {1} | ISOEFI: {2}</string>
     <string id="message.adminRequired">This program requires administrator privileges.</string>
-    <string id="message.diskModifyConfirmPrimary">This operation will modify the system disk, shrinking it by 10.5 GB to create two bootable partitions: a 500MB FAT32 ESP (ISOEFI) and a 10GB data partition (ISOBOOT). Do you want to continue?</string>
+    <string id="message.diskModifyConfirmPrimary">This operation will modify the system disk, shrinking it by 11 GB to create two bootable partitions: a 1GBMB FAT32 ESP (ISOEFI) and a 10GB data partition (ISOBOOT). Do you want to continue?</string>
     <string id="message.diskModifyConfirmSecondary">This is the second confirmation. The disk modification operation is irreversible and may cause data loss if not performed correctly. Are you completely sure you want to proceed?</string>
     <string id="message.operationInProgress">A process is running. Do you want to cancel the operation and close the application?</string>
     <string id="message.processCompleteRestart">Process completed. Do you want to restart the system now?</string>

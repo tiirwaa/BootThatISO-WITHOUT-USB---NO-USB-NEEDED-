@@ -436,39 +436,68 @@ bool WindowsEditionSelector::injectEditionIntoBootWim(const std::string &isoPath
 
 bool WindowsEditionSelector::processWindowsEditions(const std::string &isoPath, const std::string &bootWimPath,
                                                     const std::string &tempDir, std::ofstream &logFile) {
-    logFile << "[WindowsEditionSelector] Starting Windows edition selection process" << std::endl;
+    logFile << "[WindowsEditionSelector] Starting Windows Install ISO processing (simplified mode)" << std::endl;
 
     // Check if install image exists
     if (!hasInstallImage(isoPath)) {
-        logFile << "[WindowsEditionSelector] No install image found, skipping edition selection" << std::endl;
+        logFile << "[WindowsEditionSelector] No install image found, skipping" << std::endl;
         return true; // Not an error, just not a Windows install ISO
     }
 
     eventManager_.notifyLogUpdate("Detectado ISO de instalación de Windows.\r\n");
 
-    // Get available editions
-    auto editions = getAvailableEditions(isoPath, tempDir, logFile);
-    if (editions.empty()) {
-        logFile << "[WindowsEditionSelector] No editions found" << std::endl;
+    // Extract boot.wim path to get the destination data partition
+    std::string bootWimDir    = bootWimPath.substr(0, bootWimPath.find_last_of("\\/"));
+    std::string destPartition = bootWimDir.substr(0, bootWimDir.find("sources"));
+    std::string sourcesDir    = destPartition + "sources";
+
+    // Detect install.esd vs install.wim
+    bool hasEsd = isoReader_.fileExists(isoPath, "sources/install.esd");
+    bool hasWim = isoReader_.fileExists(isoPath, "sources/install.wim");
+
+    if (!hasEsd && !hasWim) {
+        logFile << "[WindowsEditionSelector] ERROR: No install.wim/esd found" << std::endl;
         return false;
     }
 
-    // Prompt user to select edition
-    int selectedIndex = promptUserSelection(editions, logFile);
-    if (selectedIndex == 0) {
-        logFile << "[WindowsEditionSelector] User cancelled or invalid selection" << std::endl;
+    std::string sourceFile = hasEsd ? "sources/install.esd" : "sources/install.wim";
+    std::string destFile   = sourcesDir + "\\" + (hasEsd ? "install.esd" : "install.wim");
+
+    // Copy install.wim/esd COMPLETE (all editions) to Z:\sources\
+    logFile << "[WindowsEditionSelector] Copying COMPLETE " << sourceFile << " to data partition" << std::endl;
+    eventManager_.notifyLogUpdate("Copiando imagen de instalación completa (todas las ediciones)...\r\n");
+
+    // Get file size to calculate progress
+    unsigned long long fileSize = 0;
+    isoReader_.getFileSize(isoPath, sourceFile, fileSize);
+
+    // Setup progress callback (35% to 60% of total progress)
+    auto progressCallback = [this, fileSize](unsigned long long completed, unsigned long long total) {
+        if (total == 0)
+            total = fileSize; // Fallback to pre-calculated size
+        if (total > 0) {
+            int         percentage     = static_cast<int>((completed * 100) / total);
+            int         mappedProgress = 35 + (percentage * 25 / 100); // Map 0-100% to 35-60%
+            std::string sizeStr =
+                std::to_string(completed / (1024 * 1024)) + " MB / " + std::to_string(total / (1024 * 1024)) + " MB";
+            eventManager_.notifyDetailedProgress(mappedProgress, 100, "Copiando install.wim/esd: " + sizeStr);
+        }
+    };
+
+    eventManager_.notifyDetailedProgress(35, 100, "Iniciando copia de install.wim/esd...");
+
+    if (!isoReader_.extractFile(isoPath, sourceFile, destFile, progressCallback)) {
+        logFile << "[WindowsEditionSelector] ERROR: Failed to copy " << sourceFile << std::endl;
+        eventManager_.notifyLogUpdate("Error al copiar imagen de instalación.\r\n");
         return false;
     }
 
-    // Inject selected edition into boot.wim
-    bool success = injectEditionIntoBootWim(isoPath, bootWimPath, selectedIndex, tempDir, logFile);
+    logFile << "[WindowsEditionSelector] Successfully copied complete install image to: " << destFile << std::endl;
+    logFile << "[WindowsEditionSelector] Windows Setup will display edition selection screen" << std::endl;
+    eventManager_.notifyLogUpdate("Imagen de instalación copiada. Windows Setup mostrará lista de ediciones.\r\n");
 
-    // Cleanup extracted install image
-    if (!installImagePath_.empty() && GetFileAttributesA(installImagePath_.c_str()) != INVALID_FILE_ATTRIBUTES) {
-        logFile << "[WindowsEditionSelector] Cleaning up extracted install image" << std::endl;
-        DeleteFileA(installImagePath_.c_str());
-        installImagePath_.clear();
-    }
+    // TODO: If injectDrivers flag is true, mount ALL editions and inject drivers (slow but thorough)
+    // For now, skip driver injection - let user enable it via checkbox
 
-    return success;
+    return true;
 }

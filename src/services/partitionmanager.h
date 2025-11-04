@@ -49,6 +49,7 @@ public:
     std::string           getPartitionDriveLetter();
     std::string           getEfiPartitionDriveLetter();
     std::string           getPartitionFileSystem();
+    int                   getEfiPartitionSizeMB(); // Get EFI partition size in MB
     bool                  reformatPartition(const std::string &format);
     bool                  reformatEfiPartition();
     bool                  recoverSpace();

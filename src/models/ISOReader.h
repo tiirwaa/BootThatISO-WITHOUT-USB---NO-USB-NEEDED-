@@ -17,7 +17,9 @@ public:
     bool fileExists(const std::string &isoPath, const std::string &filePath);
 
     // Extract a file from ISO to destination
-    bool extractFile(const std::string &isoPath, const std::string &filePathInISO, const std::string &destPath);
+    // progressCallback receives (bytesCompleted, totalBytes)
+    bool extractFile(const std::string &isoPath, const std::string &filePathInISO, const std::string &destPath,
+                     std::function<void(unsigned long long, unsigned long long)> progressCallback = nullptr);
 
     // Extract multiple files
     bool extractFiles(const std::string &isoPath, const std::vector<std::string> &filesInISO,

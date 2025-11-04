@@ -20,7 +20,7 @@ public:
 
     ProcessResult validateAndPrepare(const std::string &isoPath, const std::string &format, bool skipIntegrityCheck);
     ProcessResult copyIsoContent(const std::string &isoPath, const std::string &format, const std::string &modeKey,
-                                 const std::string &modeLabel);
+                                 const std::string &modeLabel, bool injectDrivers);
     ProcessResult configureBoot(const std::string &modeKey);
 
 private:
@@ -33,7 +33,8 @@ private:
     std::string espDrive;
 
     bool copyISO(const std::string &isoPath, const std::string &destPath, const std::string &espPath,
-                 const std::string &modeKey, const std::string &modeLabel, const std::string &format);
+                 const std::string &modeKey, const std::string &modeLabel, const std::string &format,
+                 bool injectDrivers);
 };
 
 #endif // PROCESSSERVICE_H

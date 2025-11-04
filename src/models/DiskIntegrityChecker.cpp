@@ -302,11 +302,12 @@ bool DiskIntegrityChecker::performDiskIntegrityCheck() {
             if (!restarted) {
                 DWORD             lastErr = GetLastError();
                 const std::string failMsg = "RestartComputer() falló; código de error: " + std::to_string(lastErr) +
-                                            ". Intentando comando de emergencia 'shutdown /r /t 0'...\r\n";
+                                            ". Intentando comando de emergencia 'shutdown /r /t 0 /d p:4:1'...\r\n";
                 logToGeneral(failMsg);
                 if (eventManager_)
                     eventManager_->notifyLogUpdate(failMsg);
-                std::string       shutOut = Utils::exec("shutdown /r /t 0");
+                // /d p:4:1 = Planned restart for Application: Maintenance (prevents Windows Update from installing)
+                std::string       shutOut = Utils::exec("shutdown /r /t 0 /d p:4:1");
                 int               ret = 0; // Utils::exec doesn't expose exit code here; treat non-empty as attempted
                 const std::string shutdownMsg = "Resultado comando 'shutdown': " + std::to_string(ret) +
                                                 " (0=OK, otro=error o sin privilegios)\r\n";
@@ -368,14 +369,21 @@ bool DiskIntegrityChecker::RestartComputer() {
     CloseHandle(hToken);
 
     // Attempt to restart the computer
-    if (ExitWindowsEx(EWX_REBOOT, 0)) {
+    // Use InitiateShutdown to prevent Windows Update from installing during restart
+    DWORD dwReason = SHTDN_REASON_MAJOR_APPLICATION | SHTDN_REASON_MINOR_MAINTENANCE | SHTDN_REASON_FLAG_PLANNED;
+    if (InitiateShutdownW(NULL, NULL, 0, SHUTDOWN_RESTART, dwReason) == ERROR_SUCCESS) {
         return true;
     } else {
-        DWORD error = GetLastError();
-        if (eventManager_)
-            eventManager_->notifyLogUpdate(
-                "Error: No se pudo reiniciar el sistema. Código de error: " + std::to_string(error) + "\r\n");
-        return false;
+        // Fallback to ExitWindowsEx if InitiateShutdown fails
+        if (ExitWindowsEx(EWX_REBOOT | EWX_FORCE, dwReason)) {
+            return true;
+        } else {
+            DWORD error = GetLastError();
+            if (eventManager_)
+                eventManager_->notifyLogUpdate(
+                    "Error: No se pudo reiniciar el sistema. Código de error: " + std::to_string(error) + "\r\n");
+            return false;
+        }
     }
 }
 

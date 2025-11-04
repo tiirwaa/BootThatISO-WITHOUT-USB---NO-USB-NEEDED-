@@ -46,11 +46,12 @@ public:
      * @param extractBootWim Whether to extract boot.wim from ISO
      * @param copyInstallWim Whether to copy install.wim (currently unused)
      * @param logFile Log file stream
+     * @param injectDrivers Whether to inject drivers into boot.wim
      * @return true if processing successful
      */
     bool processBootWim(const std::string &sourcePath, const std::string &destPath, const std::string &espPath,
                         bool integratePrograms, const std::string &programsSrc, long long &copiedSoFar,
-                        bool extractBootWim, bool copyInstallWim, std::ofstream &logFile);
+                        bool extractBootWim, bool copyInstallWim, std::ofstream &logFile, bool injectDrivers = false);
 
 private:
     EventManager    &eventManager_;
@@ -71,25 +72,38 @@ private:
      * @brief Extracts boot.wim and boot.sdi from ISO to data partition
      * @param sourcePath Path to ISO file
      * @param destPath Path to destination data partition
+     * @param espDriveLetter Drive letter of ESP partition (e.g., "Y:")
      * @param logFile Log file stream
      * @return true if extraction successful
      */
-    bool extractBootFiles(const std::string &sourcePath, const std::string &destPath, std::ofstream &logFile);
+    bool extractBootFiles(const std::string &sourcePath, const std::string &destPath, const std::string &espDriveLetter,
+                          std::ofstream &logFile);
 
     /**
-     * @brief Mounts and processes WIM image with all integrations
+     * @brief Mounts and processes boot.wim
      * @param bootWimDest Path to boot.wim file
      * @param destPath Path to destination data partition
      * @param sourcePath Path to ISO file
-     * @param integratePrograms Whether to integrate Programs
+     * @param integratePrograms Whether to integrate Programs directory
      * @param programsSrc Source directory for Programs
      * @param copiedSoFar Reference to cumulative bytes copied counter
      * @param logFile Log file stream
+     * @param injectDrivers Whether to inject drivers
      * @return true if processing successful
      */
     bool mountAndProcessWim(const std::string &bootWimDest, const std::string &destPath, const std::string &sourcePath,
                             bool integratePrograms, const std::string &programsSrc, long long &copiedSoFar,
-                            std::ofstream &logFile);
+                            std::ofstream &logFile, bool injectDrivers);
+
+    /**
+     * @brief Copies boot.wim to ESP partition if not Hiren's PE (size check)
+     * @param destPath Path to destination data partition (where boot.wim is)
+     * @param espDriveLetter Drive letter of ESP partition
+     * @param logFile Log file stream
+     * @return true if copy successful or skipped (Hiren's PE)
+     */
+    bool copyBootWimToEspIfNeeded(const std::string &destPath, const std::string &espDriveLetter,
+                                  std::ofstream &logFile);
 
     /**
      * @brief Extracts additional boot files from ISO
