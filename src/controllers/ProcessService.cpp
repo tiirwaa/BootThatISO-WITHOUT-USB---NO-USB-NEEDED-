@@ -104,6 +104,21 @@ ProcessService::ProcessResult ProcessService::validateAndPrepare(const std::stri
         return {false, "No se puede acceder a la partición ISOEFI."};
     }
 
+    // Check free space on EFI partition
+    ULARGE_INTEGER freeBytesAvailable, totalBytes, freeBytes;
+    std::string    efiRoot = espDrive.substr(0, 2) + "\\";
+    if (GetDiskFreeSpaceExA(efiRoot.c_str(), &freeBytesAvailable, &totalBytes, &freeBytes)) {
+        const ULONGLONG minFreeMB = 100; // 100 MB mínimo libre
+        ULONGLONG       freeMB    = freeBytesAvailable.QuadPart / (1024 * 1024);
+        if (freeMB < minFreeMB) {
+            return {false, "La partición EFI no tiene suficiente espacio libre (" + std::to_string(freeMB) +
+                               " MB libres, se requieren al menos " + std::to_string(minFreeMB) + " MB)."};
+        }
+    } else {
+        // If can't check free space, log warning but continue
+        eventManager.notifyLogUpdate("Advertencia: No se pudo verificar el espacio libre en la partición EFI.\r\n");
+    }
+
     // Reformat EFI if needed
     if (!partitionExists) {
         if (!partitionManager->reformatEfiPartition()) {

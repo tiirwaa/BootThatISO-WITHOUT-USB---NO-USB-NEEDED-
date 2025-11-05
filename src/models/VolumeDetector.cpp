@@ -136,7 +136,7 @@ std::string VolumeDetector::getPartitionDriveLetter() {
                                       &fileSystemFlags, fileSystem, sizeof(fileSystem))) {
                 debugLog << "  Volume name: '" << volumeName << "', File system: '" << fileSystem << "'\n";
                 if (_stricmp(volumeName, VOLUME_LABEL) == 0) {
-                    debugLog << "  Found " << VOLUME_LABEL << " partition at: " << drive << "\n";
+                    debugLog << "  Found EFI partition at: " << drive << "\n";
                     debugLog.close();
                     return std::string(drive);
                 }
@@ -177,7 +177,7 @@ std::string VolumeDetector::getPartitionDriveLetter() {
                                       sizeof(fsName))) {
                 debugLog << "  Volume label: '" << volName << "', FS: '" << fsName << "'\n";
                 if (_stricmp(volName, VOLUME_LABEL) == 0) {
-                    debugLog << "  Found " << VOLUME_LABEL << " volume: " << volumeName << "\n";
+                    debugLog << "  Found EFI volume: " << volumeName << "\n";
 
                     // Try to assign a drive letter to this volume
                     // Start from Z: and go backwards to avoid conflicts with common drive letters
@@ -256,7 +256,7 @@ std::string VolumeDetector::getEfiPartitionDriveLetter() {
     std::string logDir = Utils::getExeDirectory() + "logs";
     CreateDirectoryA(logDir.c_str(), NULL);
     std::ofstream debugLog((logDir + "\\" + DEBUG_DRIVES_EFI_LOG_FILE).c_str());
-    debugLog << "Searching for " << EFI_VOLUME_LABEL << " partition...\n";
+    debugLog << "Searching for EFI partition...\n";
 
     char *drive = drives;
     while (*drive) {
@@ -269,8 +269,8 @@ std::string VolumeDetector::getEfiPartitionDriveLetter() {
             if (GetVolumeInformationA(drive, volumeName, sizeof(volumeName), &serialNumber, &maxComponentLen,
                                       &fileSystemFlags, fileSystem, sizeof(fileSystem))) {
                 debugLog << "  Volume name: '" << volumeName << "', File system: '" << fileSystem << "'\n";
-                if (_stricmp(volumeName, EFI_VOLUME_LABEL) == 0) {
-                    debugLog << "  Found " << EFI_VOLUME_LABEL << " partition at: " << drive << "\n";
+                if (_stricmp(volumeName, EFI_VOLUME_LABEL) == 0 || _stricmp(volumeName, "SYSTEM") == 0) {
+                    debugLog << "  Found EFI partition at: " << drive << "\n";
                     debugLog.close();
                     return std::string(drive);
                 }
@@ -310,8 +310,8 @@ std::string VolumeDetector::getEfiPartitionDriveLetter() {
             if (GetVolumeInformationA(volPath.c_str(), volName, sizeof(volName), &serial, &maxComp, &flags, fsName,
                                       sizeof(fsName))) {
                 debugLog << "  Volume label: '" << volName << "', FS: '" << fsName << "'\n";
-                if (_stricmp(volName, EFI_VOLUME_LABEL) == 0) {
-                    debugLog << "  Found " << EFI_VOLUME_LABEL << " volume: " << volumeName << "\n";
+                if (_stricmp(volName, EFI_VOLUME_LABEL) == 0 || _stricmp(volName, "SYSTEM") == 0) {
+                    debugLog << "  Found EFI volume: " << volumeName << "\n";
 
                     // Try to assign a drive letter to this volume
                     for (char letter = 'Z'; letter >= 'D'; letter--) {
@@ -364,7 +364,7 @@ std::string VolumeDetector::getEfiPartitionDriveLetter() {
         debugLog << "FindFirstVolumeA failed, error: " << GetLastError() << "\n";
     }
 
-    debugLog << EFI_VOLUME_LABEL << " partition not found.\n";
+    debugLog << "EFI partition not found.\n";
     debugLog.close();
     return "";
 }
@@ -486,7 +486,7 @@ int VolumeDetector::countEfiPartitions() {
     CreateDirectoryA(logDir.c_str(), NULL);
     std::ofstream debugLog((logDir + "\\efi_partition_count.log").c_str());
 
-    debugLog << "Counting ISOEFI partitions...\n";
+    debugLog << "Counting EFI partitions...\n";
 
     // Check drives with assigned letters
     char drives[256];
@@ -500,15 +500,15 @@ int VolumeDetector::countEfiPartitions() {
             DWORD serialNumber, maxComponentLen, fileSystemFlags;
             if (GetVolumeInformationA(drive, volumeName, sizeof(volumeName), &serialNumber, &maxComponentLen,
                                       &fileSystemFlags, fileSystem, sizeof(fileSystem))) {
-                if (_stricmp(volumeName, EFI_VOLUME_LABEL) == 0) {
+                if (_stricmp(volumeName, EFI_VOLUME_LABEL) == 0 || _stricmp(volumeName, "SYSTEM") == 0) {
                     // Only count if we haven't seen this serial number before
                     if (processedSerials.find(serialNumber) == processedSerials.end()) {
                         processedSerials.insert(serialNumber);
                         count++;
-                        debugLog << "Found ISOEFI partition #" << count << " at " << drive << " (Serial: " << std::hex
+                        debugLog << "Found EFI partition #" << count << " at " << drive << " (Serial: " << std::hex
                                  << serialNumber << std::dec << ")\n";
                     } else {
-                        debugLog << "Skipped duplicate ISOEFI at " << drive
+                        debugLog << "Skipped duplicate EFI at " << drive
                                  << " (already counted with Serial: " << std::hex << serialNumber << std::dec << ")\n";
                     }
                 }
@@ -533,15 +533,15 @@ int VolumeDetector::countEfiPartitions() {
             std::string volPath = std::string(volumeNameCheck) + "\\";
             if (GetVolumeInformationA(volPath.c_str(), volName, sizeof(volName), &serial, &maxComp, &flags, fsName,
                                       sizeof(fsName))) {
-                if (_stricmp(volName, EFI_VOLUME_LABEL) == 0) {
+                if (_stricmp(volName, EFI_VOLUME_LABEL) == 0 || _stricmp(volName, "SYSTEM") == 0) {
                     // Only count if we haven't seen this serial number before
                     if (processedSerials.find(serial) == processedSerials.end()) {
                         processedSerials.insert(serial);
                         count++;
-                        debugLog << "Found unassigned ISOEFI partition #" << count << " (Serial: " << std::hex << serial
+                        debugLog << "Found unassigned EFI partition #" << count << " (Serial: " << std::hex << serial
                                  << std::dec << ")\n";
                     } else {
-                        debugLog << "Skipped duplicate unassigned ISOEFI (already counted with Serial: " << std::hex
+                        debugLog << "Skipped duplicate unassigned EFI (already counted with Serial: " << std::hex
                                  << serial << std::dec << ")\n";
                     }
                 }

@@ -517,9 +517,8 @@ bool PartitionReformatter::reformatEfiPartition() {
     std::ostringstream formatScript;
     formatScript << "select volume " << volumeNumber << "\n";
     formatScript << "format fs=" << fsFormat << " quick label=\"" << EFI_VOLUME_LABEL << "\"\n";
-    // Reapply GPT attributes after formatting: Hidden (0x8000000000000000) + Required (0x1)
-    // This prevents Windows Setup from automatically detecting and using this partition
-    formatScript << "gpt attributes=0x8000000000000001\n";
+    // Reapply GPT attributes after formatting: EFI system partition (0x8000000000000000) - not hidden
+    formatScript << "gpt attributes=0x8000000000000000\n";
     formatScript << "exit\n";
     scriptFile.open(tempFile);
     scriptFile << formatScript.str();

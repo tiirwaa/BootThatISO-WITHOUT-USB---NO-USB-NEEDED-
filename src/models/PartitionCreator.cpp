@@ -48,9 +48,8 @@ bool PartitionCreator::performDiskpartOperations(const std::string &format, bool
     }
     if (createEfi) {
         scriptFile << "create partition efi size=" << REQUIRED_EFI_SIZE_MB << "\n";
-        // Set GPT attributes: Hidden (0x8000000000000000) + Required (0x1) = 0x8000000000000001
-        // This prevents Windows Setup from automatically detecting and using this partition
-        scriptFile << "gpt attributes=0x8000000000000001\n";
+        // Set GPT attributes: EFI system partition (0x8000000000000000) - not hidden for accessibility
+        scriptFile << "gpt attributes=0x8000000000000000\n";
         scriptFile << "format fs=fat32 quick label=\"" << EFI_VOLUME_LABEL << "\"\n";
     }
     scriptFile << "exit\n";
@@ -146,7 +145,7 @@ bool PartitionCreator::performDiskpartOperations(const std::string &format, bool
         }
         if (createEfi) {
             logFile << "create partition efi size=" << REQUIRED_EFI_SIZE_MB << "\n";
-            logFile << "gpt attributes=0x8000000000000001\n";
+            logFile << "gpt attributes=0x8000000000000000\n";
             logFile << "format fs=fat32 quick label=\"" << EFI_VOLUME_LABEL << "\"\n";
         }
         logFile << "exit\n";
