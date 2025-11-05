@@ -5,6 +5,7 @@
 
 #include <filesystem>
 #include <fstream>
+#include <iostream>
 
 namespace {
 std::vector<std::string> defaultProcessLogs() {

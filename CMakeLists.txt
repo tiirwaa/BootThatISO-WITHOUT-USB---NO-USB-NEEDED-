@@ -181,6 +181,8 @@ if(MSVC)
     target_compile_options(BootThatISO PRIVATE /utf-8 /W4 /permissive- /EHsc /Zc:__cplusplus /MP $<$<CONFIG:Release>:/MT /O2 /arch:AVX2 /fp:fast /GL> $<$<CONFIG:Debug>:/MTd>)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
     set_target_properties(BootThatISO PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    # Set as Windows GUI application
+    set_target_properties(BootThatISO PROPERTIES WIN32_EXECUTABLE TRUE)
 else()
     target_compile_options(BootThatISO PRIVATE -Wall -Wextra -Wpedantic -Wconversion -Wshadow)
 endif()
@@ -252,21 +254,6 @@ endif()
 
 if(WIN32)
     target_link_libraries(TestRecoverSpace PRIVATE advapi32 comctl32 gdiplus virtdisk.lib)
-endif()
-
-add_executable(TestArgs
-    src/test_args.cpp
-)
-
-target_include_directories(TestArgs
-    PRIVATE
-        ${CMAKE_SOURCE_DIR}/src
-        ${CMAKE_SOURCE_DIR}/include
-)
-
-if(MSVC)
-    target_compile_options(TestArgs PRIVATE /utf-8 /W4 /permissive- /EHsc /Zc:__cplusplus)
-    set_target_properties(TestArgs PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
 
 add_executable(TestPartitionStatus
