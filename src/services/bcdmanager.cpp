@@ -788,7 +788,20 @@ bool BCDManager::restoreBCD() {
             if (pos != std::string::npos) {
                 size_t end = blk.find('}', pos);
                 if (end != std::string::npos) {
-                    std::string guid      = blk.substr(pos, end - pos + 1);
+                    std::string guid = blk.substr(pos, end - pos + 1);
+
+                    // Don't delete {current} or {bootmgr}
+                    // For {default}, only protect it if it doesn't contain ISOBOOT (but since we're here because it contains ISOBOOT, we can delete it)
+                    bool isProtected = (guid == "{current}" || guid == "{bootmgr}");
+                    if (guid == "{default}") {
+                        // Since we already checked icontains(blk, "isoboot") above, {default} with ISOBOOT should be deleted
+                        isProtected = false;
+                    }
+
+                    if (isProtected) {
+                        continue;
+                    }
+
                     std::string deleteCmd = BCD_CMD + " /delete " + guid + " /f"; // force remove
                     Utils::exec(deleteCmd.c_str());
                     deletedAny = true;
@@ -911,7 +924,16 @@ void BCDManager::cleanBootThatISOEntries() {
                     std::string guid = blk.substr(pos, end - pos + 1);
 
                     // Don't delete {current} or {bootmgr}
-                    if (guid == "{current}" || guid == "{bootmgr}" || guid == "{default}") {
+                    // For {default}, only protect it if it doesn't contain ISOBOOT
+                    bool isProtected = false;
+                    if (guid == "{current}" || guid == "{bootmgr}") {
+                        isProtected = true;
+                    } else if (guid == "{default}") {
+                        // Only protect {default} if it doesn't contain ISOBOOT
+                        isProtected = !icontains(blk, "isoboot");
+                    }
+
+                    if (isProtected) {
                         if (bcdLog) {
                             bcdLog << "Skipping protected entry: " << guid << "\n";
                         }
