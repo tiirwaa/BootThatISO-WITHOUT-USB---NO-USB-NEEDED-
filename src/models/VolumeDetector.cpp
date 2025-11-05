@@ -629,20 +629,27 @@ void VolumeDetector::logDiskStructure() {
         return;
     }
 
+    bool hasProviders = false;
     IUnknown *pUnknownProvider = NULL;
     while (pEnumProvider->Next(1, &pUnknownProvider, NULL) == S_OK) {
-        IEnumVdsObject *pEnumPack = NULL;
+        hasProviders = true;
         IVdsSwProvider *pSwProvider = NULL;
         hr = pUnknownProvider->QueryInterface(IID_IVdsSwProvider, (void**)&pSwProvider);
         pUnknownProvider->Release();
         if (FAILED(hr)) continue;
 
+        IEnumVdsObject *pEnumPack = NULL;
         hr = pSwProvider->QueryPacks(&pEnumPack);
         pSwProvider->Release();
-        if (FAILED(hr)) continue;
+        if (FAILED(hr)) {
+            logFile << "Failed to query packs: " << hr << "\n";
+            continue;
+        }
 
+        bool hasPacks = false;
         IUnknown *pUnknownPack = NULL;
         while (pEnumPack->Next(1, &pUnknownPack, NULL) == S_OK) {
+            hasPacks = true;
             IVdsPack *pPack = NULL;
             hr = pUnknownPack->QueryInterface(IID_IVdsPack, (void**)&pPack);
             pUnknownPack->Release();
@@ -652,10 +659,16 @@ void VolumeDetector::logDiskStructure() {
 
             IEnumVdsObject *pEnumDisk = NULL;
             hr = pPack->QueryDisks(&pEnumDisk);
-            if (FAILED(hr)) continue;
+            if (FAILED(hr)) {
+                logFile << "Failed to query disks: " << hr << "\n";
+                pPack->Release();
+                continue;
+            }
 
+            bool hasDisks = false;
             IUnknown *pUnknownDisk = NULL;
             while (pEnumDisk->Next(1, &pUnknownDisk, NULL) == S_OK) {
+                hasDisks = true;
                 IVdsDisk *pDisk = NULL;
                 hr = pUnknownDisk->QueryInterface(IID_IVdsDisk, (void**)&pDisk);
                 pUnknownDisk->Release();
@@ -708,19 +721,34 @@ void VolumeDetector::logDiskStructure() {
                                 if (current < diskProp.ullSize) {
                                     logFile << "    Free Space: Offset " << current << ", Size " << (diskProp.ullSize - current) << " bytes\n";
                                 }
+                            } else {
+                                logFile << "DeviceIoControl failed: " << GetLastError() << "\n";
                             }
                             free(layout);
                         }
                         CloseHandle(hDisk);
+                    } else {
+                        logFile << "CreateFileA failed for disk: " << GetLastError() << "\n";
                     }
+                } else {
+                    logFile << "Failed to get disk properties: " << hr << "\n";
                 }
 
                 pDisk->Release();
             }
+            if (!hasDisks) {
+                logFile << "No disks found in pack\n";
+            }
             pEnumDisk->Release();
             pPack->Release();
         }
+        if (!hasPacks) {
+            logFile << "No packs found for provider\n";
+        }
         pEnumPack->Release();
+    }
+    if (!hasProviders) {
+        logFile << "No providers found\n";
     }
     pEnumProvider->Release();
     pService->Release();

@@ -1,6 +1,7 @@
 #include "ProcessService.h"
 #include "../utils/Utils.h"
 #include "../utils/AppKeys.h"
+#include "../utils/LocalizationHelpers.h"
 #include "../../include/models/HashInfo.h"
 #include "../models/ISOReader.h"
 #include <fstream>
@@ -28,17 +29,16 @@ ProcessService::ProcessResult ProcessService::validateAndPrepare(const std::stri
     if (efiCount > 1) {
         eventManager.notifyLogUpdate("\r\n");
         eventManager.notifyLogUpdate("========================================\r\n");
-        eventManager.notifyLogUpdate("ADVERTENCIA CRÍTICA:\r\n");
-        eventManager.notifyLogUpdate("Se detectaron " + std::to_string(efiCount) +
-                                     " particiones ISOEFI duplicadas.\r\n");
-        eventManager.notifyLogUpdate("Esto puede causar problemas de arranque.\r\n");
+        eventManager.notifyLogUpdate(LocalizedOrUtf8("log.efi.duplicate_warning", "CRITICAL WARNING:\r\n"));
+        eventManager.notifyLogUpdate(LocalizedFormatUtf8("log.efi.duplicate_count", {Utils::utf8_to_wstring(std::to_string(efiCount))}, "{0} duplicate ISOEFI partitions detected.\r\n"));
+        eventManager.notifyLogUpdate(LocalizedOrUtf8("log.efi.duplicate_boot_issue", "This may cause boot problems.\r\n"));
         eventManager.notifyLogUpdate("========================================\r\n");
         eventManager.notifyLogUpdate("\r\n");
-        eventManager.notifyLogUpdate("Eliminando TODAS las particiones para recrearlas correctamente...\r\n");
+        eventManager.notifyLogUpdate(LocalizedOrUtf8("log.efi.deleting_all", "Deleting ALL partitions to recreate them correctly...\r\n"));
 
         // Force cleanup and recreation
         if (!partitionManager->recoverSpace()) {
-            return {false, "Error al limpiar particiones duplicadas."};
+            return {false, LocalizedOrUtf8("error.efi.cleanup_failed", "Error cleaning duplicate partitions.")};
         }
         // After cleanup, continue with normal creation
     }
@@ -55,10 +55,10 @@ ProcessService::ProcessResult ProcessService::validateAndPrepare(const std::stri
             needsRecreation = true;
             partitionExists = false; // Force recreation flow
 
-            eventManager.notifyLogUpdate("ADVERTENCIA: Partición EFI con tamaño incorrecto (" +
-                                         std::to_string(currentEfiSizeMB) + " MB, se requieren " +
-                                         std::to_string(REQUIRED_EFI_SIZE_MB) + " MB)\r\n");
-            eventManager.notifyLogUpdate("Eliminando AMBAS particiones para recrearlas con el nuevo tamaño...\r\n");
+            eventManager.notifyLogUpdate(LocalizedFormatUtf8("log.efi.wrong_size_warning", 
+                {Utils::utf8_to_wstring(std::to_string(currentEfiSizeMB)), Utils::utf8_to_wstring(std::to_string(REQUIRED_EFI_SIZE_MB))},
+                "WARNING: EFI partition with incorrect size ({0} MB, required {1} MB)\r\n"));
+            eventManager.notifyLogUpdate(LocalizedOrUtf8("log.efi.deleting_both", "Deleting BOTH partitions to recreate with new size...\r\n"));
         }
     }
 
@@ -84,12 +84,12 @@ ProcessService::ProcessResult ProcessService::validateAndPrepare(const std::stri
             }
         } else {
             if (!partitionManager->reformatPartition(format)) {
-                return {false, "Error al reformatear la partición."};
+                return {false, LocalizedOrUtf8("error.partition.reformatFailed", "Error reformatting partition.")};
             }
         }
     } else {
         if (!partitionManager->createPartition(format, skipIntegrityCheck)) {
-            return {false, "Error al crear la partición."};
+            return {false, LocalizedOrUtf8("error.partition.createFailed", "Error creating partition.")};
         }
     }
 
@@ -116,13 +116,13 @@ ProcessService::ProcessResult ProcessService::validateAndPrepare(const std::stri
         }
     } else {
         // If can't check free space, log warning but continue
-        eventManager.notifyLogUpdate("Advertencia: No se pudo verificar el espacio libre en la partición EFI.\r\n");
+        eventManager.notifyLogUpdate(LocalizedOrUtf8("log.efi.freeSpaceWarning", "Warning: Could not verify free space in EFI partition.\r\n"));
     }
 
     // Reformat EFI if needed
     if (!partitionExists) {
         if (!partitionManager->reformatEfiPartition()) {
-            return {false, "Error al reformatear la partición EFI."};
+            return {false, LocalizedOrUtf8("error.efi.reformatFailed", "Error reformatting EFI partition.")};
         }
     }
 
@@ -135,7 +135,7 @@ ProcessService::ProcessResult ProcessService::copyIsoContent(const std::string &
     if (copyISO(isoPath, partitionDrive, espDrive, modeKey, modeLabel, format, injectDrivers)) {
         return {true, ""};
     } else {
-        return {false, "Error al preparar el contenido del ISO."};
+        return {false, LocalizedOrUtf8("error.iso.prepareFailed", "Error preparing ISO content.")};
     }
 }
 
@@ -147,7 +147,7 @@ ProcessService::ProcessResult ProcessService::configureBoot(const std::string &m
         }
         std::string error = bcdManager->configureBCD(partitionDrive.substr(0, 2), espDrive.substr(0, 2), *strategy);
         if (!error.empty()) {
-            return {false, "Error al configurar BCD: " + error};
+            return {false, LocalizedFormatUtf8("error.bcd.configureFailed", {Utils::utf8_to_wstring(error)}, "Error configuring BCD: {0}")};
         }
     }
     return {true, ""};

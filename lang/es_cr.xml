@@ -233,6 +233,13 @@
     <!-- Mensajes de log - Reformateador de Particiones (adicional) -->
     <string id="log.reformat.efi_found">Volumen EFI encontrado (número {0}). Creando script de formateo...</string>
     
+    <!-- Mensajes de error -->
+    <string id="error.partition.reformatFailed">Error al reformatear la partición.</string>
+    <string id="error.partition.createFailed">Error al crear la partición.</string>
+    <string id="error.efi.reformatFailed">Error al reformatear la partición EFI.</string>
+    <string id="error.iso.prepareFailed">Error al preparar el contenido del ISO.</string>
+    <string id="error.bcd.configureFailed">Error al configurar BCD: {0}</string>
+    
 </language>
     <string id="button.perform.hint">Clic para Bootear el ISO</string>
     <string id="mainwindow.developedBy">Desarrollado por una empresa Costarricense</string>

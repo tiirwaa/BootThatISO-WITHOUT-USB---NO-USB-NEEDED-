@@ -186,4 +186,12 @@
     <string id="log.bootwim.additionalFilesExtracted">Дополнительные файлы из boot.wim успешно извлечены.</string>
     <string id="button.perform.hint">Нажмите для загрузки ISO</string>
     <string id="mainwindow.developedBy">Программное обеспечение разработано костариканской компанией</string>
+    
+    <!-- Сообщения об ошибках -->
+    <string id="error.partition.reformatFailed">Ошибка при переформатировании раздела.</string>
+    <string id="error.partition.createFailed">Ошибка при создании раздела.</string>
+    <string id="error.efi.reformatFailed">Ошибка при переформатировании раздела EFI.</string>
+    <string id="error.iso.prepareFailed">Ошибка при подготовке содержимого ISO.</string>
+    <string id="error.bcd.configureFailed">Ошибка при настройке BCD: {0}</string>
+    
 </language>

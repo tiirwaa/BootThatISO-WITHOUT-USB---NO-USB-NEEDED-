@@ -186,4 +186,12 @@
     <string id="log.bootwim.additionalFilesExtracted">boot.wim에서 추가 파일이 성공적으로 추출되었습니다.</string>
     <string id="button.perform.hint">클릭하여 ISO 부팅</string>
     <string id="mainwindow.developedBy">코스타리카 회사에서 개발한 소프트웨어</string>
+    
+    <!-- 오류 메시지 -->
+    <string id="error.partition.reformatFailed">파티션 재포맷 중 오류가 발생했습니다.</string>
+    <string id="error.partition.createFailed">파티션 생성 중 오류가 발생했습니다.</string>
+    <string id="error.efi.reformatFailed">EFI 파티션 재포맷 중 오류가 발생했습니다.</string>
+    <string id="error.iso.prepareFailed">ISO 콘텐츠 준비 중 오류가 발생했습니다.</string>
+    <string id="error.bcd.configureFailed">BCD 구성 중 오류가 발생했습니다: {0}</string>
+    
 </language>

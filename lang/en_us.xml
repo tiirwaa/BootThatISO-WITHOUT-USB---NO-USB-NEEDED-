@@ -233,6 +233,13 @@
     <!-- Log messages - Partition Reformatter (additional) -->
     <string id="log.reformat.efi_found">EFI volume found (number {0}). Creating format script...</string>
     
+    <!-- Error messages -->
+    <string id="error.partition.reformatFailed">Error reformatting partition.</string>
+    <string id="error.partition.createFailed">Error creating partition.</string>
+    <string id="error.efi.reformatFailed">Error reformatting EFI partition.</string>
+    <string id="error.iso.prepareFailed">Error preparing ISO content.</string>
+    <string id="error.bcd.configureFailed">Error configuring BCD: {0}</string>
+    
 </language>
     <string id="button.perform.hint">Click to boot the ISO</string>
     <string id="mainwindow.developedBy">Software developed by a Costa Rican company</string>

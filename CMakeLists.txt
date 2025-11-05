@@ -102,6 +102,7 @@ set(SOURCE_FILES
     src/models/DiskIntegrityChecker.cpp
     src/models/VolumeDetector.cpp
     src/models/SpaceManager.cpp
+    src/models/RecoverySteps.cpp
     src/models/DiskpartExecutor.cpp
     src/models/PartitionReformatter.cpp
     src/models/PartitionCreator.cpp
@@ -222,6 +223,7 @@ add_executable(TestRecoverSpace
     src/models/DiskIntegrityChecker.cpp
     src/models/VolumeDetector.cpp
     src/models/SpaceManager.cpp
+    src/models/RecoverySteps.cpp
     src/models/DiskpartExecutor.cpp
     src/models/PartitionReformatter.cpp
     src/models/PartitionCreator.cpp
@@ -255,6 +257,7 @@ add_executable(TestPartitionStatus
     src/models/DiskIntegrityChecker.cpp
     src/models/VolumeDetector.cpp
     src/models/SpaceManager.cpp
+    src/models/RecoverySteps.cpp
     src/models/DiskpartExecutor.cpp
     src/models/PartitionReformatter.cpp
     src/models/PartitionCreator.cpp

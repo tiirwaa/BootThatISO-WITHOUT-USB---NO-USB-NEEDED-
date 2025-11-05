@@ -186,4 +186,12 @@
     <string id="log.bootwim.additionalFilesExtracted">boot.wim中的其他文件已成功提取。</string>
     <string id="button.perform.hint">点击以启动ISO</string>
     <string id="mainwindow.developedBy">由哥斯达黎加公司开发的软件</string>
+    
+    <!-- 错误消息 -->
+    <string id="error.partition.reformatFailed">重新格式化分区时出错。</string>
+    <string id="error.partition.createFailed">创建分区时出错。</string>
+    <string id="error.efi.reformatFailed">重新格式化EFI分区时出错。</string>
+    <string id="error.iso.prepareFailed">准备ISO内容时出错。</string>
+    <string id="error.bcd.configureFailed">配置BCD时出错：{0}</string>
+    
 </language>

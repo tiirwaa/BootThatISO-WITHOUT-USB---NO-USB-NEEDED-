@@ -186,4 +186,12 @@
     <string id="log.bootwim.additionalFilesExtracted">تم استخراج ملفات إضافية من boot.wim بنجاح.</string>
     <string id="button.perform.hint">انقر لتشغيل ISO</string>
     <string id="mainwindow.developedBy">برنامج تم تطويره بواسطة شركة كوستاريكية</string>
+    
+    <!-- رسائل الخطأ -->
+    <string id="error.partition.reformatFailed">خطأ في إعادة تنسيق القسم.</string>
+    <string id="error.partition.createFailed">خطأ في إنشاء القسم.</string>
+    <string id="error.efi.reformatFailed">خطأ في إعادة تنسيق قسم EFI.</string>
+    <string id="error.iso.prepareFailed">خطأ في تحضير محتوى ISO.</string>
+    <string id="error.bcd.configureFailed">خطأ في تكوين BCD: {0}</string>
+    
 </language>

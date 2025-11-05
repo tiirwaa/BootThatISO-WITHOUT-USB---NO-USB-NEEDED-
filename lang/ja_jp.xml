@@ -186,4 +186,12 @@
     <string id="log.bootwim.additionalFilesExtracted">boot.wimから追加ファイルが正常に抽出されました。</string>
     <string id="button.perform.hint">クリックしてISOを起動</string>
     <string id="mainwindow.developedBy">コスタリカの会社によって開発されたソフトウェア</string>
+    
+    <!-- エラーメッセージ -->
+    <string id="error.partition.reformatFailed">パーティションの再フォーマット中にエラーが発生しました。</string>
+    <string id="error.partition.createFailed">パーティションの作成中にエラーが発生しました。</string>
+    <string id="error.efi.reformatFailed">EFIパーティションの再フォーマット中にエラーが発生しました。</string>
+    <string id="error.iso.prepareFailed">ISOコンテンツの準備中にエラーが発生しました。</string>
+    <string id="error.bcd.configureFailed">BCDの構成中にエラーが発生しました：{0}</string>
+    
 </language>

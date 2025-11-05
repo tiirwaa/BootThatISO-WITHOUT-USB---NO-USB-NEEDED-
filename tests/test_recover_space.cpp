@@ -1,6 +1,8 @@
 #include <iostream>
 #include <string>
 #include <windows.h>
+#include <fstream>
+#include <sstream>
 #include "../src/services/partitionmanager.h"
 #include "../src/utils/Utils.h"
 #include "../src/utils/constants.h"
@@ -52,6 +54,52 @@ int main() {
     bool result = pm.recoverSpace();
 
     std::cout << "recoverSpace() returned: " << (result ? "SUCCESS" : "FAILED") << std::endl;
+
+    // Verification: dump current partition layout
+    std::cout << "\nVerifying partition layout after recovery..." << std::endl;
+    
+    std::string exeDir = Utils::getExeDirectory();
+    std::string scriptPath = exeDir + "verify_partitions.txt";
+    std::string outputPath = exeDir + "partition_layout_after_recovery.txt";
+    
+    // Create diskpart script
+    std::ofstream scriptFile(scriptPath.c_str());
+    if (scriptFile) {
+        scriptFile << "select disk 0\n";
+        scriptFile << "list partition\n";
+        scriptFile << "list volume\n";
+        scriptFile.close();
+    }
+    
+    // Execute diskpart
+    std::string cmd = "diskpart /s \"" + scriptPath + "\" > \"" + outputPath + "\" 2>&1";
+    system(cmd.c_str());
+    
+    // Read and display the output
+    std::ifstream outputFile(outputPath.c_str());
+    if (outputFile) {
+        std::cout << "Partition layout after recovery:\n";
+        std::cout << "================================\n";
+        std::string line;
+        bool foundIsoVolumes = false;
+        while (std::getline(outputFile, line)) {
+            std::cout << line << std::endl;
+            // Check for ISO volumes
+            if (line.find(VOLUME_LABEL) != std::string::npos || line.find(EFI_VOLUME_LABEL) != std::string::npos) {
+                foundIsoVolumes = true;
+            }
+        }
+        outputFile.close();
+        
+        if (foundIsoVolumes) {
+            std::cout << "\nWARNING: ISO volumes still present after recovery!\n";
+            result = false; // Mark as failed if ISO volumes remain
+        } else {
+            std::cout << "\nVerification: No ISO volumes found. Recovery appears successful.\n";
+        }
+    } else {
+        std::cout << "Failed to read partition layout output.\n";
+    }
 
     return result ? 0 : 1;
 }

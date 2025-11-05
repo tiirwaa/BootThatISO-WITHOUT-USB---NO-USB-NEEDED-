@@ -186,4 +186,12 @@
     <string id="log.bootwim.additionalFilesExtracted">boot.wim से अतिरिक्त फ़ाइलें सफलतापूर्वक निकाली गईं।</string>
     <string id="button.perform.hint">ISO बूट करने के लिए क्लिक करें</string>
     <string id="mainwindow.developedBy">कोस्टा रिकन कंपनी द्वारा विकसित सॉफ़्टवेयर</string>
+    
+    <!-- त्रुटि संदेश -->
+    <string id="error.partition.reformatFailed">विभाजन पुनः स्वरूपित करने में त्रुटि।</string>
+    <string id="error.partition.createFailed">विभाजन बनाने में त्रुटि।</string>
+    <string id="error.efi.reformatFailed">EFI विभाजन पुनः स्वरूपित करने में त्रुटि।</string>
+    <string id="error.iso.prepareFailed">ISO सामग्री तैयार करने में त्रुटि।</string>
+    <string id="error.bcd.configureFailed">BCD कॉन्फ़िगर करने में त्रुटि: {0}</string>
+    
 </language>

@@ -186,4 +186,12 @@
     <string id="log.bootwim.additionalFilesExtracted">boot.wim'den ek dosyalar başarıyla çıkarıldı.</string>
     <string id="button.perform.hint">ISO'yu başlatmak için tıklayın</string>
     <string id="mainwindow.developedBy">Kosta Rikalı bir şirket tarafından geliştirilen yazılım</string>
+    
+    <!-- Hata mesajları -->
+    <string id="error.partition.reformatFailed">Bölüm yeniden biçimlendirilirken hata.</string>
+    <string id="error.partition.createFailed">Bölüm oluşturulurken hata.</string>
+    <string id="error.efi.reformatFailed">EFI bölümü yeniden biçimlendirilirken hata.</string>
+    <string id="error.iso.prepareFailed">ISO içeriği hazırlanırken hata.</string>
+    <string id="error.bcd.configureFailed">BCD yapılandırılırken hata: {0}</string>
+    
 </language>

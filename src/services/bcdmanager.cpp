@@ -365,6 +365,21 @@ std::string BCDManager::configureBCD(const std::string &driveLetter, const std::
     // Set default to current to avoid issues with deleting the default entry
     Utils::exec((BCD_CMD + " /default {current}").c_str());
 
+    // Before creating new entry, preserve the current Windows entry by copying it
+    // This ensures we always have a valid Windows entry to fall back to
+    std::string preserveWindowsCmd = BCD_CMD + " /copy {default} /d \"Windows (System)\"";
+    std::string preserveResult = Utils::exec(preserveWindowsCmd.c_str());
+    std::string windowsGuid;
+    if (preserveResult.find("{") != std::string::npos && preserveResult.find("}") != std::string::npos) {
+        size_t pos = preserveResult.find("{");
+        size_t end = preserveResult.find("}", pos);
+        if (end != std::string::npos) {
+            windowsGuid = preserveResult.substr(pos, end - pos + 1);
+            // Add the preserved Windows entry to display order
+            Utils::exec((BCD_CMD + " /displayorder " + windowsGuid + " /addlast").c_str());
+        }
+    }
+
     // Delete any existing ISOBOOT entries to avoid duplicates
     // Use block parsing and case-insensitive search to handle localized bcdedit output
     std::string enumOutput = Utils::exec((BCD_CMD + " /enum all").c_str());
@@ -821,7 +836,23 @@ bool BCDManager::restoreBCD() {
                                                           "Estableciendo Windows como entrada predeterminada...") +
                                           "\r\n");
         }
-        std::string defaultResult = Utils::exec((BCD_CMD + " /default {current}").c_str());
+        
+        // Try to find a preserved Windows entry first, then fall back to {current}
+        std::string windowsEntryGuid = "{current}";
+        for (const auto &blk : entryBlocks) {
+            if (icontains(blk, "windows (system)") || icontains(blk, "windows 10")) {
+                size_t pos = blk.find('{');
+                if (pos != std::string::npos) {
+                    size_t end = blk.find('}', pos);
+                    if (end != std::string::npos) {
+                        windowsEntryGuid = blk.substr(pos, end - pos + 1);
+                        break;
+                    }
+                }
+            }
+        }
+        
+        std::string defaultResult = Utils::exec((BCD_CMD + " /default " + windowsEntryGuid).c_str());
         std::string timeoutResult = Utils::exec((BCD_CMD + " /timeout 0").c_str());
 
         if (eventManager) {
@@ -925,19 +956,22 @@ void BCDManager::cleanBootThatISOEntries() {
                 if (end != std::string::npos) {
                     std::string guid = blk.substr(pos, end - pos + 1);
 
-                    // Don't delete {current} or {bootmgr}
-                    // For {default}, only protect it if it doesn't contain ISOBOOT
+                    // Don't delete {current}, {bootmgr}, or preserved Windows entries
                     bool isProtected = false;
                     if (guid == "{current}" || guid == "{bootmgr}") {
                         isProtected = true;
                     } else if (guid == "{default}") {
                         // Only protect {default} if it doesn't contain ISOBOOT
                         isProtected = !icontains(blk, "isoboot");
+                    } else if (icontains(blk, "windows (system)") || icontains(blk, "windows 10")) {
+                        // Protect preserved Windows entries
+                        isProtected = true;
+                        reason = "Skipping protected Windows entry: " + guid;
                     }
 
                     if (isProtected) {
                         if (bcdLog) {
-                            bcdLog << "Skipping protected entry: " << guid << "\n";
+                            bcdLog << "Skipping protected entry: " << guid << " - " << reason << "\n";
                         }
                         continue;
                     }

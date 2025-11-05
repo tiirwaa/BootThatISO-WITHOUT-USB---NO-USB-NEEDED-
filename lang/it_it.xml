@@ -186,4 +186,12 @@
     <string id="log.bootwim.additionalFilesExtracted">File aggiuntivi da boot.wim estratti con successo.</string>
     <string id="button.perform.hint">Clicca per avviare l'ISO</string>
     <string id="mainwindow.developedBy">Software sviluppato da un'azienda costaricana</string>
+    
+    <!-- Messaggi di errore -->
+    <string id="error.partition.reformatFailed">Errore durante la riformattazione della partizione.</string>
+    <string id="error.partition.createFailed">Errore durante la creazione della partizione.</string>
+    <string id="error.efi.reformatFailed">Errore durante la riformattazione della partizione EFI.</string>
+    <string id="error.iso.prepareFailed">Errore durante la preparazione del contenuto ISO.</string>
+    <string id="error.bcd.configureFailed">Errore durante la configurazione BCD: {0}</string>
+    
 </language>
