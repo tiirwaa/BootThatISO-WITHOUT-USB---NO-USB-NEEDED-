@@ -72,6 +72,12 @@ void ClearLogs() {
 LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nCmdShow) {
+    // Very early debug
+    std::string veryEarlyLogPath = Utils::getExeDirectory() + "logs\\very_early_debug.log";
+    std::ofstream veryEarlyLog(veryEarlyLogPath.c_str(), std::ios::app);
+    veryEarlyLog << "wWinMain started at " << __TIME__ << std::endl;
+    veryEarlyLog.close();
+
     Gdiplus::GdiplusStartupInput gdiplusStartupInput;
     ULONG_PTR                    gdiplusToken;
     Gdiplus::GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, NULL);
@@ -160,19 +166,6 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
     ClearLogs();
 
     if (unattended) {
-        // For unattended mode, show a progress window instead of console
-        // This ensures compatibility with WIN32_EXECUTABLE=TRUE
-
-        std::string   debugLogPath = Utils::getExeDirectory() + "logs\\unattended_debug.log";
-        std::ofstream debugLog(debugLogPath.c_str());
-        debugLog << "Unattended mode started\n";
-        debugLog << "isoPath: " << isoPath << "\n";
-        debugLog << "format: " << format << "\n";
-        debugLog << "mode: " << modeKey << "\n";
-        debugLog << "chkdsk: " << chkdsk << "\n";
-        debugLog << "autoreboot: " << autoreboot << "\n";
-        debugLog.close();
-
         // Detectar disco del sistema disponible
         std::string systemDrive = detectSystemDrive();
         if (systemDrive.empty()) {
@@ -188,36 +181,44 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
         // Configurar PartitionManager para usar el disco del sistema
         PartitionManager::getInstance().setMonitoredDrive(targetDrive);
 
-        // Create a simple progress window for unattended mode
-        WNDCLASSEX wc = {0};
-        wc.cbSize = sizeof(WNDCLASSEX);
-        wc.lpfnWndProc = DefWindowProc;
-        wc.hInstance = hInstance;
-        wc.lpszClassName = L"UnattendedProgressClass";
-        wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
-        RegisterClassExW(&wc);
+        // Debug: Log that we entered unattended mode
+        std::string debugLogPath2 = Utils::getExeDirectory() + "logs\\unattended_start.log";
+        std::ofstream debugLog2(debugLogPath2.c_str(), std::ios::app);
+        debugLog2 << "=== Unattended mode started at " << __TIME__ << " ===" << std::endl;
+        debugLog2 << "ISO Path: " << isoPath << std::endl;
+        debugLog2 << "Mode: " << modeKey << std::endl;
+        debugLog2 << "Format: " << format << std::endl;
+        debugLog2 << "Target Drive: " << targetDrive << std::endl;
+        debugLog2 << "Chkdsk: " << chkdsk << std::endl;
+        debugLog2 << "Autoreboot: " << autoreboot << std::endl;
+        debugLog2.close();
 
-        std::wstring progressTitle = LocalizedOrW("app.windowTitle", L"BootThatISO! - Unattended Mode");
-        progressTitle += L" - Processing...";
+        // For unattended mode, try to allocate console for real-time output
+        bool consoleAllocated = false;
+        if (AllocConsole()) {
+            consoleAllocated = true;
+            freopen("CONOUT$", "w", stdout);
+            freopen("CONOUT$", "w", stderr);
+            freopen("CONIN$", "r", stdin);
+            std::cout << "BootThatISO! - Unattended Mode" << std::endl;
+            std::cout << "===============================" << std::endl;
+            std::cout << "Processing ISO: " << isoPath << std::endl;
+            std::cout << "Mode: " << modeKey << std::endl;
+            std::cout << "Format: " << format << std::endl;
+            std::cout << "Target Drive: " << targetDrive << std::endl;
+            std::cout << "Console allocated successfully: " << consoleAllocated << std::endl;
+            std::cout << std::endl;
+        } else {
+            // Log console allocation failure
+            debugLog2.open(debugLogPath2.c_str(), std::ios::app);
+            debugLog2 << "Console allocation FAILED" << std::endl;
+            debugLog2.close();
 
-        HWND progressHwnd = CreateWindowExW(0, L"UnattendedProgressClass", progressTitle.c_str(),
-                                           WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU,
-                                           CW_USEDEFAULT, CW_USEDEFAULT, 400, 150,
-                                           NULL, NULL, hInstance, NULL);
-
-        // Center the window
-        RECT rect;
-        GetWindowRect(progressHwnd, &rect);
-        int width = rect.right - rect.left;
-        int height = rect.bottom - rect.top;
-        int screenWidth = GetSystemMetrics(SM_CXSCREEN);
-        int screenHeight = GetSystemMetrics(SM_CYSCREEN);
-        int x = (screenWidth - width) / 2;
-        int y = (screenHeight - height) / 2;
-        MoveWindow(progressHwnd, x, y, width, height, FALSE);
-
-        ShowWindow(progressHwnd, SW_SHOW);
-        UpdateWindow(progressHwnd);
+            // Fallback: Show message box if console allocation fails
+            std::wstring processingMsg = L"Processing ISO file in unattended mode...\nCheck console window for progress.\n\nConsole allocation failed - using message box fallback.";
+            std::wstring processingTitle = LocalizedOrW("app.windowTitle", L"BootThatISO! - Unattended Mode");
+            MessageBoxW(NULL, processingMsg.c_str(), processingTitle.c_str(), MB_OK | MB_ICONINFORMATION);
+        }
 
         EventManager      eventManager;
         ConsoleObserver   consoleObserver;
@@ -231,10 +232,22 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
 
         std::string unattendedFallback = (modeKey == AppKeys::BootModeRam ? "Boot desde Memoria" : "Boot desde Disco");
         std::string unattendedLabel    = LocalizedOrUtf8("bootMode." + modeKey, unattendedFallback.c_str());
+
+        if (consoleAllocated) {
+            std::cout << "Starting process..." << std::endl;
+        }
+
         processController.startProcess(isoPath, format, modeKey, unattendedLabel, !chkdsk, true);
 
-        // Close the progress window
-        DestroyWindow(progressHwnd);
+        if (consoleAllocated) {
+            std::cout << std::endl << "Process completed! Press Enter to exit." << std::endl;
+            std::cin.get();
+        } else {
+            // Show completion message
+            std::wstring completionMsg = LocalizedOrW("message.processComplete", L"ISO processing completed successfully!");
+            std::wstring processingTitle = LocalizedOrW("app.windowTitle", L"BootThatISO! - Unattended Mode");
+            MessageBoxW(NULL, completionMsg.c_str(), processingTitle.c_str(), MB_OK | MB_ICONINFORMATION);
+        }
 
         return 0;
     }
