@@ -133,7 +133,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
     ClearLogs();
 
     if (unattended) {
-        std::string   debugLogPath = Utils::getExeDirectory() + "logs\\unattended_debug.log";
+        std::string   debugLogPath = Utils::getExeDirectory() + "logs\\" + UNATTENDED_DEBUG_LOG_FILE;
         std::ofstream debugLog(debugLogPath.c_str());
         debugLog << "Unattended mode started\n";
         debugLog << "isoPath: " << isoPath << "\n";
@@ -253,7 +253,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
             const int          result = MessageBoxW(hwnd, prompt.c_str(), title.c_str(), MB_YESNO | MB_ICONQUESTION);
             if (result == IDYES) {
                 mainWindow->requestCancel();
-                DestroyWindow(hwnd);
+                mainWindow->closePending = true;
+                return 0;
             }
             return 0;
         }

@@ -3,8 +3,13 @@
 #include "../services/bcdmanager.h"
 #include "../utils/LocalizationHelpers.h"
 #include <windows.h>
+#include <vds.h>
+#include <Objbase.h>
 #include <fstream>
 #include <sstream>
+#include <vector>
+#include <utility>
+#include <algorithm>
 #include "../utils/Utils.h"
 #include "../utils/constants.h"
 
@@ -56,7 +61,7 @@ SpaceValidationResult SpaceManager::validateAvailableSpace() {
     // Log to file
     std::string logDir = Utils::getExeDirectory() + "logs";
     CreateDirectoryA(logDir.c_str(), NULL);
-    std::ofstream logFile((logDir + "\\space_validation.log").c_str());
+    std::ofstream logFile((logDir + "\\" + SPACE_VALIDATION_LOG_FILE).c_str());
     if (logFile) {
         logFile << "Available space: " << availableGB << " GB\n";
         logFile << "Is valid: " << (result.isValid ? "yes" : "no") << "\n";
@@ -105,296 +110,280 @@ bool SpaceManager::recoverSpace() {
         eventManager_->notifyLogUpdate(
             LocalizedOrUtf8("log.space.starting_recovery", "Iniciando recuperación de espacio...\r\n"));
 
-    // Check if Windows is using the ISOEFI partition
-    VolumeDetector volumeDetector(eventManager_);
-    bool           windowsUsingEfi = volumeDetector.isWindowsUsingEfiPartition();
-
-    if (windowsUsingEfi) {
-        if (eventManager_)
-            eventManager_->notifyLogUpdate(LocalizedOrUtf8("log.partition.windows_using_efi",
-                                                           "ADVERTENCIA: Windows está usando la partición ISOEFI. "
-                                                           "Solo se eliminará ISOBOOT, ISOEFI se preservará.\r\n"));
-    }
-
-    // Create PowerShell script to recover space
-    char tempPath[MAX_PATH];
-    GetTempPathA(MAX_PATH, tempPath);
-    char tempFile[MAX_PATH];
-    GetTempFileNameA(tempPath, "recover_ps", 0, tempFile);
-    std::string psFile = std::string(tempFile) + ".ps1";
-
-    std::ofstream scriptFile(psFile);
-    if (!scriptFile) {
-        return false;
-    }
-
-    // Build the volume filter and deletion logic
-    if (windowsUsingEfi) {
-        // Windows is using one ISOEFI as system partition
-        // Delete all ISOBOOT partitions
-        scriptFile << "$volumes = Get-Volume | Where-Object { $_.FileSystemLabel -eq '" << VOLUME_LABEL << "' }\n";
-        scriptFile << "foreach ($vol in $volumes) {\n";
-        scriptFile << "    $part = Get-Partition | Where-Object { $_.AccessPaths -contains $vol.Path }\n";
-        scriptFile << "    if ($part) {\n";
-        scriptFile << "        $accessPaths = $part.AccessPaths | Where-Object { $_ -match '^[A-Z]:\\\\$' }\n";
-        scriptFile << "        foreach ($path in $accessPaths) {\n";
-        scriptFile << "            try {\n";
-        scriptFile << "                Remove-PartitionAccessPath -DiskNumber 0 -PartitionNumber "
-                      "$part.PartitionNumber -AccessPath $path -Confirm:$false -ErrorAction SilentlyContinue\n";
-        scriptFile << "            } catch { }\n";
-        scriptFile << "        }\n";
-        scriptFile << "        Remove-Partition -DiskNumber 0 -PartitionNumber $part.PartitionNumber -Confirm:$false\n";
-        scriptFile << "    }\n";
-        scriptFile << "}\n";
-
-        // Delete EFI partitions that DON'T contain bootmgfw.efi (system EFI marker)
-        scriptFile << "Write-Host \"Starting EFI partition detection...\"\n";
-        scriptFile << "Write-Host \"Checking if running as admin...\"\n";
-        scriptFile << "$isAdmin = "
-                      "([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent())."
-                      "IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)\n";
-        scriptFile << "Write-Host \"Is admin: $isAdmin\"\n";
-        scriptFile << "Write-Host \"Getting all partitions...\"\n";
-        scriptFile << "$allPartitions = Get-Partition\n";
-        scriptFile << "Write-Host \"Total partitions found: $($allPartitions.Count)\"\n";
-        scriptFile << "foreach ($p in $allPartitions) { Write-Host \"Partition $($p.PartitionNumber): Type=$($p.Type), "
-                      "Size=$($p.Size)\" }\n";
-        scriptFile << "$efiPartitions = Get-Partition | Where-Object { $_.Type -eq 'System' }\n";
-        scriptFile << "Write-Host \"Found $($efiPartitions.Count) EFI partitions to check\"\n";
-        scriptFile << "foreach ($part in $efiPartitions) {\n";
-        scriptFile << "    $isSystemEfi = $false\n";
-        scriptFile << "    Write-Host \"Checking EFI partition: $($part.PartitionNumber) - Size: $($part.Size)\"\n";
-        scriptFile << "    \n";
-        scriptFile << "    # Try to find existing drive letter\n";
-        scriptFile << "    $driveLetter = $null\n";
-        scriptFile << "    if ($part.DriveLetter) {\n";
-        scriptFile << "        $driveLetter = $part.DriveLetter\n";
-        scriptFile << "        Write-Host \"Partition has drive letter: $driveLetter\"\n";
-        scriptFile << "    } else {\n";
-        scriptFile << "        # Assign temp drive letter\n";
-        scriptFile << "        $availableLetters = 90..67 | ForEach-Object { [char]$_ } | Where-Object { -not "
-                      "(Get-Volume | Where-Object { $_.DriveLetter -eq $_ }) }\n";
-        scriptFile << "        if ($availableLetters) {\n";
-        scriptFile << "            $driveLetter = $availableLetters[0]\n";
-        scriptFile
-            << "            Write-Host \"Assigning temp drive $driveLetter to partition $($part.PartitionNumber)\"\n";
-        scriptFile << "            Add-PartitionAccessPath -DiskNumber 0 -PartitionNumber $part.PartitionNumber "
-                      "-AccessPath ($driveLetter + ':') 2>&1 | Out-Null\n";
-        scriptFile << "        }\n";
-        scriptFile << "    }\n";
-        scriptFile << "    \n";
-        scriptFile << "    if ($driveLetter) {\n";
-        scriptFile << "        $bootmgfwPath = $driveLetter + ':\\EFI\\Microsoft\\Boot\\bootmgfw.efi'\n";
-        scriptFile << "        Write-Host \"Checking path: $bootmgfwPath\"\n";
-        scriptFile << "        if (Test-Path $bootmgfwPath) {\n";
-        scriptFile << "            Write-Host \"Found bootmgfw.efi - This is SYSTEM EFI partition\"\n";
-        scriptFile << "            $isSystemEfi = $true\n";
-        scriptFile << "        } else {\n";
-        scriptFile << "            Write-Host \"bootmgfw.efi NOT found\"\n";
-        scriptFile << "        }\n";
-        scriptFile << "        \n";
-        scriptFile << "        # Remove temp drive if assigned\n";
-        scriptFile << "        if (-not $part.DriveLetter) {\n";
-        scriptFile << "            Write-Host \"Removing temp drive $driveLetter\"\n";
-        scriptFile << "            Remove-PartitionAccessPath -DiskNumber 0 -PartitionNumber $part.PartitionNumber "
-                      "-AccessPath ($driveLetter + ':') 2>&1 | Out-Null\n";
-        scriptFile << "        }\n";
-        scriptFile << "    } else {\n";
-        scriptFile << "        Write-Host \"Could not assign drive letter to partition\"\n";
-        scriptFile << "    }\n";
-        scriptFile << "    \n";
-        scriptFile << "    if (-not $isSystemEfi) {\n";
-        scriptFile << "        Write-Host \"Deleting non-system EFI partition $($part.PartitionNumber)\"\n";
-        scriptFile << "        # Remove all access paths\n";
-        scriptFile << "        foreach ($path in $part.AccessPaths) {\n";
-        scriptFile << "            if ($path -match '^[A-Z]:\\\\$') {\n";
-        scriptFile << "                Remove-PartitionAccessPath -DiskNumber 0 -PartitionNumber $part.PartitionNumber "
-                      "-AccessPath $path -Confirm:$false -ErrorAction SilentlyContinue\n";
-        scriptFile << "            }\n";
-        scriptFile << "        }\n";
-        scriptFile << "        Remove-Partition -DiskNumber 0 -PartitionNumber $part.PartitionNumber -Confirm:$false\n";
-        scriptFile << "    } else {\n";
-        scriptFile << "        Write-Host \"Preserving system EFI partition $($part.PartitionNumber)\"\n";
-        scriptFile << "    }\n";
-        scriptFile << "}\n";
-    } else {
-        // Windows is NOT using ISOEFI - safe to delete all ISOBOOT and ISOEFI partitions
-        scriptFile << "$volumes = Get-Volume | Where-Object { $_.FileSystemLabel -eq '" << VOLUME_LABEL
-                   << "' -or $_.FileSystemLabel -eq '" << EFI_VOLUME_LABEL << "' }\n";
-        scriptFile << "Write-Host \"Found volumes to remove: $($volumes.Count)\"\n";
-        scriptFile << "foreach ($vol in $volumes) {\n";
-        scriptFile << "    Write-Host \"Processing volume: $($vol.FileSystemLabel) at $($vol.Path)\"\n";
-        scriptFile << "    $part = Get-Partition | Where-Object { $_.AccessPaths -contains $vol.Path }\n";
-        scriptFile << "    if ($part) {\n";
-        scriptFile << "        Write-Host \"Found partition: $($part.PartitionNumber)\"\n";
-        scriptFile << "        $accessPaths = $part.AccessPaths | Where-Object { $_ -match '^[A-Z]:\\\\$' }\n";
-        scriptFile << "        Write-Host \"Access paths: $($accessPaths)\"\n";
-        scriptFile << "        foreach ($path in $accessPaths) {\n";
-        scriptFile << "            try {\n";
-        scriptFile << "                Write-Host \"Removing access path: $path\"\n";
-        scriptFile << "                Remove-PartitionAccessPath -DiskNumber 0 -PartitionNumber "
-                      "$part.PartitionNumber -AccessPath $path -Confirm:$false -ErrorAction SilentlyContinue\n";
-        scriptFile << "            } catch { Write-Host \"Error removing access path: $_\" }\n";
-        scriptFile << "        }\n";
-        scriptFile << "        Write-Host \"Removing partition: $($part.PartitionNumber)\"\n";
-        scriptFile << "        try {\n";
-        scriptFile
-            << "            Remove-Partition -DiskNumber 0 -PartitionNumber $part.PartitionNumber -Confirm:$false\n";
-        scriptFile << "            Write-Host \"Partition removed successfully\"\n";
-        scriptFile << "        } catch { Write-Host \"Error removing partition: $_\" }\n";
-        scriptFile << "    } else {\n";
-        scriptFile << "        Write-Host \"No partition found for volume $($vol.FileSystemLabel)\"\n";
-        scriptFile << "    }\n";
-        scriptFile << "}\n";
-    }
-    scriptFile << "$systemPartition = Get-Partition | Where-Object { $_.DriveLetter -eq 'C' }\n";
-    scriptFile << "if ($systemPartition) {\n";
-    scriptFile << "    Write-Host \"Found C: partition: $($systemPartition.PartitionNumber), size: "
-                  "$($systemPartition.Size)\"\n";
-    scriptFile << "    $supportedSize = Get-PartitionSupportedSize -DiskNumber 0 -PartitionNumber "
-                  "$systemPartition.PartitionNumber\n";
-    scriptFile << "    Write-Host \"Supported max size: $($supportedSize.SizeMax)\"\n";
-    scriptFile << "    if ($systemPartition.Size -lt $supportedSize.SizeMax) {\n";
-    scriptFile << "        Write-Host \"Resizing C: to max size\"\n";
-    scriptFile << "        try {\n";
-    scriptFile << "            Resize-Partition -DiskNumber 0 -PartitionNumber $systemPartition.PartitionNumber -Size "
-                  "$supportedSize.SizeMax -Confirm:$false\n";
-    scriptFile << "            Write-Host \"Resize completed successfully\"\n";
-    scriptFile << "        } catch { Write-Host \"Error resizing: $_\" }\n";
-    scriptFile << "    } else {\n";
-    scriptFile << "        Write-Host \"C: already at max size\"\n";
-    scriptFile << "    }\n";
-    scriptFile << "} else {\n";
-    scriptFile << "    Write-Host \"C: partition not found\"\n";
-    scriptFile << "}\n";
-    scriptFile.close();
-
-    // Log the script content
+    // Open log file
     std::string logDir = Utils::getExeDirectory() + "logs";
     CreateDirectoryA(logDir.c_str(), NULL);
-    std::ofstream logScriptFile((logDir + "\\recover_script_log.txt").c_str());
-    if (logScriptFile) {
-        std::ifstream readScript(psFile);
-        std::string   scriptContent((std::istreambuf_iterator<char>(readScript)), std::istreambuf_iterator<char>());
-        logScriptFile << scriptContent;
-        logScriptFile.close();
-    }
-    if (eventManager_)
-        eventManager_->notifyLogUpdate(
-            LocalizedOrUtf8("log.space.script_created", "Script de recuperación creado.\r\n"));
+    std::ofstream logFile((logDir + "\\" + RECOVER_LOG_FILE).c_str(), std::ios::app);
+    logFile << "Starting space recovery at " << __DATE__ << " " << __TIME__ << "\n";
+    logFile.flush();
 
-    // Execute PowerShell script
-    STARTUPINFOA        si = {sizeof(si)};
-    PROCESS_INFORMATION pi;
-    SECURITY_ATTRIBUTES sa;
-    sa.nLength              = sizeof(sa);
-    sa.lpSecurityDescriptor = NULL;
-    sa.bInheritHandle       = TRUE;
-    HANDLE      hRead, hWrite;
-    std::string output;
-    char        buffer[1024];
-    DWORD       bytesRead;
-    DWORD       exitCode;
+    try {
+        logFile << "Entered try block\n";
+        logFile.flush();
 
-    if (!CreatePipe(&hRead, &hWrite, &sa, 0)) {
-        DeleteFileA(psFile.c_str());
-        if (eventManager_)
-            eventManager_->notifyLogUpdate(LocalizedOrUtf8("log.partition.pipe_creation_failed",
-                                                           "Error: No se pudo crear pipe para recuperación.\r\n"));
-        return false;
-    }
+        // Check if Windows is using the ISOEFI partition
+        logFile << "About to create VolumeDetector\n";
+        logFile.flush();
+        VolumeDetector volumeDetector(eventManager_);
+        logFile << "VolumeDetector created\n";
+        logFile.flush();
+        logFile << "About to call isWindowsUsingEfiPartition\n";
+        logFile.flush();
+        bool windowsUsingEfi = volumeDetector.isWindowsUsingEfiPartition();
+        logFile << "isWindowsUsingEfiPartition returned: " << (windowsUsingEfi ? "yes" : "no") << "\n";
+        logFile.flush();
 
-    si.dwFlags     = STARTF_USESTDHANDLES | STARTF_USESHOWWINDOW;
-    si.hStdOutput  = hWrite;
-    si.hStdError   = hWrite;
-    si.wShowWindow = SW_HIDE;
+        if (windowsUsingEfi) {
+            if (eventManager_)
+                eventManager_->notifyLogUpdate(LocalizedOrUtf8("log.partition.windows_using_efi",
+                                                               "ADVERTENCIA: Windows está usando la partición ISOEFI. "
+                                                               "Solo se eliminará ISOBOOT, ISOEFI se preservará.\r\n"));
+            logFile << "Warning: Windows is using ISOEFI partition. Only ISOBOOT will be deleted.\n";
+        }
 
-    std::string cmd = "powershell -ExecutionPolicy Bypass -File \"" + psFile + "\"";
-    if (!CreateProcessA(NULL, const_cast<char *>(cmd.c_str()), NULL, NULL, TRUE, CREATE_NO_WINDOW, NULL, NULL, &si,
-                        &pi)) {
-        CloseHandle(hRead);
-        CloseHandle(hWrite);
-        DeleteFileA(psFile.c_str());
-        if (eventManager_)
-            eventManager_->notifyLogUpdate(
-                LocalizedOrUtf8("log.partition.powershell_execution_failed",
-                                "Error: No se pudo ejecutar PowerShell para recuperación.\r\n"));
-        return false;
-    }
+        // Use Windows Storage API to find and delete volumes
+        logFile << "Using Windows Storage API to enumerate volumes\n";
+        logFile.flush();
 
-    CloseHandle(hWrite);
+        // First pass: collect volumes to delete
+        std::vector<std::pair<std::string, std::string>> volumesToDelete; // pair<label, driveLetter>
+        char                                             volumeName[MAX_PATH];
+        HANDLE                                           hVolume = FindFirstVolumeA(volumeName, sizeof(volumeName));
+        if (hVolume == INVALID_HANDLE_VALUE) {
+            logFile << "FindFirstVolumeA failed, error: " << GetLastError() << "\n";
+            logFile.close();
+            if (eventManager_)
+                eventManager_->notifyLogUpdate("Error: No se pudieron enumerar volúmenes.\r\n");
+            return false;
+        }
 
-    if (eventManager_) {
-        eventManager_->notifyLogUpdate(LocalizedOrUtf8(
-            "log.space.executing_script", "Ejecutando script de PowerShell para recuperar espacio...\r\n"));
-    }
+        do {
+            // Remove trailing backslash
+            size_t len = strlen(volumeName);
+            if (len > 0 && volumeName[len - 1] == '\\') {
+                volumeName[len - 1] = '\0';
+            }
 
-    output.clear();
-    std::string pendingLine;
-    while (ReadFile(hRead, buffer, sizeof(buffer) - 1, &bytesRead, NULL) && bytesRead > 0) {
-        buffer[bytesRead] = '\0';
-        std::string chunk(buffer, bytesRead);
-        output += chunk;
+            // Get volume information - need to add backslash for proper path
+            std::string volumePath = std::string(volumeName) + "\\";
+            logFile << "Checking volume path: " << volumePath << "\n";
+            logFile.flush();
 
-        if (eventManager_) {
-            pendingLine += chunk;
-            std::size_t newlinePos;
-            while ((newlinePos = pendingLine.find('\n')) != std::string::npos) {
-                std::string line     = pendingLine.substr(0, newlinePos + 1);
-                std::string utf8Line = Utils::ansi_to_utf8(line);
-                if (!utf8Line.empty()) {
-                    eventManager_->notifyLogUpdate(utf8Line);
+            // Get volume name/label
+            char volumeLabel[MAX_PATH] = {0};
+            if (GetVolumeInformationA(volumePath.c_str(), volumeLabel, sizeof(volumeLabel), nullptr, nullptr, nullptr,
+                                      nullptr, 0)) {
+                std::string label = volumeLabel;
+                logFile << "Volume label: '" << label << "'\n";
+                logFile.flush();
+
+                if (eventManager_)
+                    eventManager_->notifyLogUpdate(LocalizedFormatUtf8(
+                        "log.space.found_volume", {Utils::utf8_to_wstring(label)}, "Volumen encontrado: {0}\r\n"));
+
+                if (label == VOLUME_LABEL || label == EFI_VOLUME_LABEL) {
+                    // Check if it's system EFI
+                    bool isSystemEfi = false;
+                    if (label == EFI_VOLUME_LABEL) {
+                        // Try to mount temporarily to check for bootmgfw.efi
+                        char mountPoint[] = "Z:\\";
+                        if (SetVolumeMountPointA(mountPoint, volumeName)) {
+                            std::string bootmgfwPath = std::string(mountPoint) + "EFI\\Microsoft\\Boot\\bootmgfw.efi";
+                            if (GetFileAttributesA(bootmgfwPath.c_str()) != INVALID_FILE_ATTRIBUTES) {
+                                isSystemEfi = true;
+                            }
+                            DeleteVolumeMountPointA(mountPoint);
+                        }
+                    }
+
+                    if (!isSystemEfi) {
+                        // Find the drive letter for this volume
+                        char driveLetter = 0;
+                        char driveStrings[256];
+                        logFile << "Looking for drive letter for volume: " << volumeName << "\n";
+                        logFile.flush();
+                        if (GetLogicalDriveStringsA(sizeof(driveStrings), driveStrings)) {
+                            logFile << "Available drives: ";
+                            char *drive = driveStrings;
+                            while (*drive) {
+                                logFile << drive << " ";
+                                drive += strlen(drive) + 1;
+                            }
+                            logFile << "\n";
+                            logFile.flush();
+
+                            // Reset drive pointer
+                            drive = driveStrings;
+                            while (*drive) {
+                                if (GetDriveTypeA(drive) != DRIVE_NO_ROOT_DIR) {
+                                    char volumeGuid[MAX_PATH];
+                                    // Use GetVolumeNameForVolumeMountPoint to get the volume GUID
+                                    logFile << "Checking drive " << drive << "\n";
+                                    logFile.flush();
+                                    if (GetVolumeNameForVolumeMountPointA(drive, volumeGuid, sizeof(volumeGuid))) {
+                                        logFile << "  GetVolumeNameForVolumeMountPoint returned: " << volumeGuid
+                                                << "\n";
+                                        // Remove trailing backslash from volumeName for comparison
+                                        std::string volumeNameForCompare = volumeName;
+                                        if (!volumeNameForCompare.empty() && volumeNameForCompare.back() == '\\') {
+                                            volumeNameForCompare.pop_back();
+                                        }
+                                        // Compare with our volume name (handle null terminators)
+                                        std::string guidStr = volumeGuid;
+                                        size_t      minLen  = (guidStr.length() < volumeNameForCompare.length())
+                                                                  ? guidStr.length()
+                                                                  : volumeNameForCompare.length();
+                                        logFile << "  Comparing first " << minLen << " chars\n";
+                                        logFile.flush();
+                                        if (guidStr.substr(0, minLen) == volumeNameForCompare.substr(0, minLen)) {
+                                            logFile << "  SUBSTRING MATCH!\n";
+                                            driveLetter = drive[0];
+                                            logFile << "  Found matching drive letter: " << driveLetter << "\n";
+                                            logFile.flush();
+                                            break;
+                                        } else {
+                                            logFile << "  SUBSTRING NO MATCH\n";
+                                            logFile.flush();
+                                        }
+                                    } else {
+                                        logFile << "  GetVolumeNameForVolumeMountPoint failed for drive " << drive
+                                                << ", error: " << GetLastError() << "\n";
+                                        logFile.flush();
+                                    }
+                                } else {
+                                    logFile << "  Drive " << drive << " has type DRIVE_NO_ROOT_DIR\n";
+                                    logFile.flush();
+                                }
+                                drive += strlen(drive) + 1;
+                            }
+                        } else {
+                            logFile << "GetLogicalDriveStrings failed, error: " << GetLastError() << "\n";
+                            logFile.flush();
+                        }
+
+                        if (driveLetter != 0) {
+                            volumesToDelete.push_back(std::make_pair(label, std::string(1, driveLetter)));
+                            logFile << "Marked for deletion: " << label << " (Drive " << driveLetter << ":)\n";
+                            logFile.flush();
+                        } else {
+                            logFile << "Could not find drive letter for volume: " << label << "\n";
+                            logFile.flush();
+                        }
+                    }
                 }
-                pendingLine.erase(0, newlinePos + 1);
+            } else {
+                logFile << "GetVolumeInformationA failed for: " << volumePath << "\n";
+                logFile.flush();
+            }
+        } while (FindNextVolumeA(hVolume, volumeName, sizeof(volumeName)));
+
+        FindVolumeClose(hVolume);
+
+        // Second pass: delete volumes in reverse order (to avoid index shifting)
+        for (auto it = volumesToDelete.rbegin(); it != volumesToDelete.rend(); ++it) {
+            const std::string &label       = it->first;
+            const std::string &driveLetter = it->second;
+
+            logFile << "Attempting to delete volume: " << label << " (Drive " << driveLetter << ":)\n";
+            logFile.flush();
+
+            // Use diskpart to delete the volume by drive letter
+            std::string   deleteCmd = "diskpart /s " + Utils::getExeDirectory() + "delete_volume.txt";
+            std::ofstream deleteScript((Utils::getExeDirectory() + "delete_volume.txt").c_str());
+            if (deleteScript) {
+                // Use drive letter to select and delete
+                deleteScript << "select volume=" << driveLetter << "\n";
+                deleteScript << "delete volume override\n";
+                deleteScript.close();
+
+                STARTUPINFOA        si = {sizeof(si)};
+                PROCESS_INFORMATION pi;
+                si.dwFlags     = STARTF_USESHOWWINDOW;
+                si.wShowWindow = SW_HIDE;
+                if (CreateProcessA(NULL, const_cast<char *>(deleteCmd.c_str()), NULL, NULL, FALSE, 0, NULL, NULL, &si,
+                                   &pi)) {
+                    WaitForSingleObject(pi.hProcess, INFINITE);
+                    DWORD exitCode;
+                    GetExitCodeProcess(pi.hProcess, &exitCode);
+                    CloseHandle(pi.hProcess);
+                    CloseHandle(pi.hThread);
+
+                    if (exitCode == 0) {
+                        if (eventManager_)
+                            eventManager_->notifyLogUpdate(LocalizedFormatUtf8("log.space.volume_deleted",
+                                                                               {Utils::utf8_to_wstring(label)},
+                                                                               "Volumen {0} eliminado.\r\n"));
+                    } else {
+                        if (eventManager_)
+                            eventManager_->notifyLogUpdate(LocalizedFormatUtf8("log.space.volume_delete_failed",
+                                                                               {Utils::utf8_to_wstring(label)},
+                                                                               "Error al eliminar volumen {0}.\r\n"));
+                    }
+                } else {
+                    logFile << "Failed to start diskpart process\n";
+                    logFile.flush();
+                }
             }
         }
-    }
 
-    if (eventManager_ && !pendingLine.empty()) {
-        std::string utf8Remainder = Utils::ansi_to_utf8(pendingLine);
-        if (!utf8Remainder.empty()) {
-            eventManager_->notifyLogUpdate(utf8Remainder);
+        // Log if no volumes were deleted
+        if (eventManager_)
+            eventManager_->notifyLogUpdate(LocalizedOrUtf8(
+                "log.space.no_volumes_deleted", "No se encontraron volúmenes ISOEFI o ISOBOOT para eliminar.\r\n"));
+
+        // Resize C: partition
+        // For simplicity, use diskpart for resize
+        if (eventManager_)
+            eventManager_->notifyLogUpdate("Redimensionando partición C:...\r\n");
+
+        // Execute diskpart for resize
+        STARTUPINFOA        si = {sizeof(si)};
+        PROCESS_INFORMATION pi;
+        si.dwFlags            = STARTF_USESHOWWINDOW;
+        si.wShowWindow        = SW_HIDE;
+        std::string resizeCmd = "diskpart /s " + Utils::getExeDirectory() + "resize_script.txt";
+        // Create resize script
+        std::ofstream resizeScript((Utils::getExeDirectory() + "resize_script.txt").c_str());
+        if (resizeScript) {
+            resizeScript << "select disk 0\n";
+            resizeScript << "select partition 3\n"; // Assume C: is partition 3
+            resizeScript << "extend\n";
+            resizeScript.close();
         }
-    }
+        if (CreateProcessA(NULL, const_cast<char *>(resizeCmd.c_str()), NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
+            WaitForSingleObject(pi.hProcess, INFINITE);
+            CloseHandle(pi.hProcess);
+            CloseHandle(pi.hThread);
+            if (eventManager_)
+                eventManager_->notifyLogUpdate("Redimensionamiento completado.\r\n");
+        } else {
+            if (eventManager_)
+                eventManager_->notifyLogUpdate("Error al redimensionar.\r\n");
+        }
 
-    CloseHandle(hRead);
+        // Clean BCD entries created by BootThatISO
+        if (eventManager_)
+            eventManager_->notifyLogUpdate(LocalizedOrUtf8("log.space.cleaning_bcd", "Limpiando entradas BCD...\r\n"));
 
-    WaitForSingleObject(pi.hProcess, 300000); // 5 minutes
+        BCDManager &bcdManager = BCDManager::getInstance();
+        bcdManager.setEventManager(eventManager_);
+        bcdManager.cleanBootThatISOEntries();
 
-    GetExitCodeProcess(pi.hProcess, &exitCode);
-
-    CloseHandle(pi.hProcess);
-    CloseHandle(pi.hThread);
-
-    // Log the result
-    std::ofstream logFile((logDir + "\\recover_log.txt").c_str());
-    if (logFile) {
-        logFile << "Recover script exit code: " << exitCode << "\n";
-        logFile << "Output:\n" << Utils::ansi_to_utf8(output) << "\n";
-        logFile.close();
-    }
-
-    // Clean up
-    DeleteFileA(psFile.c_str());
-
-    // Clean BCD entries created by BootThatISO
-    if (eventManager_)
-        eventManager_->notifyLogUpdate(LocalizedOrUtf8("log.space.cleaning_bcd", "Limpiando entradas BCD...\r\n"));
-
-    BCDManager &bcdManager = BCDManager::getInstance();
-    bcdManager.setEventManager(eventManager_);
-    bcdManager.cleanBootThatISOEntries();
-
-    if (exitCode == 0) {
         if (eventManager_)
             eventManager_->notifyLogUpdate(
                 LocalizedOrUtf8("log.space.recovery_successful", "Espacio recuperado exitosamente.\r\n"));
         return true;
-    } else {
+    } catch (const std::exception &e) {
+        logFile << "Exception caught: " << e.what() << "\n";
+        logFile.close();
         if (eventManager_)
-            eventManager_->notifyLogUpdate(
-                LocalizedFormatUtf8("log.space.recovery_failed", {Utils::utf8_to_wstring(std::to_string(exitCode))},
-                                    "Error: Falló la recuperación de espacio (código {0}).\r\n"));
+            eventManager_->notifyLogUpdate("Error: Exception during space recovery: " + std::string(e.what()) + "\r\n");
+        return false;
+    } catch (...) {
+        logFile << "Unknown exception caught\n";
+        logFile.close();
+        if (eventManager_)
+            eventManager_->notifyLogUpdate("Error: Unknown exception during space recovery\r\n");
         return false;
     }
 }

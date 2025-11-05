@@ -1,5 +1,8 @@
 #include "VolumeDetector.h"
 #include <windows.h>
+#include <vds.h>
+#include <Objbase.h>
+#pragma comment(lib, "ole32.lib")
 #include <fstream>
 #include <cstring>
 #include <algorithm>
@@ -64,54 +67,8 @@ bool VolumeDetector::partitionExists() {
 }
 
 bool VolumeDetector::efiPartitionExists() {
-    // First check drives with assigned letters
-    char drives[256];
-    GetLogicalDriveStringsA(sizeof(drives), drives);
-
-    char *drive = drives;
-    while (*drive) {
-        if (GetDriveTypeA(drive) == DRIVE_FIXED) {
-            char  volumeName[MAX_PATH];
-            char  fileSystem[MAX_PATH];
-            DWORD serialNumber, maxComponentLen, fileSystemFlags;
-            if (GetVolumeInformationA(drive, volumeName, sizeof(volumeName), &serialNumber, &maxComponentLen,
-                                      &fileSystemFlags, fileSystem, sizeof(fileSystem))) {
-                if (_stricmp(volumeName, EFI_VOLUME_LABEL) == 0) {
-                    return true;
-                }
-            }
-        }
-        drive += strlen(drive) + 1;
-    }
-
-    // Also check unassigned volumes
-    char   volumeNameCheck[MAX_PATH];
-    HANDLE hVolume = FindFirstVolumeA(volumeNameCheck, sizeof(volumeNameCheck));
-    if (hVolume != INVALID_HANDLE_VALUE) {
-        do {
-            // Remove trailing backslash for GetVolumeInformationA
-            size_t len = strlen(volumeNameCheck);
-            if (len > 0 && volumeNameCheck[len - 1] == '\\') {
-                volumeNameCheck[len - 1] = '\0';
-            }
-
-            // Get volume information
-            char        volName[MAX_PATH] = {0};
-            char        fsName[MAX_PATH]  = {0};
-            DWORD       serial, maxComp, flags;
-            std::string volPath = std::string(volumeNameCheck) + "\\";
-            if (GetVolumeInformationA(volPath.c_str(), volName, sizeof(volName), &serial, &maxComp, &flags, fsName,
-                                      sizeof(fsName))) {
-                if (_stricmp(volName, EFI_VOLUME_LABEL) == 0) {
-                    FindVolumeClose(hVolume);
-                    return true;
-                }
-            }
-        } while (FindNextVolumeA(hVolume, volumeNameCheck, sizeof(volumeNameCheck)));
-        FindVolumeClose(hVolume);
-    }
-
-    return false;
+    // Return true if any EFI partition exists (ISOEFI or SYSTEM)
+    return !getEfiPartitionDriveLetter().empty();
 }
 
 std::string VolumeDetector::getPartitionDriveLetter() {
@@ -422,7 +379,7 @@ std::string VolumeDetector::getPartitionFileSystem() {
 int VolumeDetector::getEfiPartitionSizeMB() {
     std::string logDir = Utils::getExeDirectory() + "logs";
     CreateDirectoryA(logDir.c_str(), NULL);
-    std::ofstream debugLog((logDir + "\\efi_partition_size.log").c_str());
+    std::ofstream debugLog((logDir + "\\" + EFI_PARTITION_SIZE_LOG_FILE).c_str());
 
     debugLog << "Getting EFI partition size...\n";
 
@@ -484,7 +441,7 @@ int VolumeDetector::countEfiPartitions() {
 
     std::string logDir = Utils::getExeDirectory() + "logs";
     CreateDirectoryA(logDir.c_str(), NULL);
-    std::ofstream debugLog((logDir + "\\efi_partition_count.log").c_str());
+    std::ofstream debugLog((logDir + "\\" + EFI_PARTITION_COUNT_LOG_FILE).c_str());
 
     debugLog << "Counting EFI partitions...\n";
 
@@ -556,112 +513,54 @@ int VolumeDetector::countEfiPartitions() {
 }
 
 bool VolumeDetector::isWindowsUsingEfiPartition() {
-    // Check if the SYSTEM'S ACTUAL EFI partition has the ISOEFI label
-    // This prevents false positives when ISOEFI contains copied Windows files but isn't the active EFI
+    // Check if the volume containing bootmgfw.efi has ISOEFI label using Windows Storage API
     std::string logDir = Utils::getExeDirectory() + "logs";
     CreateDirectoryA(logDir.c_str(), NULL);
-    std::ofstream debugLog((logDir + "\\windows_efi_detection.log").c_str());
+    std::ofstream debugLog((logDir + "\\" + WINDOWS_EFI_DETECTION_LOG_FILE).c_str());
 
-    debugLog << "Checking if Windows SYSTEM EFI partition is labeled as ISOEFI...\n";
+    debugLog << "Checking if Windows SYSTEM EFI partition is labeled as ISOEFI using Windows Storage API...\n";
 
-    // Use PowerShell to get the actual system EFI partition
-    // IMPORTANT: Don't rely on IsActive flag, as it may not be set in UEFI systems
-    char tempPath[MAX_PATH];
-    GetTempPathA(MAX_PATH, tempPath);
-    char tempFile[MAX_PATH];
-    GetTempFileNameA(tempPath, "efi_check", 0, tempFile);
-    std::string psFile  = std::string(tempFile) + ".ps1";
-    std::string outFile = std::string(tempFile) + "_out.txt";
+    std::string systemEfiLabel;
+    char        volumeName[MAX_PATH];
+    HANDLE      hVolume = FindFirstVolumeA(volumeName, sizeof(volumeName));
 
-    std::ofstream scriptFile(psFile);
-    if (!scriptFile) {
-        debugLog << "Failed to create PowerShell script\n";
+    if (hVolume == INVALID_HANDLE_VALUE) {
+        debugLog << "FindFirstVolumeA failed, error: " << GetLastError() << "\n";
         debugLog.close();
         return false;
     }
 
-    // Get ALL EFI System Partitions (GptType EFI) and check their labels
-    // Then check if any ISOEFI partition is in the system's boot path
-    scriptFile << "# Get all EFI partitions with ISOEFI label\n";
-    scriptFile << "$efiPartitions = Get-Partition | Where-Object { $_.GptType -eq "
-                  "'{c12a7328-f81f-11d2-ba4b-00a0c93ec93b}' }\n";
-    scriptFile << "$isoefiFound = $false\n";
-    scriptFile << "foreach ($part in $efiPartitions) {\n";
-    scriptFile << "    $vol = Get-Volume | Where-Object { $_.Path -in (Get-Partition -DiskNumber $part.DiskNumber "
-                  "-PartitionNumber $part.PartitionNumber).AccessPaths }\n";
-    scriptFile << "    if ($vol -and $vol.FileSystemLabel -eq 'ISOEFI') {\n";
-    scriptFile << "        $isoefiFound = $true\n";
-    scriptFile << "        break\n";
-    scriptFile << "    }\n";
-    scriptFile << "}\n";
-    scriptFile << "\n";
-    scriptFile << "# If we found an ISOEFI partition with EFI type, check if it's critical\n";
-    scriptFile << "if ($isoefiFound) {\n";
-    scriptFile << "    # Try to check if partition is system/critical by attempting to get its boot files\n";
-    scriptFile << "    # If ISOEFI contains \\EFI\\Microsoft\\Boot\\bootmgfw.efi, it's likely the system EFI\n";
-    scriptFile << "    $vol = Get-Volume | Where-Object { $_.FileSystemLabel -eq 'ISOEFI' }\n";
-    scriptFile << "    if ($vol -and $vol.DriveLetter) {\n";
-    scriptFile << "        $efiPath = $vol.DriveLetter + ':\\EFI\\Microsoft\\Boot\\bootmgfw.efi'\n";
-    scriptFile << "        if (Test-Path $efiPath) {\n";
-    scriptFile << "            'SYSTEM_EFI' | Out-File -FilePath '" << outFile << "' -Encoding ASCII\n";
-    scriptFile << "        } else {\n";
-    scriptFile << "            'NOT_SYSTEM' | Out-File -FilePath '" << outFile << "' -Encoding ASCII\n";
-    scriptFile << "        }\n";
-    scriptFile << "    } else {\n";
-    scriptFile << "        'NO_DRIVE_LETTER' | Out-File -FilePath '" << outFile << "' -Encoding ASCII\n";
-    scriptFile << "    }\n";
-    scriptFile << "} else {\n";
-    scriptFile << "    'NOT_FOUND' | Out-File -FilePath '" << outFile << "' -Encoding ASCII\n";
-    scriptFile << "}\n";
-    scriptFile.close();
+    do {
+        // Remove trailing backslash
+        size_t len = strlen(volumeName);
+        if (len > 0 && volumeName[len - 1] == '\\') {
+            volumeName[len - 1] = '\0';
+        }
 
-    // Execute PowerShell script
-    std::string         cmd = "powershell -ExecutionPolicy Bypass -NoProfile -File \"" + psFile + "\"";
-    STARTUPINFOA        si  = {sizeof(si)};
-    PROCESS_INFORMATION pi;
-    si.dwFlags     = STARTF_USESHOWWINDOW;
-    si.wShowWindow = SW_HIDE;
+        debugLog << "Checking volume: " << volumeName << "\n";
 
-    bool scriptRan = false;
-    if (CreateProcessA(NULL, const_cast<char *>(cmd.c_str()), NULL, NULL, FALSE, CREATE_NO_WINDOW, NULL, NULL, &si,
-                       &pi)) {
-        WaitForSingleObject(pi.hProcess, 10000); // 10 seconds timeout
-        CloseHandle(pi.hProcess);
-        CloseHandle(pi.hThread);
-        scriptRan = true;
-    }
+        // Try to mount temporarily to check for bootmgfw.efi
+        char mountPoint[] = "Z:\\";
+        if (SetVolumeMountPointA(mountPoint, volumeName)) {
+            std::string bootmgfwPath = std::string(mountPoint) + "EFI\\Microsoft\\Boot\\bootmgfw.efi";
+            if (GetFileAttributesA(bootmgfwPath.c_str()) != INVALID_FILE_ATTRIBUTES) {
+                // Get volume label
+                char volumeLabel[MAX_PATH];
+                if (GetVolumeInformationA(mountPoint, volumeLabel, sizeof(volumeLabel), nullptr, nullptr, nullptr,
+                                          nullptr, 0)) {
+                    systemEfiLabel = volumeLabel;
+                    debugLog << "Found system EFI volume with label: '" << systemEfiLabel << "'\n";
+                }
+            }
+            DeleteVolumeMountPointA(mountPoint);
+        }
+    } while (FindNextVolumeA(hVolume, volumeName, sizeof(volumeName)));
 
-    DeleteFileA(psFile.c_str());
+    FindVolumeClose(hVolume);
 
-    if (!scriptRan) {
-        debugLog << "Failed to run PowerShell script\n";
-        debugLog.close();
-        // IMPORTANT: If we can't run the script, assume it's NOT safe to delete
-        // Better to be cautious
-        return true; // Return true to prevent deletion
-    }
+    debugLog << "Detection result: '" << systemEfiLabel << "'\n";
 
-    // Read the result
-    std::ifstream resultFile(outFile);
-    std::string   result;
-    if (resultFile) {
-        std::getline(resultFile, result);
-        // Trim whitespace
-        result.erase(0, result.find_first_not_of(" \t\r\n"));
-        result.erase(result.find_last_not_of(" \t\r\n") + 1);
-        resultFile.close();
-    }
-    DeleteFileA(outFile.c_str());
-
-    debugLog << "Detection result: '" << result << "'\n";
-
-    bool isUsingIsoefi = (result == "SYSTEM_EFI");
-
-    if (result == "NO_DRIVE_LETTER") {
-        debugLog << "WARNING: ISOEFI partition has no drive letter, cannot verify if it's system EFI\n";
-        debugLog << "Assuming it IS system EFI for safety\n";
-        isUsingIsoefi = true; // Be cautious
-    }
+    bool isUsingIsoefi = (systemEfiLabel == "ISOEFI");
 
     debugLog << "Conclusion: Windows " << (isUsingIsoefi ? "IS" : "IS NOT")
              << " using ISOEFI as system EFI partition\n";

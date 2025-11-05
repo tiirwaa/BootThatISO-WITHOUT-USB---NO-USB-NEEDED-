@@ -106,8 +106,8 @@ Gdiplus::Bitmap *ResizeBitmap(Gdiplus::Bitmap *source, int targetWidth, int targ
 
 MainWindow::MainWindow(HWND parent)
     : hInst(GetModuleHandle(NULL)), hWndParent(parent), selectedFormat("NTFS"),
-      selectedBootModeKey(AppKeys::BootModeRam), isProcessing(false), isRecovering(false), skipIntegrityCheck(true),
-      injectDriversIntoISO(false), // Desactivado por defecto - inyección opcional
+      selectedBootModeKey(AppKeys::BootModeRam), isProcessing(false), isRecovering(false), closePending(false),
+      skipIntegrityCheck(true), injectDriversIntoISO(false), // Desactivado por defecto - inyección opcional
       logoBitmap(nullptr), logoHIcon(nullptr), buttonHIcon(nullptr), buttonBitmap(nullptr), buttonRotationAngle(0.0),
       buttonSpinTimerId(0), hRecoverDialog(nullptr), performHintLabel(nullptr), developedByLabel(nullptr) {
     partitionManager = &PartitionManager::getInstance();
@@ -488,6 +488,9 @@ LRESULT MainWindow::HandleCommand(UINT msg, WPARAM wParam, LPARAM lParam) {
         EnableWindow(createPartitionButton, TRUE);
         isProcessing = false;
         StopProcessingAnimation();
+        if (closePending) {
+            PostMessage(hWndParent, WM_CLOSE, 0, 0);
+        }
         break;
     case WM_UPDATE_DETAILED_PROGRESS: {
         DetailedProgressData *data = reinterpret_cast<DetailedProgressData *>(lParam);
@@ -525,6 +528,9 @@ LRESULT MainWindow::HandleCommand(UINT msg, WPARAM wParam, LPARAM lParam) {
             std::wstring recoverErrorMessage = LocalizedOrW(
                 "message.recoverSpaceFailed", L"Error al recuperar espacio. Revisa los registros para mas detalles.");
             MessageBoxW(hWndParent, recoverErrorMessage.c_str(), recoverErrorTitle.c_str(), MB_OK | MB_ICONERROR);
+        }
+        if (closePending) {
+            PostMessage(hWndParent, WM_CLOSE, 0, 0);
         }
     } break;
     }

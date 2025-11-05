@@ -54,6 +54,8 @@ public:
         return isProcessing || isRecovering;
     }
 
+    bool closePending;
+
     LRESULT HandleCommand(UINT msg, WPARAM wParam, LPARAM lParam);
 
 private:

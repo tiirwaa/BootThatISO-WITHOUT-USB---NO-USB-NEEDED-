@@ -183,7 +183,7 @@ else()
 endif()
 
 # Link necessary libraries (MFC is included via CMAKE_MFC_FLAG)
-target_link_libraries(BootThatISO comctl32 gdiplus sevenzip)
+target_link_libraries(BootThatISO comctl32 gdiplus sevenzip virtdisk.lib)
 
 set_target_properties(BootThatISO PROPERTIES OUTPUT_NAME "BootThatISO!")
 
@@ -245,7 +245,40 @@ else()
 endif()
 
 if(WIN32)
-    target_link_libraries(TestRecoverSpace PRIVATE advapi32 comctl32 gdiplus)
+    target_link_libraries(TestRecoverSpace PRIVATE advapi32 comctl32 gdiplus virtdisk.lib)
+endif()
+
+add_executable(TestPartitionStatus
+    tests/test_partition_status.cpp
+    src/services/partitionmanager.cpp
+    src/services/bcdmanager.cpp
+    src/models/DiskIntegrityChecker.cpp
+    src/models/VolumeDetector.cpp
+    src/models/SpaceManager.cpp
+    src/models/DiskpartExecutor.cpp
+    src/models/PartitionReformatter.cpp
+    src/models/PartitionCreator.cpp
+    src/utils/Utils.cpp
+    src/utils/LocalizationManager.cpp
+    src/utils/Logger.cpp
+)
+
+target_include_directories(TestPartitionStatus
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_BINARY_DIR}
+)
+
+if(MSVC)
+    target_compile_options(TestPartitionStatus PRIVATE /utf-8 /W4 /permissive- /EHsc /Zc:__cplusplus)
+    set_target_properties(TestPartitionStatus PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+else()
+    target_compile_options(TestPartitionStatus PRIVATE -Wall -Wextra -Wpedantic -Wconversion -Wshadow)
+endif()
+
+if(WIN32)
+    target_link_libraries(TestPartitionStatus PRIVATE advapi32 comctl32 gdiplus virtdisk.lib)
 endif()
 
 find_program(CLANG_TIDY_EXE NAMES clang-tidy)

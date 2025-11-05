@@ -740,7 +740,7 @@ std::string BCDManager::configureBCD(const std::string &driveLetter, const std::
 
     // For extracted mode, export the configured BCD to ESP so bootmgfw.efi can find it
     if (strategy.getType() == "extracted") {
-        std::string exportPath   = espDriveLetter + "EFI\\Microsoft\\Boot\\BCD";
+        std::string exportPath   = espDriveLetter + "\\EFI\\Microsoft\\Boot\\BCD";
         std::string exportCmd    = BCD_CMD + " /export \"" + exportPath + "\"";
         std::string exportResult = Utils::exec(exportCmd.c_str());
         logFile << "Export BCD to ESP command: " << exportCmd << "\nResult: " << exportResult << "\n";
