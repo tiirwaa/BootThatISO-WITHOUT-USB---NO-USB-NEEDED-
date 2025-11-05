@@ -33,6 +33,7 @@
 #define WM_UPDATE_DETAILED_PROGRESS (WM_USER + 5)
 #define WM_UPDATE_ERROR (WM_USER + 6)
 #define WM_RECOVER_COMPLETE (WM_USER + 7)
+#define WM_UPDATE_DISK_SPACE (WM_USER + 8)
 
 class MainWindow : public EventObserver {
 public:
@@ -75,6 +76,8 @@ private:
     bool RestartSystem();
     void StartProcessingAnimation();
     void StopProcessingAnimation();
+
+    void PerformHeavyInitialization();
 
     PartitionManager                  *partitionManager;
     ISOCopyManager                    *isoCopyManager;

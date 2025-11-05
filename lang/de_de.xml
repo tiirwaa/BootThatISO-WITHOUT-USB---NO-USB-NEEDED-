@@ -194,4 +194,19 @@
     <string id="error.iso.prepareFailed">Fehler beim Vorbereiten des ISO-Inhalts.</string>
     <string id="error.bcd.configureFailed">Fehler beim Konfigurieren von BCD: {0}</string>
     
+    <string id="error.noSystemDrive">ERROR: No system drive found with sufficient free space.\nAt least 1GB of free space is required on the system drive.</string>
+    
+    <!-- Unattended mode console messages -->
+    <string id="unattended.console.title">BootThatISO! - Unattended Mode</string>
+    <string id="unattended.console.separator">===============================</string>
+    <string id="unattended.console.processingIso">Processing ISO: {0}</string>
+    <string id="unattended.console.mode">Mode: {0}</string>
+    <string id="unattended.console.format">Format: {0}</string>
+    <string id="unattended.console.targetDrive">Target Drive: {0}</string>
+    <string id="unattended.console.startingProcess">Starting process...</string>
+    <string id="unattended.console.processCompleted">Process completed! Press Enter to exit.</string>
+    <string id="unattended.console.processingMessage">Processing ISO file in unattended mode...\nCheck console window for progress.\n\nConsole allocation failed - using message box fallback.</string>
+    <string id="unattended.console.completionMessage">ISO processing completed successfully!</string>
+    
 </language>
+

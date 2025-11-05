@@ -35,6 +35,8 @@ const char *const DISKPART_LIST_LOG_FILE         = "diskpart_list_disk.log";
 const char *const ISO_TYPE_DETECTION_LOG         = "iso_type_detection.log";
 const char *const RECOVER_LOG_FILE               = "recover_log.txt";
 const char *const SPACE_VALIDATION_LOG_FILE      = "space_validation.log";
+const char *const VERY_EARLY_DEBUG_LOG_FILE      = "very_early_debug.log";
+const char *const UNATTENDED_START_LOG_FILE      = "unattended_start.log";
 
 // Diskpart error codes
 constexpr DWORD DISKPART_DEVICE_IN_USE = 0x80042413;

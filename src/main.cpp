@@ -73,7 +73,7 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nCmdShow) {
     // Very early debug
-    std::string veryEarlyLogPath = Utils::getExeDirectory() + "logs\\very_early_debug.log";
+    std::string   veryEarlyLogPath = Utils::getExeDirectory() + "logs\\" + VERY_EARLY_DEBUG_LOG_FILE;
     std::ofstream veryEarlyLog(veryEarlyLogPath.c_str(), std::ios::app);
     veryEarlyLog << "wWinMain started at " << __TIME__ << std::endl;
     veryEarlyLog.close();
@@ -169,7 +169,9 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
         // Detectar disco del sistema disponible
         std::string systemDrive = detectSystemDrive();
         if (systemDrive.empty()) {
-            std::wstring errorMsg = L"ERROR: No se encontró un disco del sistema con suficiente espacio disponible.\nSe requiere al menos 1GB de espacio libre en el disco del sistema.";
+            std::wstring errorMsg =
+                LocalizedOrW("error.noSystemDrive", L"ERROR: No system drive found with sufficient free space.\nAt "
+                                                    L"least 1GB of free space is required on the system drive.");
             std::wstring title = LocalizedOrW("title.error", L"Error");
             MessageBoxW(NULL, errorMsg.c_str(), title.c_str(), MB_ICONERROR | MB_OK);
             return 1;
@@ -182,7 +184,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
         PartitionManager::getInstance().setMonitoredDrive(targetDrive);
 
         // Debug: Log that we entered unattended mode
-        std::string debugLogPath2 = Utils::getExeDirectory() + "logs\\unattended_start.log";
+        std::string   debugLogPath2 = Utils::getExeDirectory() + "logs\\" + UNATTENDED_START_LOG_FILE;
         std::ofstream debugLog2(debugLogPath2.c_str(), std::ios::app);
         debugLog2 << "=== Unattended mode started at " << __TIME__ << " ===" << std::endl;
         debugLog2 << "ISO Path: " << isoPath << std::endl;
@@ -200,12 +202,16 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
             freopen("CONOUT$", "w", stdout);
             freopen("CONOUT$", "w", stderr);
             freopen("CONIN$", "r", stdin);
-            std::cout << "BootThatISO! - Unattended Mode" << std::endl;
-            std::cout << "===============================" << std::endl;
-            std::cout << "Processing ISO: " << isoPath << std::endl;
-            std::cout << "Mode: " << modeKey << std::endl;
-            std::cout << "Format: " << format << std::endl;
-            std::cout << "Target Drive: " << targetDrive << std::endl;
+            std::cout << LocalizedOrUtf8("unattended.console.title", "BootThatISO! - Unattended Mode") << std::endl;
+            std::cout << LocalizedOrUtf8("unattended.console.separator", "===============================")
+                      << std::endl;
+            std::cout << LocalizedFormatUtf8("unattended.console.processingIso", {Utils::utf8_to_wstring(isoPath)})
+                      << std::endl;
+            std::cout << LocalizedFormatUtf8("unattended.console.mode", {Utils::utf8_to_wstring(modeKey)}) << std::endl;
+            std::cout << LocalizedFormatUtf8("unattended.console.format", {Utils::utf8_to_wstring(format)})
+                      << std::endl;
+            std::cout << LocalizedFormatUtf8("unattended.console.targetDrive", {Utils::utf8_to_wstring(targetDrive)})
+                      << std::endl;
             std::cout << "Console allocated successfully: " << consoleAllocated << std::endl;
             std::cout << std::endl;
         } else {
@@ -215,13 +221,16 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
             debugLog2.close();
 
             // Fallback: Show message box if console allocation fails
-            std::wstring processingMsg = L"Processing ISO file in unattended mode...\nCheck console window for progress.\n\nConsole allocation failed - using message box fallback.";
+            std::wstring processingMsg =
+                LocalizedOrW("unattended.console.processingMessage",
+                             L"Processing ISO file in unattended mode...\nCheck console window for "
+                             L"progress.\n\nConsole allocation failed - using message box fallback.");
             std::wstring processingTitle = LocalizedOrW("app.windowTitle", L"BootThatISO! - Unattended Mode");
             MessageBoxW(NULL, processingMsg.c_str(), processingTitle.c_str(), MB_OK | MB_ICONINFORMATION);
         }
 
-        EventManager      eventManager;
-        ConsoleObserver   consoleObserver;
+        EventManager    eventManager;
+        ConsoleObserver consoleObserver;
         eventManager.addObserver(&consoleObserver);
         ProcessController processController(eventManager);
 
@@ -234,17 +243,21 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLi
         std::string unattendedLabel    = LocalizedOrUtf8("bootMode." + modeKey, unattendedFallback.c_str());
 
         if (consoleAllocated) {
-            std::cout << "Starting process..." << std::endl;
+            std::cout << LocalizedOrUtf8("unattended.console.startingProcess", "Starting process...") << std::endl;
         }
 
         processController.startProcess(isoPath, format, modeKey, unattendedLabel, !chkdsk, true);
 
         if (consoleAllocated) {
-            std::cout << std::endl << "Process completed! Press Enter to exit." << std::endl;
+            std::cout << std::endl
+                      << LocalizedOrUtf8("unattended.console.processCompleted",
+                                         "Process completed! Press Enter to exit.")
+                      << std::endl;
             std::cin.get();
         } else {
             // Show completion message
-            std::wstring completionMsg = LocalizedOrW("message.processComplete", L"ISO processing completed successfully!");
+            std::wstring completionMsg =
+                LocalizedOrW("unattended.console.completionMessage", L"ISO processing completed successfully!");
             std::wstring processingTitle = LocalizedOrW("app.windowTitle", L"BootThatISO! - Unattended Mode");
             MessageBoxW(NULL, completionMsg.c_str(), processingTitle.c_str(), MB_OK | MB_ICONINFORMATION);
         }

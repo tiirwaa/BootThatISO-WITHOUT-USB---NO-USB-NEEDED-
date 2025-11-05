@@ -193,5 +193,18 @@
     <string id="error.efi.reformatFailed">Erreur lors du reformatage de la partition EFI.</string>
     <string id="error.iso.prepareFailed">Erreur lors de la préparation du contenu ISO.</string>
     <string id="error.bcd.configureFailed">Erreur lors de la configuration BCD : {0}</string>
+    <string id="error.noSystemDrive">ERREUR : Aucun disque système trouvé avec suffisamment d'espace libre.\nAu moins 1 Go d'espace libre est requis sur le disque système.</string>
+    
+    <!-- Unattended mode console messages -->
+    <string id="unattended.console.title">BootThatISO! - Mode automatique</string>
+    <string id="unattended.console.separator">==============================</string>
+    <string id="unattended.console.processingIso">Traitement de l'ISO : {0}</string>
+    <string id="unattended.console.mode">Mode : {0}</string>
+    <string id="unattended.console.format">Format : {0}</string>
+    <string id="unattended.console.targetDrive">Disque cible : {0}</string>
+    <string id="unattended.console.startingProcess">Démarrage du processus...</string>
+    <string id="unattended.console.processCompleted">Processus terminé ! Appuyez sur Entrée pour quitter.</string>
+    <string id="unattended.console.processingMessage">Traitement du fichier ISO en mode automatique...\nVérifiez la fenêtre de console pour la progression.\n\nÉchec de l'allocation de console - utilisation de la boîte de message alternative.</string>
+    <string id="unattended.console.completionMessage">Traitement de l'ISO terminé avec succès !</string>
     
 </language>
