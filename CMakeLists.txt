@@ -84,7 +84,7 @@ target_include_directories(sevenzip
 
 # Ensure sevenzip uses the same runtime as the rest (/MT for Release)
 if(MSVC)
-    target_compile_options(sevenzip PRIVATE $<$<CONFIG:Release>:/MT> $<$<CONFIG:Debug>:/MTd>)
+    target_compile_options(sevenzip PRIVATE /MP $<$<CONFIG:Release>:/MT /O2 /arch:AVX2 /fp:fast /GL> $<$<CONFIG:Debug>:/MTd>)
     set_target_properties(sevenzip PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
 
@@ -101,6 +101,7 @@ set(SOURCE_FILES
     src/models/HashVerifier.cpp
     src/models/DiskIntegrityChecker.cpp
     src/models/VolumeDetector.cpp
+    src/models/VolumeDetectionStrategy.cpp
     src/models/SpaceManager.cpp
     src/models/RecoverySteps.cpp
     src/models/DiskpartExecutor.cpp
@@ -110,6 +111,7 @@ set(SOURCE_FILES
     src/services/isocopymanager.cpp
     src/services/isotypedetector.cpp
     src/services/partitionmanager.cpp
+    src/services/DiskLogger.cpp
     src/utils/Logger.cpp
     src/utils/LocalizationManager.cpp
     src/utils/Utils.cpp
@@ -162,7 +164,7 @@ configure_file(
 
 set(CMAKE_MFC_FLAG 2)
 
-add_executable(BootThatISO WIN32 ${SOURCE_FILES} ${RESOURCE_FILES})
+add_executable(BootThatISO ${SOURCE_FILES} ${RESOURCE_FILES})
 
 target_include_directories(BootThatISO
     PRIVATE
@@ -176,7 +178,7 @@ target_include_directories(BootThatISO
 )
 
 if(MSVC)
-    target_compile_options(BootThatISO PRIVATE /utf-8 /W4 /permissive- /EHsc /Zc:__cplusplus $<$<CONFIG:Release>:/MT> $<$<CONFIG:Debug>:/MTd>)
+    target_compile_options(BootThatISO PRIVATE /utf-8 /W4 /permissive- /EHsc /Zc:__cplusplus /MP $<$<CONFIG:Release>:/MT /O2 /arch:AVX2 /fp:fast /GL> $<$<CONFIG:Debug>:/MTd>)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
     set_target_properties(BootThatISO PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 else()
@@ -189,7 +191,7 @@ target_link_libraries(BootThatISO comctl32 gdiplus sevenzip virtdisk.lib)
 set_target_properties(BootThatISO PROPERTIES OUTPUT_NAME "BootThatISO!")
 
 if(MSVC)
-    target_link_options(BootThatISO PRIVATE "/MANIFEST:NO" "/WHOLEARCHIVE:sevenzip")
+    target_link_options(BootThatISO PRIVATE "/MANIFEST:NO" "/WHOLEARCHIVE:sevenzip" $<$<CONFIG:Release>:/LTCG>)
 endif()
 
 add_executable(UtilsTests
@@ -222,11 +224,13 @@ add_executable(TestRecoverSpace
     src/services/bcdmanager.cpp
     src/models/DiskIntegrityChecker.cpp
     src/models/VolumeDetector.cpp
+    src/models/VolumeDetectionStrategy.cpp
     src/models/SpaceManager.cpp
     src/models/RecoverySteps.cpp
     src/models/DiskpartExecutor.cpp
     src/models/PartitionReformatter.cpp
     src/models/PartitionCreator.cpp
+    src/services/DiskLogger.cpp
     src/utils/Utils.cpp
     src/utils/LocalizationManager.cpp
     src/utils/Logger.cpp
@@ -250,17 +254,34 @@ if(WIN32)
     target_link_libraries(TestRecoverSpace PRIVATE advapi32 comctl32 gdiplus virtdisk.lib)
 endif()
 
+add_executable(TestArgs
+    src/test_args.cpp
+)
+
+target_include_directories(TestArgs
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/include
+)
+
+if(MSVC)
+    target_compile_options(TestArgs PRIVATE /utf-8 /W4 /permissive- /EHsc /Zc:__cplusplus)
+    set_target_properties(TestArgs PROPERTIES MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+endif()
+
 add_executable(TestPartitionStatus
     tests/test_partition_status.cpp
     src/services/partitionmanager.cpp
     src/services/bcdmanager.cpp
     src/models/DiskIntegrityChecker.cpp
     src/models/VolumeDetector.cpp
+    src/models/VolumeDetectionStrategy.cpp
     src/models/SpaceManager.cpp
     src/models/RecoverySteps.cpp
     src/models/DiskpartExecutor.cpp
     src/models/PartitionReformatter.cpp
     src/models/PartitionCreator.cpp
+    src/services/DiskLogger.cpp
     src/utils/Utils.cpp
     src/utils/LocalizationManager.cpp
     src/utils/Logger.cpp

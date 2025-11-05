@@ -155,8 +155,8 @@ bool BootWimProcessor::mountAndProcessWim(const std::string &bootWimDest, const 
                                           const std::string &programsSrc, long long &copiedSoFar,
                                           std::ofstream &logFile, bool injectDrivers) {
     std::string driveLetter = destPath.substr(0, 2);
-    std::string mountDir =
-        std::string(bootWimDest.begin(), bootWimDest.end() - std::string("sources\\boot.wim").length()) + "temp_mount";
+    // Use C:\ for mounting since FAT32 volumes don't support reparse points required by DISM
+    std::string mountDir = "C:\\BootThatISO_temp_wim_mount";
 
     // Clean and prepare mount directory
     wimMounter_->cleanupMountDirectory(mountDir);
@@ -503,8 +503,8 @@ bool BootWimProcessor::processInstallWim(const std::string &installImagePath, co
     logFile << ISOCopyManager::getTimestamp() << "Found " << installImages.size() << " edition(s) in install image"
             << std::endl;
 
-    // Create mount directory
-    std::string mountDir = destPath + "temp_install_mount";
+    // Create mount directory on C:\ since FAT32 doesn't support reparse points
+    std::string mountDir = "C:\\BootThatISO_temp_install_mount";
     wimMounter_->cleanupMountDirectory(mountDir);
 
     bool overallSuccess = true;

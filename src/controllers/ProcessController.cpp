@@ -44,7 +44,12 @@ void ProcessController::startProcess(const std::string &isoPath, const std::stri
     // Log to file
     std::ofstream logFile((logDir + "\\" + START_PROCESS_LOG_FILE).c_str());
     logFile << "startProcess called with synchronous: " << synchronous << "\n";
+    logFile << "isoPath: " << isoPath << "\n";
+    logFile << "selectedFormat: " << selectedFormat << "\n";
+    logFile << "selectedBootModeKey: " << selectedBootModeKey << "\n";
     logFile.close();
+
+    eventManager.notifyLogUpdate("DEBUG: startProcess called!\r\n");
 
     eventManager.notifyProgressUpdate(0);
 

@@ -13,6 +13,7 @@ public:
     long long             getAvailableSpaceGB(const std::string &driveRoot = "");
     bool                  performSpaceRecovery();
     bool                  recoverSpace();
+    void                  setMonitoredDrive(const std::string &driveRoot);
 
 private:
     EventManager *eventManager_;

@@ -57,11 +57,11 @@ int main() {
 
     // Verification: dump current partition layout
     std::cout << "\nVerifying partition layout after recovery..." << std::endl;
-    
-    std::string exeDir = Utils::getExeDirectory();
+
+    std::string exeDir     = Utils::getExeDirectory();
     std::string scriptPath = exeDir + "verify_partitions.txt";
     std::string outputPath = exeDir + "partition_layout_after_recovery.txt";
-    
+
     // Create diskpart script
     std::ofstream scriptFile(scriptPath.c_str());
     if (scriptFile) {
@@ -70,18 +70,18 @@ int main() {
         scriptFile << "list volume\n";
         scriptFile.close();
     }
-    
+
     // Execute diskpart
     std::string cmd = "diskpart /s \"" + scriptPath + "\" > \"" + outputPath + "\" 2>&1";
     system(cmd.c_str());
-    
+
     // Read and display the output
     std::ifstream outputFile(outputPath.c_str());
     if (outputFile) {
         std::cout << "Partition layout after recovery:\n";
         std::cout << "================================\n";
         std::string line;
-        bool foundIsoVolumes = false;
+        bool        foundIsoVolumes = false;
         while (std::getline(outputFile, line)) {
             std::cout << line << std::endl;
             // Check for ISO volumes
@@ -90,7 +90,7 @@ int main() {
             }
         }
         outputFile.close();
-        
+
         if (foundIsoVolumes) {
             std::cout << "\nWARNING: ISO volumes still present after recovery!\n";
             result = false; // Mark as failed if ISO volumes remain

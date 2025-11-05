@@ -49,7 +49,7 @@ if errorlevel 1 (
 )
 
 echo [INFO] Building configuration "%CONFIG%"
-"%CMAKE_CMD%" --build "%BUILD_DIR%" --config "%CONFIG%"
+"%CMAKE_CMD%" --build "%BUILD_DIR%" --config "%CONFIG%" --parallel %NUMBER_OF_PROCESSORS%
 if errorlevel 1 (
     set "EXIT_CODE=%ERRORLEVEL%"
     goto :cleanup

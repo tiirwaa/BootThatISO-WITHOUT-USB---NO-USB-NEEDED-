@@ -284,11 +284,49 @@ bool ISOCopyManager::extractISOContents(EventManager &eventManager, const std::s
                                      "\r\n");
         std::vector<std::string> excludePatterns;
         if (!isoReader->extractAll(isoPath, destPath, excludePatterns, &eventManager)) {
-            logFile.close();
-            return false;
+            // If extraction fails for non-Windows ISOs, try copying the ISO file as fallback
+            if (!isWindowsISO) {
+                logFile << getTimestamp() << "ISO extraction failed, trying fallback: copy ISO file" << std::endl;
+                eventManager.notifyLogUpdate("Extracción falló, intentando copia del archivo ISO completo...\r\n");
+
+                // First verify the destination drive is accessible
+                std::string testFile = destPath + "\\test.tmp";
+                HANDLE      hTest    = CreateFileA(testFile.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_NEW,
+                                                   FILE_ATTRIBUTE_NORMAL, nullptr);
+                if (hTest == INVALID_HANDLE_VALUE) {
+                    DWORD testError = GetLastError();
+                    logFile << getTimestamp() << "Destination drive not accessible for writing (error: " << testError
+                            << ")" << std::endl;
+                    eventManager.notifyLogUpdate("La partición de destino no es accesible para escritura (error: " +
+                                                 std::to_string(testError) + ")\r\n");
+                    logFile.close();
+                    return false;
+                }
+                CloseHandle(hTest);
+                DeleteFileA(testFile.c_str()); // Clean up test file
+
+                std::string isoDestPath = destPath + "\\ubuntu.iso"; // Generic name for non-Windows ISOs
+                if (CopyFileA(isoPath.c_str(), isoDestPath.c_str(), FALSE)) {
+                    logFile << getTimestamp() << "ISO file copied successfully as fallback" << std::endl;
+                    eventManager.notifyLogUpdate("Archivo ISO copiado exitosamente.\r\n");
+                    copiedSoFar += isoSize;
+                    eventManager.notifyDetailedProgress(70, 100, "Contenido copiado");
+                } else {
+                    DWORD copyError = GetLastError();
+                    logFile << getTimestamp() << "Fallback ISO copy failed with error: " << copyError << std::endl;
+                    eventManager.notifyLogUpdate("Error al copiar archivo ISO (error: " + std::to_string(copyError) +
+                                                 ")\r\n");
+                    logFile.close();
+                    return false;
+                }
+            } else {
+                logFile.close();
+                return false;
+            }
+        } else {
+            copiedSoFar += isoSize;
+            eventManager.notifyDetailedProgress(70, 100, "Contenido extraído");
         }
-        copiedSoFar += isoSize;
-        eventManager.notifyDetailedProgress(70, 100, "Contenido extraído");
     } else if (!extractContent && isWindowsISO && !skipCopy) {
         // For Windows ISOs in RAM mode, flag Programs integration without pre-extracting the folder
         if (mode == AppKeys::BootModeRam) {

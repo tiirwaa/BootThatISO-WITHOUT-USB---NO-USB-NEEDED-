@@ -368,7 +368,7 @@ std::string BCDManager::configureBCD(const std::string &driveLetter, const std::
     // Before creating new entry, preserve the current Windows entry by copying it
     // This ensures we always have a valid Windows entry to fall back to
     std::string preserveWindowsCmd = BCD_CMD + " /copy {default} /d \"Windows (System)\"";
-    std::string preserveResult = Utils::exec(preserveWindowsCmd.c_str());
+    std::string preserveResult     = Utils::exec(preserveWindowsCmd.c_str());
     std::string windowsGuid;
     if (preserveResult.find("{") != std::string::npos && preserveResult.find("}") != std::string::npos) {
         size_t pos = preserveResult.find("{");
@@ -836,7 +836,7 @@ bool BCDManager::restoreBCD() {
                                                           "Estableciendo Windows como entrada predeterminada...") +
                                           "\r\n");
         }
-        
+
         // Try to find a preserved Windows entry first, then fall back to {current}
         std::string windowsEntryGuid = "{current}";
         for (const auto &blk : entryBlocks) {
@@ -851,7 +851,7 @@ bool BCDManager::restoreBCD() {
                 }
             }
         }
-        
+
         std::string defaultResult = Utils::exec((BCD_CMD + " /default " + windowsEntryGuid).c_str());
         std::string timeoutResult = Utils::exec((BCD_CMD + " /timeout 0").c_str());
 
@@ -966,7 +966,7 @@ void BCDManager::cleanBootThatISOEntries() {
                     } else if (icontains(blk, "windows (system)") || icontains(blk, "windows 10")) {
                         // Protect preserved Windows entries
                         isProtected = true;
-                        reason = "Skipping protected Windows entry: " + guid;
+                        reason      = "Skipping protected Windows entry: " + guid;
                     }
 
                     if (isProtected) {

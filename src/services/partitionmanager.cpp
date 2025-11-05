@@ -463,3 +463,27 @@ bool PartitionManager::RestartComputer() {
         }
     }
 }
+
+void PartitionManager::setMonitoredDrive(const std::string &driveRoot) {
+    std::string normalizedDrive = normalizeDriveRoot(driveRoot);
+
+    // Validate that the drive is removable for safety
+    UINT driveType = GetDriveTypeA(normalizedDrive.c_str());
+    if (driveType != DRIVE_REMOVABLE) {
+        if (eventManager) {
+            eventManager->notifyLogUpdate(
+                "WARNING: Attempted to set monitored drive to non-removable drive: " + normalizedDrive + "\r\n");
+            eventManager->notifyLogUpdate(
+                "This may be unsafe for unattended operations. Only removable drives should be used.\r\n");
+        }
+    }
+
+    monitoredDrive = normalizedDrive;
+    if (eventManager) {
+        eventManager->notifyLogUpdate("Disco monitoreado configurado: " + monitoredDrive + "\r\n");
+    }
+    // Also configure the drive in SpaceManager
+    if (spaceManager) {
+        spaceManager->setMonitoredDrive(monitoredDrive);
+    }
+}

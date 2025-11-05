@@ -109,7 +109,7 @@ bool PartitionCreator::performDiskpartOperations(const std::string &format, bool
     CloseHandle(pi.hThread);
 
     // Wait a bit for the system to recognize the new partition
-    Sleep(10000); // Increased to 10 seconds
+    Sleep(30000); // Increased to 30 seconds
 
     // Refresh volume information
     Utils::exec("mountvol /r");

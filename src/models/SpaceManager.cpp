@@ -51,6 +51,13 @@ std::string detectSystemDrive() {
 SpaceManager::SpaceManager(EventManager *eventManager)
     : eventManager_(eventManager), monitoredDrive_(detectSystemDrive()) {}
 
+void SpaceManager::setMonitoredDrive(const std::string &driveRoot) {
+    monitoredDrive_ = normalizeDriveRoot(driveRoot);
+    if (eventManager_) {
+        eventManager_->notifyLogUpdate("SpaceManager: Disco monitoreado configurado: " + monitoredDrive_ + "\r\n");
+    }
+}
+
 SpaceManager::~SpaceManager() {}
 
 SpaceValidationResult SpaceManager::validateAvailableSpace() {
@@ -126,9 +133,9 @@ bool SpaceManager::recoverSpace() {
         // Create recovery steps
         std::vector<std::pair<std::string, std::string>> volumesToDelete;
         std::unique_ptr<IRecoveryStep> enumerator = std::make_unique<VolumeEnumerator>(eventManager_, volumesToDelete);
-        std::unique_ptr<IRecoveryStep> deleter = std::make_unique<VolumeDeleter>(eventManager_, volumesToDelete);
-        std::unique_ptr<IRecoveryStep> resizer = std::make_unique<PartitionResizer>(eventManager_);
-        std::unique_ptr<IRecoveryStep> cleaner = std::make_unique<BCDCleaner>(eventManager_);
+        std::unique_ptr<IRecoveryStep> deleter    = std::make_unique<VolumeDeleter>(eventManager_, volumesToDelete);
+        std::unique_ptr<IRecoveryStep> resizer    = std::make_unique<PartitionResizer>(eventManager_);
+        std::unique_ptr<IRecoveryStep> cleaner    = std::make_unique<BCDCleaner>(eventManager_);
 
         // Execute steps
         if (!enumerator->execute()) {

@@ -1,7 +1,10 @@
 #pragma once
 
 #include <string>
+#include <memory>
 #include "../models/EventManager.h"
+#include "../models/VolumeDetectionStrategy.h"
+#include "../services/DiskLogger.h"
 
 class VolumeDetector {
 public:
@@ -17,7 +20,11 @@ public:
     std::string getPartitionFileSystem();
     int         getEfiPartitionSizeMB(); // Get EFI partition size in MB
 
-private:
-    EventManager *eventManager_;
+    // Public method to log disk structure using DiskLogger service
     void logDiskStructure();
+
+private:
+    EventManager                  *eventManager_;
+    std::unique_ptr<VolumeManager> volumeManager_;
+    std::unique_ptr<DiskLogger>    diskLogger_;
 };
