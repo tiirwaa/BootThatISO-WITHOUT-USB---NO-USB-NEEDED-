@@ -222,7 +222,9 @@ bool ISOCopyManager::extractISOContents(EventManager &eventManager, const std::s
     bool hasSetupExe   = false;
     bool hasBootMgr    = false;
 
-    for (const auto &file : files) {
+    eventManager.notifyDetailedProgress(15, 100, "Analizando archivos del ISO");
+    for (size_t i = 0; i < files.size(); ++i) {
+        const auto &file  = files[i];
         std::string lower = Utils::toLower(file);
         if (lower.find("boot.wim") != std::string::npos || lower.find("install.wim") != std::string::npos ||
             lower.find("install.esd") != std::string::npos) {
@@ -237,6 +239,13 @@ bool ISOCopyManager::extractISOContents(EventManager &eventManager, const std::s
         }
         if (lower.find("bootmgr") != std::string::npos) {
             hasBootMgr = true;
+        }
+        // Update progress every 1000 files
+        if (i % 1000 == 0 && i > 0) {
+            int progress = 15 + static_cast<int>((i * 10LL) / files.size());
+            eventManager.notifyDetailedProgress(progress, 100,
+                                                "Analizando archivos del ISO (" + std::to_string(i) + "/" +
+                                                    std::to_string(files.size()) + ")");
         }
     }
 
@@ -255,6 +264,7 @@ bool ISOCopyManager::extractISOContents(EventManager &eventManager, const std::s
                                      "\r\n");
     }
 
+    eventManager.notifyDetailedProgress(25, 100, "Tipo de ISO detectado");
     isWindowsISODetected = isWindowsISO;
 
     // Calculate MD5 of the ISO
@@ -269,12 +279,16 @@ bool ISOCopyManager::extractISOContents(EventManager &eventManager, const std::s
     }
 
     if (extractContent && !skipCopy) {
+        eventManager.notifyDetailedProgress(30, 100, "Extrayendo contenido del ISO");
+        eventManager.notifyLogUpdate(LocalizedOrUtf8("log.iso.extractingContent", "Extrayendo contenido del ISO...") +
+                                     "\r\n");
         std::vector<std::string> excludePatterns;
-        if (!isoReader->extractAll(isoPath, destPath, excludePatterns)) {
+        if (!isoReader->extractAll(isoPath, destPath, excludePatterns, &eventManager)) {
             logFile.close();
             return false;
         }
         copiedSoFar += isoSize;
+        eventManager.notifyDetailedProgress(70, 100, "Contenido extraído");
     } else if (!extractContent && isWindowsISO && !skipCopy) {
         // For Windows ISOs in RAM mode, flag Programs integration without pre-extracting the folder
         if (mode == AppKeys::BootModeRam) {
@@ -292,9 +306,12 @@ bool ISOCopyManager::extractISOContents(EventManager &eventManager, const std::s
     // Extract boot.wim if requested
     bool bootWimSuccess = true;
     if (extractBootWim) {
+        eventManager.notifyDetailedProgress(40, 100, "Procesando boot.wim");
+        eventManager.notifyLogUpdate(LocalizedOrUtf8("log.iso.processingBootWim", "Procesando boot.wim...") + "\r\n");
         bootWimSuccess =
             bootWimProcessor->processBootWim(isoPath, destPath, espPath, integratePrograms, programsSrc, copiedSoFar,
                                              extractBootWim, copyInstallWim, logFile, injectDrivers);
+        eventManager.notifyDetailedProgress(60, 100, "boot.wim procesado");
     }
 
     // Copy install file if requested

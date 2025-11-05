@@ -437,11 +437,11 @@ std::string BCDManager::configureBCD(const std::string &driveLetter, const std::
     // Build candidate lists per mode and choose the best candidate by validating architecture
     std::vector<std::string> candidates;
     if (strategy.getType() == "extracted") {
-        // Installation mode: prefer Microsoft bootmgfw first, then BOOTX64
-        candidates = {espDriveLetter + "\\EFI\\Microsoft\\Boot\\bootmgfw.efi",
-                      espDriveLetter + "\\EFI\\microsoft\\boot\\bootmgfw.efi",
-                      espDriveLetter + "\\EFI\\BOOT\\BOOTX64.EFI", espDriveLetter + "\\EFI\\boot\\BOOTX64.EFI",
-                      espDriveLetter + "\\EFI\\boot\\bootx64.efi"};
+        // Installation mode: prefer BOOTX64 first for Linux compatibility, then Microsoft bootmgfw
+        candidates = {espDriveLetter + "\\EFI\\BOOT\\BOOTX64.EFI", espDriveLetter + "\\EFI\\boot\\BOOTX64.EFI",
+                      espDriveLetter + "\\EFI\\boot\\bootx64.efi",
+                      espDriveLetter + "\\EFI\\Microsoft\\Boot\\bootmgfw.efi",
+                      espDriveLetter + "\\EFI\\microsoft\\boot\\bootmgfw.efi"};
     } else if (strategy.getType() == "ramdisk") {
         // Ramdisk mode: prefer Microsoft bootmgfw first, then BOOTX64
         candidates = {espDriveLetter + "\\EFI\\Microsoft\\Boot\\bootmgfw.efi",
@@ -558,9 +558,9 @@ std::string BCDManager::configureBCD(const std::string &driveLetter, const std::
     if (strategy.getType() == "extracted") {
         logFile << "EFI file selection for extracted mode:" << std::endl;
         std::string candidates[] = {
-            espDriveLetter + "\\EFI\\Microsoft\\Boot\\bootmgfw.efi",
-            espDriveLetter + "\\EFI\\microsoft\\boot\\bootmgfw.efi", espDriveLetter + "\\EFI\\BOOT\\BOOTX64.EFI",
-            espDriveLetter + "\\EFI\\boot\\BOOTX64.EFI", espDriveLetter + "\\EFI\\boot\\bootx64.efi"};
+            espDriveLetter + "\\EFI\\BOOT\\BOOTX64.EFI", espDriveLetter + "\\EFI\\boot\\BOOTX64.EFI",
+            espDriveLetter + "\\EFI\\boot\\bootx64.efi", espDriveLetter + "\\EFI\\Microsoft\\Boot\\bootmgfw.efi",
+            espDriveLetter + "\\EFI\\microsoft\\boot\\bootmgfw.efi"};
         for (const auto &candidate : candidates) {
             bool exists = (GetFileAttributesA(candidate.c_str()) != INVALID_FILE_ATTRIBUTES);
             logFile << "  " << candidate << " - " << (exists ? "EXISTS" : "NOT FOUND");
@@ -598,18 +598,22 @@ std::string BCDManager::configureBCD(const std::string &driveLetter, const std::
 
     logFile << "EFI path: " << efiPath << "\n";
 
-    // For extracted mode, verify SDI file exists
+    // For extracted mode, verify SDI file exists (only for Windows ISOs that have bootmgr)
     if (strategy.getType() == "extracted") {
-        std::string sdiPath = driveLetter + "\\boot\\boot.sdi";
-        if (GetFileAttributesA(sdiPath.c_str()) == INVALID_FILE_ATTRIBUTES) {
-            std::string errorMsg = "Error: Archivo SDI no encontrado en " + sdiPath + "\r\n";
-            if (eventManager)
-                eventManager->notifyLogUpdate(errorMsg);
-            logFile << errorMsg;
-            logFile.close();
-            return "Archivo SDI no encontrado para extracted boot";
+        std::string bootmgrPath = driveLetter + "\\bootmgr";
+        bool        hasBootmgr  = (GetFileAttributesA(bootmgrPath.c_str()) != INVALID_FILE_ATTRIBUTES);
+        if (hasBootmgr) {
+            std::string sdiPath = driveLetter + "\\boot\\boot.sdi";
+            if (GetFileAttributesA(sdiPath.c_str()) == INVALID_FILE_ATTRIBUTES) {
+                std::string errorMsg = "Error: Archivo SDI no encontrado en " + sdiPath + "\r\n";
+                if (eventManager)
+                    eventManager->notifyLogUpdate(errorMsg);
+                logFile << errorMsg;
+                logFile.close();
+                return "Archivo SDI no encontrado para extracted boot";
+            }
+            logFile << "SDI file verified: " << sdiPath << std::endl;
         }
-        logFile << "SDI file verified: " << sdiPath << std::endl;
     } else if (strategy.getType() == "ramdisk") {
         // For ramdisk mode, verify boot.wim and boot.sdi were staged on the data partition
         std::string bootWimPath   = driveLetter + "\\sources\\boot.wim";
@@ -654,27 +658,36 @@ std::string BCDManager::configureBCD(const std::string &driveLetter, const std::
         // Note: This may fail for OSLOADER entries that don't have systemroot - that's OK
     }
 
-    std::string cmd6    = BCD_CMD + " /default " + guid;
-    std::string result6 = Utils::exec(cmd6.c_str());
-    logFile << "Set default command: " << cmd6 << "\nResult: " << result6 << "\n";
-    // Check for common error indicators in multiple languages
-    // Note: bcdedit typically produces minimal output on success, verbose output on error
-    bool hasError = (result6.find("error") != std::string::npos || result6.find("Error") != std::string::npos ||
-                     result6.find("Fehler") != std::string::npos || // German
-                     result6.find("erreur") != std::string::npos || // French
-                     result6.find("erro") != std::string::npos);    // Portuguese
-    if (hasError && result6.length() > 50) {                        // If verbose error message
-        if (eventManager) {
-            std::string message = LocalizedOrUtf8("log.bcd.errorDefault", "Error al configurar default: {0}");
-            size_t      pos     = message.find("{0}");
-            if (pos != std::string::npos) {
-                message.replace(pos, 3, result6);
+    // Check if this is a Linux EXTRACT entry (device points to ESP)
+    std::string deviceQuery    = BCD_CMD + " /enum " + guid + " | findstr \"device\"";
+    std::string deviceOutput   = Utils::exec(deviceQuery.c_str());
+    bool        isLinuxExtract = (deviceOutput.find(espDriveLetter) != std::string::npos);
+
+    if (!isLinuxExtract) {
+        std::string cmd6    = BCD_CMD + " /default " + guid;
+        std::string result6 = Utils::exec(cmd6.c_str());
+        logFile << "Set default command: " << cmd6 << "\nResult: " << result6 << "\n";
+        // Check for common error indicators in multiple languages
+        // Note: bcdedit typically produces minimal output on success, verbose output on error
+        bool hasError = (result6.find("error") != std::string::npos || result6.find("Error") != std::string::npos ||
+                         result6.find("Fehler") != std::string::npos || // German
+                         result6.find("erreur") != std::string::npos || // French
+                         result6.find("erro") != std::string::npos);    // Portuguese
+        if (hasError && result6.length() > 50) {                        // If verbose error message
+            if (eventManager) {
+                std::string message = LocalizedOrUtf8("log.bcd.errorDefault", "Error al configurar default: {0}");
+                size_t      pos     = message.find("{0}");
+                if (pos != std::string::npos) {
+                    message.replace(pos, 3, result6);
+                }
+                eventManager->notifyLogUpdate(message + "\r\n");
             }
-            eventManager->notifyLogUpdate(message + "\r\n");
+            logFile << "ERROR: Failed to set default boot entry. Result: " << result6 << "\n";
+            logFile.close();
+            return "Error al configurar default: " + result6;
         }
-        logFile << "ERROR: Failed to set default boot entry. Result: " << result6 << "\n";
-        logFile.close();
-        return "Error al configurar default: " + result6;
+    } else {
+        logFile << "Skipping set default for Linux EXTRACT entry (device: " << deviceOutput << ")\n";
     }
 
     // Add to display order so it appears in boot menu

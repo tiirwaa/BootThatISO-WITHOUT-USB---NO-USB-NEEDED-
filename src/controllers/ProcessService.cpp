@@ -125,7 +125,7 @@ ProcessService::ProcessResult ProcessService::copyIsoContent(const std::string &
 }
 
 ProcessService::ProcessResult ProcessService::configureBoot(const std::string &modeKey) {
-    if (isoCopyManager->getIsWindowsISO() || modeKey == AppKeys::BootModeRam) {
+    if (modeKey == AppKeys::BootModeRam || modeKey == AppKeys::BootModeExtract) {
         auto strategy = BootStrategyFactory::createStrategy(modeKey);
         if (!strategy) {
             return {false, "Modo de boot no válido."};

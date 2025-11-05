@@ -12,6 +12,8 @@
 
 #include "../utils/Utils.h"
 
+#include "EventManager.h"
+
 // 7-Zip SDK headers
 #include "7zip/Archive/IArchive.h"
 #include "7zip/PropID.h"
@@ -103,8 +105,10 @@ class ExtractCallback : public IArchiveExtractCallback {
 public:
     explicit ExtractCallback(IInArchive *arc, const std::wstring &base,
                              const std::unordered_map<UInt32, std::wstring>             *overridePaths = nullptr,
-                             std::function<void(unsigned long long, unsigned long long)> progressCb    = nullptr)
-        : _ref(1), _archive(arc), _baseDir(base), _overridePaths(overridePaths), _progressCallback(progressCb) {
+                             std::function<void(unsigned long long, unsigned long long)> progressCb    = nullptr,
+                             EventManager                                               *eventManager  = nullptr)
+        : _ref(1), _archive(arc), _baseDir(base), _overridePaths(overridePaths), _progressCallback(progressCb),
+          _eventManager(eventManager) {
         if (!_baseDir.empty() && (_baseDir.back() == L'/' || _baseDir.back() == L'\\')) {
             _baseDir.pop_back();
         }
@@ -145,6 +149,10 @@ public:
         if (completeValue && _progressCallback) {
             _progressCallback(*completeValue, _totalBytes);
         }
+        if (_eventManager && !_currentFile.empty()) {
+            std::string progressMsg = "Extrayendo: " + WideToUtf8(_currentFile);
+            _eventManager->notifyDetailedProgress(*completeValue, _totalBytes, progressMsg);
+        }
         return S_OK;
     }
 
@@ -161,6 +169,7 @@ public:
         std::wstring                 relPath;
         if (_archive->GetProperty(index, kpidPath, &prop) == S_OK && prop.vt == VT_BSTR && prop.bstrVal) {
             relPath.assign(prop.bstrVal, prop.bstrVal + SysStringLen(prop.bstrVal));
+            _currentFile = relPath; // Set current file for progress
         }
         NWindows::NCOM::PropVariant_Clear(&prop);
 
@@ -220,6 +229,8 @@ private:
     std::wstring                                                _baseDir;
     const std::unordered_map<UInt32, std::wstring>             *_overridePaths;
     std::function<void(unsigned long long, unsigned long long)> _progressCallback;
+    EventManager                                               *_eventManager;
+    std::wstring                                                _currentFile;
     UInt64                                                      _totalBytes = 0;
 };
 
@@ -499,7 +510,7 @@ bool ISOReader::extractFiles(const std::string &isoPath, const std::vector<std::
 }
 
 bool ISOReader::extractAll(const std::string &isoPath, const std::string &destDir,
-                           const std::vector<std::string> &excludePatterns) {
+                           const std::vector<std::string> &excludePatterns, EventManager *eventManager) {
     (void)excludePatterns; // TODO: add pattern filtering if needed
     const std::wstring wIso   = Utf8ToWide(isoPath);
     auto               opened = OpenIsoArchive(wIso);
@@ -507,8 +518,9 @@ bool ISOReader::extractAll(const std::string &isoPath, const std::string &destDi
         return false;
 
     createDirectories(destDir);
-    CMyComPtr<IArchiveExtractCallback> cb = new ExtractCallback(opened.archive, Utf8ToWide(destDir));
-    HRESULT                            hr = opened.archive->Extract(nullptr, (UInt32)(Int32)-1, 0, cb);
+    CMyComPtr<IArchiveExtractCallback> cb =
+        new ExtractCallback(opened.archive, Utf8ToWide(destDir), nullptr, nullptr, eventManager);
+    HRESULT hr = opened.archive->Extract(nullptr, (UInt32)(Int32)-1, 0, cb);
     opened.archive->Close();
     return hr == S_OK;
 }

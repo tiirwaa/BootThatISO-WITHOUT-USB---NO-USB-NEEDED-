@@ -5,6 +5,8 @@
 #include <vector>
 #include <functional>
 
+class EventManager;
+
 class ISOReader {
 public:
     ISOReader();
@@ -27,7 +29,7 @@ public:
 
     // Extract all files to destDir, with optional exclude patterns
     bool extractAll(const std::string &isoPath, const std::string &destDir,
-                    const std::vector<std::string> &excludePatterns = {});
+                    const std::vector<std::string> &excludePatterns = {}, EventManager *eventManager = nullptr);
 
     // Extract a directory from ISO to destination
     bool extractDirectory(const std::string &isoPath, const std::string &dirPathInISO, const std::string &destDir);

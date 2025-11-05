@@ -19,11 +19,29 @@ public:
     void configureBCD(const std::string &guid, const std::string &dataDevice, const std::string &espDevice,
                       const std::string &efiPath) override {
         const std::string BCD_CMD = "C:\\Windows\\System32\\bcdedit.exe";
-        // dataDevice and espDevice are expected to be drive letters like "Z:" and "Y:"
-        std::string cmd1 = BCD_CMD + " /set " + guid + " device partition=" + dataDevice;
-        std::string cmd2 = BCD_CMD + " /set " + guid + " osdevice partition=" + dataDevice;
-        // For extracted mode, point to bootmgr on the data partition
-        std::string cmd3 = BCD_CMD + " /set " + guid + " path \"\\bootmgr\"";
+        // Check if bootmgr exists on data partition (Windows case)
+        std::string bootmgrPath = dataDevice + "\\bootmgr";
+        bool        hasBootmgr  = (GetFileAttributesA(bootmgrPath.c_str()) != INVALID_FILE_ATTRIBUTES);
+
+        std::string devicePartition;
+        std::string osdevicePartition;
+        std::string path;
+
+        if (hasBootmgr) {
+            // Windows: use data partition and bootmgr
+            devicePartition   = dataDevice;
+            osdevicePartition = dataDevice;
+            path              = "\\bootmgr";
+        } else {
+            // Non-Windows (Linux): use ESP partition and EFI path
+            devicePartition   = espDevice;
+            osdevicePartition = espDevice;
+            path              = efiPath;
+        }
+
+        std::string cmd1 = BCD_CMD + " /set " + guid + " device partition=" + devicePartition;
+        std::string cmd2 = BCD_CMD + " /set " + guid + " osdevice partition=" + osdevicePartition;
+        std::string cmd3 = BCD_CMD + " /set " + guid + " path \"" + path + "\"";
 
         // Log commands for debugging
         std::string logDir = Utils::getExeDirectory() + "logs";
@@ -32,6 +50,7 @@ public:
         std::ofstream logFile(logFilePath.c_str(), std::ios::app);
         if (logFile) {
             logFile << "Executing BCD commands for ExtractedBootStrategy:" << std::endl;
+            logFile << "  Has bootmgr: " << (hasBootmgr ? "yes" : "no") << std::endl;
             logFile << "  " << cmd1 << std::endl;
             std::string result1 = Utils::exec(cmd1.c_str());
             logFile << "  Result: " << result1 << std::endl;

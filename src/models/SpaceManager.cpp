@@ -221,28 +221,51 @@ bool SpaceManager::recoverSpace() {
         // Windows is NOT using ISOEFI - safe to delete all ISOBOOT and ISOEFI partitions
         scriptFile << "$volumes = Get-Volume | Where-Object { $_.FileSystemLabel -eq '" << VOLUME_LABEL
                    << "' -or $_.FileSystemLabel -eq '" << EFI_VOLUME_LABEL << "' }\n";
+        scriptFile << "Write-Host \"Found volumes to remove: $($volumes.Count)\"\n";
         scriptFile << "foreach ($vol in $volumes) {\n";
+        scriptFile << "    Write-Host \"Processing volume: $($vol.FileSystemLabel) at $($vol.Path)\"\n";
         scriptFile << "    $part = Get-Partition | Where-Object { $_.AccessPaths -contains $vol.Path }\n";
         scriptFile << "    if ($part) {\n";
+        scriptFile << "        Write-Host \"Found partition: $($part.PartitionNumber)\"\n";
         scriptFile << "        $accessPaths = $part.AccessPaths | Where-Object { $_ -match '^[A-Z]:\\\\$' }\n";
+        scriptFile << "        Write-Host \"Access paths: $($accessPaths)\"\n";
         scriptFile << "        foreach ($path in $accessPaths) {\n";
         scriptFile << "            try {\n";
+        scriptFile << "                Write-Host \"Removing access path: $path\"\n";
         scriptFile << "                Remove-PartitionAccessPath -DiskNumber 0 -PartitionNumber "
                       "$part.PartitionNumber -AccessPath $path -Confirm:$false -ErrorAction SilentlyContinue\n";
-        scriptFile << "            } catch { }\n";
+        scriptFile << "            } catch { Write-Host \"Error removing access path: $_\" }\n";
         scriptFile << "        }\n";
-        scriptFile << "        Remove-Partition -DiskNumber 0 -PartitionNumber $part.PartitionNumber -Confirm:$false\n";
+        scriptFile << "        Write-Host \"Removing partition: $($part.PartitionNumber)\"\n";
+        scriptFile << "        try {\n";
+        scriptFile
+            << "            Remove-Partition -DiskNumber 0 -PartitionNumber $part.PartitionNumber -Confirm:$false\n";
+        scriptFile << "            Write-Host \"Partition removed successfully\"\n";
+        scriptFile << "        } catch { Write-Host \"Error removing partition: $_\" }\n";
+        scriptFile << "    } else {\n";
+        scriptFile << "        Write-Host \"No partition found for volume $($vol.FileSystemLabel)\"\n";
         scriptFile << "    }\n";
         scriptFile << "}\n";
     }
     scriptFile << "$systemPartition = Get-Partition | Where-Object { $_.DriveLetter -eq 'C' }\n";
     scriptFile << "if ($systemPartition) {\n";
+    scriptFile << "    Write-Host \"Found C: partition: $($systemPartition.PartitionNumber), size: "
+                  "$($systemPartition.Size)\"\n";
     scriptFile << "    $supportedSize = Get-PartitionSupportedSize -DiskNumber 0 -PartitionNumber "
                   "$systemPartition.PartitionNumber\n";
+    scriptFile << "    Write-Host \"Supported max size: $($supportedSize.SizeMax)\"\n";
     scriptFile << "    if ($systemPartition.Size -lt $supportedSize.SizeMax) {\n";
-    scriptFile << "        Resize-Partition -DiskNumber 0 -PartitionNumber $systemPartition.PartitionNumber -Size "
+    scriptFile << "        Write-Host \"Resizing C: to max size\"\n";
+    scriptFile << "        try {\n";
+    scriptFile << "            Resize-Partition -DiskNumber 0 -PartitionNumber $systemPartition.PartitionNumber -Size "
                   "$supportedSize.SizeMax -Confirm:$false\n";
+    scriptFile << "            Write-Host \"Resize completed successfully\"\n";
+    scriptFile << "        } catch { Write-Host \"Error resizing: $_\" }\n";
+    scriptFile << "    } else {\n";
+    scriptFile << "        Write-Host \"C: already at max size\"\n";
     scriptFile << "    }\n";
+    scriptFile << "} else {\n";
+    scriptFile << "    Write-Host \"C: partition not found\"\n";
     scriptFile << "}\n";
     scriptFile.close();
 
