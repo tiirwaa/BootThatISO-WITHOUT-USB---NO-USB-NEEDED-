@@ -791,10 +791,12 @@ bool BCDManager::restoreBCD() {
                     std::string guid = blk.substr(pos, end - pos + 1);
 
                     // Don't delete {current} or {bootmgr}
-                    // For {default}, only protect it if it doesn't contain ISOBOOT (but since we're here because it contains ISOBOOT, we can delete it)
+                    // For {default}, only protect it if it doesn't contain ISOBOOT (but since we're here because it
+                    // contains ISOBOOT, we can delete it)
                     bool isProtected = (guid == "{current}" || guid == "{bootmgr}");
                     if (guid == "{default}") {
-                        // Since we already checked icontains(blk, "isoboot") above, {default} with ISOBOOT should be deleted
+                        // Since we already checked icontains(blk, "isoboot") above, {default} with ISOBOOT should be
+                        // deleted
                         isProtected = false;
                     }
 

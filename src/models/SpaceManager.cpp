@@ -266,8 +266,34 @@ bool SpaceManager::recoverSpace() {
                             logFile << "Marked for deletion: " << label << " (Drive " << driveLetter << ":)\n";
                             logFile.flush();
                         } else {
-                            logFile << "Could not find drive letter for volume: " << label << "\n";
-                            logFile.flush();
+                            // Try to assign a temporary drive letter for volumes without one
+                            char tempDriveLetter = 0;
+                            char availableDrives[256];
+                            if (GetLogicalDriveStringsA(sizeof(availableDrives), availableDrives)) {
+                                // Find an available drive letter (start from Z: backwards)
+                                for (char letter = 'Z'; letter >= 'D'; --letter) {
+                                    std::string driveCandidate = std::string(1, letter) + ":\\";
+                                    if (GetDriveTypeA(driveCandidate.c_str()) == DRIVE_NO_ROOT_DIR) {
+                                        // Try to assign this drive letter to the volume
+                                        std::string mountPoint = std::string(1, letter) + ":";
+                                        if (SetVolumeMountPointA(mountPoint.c_str(), volumeName)) {
+                                            tempDriveLetter = letter;
+                                            logFile << "Assigned temporary drive letter " << tempDriveLetter << ": to volume " << label << "\n";
+                                            logFile.flush();
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                            
+                            if (tempDriveLetter != 0) {
+                                volumesToDelete.push_back(std::make_pair(label, std::string(1, tempDriveLetter)));
+                                logFile << "Marked for deletion: " << label << " (Temp Drive " << tempDriveLetter << ":)\n";
+                                logFile.flush();
+                            } else {
+                                logFile << "Could not assign temporary drive letter for volume: " << label << "\n";
+                                logFile.flush();
+                            }
                         }
                     }
                 }
@@ -313,6 +339,25 @@ bool SpaceManager::recoverSpace() {
                             eventManager_->notifyLogUpdate(LocalizedFormatUtf8("log.space.volume_deleted",
                                                                                {Utils::utf8_to_wstring(label)},
                                                                                "Volumen {0} eliminado.\r\n"));
+                        
+                        // If this was a temporary drive letter, remove the mount point
+                        // Check if this drive letter was assigned by us (not originally mounted)
+                        char volumeGuid[MAX_PATH];
+                        std::string mountPoint = driveLetter + ":\\";
+                        if (GetVolumeNameForVolumeMountPointA(mountPoint.c_str(), volumeGuid, sizeof(volumeGuid))) {
+                            // If GetVolumeNameForVolumeMountPoint succeeds, the volume still exists
+                            // This means deletion failed, so don't remove the mount point
+                            logFile << "Volume still exists after deletion attempt, keeping mount point\n";
+                        } else {
+                            // Volume was deleted, safe to remove mount point
+                            std::string mountPointToRemove = driveLetter + ":";
+                            if (DeleteVolumeMountPointA(mountPointToRemove.c_str())) {
+                                logFile << "Removed temporary mount point " << mountPointToRemove << "\n";
+                            } else {
+                                logFile << "Failed to remove temporary mount point " << mountPointToRemove << ", error: " << GetLastError() << "\n";
+                            }
+                        }
+                        logFile.flush();
                     } else {
                         if (eventManager_)
                             eventManager_->notifyLogUpdate(LocalizedFormatUtf8("log.space.volume_delete_failed",
