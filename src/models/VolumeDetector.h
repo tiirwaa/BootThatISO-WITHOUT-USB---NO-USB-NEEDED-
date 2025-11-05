@@ -19,4 +19,5 @@ public:
 
 private:
     EventManager *eventManager_;
+    void logDiskStructure();
 };

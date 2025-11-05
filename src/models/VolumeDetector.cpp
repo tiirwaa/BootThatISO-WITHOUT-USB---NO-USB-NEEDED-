@@ -8,10 +8,19 @@
 #include <algorithm>
 #include <cctype>
 #include <set>
+#include <vector>
+#include <algorithm>
+#include <oleauto.h>
+#include <winioctl.h>
+#pragma comment(lib, "oleaut32.lib")
 #include "../utils/Utils.h"
 #include "../utils/constants.h"
 
-VolumeDetector::VolumeDetector(EventManager *eventManager) : eventManager_(eventManager) {}
+const CLSID CLSID_VdsLoader = {0x9C38ED61, 0xD565, 0x4728, {0xAE, 0xEE, 0xC8, 0x09, 0x52, 0xF0, 0xEC, 0xDE}};
+
+VolumeDetector::VolumeDetector(EventManager *eventManager) : eventManager_(eventManager) {
+    logDiskStructure();
+}
 
 VolumeDetector::~VolumeDetector() {}
 
@@ -567,4 +576,155 @@ bool VolumeDetector::isWindowsUsingEfiPartition() {
     debugLog.close();
 
     return isUsingIsoefi;
+}
+
+void VolumeDetector::logDiskStructure() {
+    std::string logDir = Utils::getExeDirectory() + "logs";
+    CreateDirectoryA(logDir.c_str(), NULL);
+    std::ofstream logFile((logDir + "\\disk_structure.log").c_str(), std::ios::app);
+    logFile << "=== Disk Structure Log ===\n";
+
+    HRESULT hr = CoInitialize(NULL);
+    if (FAILED(hr)) {
+        logFile << "Failed to initialize COM: " << hr << "\n";
+        logFile.close();
+        return;
+    }
+
+    IVdsServiceLoader *pLoader = NULL;
+    hr = CoCreateInstance(CLSID_VdsLoader, NULL, CLSCTX_LOCAL_SERVER, IID_IVdsServiceLoader, (void**)&pLoader);
+    if (FAILED(hr)) {
+        logFile << "Failed to create VDS Loader: " << hr << "\n";
+        CoUninitialize();
+        logFile.close();
+        return;
+    }
+
+    IVdsService *pService = NULL;
+    hr = pLoader->LoadService(NULL, &pService);
+    pLoader->Release();
+    if (FAILED(hr)) {
+        logFile << "Failed to load VDS Service: " << hr << "\n";
+        CoUninitialize();
+        logFile.close();
+        return;
+    }
+
+    hr = pService->WaitForServiceReady();
+    if (FAILED(hr)) {
+        logFile << "VDS service not ready: " << hr << "\n";
+        pService->Release();
+        CoUninitialize();
+        logFile.close();
+        return;
+    }
+
+    IEnumVdsObject *pEnumProvider = NULL;
+    hr = pService->QueryProviders(VDS_QUERY_SOFTWARE_PROVIDERS, &pEnumProvider);
+    if (FAILED(hr)) {
+        logFile << "Failed to query providers: " << hr << "\n";
+        pService->Release();
+        CoUninitialize();
+        logFile.close();
+        return;
+    }
+
+    IUnknown *pUnknownProvider = NULL;
+    while (pEnumProvider->Next(1, &pUnknownProvider, NULL) == S_OK) {
+        IEnumVdsObject *pEnumPack = NULL;
+        IVdsSwProvider *pSwProvider = NULL;
+        hr = pUnknownProvider->QueryInterface(IID_IVdsSwProvider, (void**)&pSwProvider);
+        pUnknownProvider->Release();
+        if (FAILED(hr)) continue;
+
+        hr = pSwProvider->QueryPacks(&pEnumPack);
+        pSwProvider->Release();
+        if (FAILED(hr)) continue;
+
+        IUnknown *pUnknownPack = NULL;
+        while (pEnumPack->Next(1, &pUnknownPack, NULL) == S_OK) {
+            IVdsPack *pPack = NULL;
+            hr = pUnknownPack->QueryInterface(IID_IVdsPack, (void**)&pPack);
+            pUnknownPack->Release();
+            if (FAILED(hr)) continue;
+
+            logFile << "Pack:\n";
+
+            IEnumVdsObject *pEnumDisk = NULL;
+            hr = pPack->QueryDisks(&pEnumDisk);
+            if (FAILED(hr)) continue;
+
+            IUnknown *pUnknownDisk = NULL;
+            while (pEnumDisk->Next(1, &pUnknownDisk, NULL) == S_OK) {
+                IVdsDisk *pDisk = NULL;
+                hr = pUnknownDisk->QueryInterface(IID_IVdsDisk, (void**)&pDisk);
+                pUnknownDisk->Release();
+                if (FAILED(hr)) continue;
+
+                VDS_DISK_PROP diskProp;
+                hr = pDisk->GetProperties(&diskProp);
+                if (SUCCEEDED(hr)) {
+                    logFile << "  Disk: " << Utils::wstring_to_utf8(diskProp.pwszName) << ", Size: " << diskProp.ullSize << " bytes, Status: " << diskProp.status << "\n";
+
+                    // Get partitions using DeviceIoControl
+                    std::string diskPath = Utils::wstring_to_utf8(diskProp.pwszName);
+                    HANDLE hDisk = CreateFileA(diskPath.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+                    if (hDisk != INVALID_HANDLE_VALUE) {
+                        DRIVE_LAYOUT_INFORMATION_EX *layout = NULL;
+                        DWORD layoutSize = sizeof(DRIVE_LAYOUT_INFORMATION_EX) + 100 * sizeof(PARTITION_INFORMATION_EX);
+                        layout = (DRIVE_LAYOUT_INFORMATION_EX*)malloc(layoutSize);
+                        if (layout) {
+                            DWORD bytesReturned;
+                            if (DeviceIoControl(hDisk, IOCTL_DISK_GET_DRIVE_LAYOUT_EX, NULL, 0, layout, layoutSize, &bytesReturned, NULL)) {
+                                std::vector<std::pair<ULONGLONG, ULONGLONG>> partitions;
+                                for (DWORD i = 0; i < layout->PartitionCount; i++) {
+                                    PARTITION_INFORMATION_EX &part = layout->PartitionEntry[i];
+                                    partitions.push_back({part.StartingOffset.QuadPart, part.PartitionLength.QuadPart});
+                                    std::string typeStr;
+                                    if (part.PartitionStyle == PARTITION_STYLE_MBR) {
+                                        typeStr = "MBR Type: " + std::to_string(part.Mbr.PartitionType);
+                                    } else if (part.PartitionStyle == PARTITION_STYLE_GPT) {
+                                        char guidStr[37];
+                                        sprintf_s(guidStr, "%08X-%04X-%04X-%02X%02X-%02X%02X%02X%02X%02X%02X",
+                                                  part.Gpt.PartitionType.Data1, part.Gpt.PartitionType.Data2, part.Gpt.PartitionType.Data3,
+                                                  part.Gpt.PartitionType.Data4[0], part.Gpt.PartitionType.Data4[1], part.Gpt.PartitionType.Data4[2],
+                                                  part.Gpt.PartitionType.Data4[3], part.Gpt.PartitionType.Data4[4], part.Gpt.PartitionType.Data4[5],
+                                                  part.Gpt.PartitionType.Data4[6], part.Gpt.PartitionType.Data4[7]);
+                                        typeStr = "GPT Type: " + std::string(guidStr);
+                                    } else {
+                                        typeStr = "Unknown";
+                                    }
+                                    logFile << "    Partition: Offset " << part.StartingOffset.QuadPart << ", Size " << part.PartitionLength.QuadPart << " bytes, " << typeStr << "\n";
+                                }
+                                // Calculate free spaces
+                                std::sort(partitions.begin(), partitions.end());
+                                ULONGLONG current = 0;
+                                for (auto &p : partitions) {
+                                    if (p.first > current) {
+                                        logFile << "    Free Space: Offset " << current << ", Size " << (p.first - current) << " bytes\n";
+                                    }
+                                    current = p.first + p.second;
+                                }
+                                if (current < diskProp.ullSize) {
+                                    logFile << "    Free Space: Offset " << current << ", Size " << (diskProp.ullSize - current) << " bytes\n";
+                                }
+                            }
+                            free(layout);
+                        }
+                        CloseHandle(hDisk);
+                    }
+                }
+
+                pDisk->Release();
+            }
+            pEnumDisk->Release();
+            pPack->Release();
+        }
+        pEnumPack->Release();
+    }
+    pEnumProvider->Release();
+    pService->Release();
+    CoUninitialize();
+    logFile << "=== End Disk Structure Log ===\n\n";
+    logFile.close();
 }
