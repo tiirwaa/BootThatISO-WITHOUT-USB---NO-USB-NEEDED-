@@ -66,7 +66,8 @@ bool PartitionCreator::performDiskpartOperations(const std::string &format, bool
     scriptFile.close();
 
     if (eventManager)
-        eventManager->notifyLogUpdate("Ejecutando diskpart para crear particiones...\r\n");
+        eventManager->notifyLogUpdate(
+            LocalizedOrUtf8("log.diskpart.executing", "Ejecutando diskpart para crear particiones...") + "\r\n");
 
     // Execute diskpart with the script and capture output
     STARTUPINFOA        si = {sizeof(si)};

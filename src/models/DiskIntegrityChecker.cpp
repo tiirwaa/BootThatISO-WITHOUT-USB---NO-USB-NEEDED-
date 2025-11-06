@@ -93,7 +93,9 @@ bool DiskIntegrityChecker::performDiskIntegrityCheck() {
         }
 
         if (eventManager_)
-            eventManager_->notifyLogUpdate("Ejecutando chkdsk /f para reparar errores...\r\n");
+            eventManager_->notifyLogUpdate(
+                LocalizedOrUtf8("log.diskIntegrity.executingChkdsk", "Ejecutando chkdsk /f para reparar errores...") +
+                "\r\n");
 
         // Run chkdsk /f
         STARTUPINFOA        si_f = {sizeof(si_f)};

@@ -38,7 +38,6 @@
     <string id="message.adminRequired">This program requires administrator privileges.</string>
     <string id="message.diskModifyConfirmPrimary">This operation will modify the system disk, shrinking it by 11 GB to create two bootable partitions: a 1GB FAT32 ESP (ISOEFI) and a 10GB data partition (ISOBOOT). Do you want to continue?</string>
     <string id="message.diskModifyConfirmSecondary">This is the second confirmation. The disk modification operation is irreversible and may cause data loss if not performed correctly. Are you completely sure you want to proceed?</string>
-    <string id="message.efiPartitionWarning">IMPORTANT: The ISOEFI partition is hidden with special GPT attributes to prevent Windows installer from automatically detecting it. During Windows installation, DO NOT delete the Windows EFI partition. If you do, Windows might reuse ISOEFI. If this happens, use 'Recover my space' after installing Windows to clean up.</string>
     <string id="message.operationInProgress">A process is running. Do you want to cancel the operation and close the application?</string>
     <string id="message.processCompleteRestart">Process completed. Do you want to restart the system now?</string>
     <string id="message.recoverSpaceFailed">Failed to recover space. Check the logs for details.</string>
@@ -137,11 +136,15 @@
     
     <!-- Log messages - Diskpart -->
     <string id="log.diskpart.creatingScript">Creating diskpart script for partitions...</string>
+    <string id="log.diskpart.executing">Executing diskpart to create partitions...</string>
     <string id="log.diskpart.scriptError">Error: Could not create diskpart script file.</string>
     <string id="log.diskpart.success">Diskpart executed successfully. Verifying partitions...</string>
     <string id="log.diskpart.failed">Error: Diskpart failed with exit code {0}</string>
     <string id="log.diskpart.partitionsCreated">Partitions created successfully.</string>
     <string id="log.diskpart.partitionsFailed">Error: Partition creation failed.</string>
+    
+    <!-- Log messages - Disk Integrity -->
+    <string id="log.diskIntegrity.executingChkdsk">Executing chkdsk /f to repair errors...</string>
     
     <!-- Log messages - Recovery -->
     <string id="log.recovery.recovering">Recovering space. This may take several minutes...</string>
@@ -208,21 +211,13 @@
     <string id="log.partition.errorRecoveringSpace">Error: Space recovery failed.</string>
     <string id="log.partition.bothPartitionsExist">ISOBOOT and ISOEFI partitions already exist. Verifying integrity...</string>
     <string id="log.partition.usingExistingPartitions">Using existing partitions.</string>
-    <string id="log.partition.inconsistentState">Inconsistent state: Only one partition exists. Recreating both...</string>
-    <string id="log.partition.criticalError">CRITICAL ERROR:</string>
-    <string id="log.partition.windowsUsingEfiSystem">Windows is using the ISOEFI partition as its system EFI partition.</string>
-    <string id="log.partition.cannotDeleteBreakBoot">Cannot delete or recreate this partition - it would break Windows boot.</string>
-    <string id="log.partition.manualRecovery">Please manually recover space and ensure both partitions exist.</string>
     <string id="log.partition.skippingCreation">Skipping partition creation: partitions already exist.</string>
     <string id="log.partition.verificationWarning">Warning: Could not verify partition creation, but diskpart reported success.</string>
     
     <!-- Log messages - Space Recovery -->
     <string id="log.space.starting_recovery">Starting space recovery...</string>
-    <string id="log.space.script_created">Recovery script created.</string>
-    <string id="log.space.executing_script">Executing PowerShell script to recover space...</string>
     <string id="log.space.cleaning_bcd">Cleaning BCD entries...</string>
     <string id="log.space.recovery_successful">Space recovered successfully.</string>
-    <string id="log.space.recovery_failed">Error: Space recovery failed (code {0}).</string>
     
     <!-- Log messages - BCD Manager -->
     <string id="log.bcd.cleaning_entries">Cleaning BootThatISO BCD entries...</string>
@@ -252,6 +247,38 @@
     <string id="unattended.console.processCompleted">Process completed! Press Enter to exit.</string>
     <string id="unattended.console.processingMessage">Processing ISO file in unattended mode...\nCheck console window for progress.\n\nConsole allocation failed - using message box fallback.</string>
     <string id="unattended.console.completionMessage">ISO processing completed successfully!</string>
+    
+    <!-- Log messages - EFI Partition -->
+    <string id="log.efi.deleting_both">Deleting BOTH partitions to recreate with new size...</string>
+    <string id="log.efi.duplicate_warning">CRITICAL WARNING:</string>
+    <string id="log.efi.wrong_size_warning">WARNING: EFI partition with incorrect size ({0} MB, required {1} MB)</string>
+    <string id="log.efi.freeSpaceWarning">Warning: Could not verify free space in EFI partition.</string>
+    <string id="log.efi.duplicate_count">{0} duplicate ISOEFI partitions detected.</string>
+    <string id="log.efi.duplicate_boot_issue">This may cause boot problems.</string>
+    <string id="log.efi.deleting_all">Deleting ALL partitions to recreate them correctly...</string>
+    
+    <!-- Log messages - Space Recovery -->
+    <string id="log.space.no_volumes_deleted">No ISOEFI or ISOBOOT volumes found to delete.</string>
+    <string id="log.space.volume_deleted">Volume {0} deleted.</string>
+    <string id="log.space.volume_delete_failed">Error deleting volume {0}.</string>
+    <string id="log.space.resizing_c">Resizing C: partition...</string>
+    <string id="log.space.resize_completed">Resize completed.</string>
+    <string id="log.space.resize_error">Error resizing partition (continuing anyway).</string>
+    
+    <!-- Log messages - Partition Manager -->
+    <string id="log.partition.onlyIsoBootExists">Only ISOBOOT partition exists. Recreating both partitions...</string>
+    <string id="log.partition.onlyEfiExistsRecreating">Only EFI partition exists (not used by Windows). Recreating both...</string>
+    <string id="log.partition.onlyEfiExistsWindowsUsing">Only EFI partition exists and Windows is using it as system EFI.</string>
+    <string id="log.partition.reuseEfiCreateIsoBoot">EFI partition will be reused. Creating ISOBOOT partition...</string>
+    <string id="log.partition.windows_using_efi">WARNING: Windows is using the ISOEFI partition. Only ISOBOOT will be deleted, ISOEFI will be preserved.</string>
+    <string id="log.partition.space_recovery_failed">Error: Space recovery failed.</string>
+    
+    <!-- Log messages - ISO Processing -->
+    <string id="log.iso.extractingContent">Extracting ISO content...</string>
+    <string id="log.iso.processingBootWim">Processing boot.wim...</string>
+    
+    <!-- Error messages -->
+    <string id="error.efi.cleanup_failed">Error cleaning duplicate partitions.</string>
     
 </language>
     <string id="button.perform.hint">Click to boot the ISO</string>

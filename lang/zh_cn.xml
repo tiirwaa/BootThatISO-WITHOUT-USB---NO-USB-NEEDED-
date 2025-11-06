@@ -208,5 +208,82 @@
     <string id="unattended.console.processingMessage">Processing ISO file in unattended mode...\nCheck console window for progress.\n\nConsole allocation failed - using message box fallback.</string>
     <string id="unattended.console.completionMessage">ISO processing completed successfully!</string>
     
+    <!-- Log messages - EFI Partition -->
+    <string id="log.efi.deleting_both">删除两个分区以使用新大小重新创建...</string>
+    <string id="log.efi.duplicate_warning">严重警告：</string>
+    <string id="log.efi.wrong_size_warning">警告：EFI分区大小不正确（{0} MB，需要 {1} MB）</string>
+    <string id="log.efi.freeSpaceWarning">警告：无法验证EFI分区中的可用空间。</string>
+    <string id="log.efi.duplicate_count">检测到 {0} 个重复的ISOEFI分区。</string>
+    <string id="log.efi.duplicate_boot_issue">这可能导致启动问题。</string>
+    <string id="log.efi.deleting_all">删除所有分区以正确重新创建...</string>
+    
+    <!-- Log messages - Space Recovery -->
+    <string id="log.space.no_volumes_deleted">未找到要删除的ISOEFI或ISOBOOT卷。</string>
+    <string id="log.space.volume_deleted">卷 {0} 已删除。</string>
+    <string id="log.space.volume_delete_failed">删除卷 {0} 时出错。</string>
+    <string id="log.space.resizing_c">正在调整C:分区大小...</string>
+    <string id="log.space.resize_completed">调整大小完成。</string>
+    <string id="log.space.resize_error">调整分区大小时出错（仍继续）。</string>
+    
+    <!-- Log messages - Partition Manager -->
+    <string id="log.partition.onlyIsoBootExists">仅存在ISOBOOT分区。正在重新创建两个分区...</string>
+    <string id="log.partition.onlyEfiExistsRecreating">仅存在EFI分区（Windows未使用）。正在重新创建两个...</string>
+    <string id="log.partition.onlyEfiExistsWindowsUsing">仅存在EFI分区，Windows将其用作系统EFI。</string>
+    <string id="log.partition.reuseEfiCreateIsoBoot">EFI分区将被重用。正在创建ISOBOOT分区...</string>
+    <string id="log.partition.windows_using_efi">警告：Windows正在使用ISOEFI分区。将仅删除ISOBOOT，ISOEFI将被保留。</string>
+    <string id="log.partition.space_recovery_failed">错误：空间恢复失败。</string>
+    <string id="log.partition.errorRecoveringSpace">错误：空间恢复失败。</string>
+    <string id="log.partition.bothPartitionsExist">ISOBOOT和ISOEFI分区已存在。正在验证完整性...</string>
+    <string id="log.partition.verificationWarning">警告：无法验证分区创建，但diskpart报告成功。</string>
+    
+    <!-- Log messages - ISO Processing -->
+    <string id="log.iso.extractingContent">正在提取ISO内容...</string>
+    <string id="log.iso.processingBootWim">正在处理boot.wim...</string>
+    
+    <!-- Error messages -->
+    <string id="error.efi.cleanup_failed">清理重复分区时出错。</string>
+    
+    <!-- Log messages - Partition Manager (additional) -->
+    <string id="log.partition.skippingCreation">跳过分区创建：分区已存在。</string>
+    <string id="log.partition.efiWrongSize">EFI分区大小不正确。</string>
+    <string id="log.partition.usingExistingPartitions">正在使用现有分区。</string>
+    <string id="log.partition.solution">解决方案：{0}</string>
+    <string id="log.partition.efiDetectedSize">检测到EFI分区（大小：{0} MB）。</string>
+    <string id="log.partition.contentWillRemain">内容将保持不变。</string>
+    <string id="log.partition.criticalWarning">严重警告：{0}</string>
+    <string id="log.partition.windowsUsingEfi">Windows正在使用EFI分区。</string>
+    <string id="log.partition.cannotDeleteEfi">无法删除EFI分区。</string>
+    <string id="log.partition.windowsNotUsingDeleting">Windows未使用EFI - 将被删除。</string>
+    <string id="log.partition.errorDeletingOld">删除旧分区时出错。</string>
+    <string id="log.partition.oldPartitionsDeleted">旧分区已删除。</string>
+    <string id="log.partition.efiCorrectSize">EFI分区大小正确。</string>
+    <string id="log.partition.diskNotGpt">磁盘未格式化为GPT。</string>
+    <string id="log.partition.diskConfirmedGpt">磁盘已格式化为GPT。</string>
+    <string id="log.partition.noPartitionsDetected">未检测到分区。</string>
+    
+    <!-- Log messages - Space Recovery -->
+    <string id="log.space.starting_recovery">正在启动空间恢复...</string>
+    <string id="log.space.cleaning_bcd">正在清理BCD条目...</string>
+    <string id="log.space.recovery_successful">空间已成功恢复。</string>
+    
+    <!-- Log messages - BCD Manager -->
+    <string id="log.bcd.cleaning_entries">正在清理BootThatISO BCD条目...</string>
+    <string id="log.bcd.no_entries_found">未找到要删除的BootThatISO BCD条目。</string>
+    <string id="log.bcd.entry_deleted">BCD条目已删除：{0}</string>
+    <string id="log.bcd.cleanup_complete">BCD清理完成。删除的条目：{0}</string>
+    
+    <!-- Log messages - Partition Reformatter (additional) -->
+    <string id="log.reformat.efi_found">找到EFI卷（编号 {0}）。正在创建格式化脚本...</string>
+    <string id="log.reformatter.cleaningFiles">正在清理文件...</string>
+    <string id="log.reformatter.windowsUsingEfi">Windows正在使用EFI分区。</string>
+    <string id="log.reformatter.cleanupSuccess">清理成功。</string>
+    <string id="log.reformatter.noFilesToClean">未找到要清理的文件。</string>
+    
+    <!-- Log messages - Disk Operations -->
+    <string id="log.diskpart.executing">正在执行diskpart...</string>
+    <string id="log.diskIntegrity.executingChkdsk">正在执行chkdsk...</string>
+    
+    <!-- Message strings -->
+    
 </language>
 

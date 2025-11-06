@@ -51,7 +51,8 @@ bool DiskpartExecutor::performDiskpartOperations(const std::string &format) {
     scriptFile.close();
 
     if (eventManager_)
-        eventManager_->notifyLogUpdate("Ejecutando diskpart para crear particiones...\r\n");
+        eventManager_->notifyLogUpdate(
+            LocalizedOrUtf8("log.diskpart.executing", "Ejecutando diskpart para crear particiones...") + "\r\n");
 
     // Execute diskpart with the script and capture output
     STARTUPINFOA        si = {sizeof(si)};
@@ -148,7 +149,8 @@ bool DiskpartExecutor::performDiskpartOperations(const std::string &format) {
 
     if (exitCode == 0) {
         if (eventManager_)
-            eventManager_->notifyLogUpdate("Particiones creadas exitosamente.\r\n");
+            eventManager_->notifyLogUpdate(
+                LocalizedOrUtf8("log.diskpart.partitionsCreated", "Particiones creadas exitosamente.") + "\r\n");
         return true;
     } else {
         if (eventManager_)

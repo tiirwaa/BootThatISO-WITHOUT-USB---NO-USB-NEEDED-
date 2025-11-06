@@ -208,5 +208,82 @@
     <string id="unattended.console.processingMessage">Processing ISO file in unattended mode...\nCheck console window for progress.\n\nConsole allocation failed - using message box fallback.</string>
     <string id="unattended.console.completionMessage">ISO processing completed successfully!</string>
     
+    <!-- Log messages - EFI Partition -->
+    <string id="log.efi.deleting_both">Удаление ОБЕИХ разделов для повторного создания с новым размером...</string>
+    <string id="log.efi.duplicate_warning">КРИТИЧЕСКОЕ ПРЕДУПРЕЖДЕНИЕ:</string>
+    <string id="log.efi.wrong_size_warning">ПРЕДУПРЕЖДЕНИЕ: Раздел EFI с неправильным размером ({0} МБ, требуется {1} МБ)</string>
+    <string id="log.efi.freeSpaceWarning">Предупреждение: Не удалось проверить свободное место в разделе EFI.</string>
+    <string id="log.efi.duplicate_count">Обнаружено {0} дублированных разделов ISOEFI.</string>
+    <string id="log.efi.duplicate_boot_issue">Это может вызвать проблемы с загрузкой.</string>
+    <string id="log.efi.deleting_all">Удаление ВСЕХ разделов для правильного повторного создания...</string>
+    
+    <!-- Log messages - Space Recovery -->
+    <string id="log.space.no_volumes_deleted">Не найдено томов ISOEFI или ISOBOOT для удаления.</string>
+    <string id="log.space.volume_deleted">Том {0} удалён.</string>
+    <string id="log.space.volume_delete_failed">Ошибка при удалении тома {0}.</string>
+    <string id="log.space.resizing_c">Изменение размера раздела C:...</string>
+    <string id="log.space.resize_completed">Изменение размера завершено.</string>
+    <string id="log.space.resize_error">Ошибка при изменении размера раздела (продолжение несмотря на это).</string>
+    
+    <!-- Log messages - Partition Manager -->
+    <string id="log.partition.onlyIsoBootExists">Существует только раздел ISOBOOT. Повторное создание обоих разделов...</string>
+    <string id="log.partition.onlyEfiExistsRecreating">Существует только раздел EFI (не используется Windows). Повторное создание обоих...</string>
+    <string id="log.partition.onlyEfiExistsWindowsUsing">Существует только раздел EFI и Windows использует его как системный EFI.</string>
+    <string id="log.partition.reuseEfiCreateIsoBoot">Раздел EFI будет повторно использован. Создание раздела ISOBOOT...</string>
+    <string id="log.partition.windows_using_efi">ПРЕДУПРЕЖДЕНИЕ: Windows использует раздел ISOEFI. Будет удалён только ISOBOOT, ISOEFI будет сохранён.</string>
+    <string id="log.partition.space_recovery_failed">Ошибка: Сбой восстановления пространства.</string>
+    <string id="log.partition.errorRecoveringSpace">Ошибка: Сбой восстановления пространства.</string>
+    <string id="log.partition.bothPartitionsExist">Разделы ISOBOOT и ISOEFI уже существуют. Проверка целостности...</string>
+    <string id="log.partition.verificationWarning">Предупреждение: Не удалось проверить создание раздела, но diskpart сообщил об успехе.</string>
+    
+    <!-- Log messages - ISO Processing -->
+    <string id="log.iso.extractingContent">Извлечение содержимого ISO...</string>
+    <string id="log.iso.processingBootWim">Обработка boot.wim...</string>
+    
+    <!-- Error messages -->
+    <string id="error.efi.cleanup_failed">Ошибка при очистке дублированных разделов.</string>
+    
+    <!-- Log messages - Partition Manager (additional) -->
+    <string id="log.partition.skippingCreation">Пропуск создания раздела: разделы уже существуют.</string>
+    <string id="log.partition.efiWrongSize">Раздел EFI имеет неправильный размер.</string>
+    <string id="log.partition.usingExistingPartitions">Использование существующих разделов.</string>
+    <string id="log.partition.solution">Решение: {0}</string>
+    <string id="log.partition.efiDetectedSize">Обнаружен раздел EFI (размер: {0} МБ).</string>
+    <string id="log.partition.contentWillRemain">Содержимое останется нетронутым.</string>
+    <string id="log.partition.criticalWarning">КРИТИЧЕСКОЕ ПРЕДУПРЕЖДЕНИЕ: {0}</string>
+    <string id="log.partition.windowsUsingEfi">Windows использует раздел EFI.</string>
+    <string id="log.partition.cannotDeleteEfi">Невозможно удалить раздел EFI.</string>
+    <string id="log.partition.windowsNotUsingDeleting">Windows не использует EFI - будет удалён.</string>
+    <string id="log.partition.errorDeletingOld">Ошибка при удалении старых разделов.</string>
+    <string id="log.partition.oldPartitionsDeleted">Старые разделы удалены.</string>
+    <string id="log.partition.efiCorrectSize">Раздел EFI имеет правильный размер.</string>
+    <string id="log.partition.diskNotGpt">Диск не отформатирован в GPT.</string>
+    <string id="log.partition.diskConfirmedGpt">Диск отформатирован в GPT.</string>
+    <string id="log.partition.noPartitionsDetected">Разделы не обнаружены.</string>
+    
+    <!-- Log messages - Space Recovery -->
+    <string id="log.space.starting_recovery">Запуск восстановления пространства...</string>
+    <string id="log.space.cleaning_bcd">Очистка записей BCD...</string>
+    <string id="log.space.recovery_successful">Пространство успешно восстановлено.</string>
+    
+    <!-- Log messages - BCD Manager -->
+    <string id="log.bcd.cleaning_entries">Очистка записей BCD BootThatISO...</string>
+    <string id="log.bcd.no_entries_found">Не найдено записей BCD BootThatISO для удаления.</string>
+    <string id="log.bcd.entry_deleted">Запись BCD удалена: {0}</string>
+    <string id="log.bcd.cleanup_complete">Очистка BCD завершена. Удалено записей: {0}</string>
+    
+    <!-- Log messages - Partition Reformatter (additional) -->
+    <string id="log.reformat.efi_found">Найден том EFI (номер {0}). Создание скрипта форматирования...</string>
+    <string id="log.reformatter.cleaningFiles">Очистка файлов...</string>
+    <string id="log.reformatter.windowsUsingEfi">Windows использует раздел EFI.</string>
+    <string id="log.reformatter.cleanupSuccess">Очистка успешна.</string>
+    <string id="log.reformatter.noFilesToClean">Файлов для очистки не найдено.</string>
+    
+    <!-- Log messages - Disk Operations -->
+    <string id="log.diskpart.executing">Выполнение diskpart...</string>
+    <string id="log.diskIntegrity.executingChkdsk">Выполнение chkdsk...</string>
+    
+    <!-- Message strings -->
+    
 </language>
 

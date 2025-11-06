@@ -208,5 +208,82 @@
     <string id="unattended.console.processingMessage">Processing ISO file in unattended mode...\nCheck console window for progress.\n\nConsole allocation failed - using message box fallback.</string>
     <string id="unattended.console.completionMessage">ISO processing completed successfully!</string>
     
+    <!-- Log messages - EFI Partition -->
+    <string id="log.efi.deleting_both">新しいサイズで再作成するために両方のパーティションを削除しています...</string>
+    <string id="log.efi.duplicate_warning">重大な警告：</string>
+    <string id="log.efi.wrong_size_warning">警告：サイズが正しくないEFIパーティション（{0} MB、必要 {1} MB）</string>
+    <string id="log.efi.freeSpaceWarning">警告：EFIパーティションの空き容量を確認できませんでした。</string>
+    <string id="log.efi.duplicate_count">{0} 個の重複したISOEFIパーティションが検出されました。</string>
+    <string id="log.efi.duplicate_boot_issue">これは起動の問題を引き起こす可能性があります。</string>
+    <string id="log.efi.deleting_all">正しく再作成するためにすべてのパーティションを削除しています...</string>
+    
+    <!-- Log messages - Space Recovery -->
+    <string id="log.space.no_volumes_deleted">削除するISOEFIまたはISOBOOTボリュームが見つかりませんでした。</string>
+    <string id="log.space.volume_deleted">ボリューム {0} が削除されました。</string>
+    <string id="log.space.volume_delete_failed">ボリューム {0} の削除中にエラーが発生しました。</string>
+    <string id="log.space.resizing_c">C:パーティションのサイズを変更しています...</string>
+    <string id="log.space.resize_completed">サイズ変更が完了しました。</string>
+    <string id="log.space.resize_error">パーティションのサイズ変更中にエラーが発生しました（続行します）。</string>
+    
+    <!-- Log messages - Partition Manager -->
+    <string id="log.partition.onlyIsoBootExists">ISOBOOTパーティションのみが存在します。両方のパーティションを再作成しています...</string>
+    <string id="log.partition.onlyEfiExistsRecreating">EFIパーティションのみが存在します（Windowsによって使用されていません）。両方を再作成しています...</string>
+    <string id="log.partition.onlyEfiExistsWindowsUsing">EFIパーティションのみが存在し、WindowsがそれをシステムEFIとして使用しています。</string>
+    <string id="log.partition.reuseEfiCreateIsoBoot">EFIパーティションが再利用されます。ISOBOOTパーティションを作成しています...</string>
+    <string id="log.partition.windows_using_efi">警告：WindowsがISOEFIパーティションを使用しています。ISOBOOTのみが削除され、ISOEFIは保持されます。</string>
+    <string id="log.partition.space_recovery_failed">エラー：スペースの回復に失敗しました。</string>
+    <string id="log.partition.errorRecoveringSpace">エラー：スペースの回復に失敗しました。</string>
+    <string id="log.partition.bothPartitionsExist">ISOBOOTおよびISOEFIパーティションが既に存在します。整合性を確認しています...</string>
+    <string id="log.partition.verificationWarning">警告：パーティション作成を確認できませんでしたが、diskpartは成功を報告しました。</string>
+    
+    <!-- Log messages - ISO Processing -->
+    <string id="log.iso.extractingContent">ISOコンテンツを抽出しています...</string>
+    <string id="log.iso.processingBootWim">boot.wimを処理しています...</string>
+    
+    <!-- Error messages -->
+    <string id="error.efi.cleanup_failed">重複パーティションのクリーンアップ中にエラーが発生しました。</string>
+    
+    <!-- Log messages - Partition Manager (additional) -->
+    <string id="log.partition.skippingCreation">パーティションの作成をスキップ：パーティションは既に存在します。</string>
+    <string id="log.partition.efiWrongSize">EFIパーティションのサイズが正しくありません。</string>
+    <string id="log.partition.usingExistingPartitions">既存のパーティションを使用しています。</string>
+    <string id="log.partition.solution">解決策：{0}</string>
+    <string id="log.partition.efiDetectedSize">EFIパーティションが検出されました（サイズ：{0} MB）。</string>
+    <string id="log.partition.contentWillRemain">コンテンツは保持されます。</string>
+    <string id="log.partition.criticalWarning">重大な警告：{0}</string>
+    <string id="log.partition.windowsUsingEfi">WindowsがEFIパーティションを使用しています。</string>
+    <string id="log.partition.cannotDeleteEfi">EFIパーティションを削除できません。</string>
+    <string id="log.partition.windowsNotUsingDeleting">WindowsがEFIを使用していません - 削除されます。</string>
+    <string id="log.partition.errorDeletingOld">古いパーティションの削除中にエラーが発生しました。</string>
+    <string id="log.partition.oldPartitionsDeleted">古いパーティションが削除されました。</string>
+    <string id="log.partition.efiCorrectSize">EFIパーティションのサイズは正しいです。</string>
+    <string id="log.partition.diskNotGpt">ディスクがGPT形式ではありません。</string>
+    <string id="log.partition.diskConfirmedGpt">ディスクがGPT形式であることが確認されました。</string>
+    <string id="log.partition.noPartitionsDetected">パーティションが検出されませんでした。</string>
+    
+    <!-- Log messages - Space Recovery -->
+    <string id="log.space.starting_recovery">スペース回復を開始しています...</string>
+    <string id="log.space.cleaning_bcd">BCDエントリをクリーンアップしています...</string>
+    <string id="log.space.recovery_successful">スペースが正常に回復されました。</string>
+    
+    <!-- Log messages - BCD Manager -->
+    <string id="log.bcd.cleaning_entries">BootThatISO BCDエントリをクリーンアップしています...</string>
+    <string id="log.bcd.no_entries_found">削除するBootThatISO BCDエントリが見つかりませんでした。</string>
+    <string id="log.bcd.entry_deleted">BCDエントリが削除されました：{0}</string>
+    <string id="log.bcd.cleanup_complete">BCDクリーンアップが完了しました。削除されたエントリ：{0}</string>
+    
+    <!-- Log messages - Partition Reformatter (additional) -->
+    <string id="log.reformat.efi_found">EFIボリュームが見つかりました（番号 {0}）。フォーマットスクリプトを作成しています...</string>
+    <string id="log.reformatter.cleaningFiles">ファイルをクリーンアップしています...</string>
+    <string id="log.reformatter.windowsUsingEfi">WindowsがEFIパーティションを使用しています。</string>
+    <string id="log.reformatter.cleanupSuccess">クリーンアップが成功しました。</string>
+    <string id="log.reformatter.noFilesToClean">クリーンアップするファイルが見つかりませんでした。</string>
+    
+    <!-- Log messages - Disk Operations -->
+    <string id="log.diskpart.executing">diskpartを実行しています...</string>
+    <string id="log.diskIntegrity.executingChkdsk">chkdskを実行しています...</string>
+    
+    <!-- Message strings -->
+    
 </language>
 

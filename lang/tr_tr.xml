@@ -208,5 +208,82 @@
     <string id="unattended.console.processingMessage">Processing ISO file in unattended mode...\nCheck console window for progress.\n\nConsole allocation failed - using message box fallback.</string>
     <string id="unattended.console.completionMessage">ISO processing completed successfully!</string>
     
+    <!-- Log messages - EFI Partition -->
+    <string id="log.efi.deleting_both">Yeni boyutla yeniden oluşturmak için HER İKİ bölümü de siliniyor...</string>
+    <string id="log.efi.duplicate_warning">KRİTİK UYARI:</string>
+    <string id="log.efi.wrong_size_warning">UYARI: Yanlış boyutta EFI bölümü ({0} MB, gerekli {1} MB)</string>
+    <string id="log.efi.freeSpaceWarning">Uyarı: EFI bölümündeki boş alan doğrulanamadı.</string>
+    <string id="log.efi.duplicate_count">{0} adet yinelenen ISOEFI bölümü algılandı.</string>
+    <string id="log.efi.duplicate_boot_issue">Bu, önyükleme sorunlarına neden olabilir.</string>
+    <string id="log.efi.deleting_all">Doğru şekilde yeniden oluşturmak için TÜM bölümler siliniyor...</string>
+    
+    <!-- Log messages - Space Recovery -->
+    <string id="log.space.no_volumes_deleted">Silinecek ISOEFI veya ISOBOOT birimi bulunamadı.</string>
+    <string id="log.space.volume_deleted">Birim {0} silindi.</string>
+    <string id="log.space.volume_delete_failed">Birim {0} silinirken hata.</string>
+    <string id="log.space.resizing_c">C: bölümü yeniden boyutlandırılıyor...</string>
+    <string id="log.space.resize_completed">Yeniden boyutlandırma tamamlandı.</string>
+    <string id="log.space.resize_error">Bölüm yeniden boyutlandırılırken hata (yine de devam ediliyor).</string>
+    
+    <!-- Log messages - Partition Manager -->
+    <string id="log.partition.onlyIsoBootExists">Yalnızca ISOBOOT bölümü var. Her iki bölüm de yeniden oluşturuluyor...</string>
+    <string id="log.partition.onlyEfiExistsRecreating">Yalnızca EFI bölümü var (Windows tarafından kullanılmıyor). Her ikisi de yeniden oluşturuluyor...</string>
+    <string id="log.partition.onlyEfiExistsWindowsUsing">Yalnızca EFI bölümü var ve Windows bunu sistem EFI olarak kullanıyor.</string>
+    <string id="log.partition.reuseEfiCreateIsoBoot">EFI bölümü yeniden kullanılacak. ISOBOOT bölümü oluşturuluyor...</string>
+    <string id="log.partition.windows_using_efi">UYARI: Windows ISOEFI bölümünü kullanıyor. Yalnızca ISOBOOT silinecek, ISOEFI korunacak.</string>
+    <string id="log.partition.space_recovery_failed">Hata: Alan kurtarma başarısız.</string>
+    <string id="log.partition.errorRecoveringSpace">Hata: Alan kurtarma başarısız.</string>
+    <string id="log.partition.bothPartitionsExist">ISOBOOT ve ISOEFI bölümleri zaten var. Bütünlük doğrulanıyor...</string>
+    <string id="log.partition.verificationWarning">Uyarı: Bölüm oluşturma doğrulanamadı, ancak diskpart başarı bildirdi.</string>
+    
+    <!-- Log messages - ISO Processing -->
+    <string id="log.iso.extractingContent">ISO içeriği çıkarılıyor...</string>
+    <string id="log.iso.processingBootWim">boot.wim işleniyor...</string>
+    
+    <!-- Error messages -->
+    <string id="error.efi.cleanup_failed">Yinelenen bölümler temizlenirken hata.</string>
+    
+    <!-- Log messages - Partition Manager (additional) -->
+    <string id="log.partition.skippingCreation">Bölüm oluşturma atlanıyor: bölümler zaten var.</string>
+    <string id="log.partition.efiWrongSize">EFI bölümünün boyutu yanlış.</string>
+    <string id="log.partition.usingExistingPartitions">Mevcut bölümler kullanılıyor.</string>
+    <string id="log.partition.solution">Çözüm: {0}</string>
+    <string id="log.partition.efiDetectedSize">EFI bölümü algılandı (boyut: {0} MB).</string>
+    <string id="log.partition.contentWillRemain">İçerik bozulmadan kalacak.</string>
+    <string id="log.partition.criticalWarning">KRİTİK UYARI: {0}</string>
+    <string id="log.partition.windowsUsingEfi">Windows EFI bölümünü kullanıyor.</string>
+    <string id="log.partition.cannotDeleteEfi">EFI bölümü silinemiyor.</string>
+    <string id="log.partition.windowsNotUsingDeleting">Windows EFI'yi kullanmıyor - silinecek.</string>
+    <string id="log.partition.errorDeletingOld">Eski bölümler silinirken hata.</string>
+    <string id="log.partition.oldPartitionsDeleted">Eski bölümler silindi.</string>
+    <string id="log.partition.efiCorrectSize">EFI bölümünün boyutu doğru.</string>
+    <string id="log.partition.diskNotGpt">Disk GPT olarak biçimlendirilmemiş.</string>
+    <string id="log.partition.diskConfirmedGpt">Disk GPT olarak biçimlendirilmiş.</string>
+    <string id="log.partition.noPartitionsDetected">Bölüm algılanmadı.</string>
+    
+    <!-- Log messages - Space Recovery -->
+    <string id="log.space.starting_recovery">Alan kurtarma başlatılıyor...</string>
+    <string id="log.space.cleaning_bcd">BCD girdileri temizleniyor...</string>
+    <string id="log.space.recovery_successful">Alan başarıyla kurtarıldı.</string>
+    
+    <!-- Log messages - BCD Manager -->
+    <string id="log.bcd.cleaning_entries">BootThatISO BCD girdileri temizleniyor...</string>
+    <string id="log.bcd.no_entries_found">Silinecek BootThatISO BCD girdisi bulunamadı.</string>
+    <string id="log.bcd.entry_deleted">BCD girdisi silindi: {0}</string>
+    <string id="log.bcd.cleanup_complete">BCD temizliği tamamlandı. Silinen girdiler: {0}</string>
+    
+    <!-- Log messages - Partition Reformatter (additional) -->
+    <string id="log.reformat.efi_found">EFI birimi bulundu (numara {0}). Biçimlendirme betiği oluşturuluyor...</string>
+    <string id="log.reformatter.cleaningFiles">Dosyalar temizleniyor...</string>
+    <string id="log.reformatter.windowsUsingEfi">Windows EFI bölümünü kullanıyor.</string>
+    <string id="log.reformatter.cleanupSuccess">Temizleme başarılı.</string>
+    <string id="log.reformatter.noFilesToClean">Temizlenecek dosya bulunamadı.</string>
+    
+    <!-- Log messages - Disk Operations -->
+    <string id="log.diskpart.executing">diskpart yürütülüyor...</string>
+    <string id="log.diskIntegrity.executingChkdsk">chkdsk yürütülüyor...</string>
+    
+    <!-- Message strings -->
+    
 </language>
 

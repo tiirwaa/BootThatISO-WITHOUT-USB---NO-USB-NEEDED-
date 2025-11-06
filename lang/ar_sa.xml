@@ -208,5 +208,82 @@
     <string id="unattended.console.processingMessage">Processing ISO file in unattended mode...\nCheck console window for progress.\n\nConsole allocation failed - using message box fallback.</string>
     <string id="unattended.console.completionMessage">ISO processing completed successfully!</string>
     
+    <!-- Log messages - EFI Partition -->
+    <string id="log.efi.deleting_both">جارٍ حذف القسمين لإعادة إنشائهما بحجم جديد...</string>
+    <string id="log.efi.duplicate_warning">تحذير حرج:</string>
+    <string id="log.efi.wrong_size_warning">تحذير: قسم EFI بحجم خاطئ ({0} ميجابايت، مطلوب {1} ميجابايت)</string>
+    <string id="log.efi.freeSpaceWarning">تحذير: تعذر التحقق من المساحة المتاحة في قسم EFI.</string>
+    <string id="log.efi.duplicate_count">تم اكتشاف {0} أقسام ISOEFI مكررة.</string>
+    <string id="log.efi.duplicate_boot_issue">قد يسبب ذلك مشاكل في التشغيل.</string>
+    <string id="log.efi.deleting_all">جارٍ حذف جميع الأقسام لإعادة إنشائها بشكل صحيح...</string>
+    
+    <!-- Log messages - Space Recovery -->
+    <string id="log.space.no_volumes_deleted">لم يتم العثور على أحجام ISOEFI أو ISOBOOT للحذف.</string>
+    <string id="log.space.volume_deleted">تم حذف الحجم {0}.</string>
+    <string id="log.space.volume_delete_failed">خطأ في حذف الحجم {0}.</string>
+    <string id="log.space.resizing_c">جارٍ تغيير حجم القسم C:...</string>
+    <string id="log.space.resize_completed">تم إكمال تغيير الحجم.</string>
+    <string id="log.space.resize_error">خطأ في تغيير حجم القسم (يستمر على أي حال).</string>
+    
+    <!-- Log messages - Partition Manager -->
+    <string id="log.partition.onlyIsoBootExists">يوجد قسم ISOBOOT فقط. جارٍ إعادة إنشاء القسمين...</string>
+    <string id="log.partition.onlyEfiExistsRecreating">يوجد قسم EFI فقط (غير مستخدم من قبل Windows). جارٍ إعادة إنشاء كليهما...</string>
+    <string id="log.partition.onlyEfiExistsWindowsUsing">يوجد قسم EFI فقط وWindows يستخدمه كـEFI نظام.</string>
+    <string id="log.partition.reuseEfiCreateIsoBoot">سيتم إعادة استخدام قسم EFI. جارٍ إنشاء قسم ISOBOOT...</string>
+    <string id="log.partition.windows_using_efi">تحذير: Windows يستخدم قسم ISOEFI. سيتم حذف ISOBOOT فقط، سيتم الحفاظ على ISOEFI.</string>
+    <string id="log.partition.space_recovery_failed">خطأ: فشل استرداد المساحة.</string>
+    
+    <!-- Log messages - ISO Processing -->
+    <string id="log.iso.extractingContent">جارٍ استخراج محتوى ISO...</string>
+    <string id="log.iso.processingBootWim">جارٍ معالجة boot.wim...</string>
+    
+    <!-- Error messages -->
+    <string id="error.efi.cleanup_failed">خطأ في تنظيف الأقسام المكررة.</string>
+    
+    <!-- Log messages - Partition Manager (additional) -->
+    <string id="log.partition.skippingCreation">تخطي إنشاء القسم: الأقسام موجودة بالفعل.</string>
+    <string id="log.partition.efiWrongSize">حجم قسم EFI خاطئ.</string>
+    <string id="log.partition.usingExistingPartitions">استخدام الأقسام الموجودة.</string>
+    <string id="log.partition.solution">الحل: {0}</string>
+    <string id="log.partition.efiDetectedSize">تم اكتشاف قسم EFI (الحجم: {0} ميجابايت).</string>
+    <string id="log.partition.contentWillRemain">سيبقى المحتوى كما هو.</string>
+    <string id="log.partition.criticalWarning">تحذير حرج: {0}</string>
+    <string id="log.partition.windowsUsingEfi">Windows يستخدم قسم EFI.</string>
+    <string id="log.partition.cannotDeleteEfi">لا يمكن حذف قسم EFI.</string>
+    <string id="log.partition.windowsNotUsingDeleting">Windows لا يستخدم EFI - سيتم حذفه.</string>
+    <string id="log.partition.errorDeletingOld">خطأ في حذف الأقسام القديمة.</string>
+    <string id="log.partition.oldPartitionsDeleted">تم حذف الأقسام القديمة.</string>
+    <string id="log.partition.efiCorrectSize">حجم قسم EFI صحيح.</string>
+    <string id="log.partition.diskNotGpt">القرص غير منسق بصيغة GPT.</string>
+    <string id="log.partition.diskConfirmedGpt">تم تأكيد تنسيق القرص بصيغة GPT.</string>
+    <string id="log.partition.noPartitionsDetected">لم يتم اكتشاف أقسام.</string>
+    <string id="log.partition.errorRecoveringSpace">خطأ: فشل استرداد المساحة.</string>
+    <string id="log.partition.bothPartitionsExist">أقسام ISOBOOT وISOEFI موجودة بالفعل. جارٍ التحقق من السلامة...</string>
+    <string id="log.partition.verificationWarning">تحذير: تعذر التحقق من إنشاء القسم، لكن diskpart أبلغ عن النجاح.</string>
+    
+    <!-- Log messages - Space Recovery -->
+    <string id="log.space.starting_recovery">جارٍ بدء استرداد المساحة...</string>
+    <string id="log.space.cleaning_bcd">جارٍ تنظيف إدخالات BCD...</string>
+    <string id="log.space.recovery_successful">تم استرداد المساحة بنجاح.</string>
+    
+    <!-- Log messages - BCD Manager -->
+    <string id="log.bcd.cleaning_entries">جارٍ تنظيف إدخالات BootThatISO BCD...</string>
+    <string id="log.bcd.no_entries_found">لم يتم العثور على إدخالات BootThatISO BCD للحذف.</string>
+    <string id="log.bcd.entry_deleted">تم حذف إدخال BCD: {0}</string>
+    <string id="log.bcd.cleanup_complete">تم إكمال تنظيف BCD. الإدخالات المحذوفة: {0}</string>
+    
+    <!-- Log messages - Partition Reformatter (additional) -->
+    <string id="log.reformat.efi_found">تم العثور على حجم EFI (الرقم {0}). جارٍ إنشاء نص التنسيق...</string>
+    <string id="log.reformatter.cleaningFiles">جارٍ تنظيف الملفات...</string>
+    <string id="log.reformatter.windowsUsingEfi">Windows يستخدم قسم EFI.</string>
+    <string id="log.reformatter.cleanupSuccess">تم التنظيف بنجاح.</string>
+    <string id="log.reformatter.noFilesToClean">لم يتم العثور على ملفات للتنظيف.</string>
+    
+    <!-- Log messages - Disk Operations -->
+    <string id="log.diskpart.executing">جارٍ تنفيذ diskpart...</string>
+    <string id="log.diskIntegrity.executingChkdsk">جارٍ تنفيذ chkdsk...</string>
+    
+    <!-- Message strings -->
+    
 </language>
 

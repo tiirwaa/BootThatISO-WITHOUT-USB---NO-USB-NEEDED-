@@ -208,5 +208,82 @@
     <string id="unattended.console.processingMessage">Processing ISO file in unattended mode...\nCheck console window for progress.\n\nConsole allocation failed - using message box fallback.</string>
     <string id="unattended.console.completionMessage">ISO processing completed successfully!</string>
     
+    <!-- Log messages - EFI Partition -->
+    <string id="log.efi.deleting_both">Eliminazione di ENTRAMBE le partizioni per ricrearle con nuova dimensione...</string>
+    <string id="log.efi.duplicate_warning">AVVERTIMENTO CRITICO:</string>
+    <string id="log.efi.wrong_size_warning">AVVERTIMENTO: Partizione EFI con dimensione errata ({0} MB, richiesti {1} MB)</string>
+    <string id="log.efi.freeSpaceWarning">Avvertimento: Impossibile verificare lo spazio libero nella partizione EFI.</string>
+    <string id="log.efi.duplicate_count">{0} partizioni ISOEFI duplicate rilevate.</string>
+    <string id="log.efi.duplicate_boot_issue">Questo può causare problemi di avvio.</string>
+    <string id="log.efi.deleting_all">Eliminazione di TUTTE le partizioni per ricrearle correttamente...</string>
+    
+    <!-- Log messages - Space Recovery -->
+    <string id="log.space.no_volumes_deleted">Nessun volume ISOEFI o ISOBOOT trovato da eliminare.</string>
+    <string id="log.space.volume_deleted">Volume {0} eliminato.</string>
+    <string id="log.space.volume_delete_failed">Errore nell'eliminazione del volume {0}.</string>
+    <string id="log.space.resizing_c">Ridimensionamento della partizione C:...</string>
+    <string id="log.space.resize_completed">Ridimensionamento completato.</string>
+    <string id="log.space.resize_error">Errore nel ridimensionamento della partizione (continua comunque).</string>
+    
+    <!-- Log messages - Partition Manager -->
+    <string id="log.partition.onlyIsoBootExists">Esiste solo la partizione ISOBOOT. Ricreazione di entrambe le partizioni...</string>
+    <string id="log.partition.onlyEfiExistsRecreating">Esiste solo la partizione EFI (non utilizzata da Windows). Ricreazione di entrambe...</string>
+    <string id="log.partition.onlyEfiExistsWindowsUsing">Esiste solo la partizione EFI e Windows la utilizza come EFI di sistema.</string>
+    <string id="log.partition.reuseEfiCreateIsoBoot">La partizione EFI verrà riutilizzata. Creazione della partizione ISOBOOT...</string>
+    <string id="log.partition.windows_using_efi">AVVERTIMENTO: Windows utilizza la partizione ISOEFI. Verrà eliminata solo ISOBOOT, ISOEFI verrà preservata.</string>
+    <string id="log.partition.space_recovery_failed">Errore: Recupero spazio fallito.</string>
+    
+    <!-- Log messages - ISO Processing -->
+    <string id="log.iso.extractingContent">Estrazione del contenuto ISO...</string>
+    <string id="log.iso.processingBootWim">Elaborazione di boot.wim...</string>
+    
+    <!-- Error messages -->
+    <string id="error.efi.cleanup_failed">Errore nella pulizia delle partizioni duplicate.</string>
+    
+    <!-- Log messages - Partition Manager (additional) -->
+    <string id="log.partition.skippingCreation">Salto della creazione della partizione: le partizioni esistono già.</string>
+    <string id="log.partition.efiWrongSize">La partizione EFI ha dimensione errata.</string>
+    <string id="log.partition.usingExistingPartitions">Utilizzo delle partizioni esistenti.</string>
+    <string id="log.partition.solution">Soluzione: {0}</string>
+    <string id="log.partition.efiDetectedSize">Partizione EFI rilevata (dimensione: {0} MB).</string>
+    <string id="log.partition.contentWillRemain">Il contenuto rimarrà intatto.</string>
+    <string id="log.partition.criticalWarning">AVVERTIMENTO CRITICO: {0}</string>
+    <string id="log.partition.windowsUsingEfi">Windows utilizza la partizione EFI.</string>
+    <string id="log.partition.cannotDeleteEfi">Impossibile eliminare la partizione EFI.</string>
+    <string id="log.partition.windowsNotUsingDeleting">Windows non utilizza EFI - verrà eliminata.</string>
+    <string id="log.partition.errorDeletingOld">Errore nell'eliminazione delle vecchie partizioni.</string>
+    <string id="log.partition.oldPartitionsDeleted">Vecchie partizioni eliminate.</string>
+    <string id="log.partition.efiCorrectSize">La partizione EFI ha la dimensione corretta.</string>
+    <string id="log.partition.diskNotGpt">Il disco non è formattato in GPT.</string>
+    <string id="log.partition.diskConfirmedGpt">Il disco è formattato in GPT.</string>
+    <string id="log.partition.noPartitionsDetected">Nessuna partizione rilevata.</string>
+    <string id="log.partition.errorRecoveringSpace">Errore: Recupero spazio fallito.</string>
+    <string id="log.partition.bothPartitionsExist">Le partizioni ISOBOOT e ISOEFI esistono già. Verifica dell'integrità...</string>
+    <string id="log.partition.verificationWarning">Avvertimento: Impossibile verificare la creazione della partizione, ma diskpart ha segnalato successo.</string>
+    
+    <!-- Log messages - Space Recovery -->
+    <string id="log.space.starting_recovery">Avvio del recupero spazio...</string>
+    <string id="log.space.cleaning_bcd">Pulizia delle voci BCD...</string>
+    <string id="log.space.recovery_successful">Spazio recuperato con successo.</string>
+    
+    <!-- Log messages - BCD Manager -->
+    <string id="log.bcd.cleaning_entries">Pulizia delle voci BCD BootThatISO...</string>
+    <string id="log.bcd.no_entries_found">Nessuna voce BCD BootThatISO trovata da eliminare.</string>
+    <string id="log.bcd.entry_deleted">Voce BCD eliminata: {0}</string>
+    <string id="log.bcd.cleanup_complete">Pulizia BCD completata. Voci eliminate: {0}</string>
+    
+    <!-- Log messages - Partition Reformatter (additional) -->
+    <string id="log.reformat.efi_found">Volume EFI trovato (numero {0}). Creazione dello script di formattazione...</string>
+    <string id="log.reformatter.cleaningFiles">Pulizia dei file...</string>
+    <string id="log.reformatter.windowsUsingEfi">Windows utilizza la partizione EFI.</string>
+    <string id="log.reformatter.cleanupSuccess">Pulizia riuscita.</string>
+    <string id="log.reformatter.noFilesToClean">Nessun file da pulire trovato.</string>
+    
+    <!-- Log messages - Disk Operations -->
+    <string id="log.diskpart.executing">Esecuzione di diskpart...</string>
+    <string id="log.diskIntegrity.executingChkdsk">Esecuzione di chkdsk...</string>
+    
+    <!-- Message strings -->
+    
 </language>
 

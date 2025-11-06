@@ -149,7 +149,8 @@ void ProcessController::processInThread(const std::string &isoPath, const std::s
 
 bool ProcessController::recoverSpace() {
     if (recoveryInProgress.load()) {
-        eventManager.notifyLogUpdate("La recuperacion de espacio ya se esta ejecutando.\r\n");
+        eventManager.notifyLogUpdate(
+            LocalizedOrUtf8("log.recovery.alreadyRunning", "La recuperación de espacio ya está en progreso.") + "\r\n");
         return false;
     }
 

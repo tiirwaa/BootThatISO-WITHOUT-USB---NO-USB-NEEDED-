@@ -208,5 +208,82 @@
     <string id="unattended.console.processingMessage">Processing ISO file in unattended mode...\nCheck console window for progress.\n\nConsole allocation failed - using message box fallback.</string>
     <string id="unattended.console.completionMessage">ISO processing completed successfully!</string>
     
+    <!-- Log messages - EFI Partition -->
+    <string id="log.efi.deleting_both">नए आकार के साथ पुनः बनाने के लिए दोनों विभाजनों को हटा रहा है...</string>
+    <string id="log.efi.duplicate_warning">गंभीर चेतावनी:</string>
+    <string id="log.efi.wrong_size_warning">चेतावनी: गलत आकार का EFI विभाजन ({0} MB, आवश्यक {1} MB)</string>
+    <string id="log.efi.freeSpaceWarning">चेतावनी: EFI विभाजन में खाली स्थान सत्यापित नहीं कर सका।</string>
+    <string id="log.efi.duplicate_count">{0} डुप्लिकेट ISOEFI विभाजन पाए गए।</string>
+    <string id="log.efi.duplicate_boot_issue">यह बूट समस्याओं का कारण बन सकता है।</string>
+    <string id="log.efi.deleting_all">सही ढंग से पुनः बनाने के लिए सभी विभाजनों को हटा रहा है...</string>
+    
+    <!-- Log messages - Space Recovery -->
+    <string id="log.space.no_volumes_deleted">हटाने के लिए कोई ISOEFI या ISOBOOT वॉल्यूम नहीं मिला।</string>
+    <string id="log.space.volume_deleted">वॉल्यूम {0} हटा दिया गया।</string>
+    <string id="log.space.volume_delete_failed">वॉल्यूम {0} हटाने में त्रुटि।</string>
+    <string id="log.space.resizing_c">C: विभाजन का आकार बदल रहा है...</string>
+    <string id="log.space.resize_completed">आकार बदलना पूरा हुआ।</string>
+    <string id="log.space.resize_error">विभाजन का आकार बदलने में त्रुटि (फिर भी जारी रख रहा है)।</string>
+    
+    <!-- Log messages - Partition Manager -->
+    <string id="log.partition.onlyIsoBootExists">केवल ISOBOOT विभाजन मौजूद है। दोनों विभाजनों को पुनः बना रहा है...</string>
+    <string id="log.partition.onlyEfiExistsRecreating">केवल EFI विभाजन मौजूद है (Windows द्वारा उपयोग नहीं किया जा रहा)। दोनों को पुनः बना रहा है...</string>
+    <string id="log.partition.onlyEfiExistsWindowsUsing">केवल EFI विभाजन मौजूद है और Windows इसे सिस्टम EFI के रूप में उपयोग कर रहा है।</string>
+    <string id="log.partition.reuseEfiCreateIsoBoot">EFI विभाजन पुनः उपयोग किया जाएगा। ISOBOOT विभाजन बना रहा है...</string>
+    <string id="log.partition.windows_using_efi">चेतावनी: Windows ISOEFI विभाजन का उपयोग कर रहा है। केवल ISOBOOT हटाया जाएगा, ISOEFI संरक्षित रहेगा।</string>
+    <string id="log.partition.space_recovery_failed">त्रुटि: स्थान पुनर्प्राप्ति विफल।</string>
+    <string id="log.partition.errorRecoveringSpace">त्रुटि: स्थान पुनर्प्राप्ति विफल।</string>
+    <string id="log.partition.bothPartitionsExist">ISOBOOT और ISOEFI विभाजन पहले से मौजूद हैं। अखंडता की जांच कर रहा है...</string>
+    <string id="log.partition.verificationWarning">चेतावनी: विभाजन निर्माण की पुष्टि नहीं कर सका, लेकिन diskpart ने सफलता की सूचना दी।</string>
+    
+    <!-- Log messages - ISO Processing -->
+    <string id="log.iso.extractingContent">ISO सामग्री निकाल रहा है...</string>
+    <string id="log.iso.processingBootWim">boot.wim संसाधित कर रहा है...</string>
+    
+    <!-- Error messages -->
+    <string id="error.efi.cleanup_failed">डुप्लिकेट विभाजनों को साफ करने में त्रुटि।</string>
+    
+    <!-- Log messages - Partition Manager (additional) -->
+    <string id="log.partition.skippingCreation">विभाजन निर्माण छोड़ रहा है: विभाजन पहले से मौजूद हैं।</string>
+    <string id="log.partition.efiWrongSize">EFI विभाजन का आकार गलत है।</string>
+    <string id="log.partition.usingExistingPartitions">मौजूदा विभाजनों का उपयोग कर रहा है।</string>
+    <string id="log.partition.solution">समाधान: {0}</string>
+    <string id="log.partition.efiDetectedSize">EFI विभाजन का पता चला (आकार: {0} MB)।</string>
+    <string id="log.partition.contentWillRemain">सामग्री बरकरार रहेगी।</string>
+    <string id="log.partition.criticalWarning">गंभीर चेतावनी: {0}</string>
+    <string id="log.partition.windowsUsingEfi">Windows EFI विभाजन का उपयोग कर रहा है।</string>
+    <string id="log.partition.cannotDeleteEfi">EFI विभाजन हटा नहीं सकता।</string>
+    <string id="log.partition.windowsNotUsingDeleting">Windows EFI का उपयोग नहीं कर रहा - हटा दिया जाएगा।</string>
+    <string id="log.partition.errorDeletingOld">पुराने विभाजनों को हटाने में त्रुटि।</string>
+    <string id="log.partition.oldPartitionsDeleted">पुराने विभाजन हटा दिए गए।</string>
+    <string id="log.partition.efiCorrectSize">EFI विभाजन का आकार सही है।</string>
+    <string id="log.partition.diskNotGpt">डिस्क GPT में स्वरूपित नहीं है।</string>
+    <string id="log.partition.diskConfirmedGpt">डिस्क GPT में स्वरूपित है।</string>
+    <string id="log.partition.noPartitionsDetected">कोई विभाजन नहीं पाया गया।</string>
+    
+    <!-- Log messages - Space Recovery -->
+    <string id="log.space.starting_recovery">स्थान पुनर्प्राप्ति शुरू कर रहा है...</string>
+    <string id="log.space.cleaning_bcd">BCD प्रविष्टियाँ साफ कर रहा है...</string>
+    <string id="log.space.recovery_successful">स्थान सफलतापूर्वक पुनर्प्राप्त किया गया।</string>
+    
+    <!-- Log messages - BCD Manager -->
+    <string id="log.bcd.cleaning_entries">BootThatISO BCD प्रविष्टियाँ साफ कर रहा है...</string>
+    <string id="log.bcd.no_entries_found">हटाने के लिए कोई BootThatISO BCD प्रविष्टियाँ नहीं मिलीं।</string>
+    <string id="log.bcd.entry_deleted">BCD प्रविष्टि हटाई गई: {0}</string>
+    <string id="log.bcd.cleanup_complete">BCD सफाई पूरी हुई। हटाई गई प्रविष्टियाँ: {0}</string>
+    
+    <!-- Log messages - Partition Reformatter (additional) -->
+    <string id="log.reformat.efi_found">EFI वॉल्यूम मिला (संख्या {0})। स्वरूपण स्क्रिप्ट बना रहा है...</string>
+    <string id="log.reformatter.cleaningFiles">फ़ाइलें साफ कर रहा है...</string>
+    <string id="log.reformatter.windowsUsingEfi">Windows EFI विभाजन का उपयोग कर रहा है।</string>
+    <string id="log.reformatter.cleanupSuccess">सफाई सफल।</string>
+    <string id="log.reformatter.noFilesToClean">साफ करने के लिए कोई फ़ाइल नहीं मिली।</string>
+    
+    <!-- Log messages - Disk Operations -->
+    <string id="log.diskpart.executing">diskpart निष्पादित कर रहा है...</string>
+    <string id="log.diskIntegrity.executingChkdsk">chkdsk निष्पादित कर रहा है...</string>
+    
+    <!-- Message strings -->
+    
 </language>
 
