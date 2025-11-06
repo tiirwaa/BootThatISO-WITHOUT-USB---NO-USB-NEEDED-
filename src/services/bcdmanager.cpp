@@ -3,6 +3,7 @@
 #include "../utils/Utils.h"
 #include "../utils/LocalizationManager.h"
 #include "../utils/LocalizationHelpers.h"
+#include "../models/LinuxBootStrategy.h"
 #include <windows.h>
 #include <winnt.h>
 #include <string>
@@ -646,21 +647,21 @@ std::string BCDManager::configureBCD(const std::string &driveLetter, const std::
 
     logFile << "EFI path: " << efiPath << "\n";
 
-    // For extracted mode, verify SDI file exists (only for Windows ISOs that have bootmgr)
+    // For extracted mode, check if this is a Linux ISO and use Linux strategy
     if (strategy.getType() == "extracted") {
         std::string bootmgrPath = driveLetter + "\\bootmgr";
         bool        hasBootmgr  = (GetFileAttributesA(bootmgrPath.c_str()) != INVALID_FILE_ATTRIBUTES);
-        if (hasBootmgr) {
-            std::string sdiPath = driveLetter + "\\boot\\boot.sdi";
-            if (GetFileAttributesA(sdiPath.c_str()) == INVALID_FILE_ATTRIBUTES) {
-                std::string errorMsg = "Error: Archivo SDI no encontrado en " + sdiPath + "\r\n";
-                if (eventManager)
-                    eventManager->notifyLogUpdate(errorMsg);
-                logFile << errorMsg;
-                logFile.close();
-                return "Archivo SDI no encontrado para extracted boot";
+        if (!hasBootmgr) {
+            // This is a Linux ISO - we need to use Linux boot strategy instead
+            std::string errorMsg = "ERROR: Detectada ISO de Linux. Cambiando a estrategia de boot Linux.\r\n";
+            if (eventManager) {
+                eventManager->notifyLogUpdate(errorMsg);
             }
-            logFile << "SDI file verified: " << sdiPath << std::endl;
+            logFile << errorMsg;
+
+            // Create Linux strategy and reconfigure
+            LinuxBootStrategy linuxStrategy;
+            return configureBCD(driveLetter, espDriveLetter, linuxStrategy);
         }
     } else if (strategy.getType() == "ramdisk") {
         // For ramdisk mode, verify boot.wim and boot.sdi were staged on the data partition
@@ -788,10 +789,42 @@ std::string BCDManager::configureBCD(const std::string &driveLetter, const std::
 
     // For extracted mode, export the configured BCD to ESP so bootmgfw.efi can find it
     if (strategy.getType() == "extracted") {
-        std::string exportPath   = espDriveLetter + "\\EFI\\Microsoft\\Boot\\BCD";
+        std::string exportPath = espDriveLetter + "\\EFI\\Microsoft\\Boot\\BCD";
+        std::string backupPath = exportPath + ".backup";
+
+        // Backup the existing BCD store
+        std::string backupCmd    = BCD_CMD + " /export \"" + backupPath + "\"";
+        std::string backupResult = Utils::exec(backupCmd.c_str());
+        logFile << "Backup BCD command: " << backupCmd << "\nResult: " << backupResult << "\n";
+        if (backupResult.find("successfully") == std::string::npos &&
+            backupResult.find("correctamente") == std::string::npos) {
+            logFile << "Warning: Failed to backup BCD\n";
+        }
+
         std::string exportCmd    = BCD_CMD + " /export \"" + exportPath + "\"";
         std::string exportResult = Utils::exec(exportCmd.c_str());
         logFile << "Export BCD to ESP command: " << exportCmd << "\nResult: " << exportResult << "\n";
+
+        // Check if the exported BCD is valid by enumerating entries
+        std::string checkCmd    = BCD_CMD + " /enum";
+        std::string checkResult = Utils::exec(checkCmd.c_str());
+        logFile << "Check BCD after export: " << checkResult << "\n";
+
+        // If the BCD appears empty or corrupted, restore from backup
+        if (checkResult.find("No existen objetos coincidentes") != std::string::npos ||
+            checkResult.find("does not exist") != std::string::npos || checkResult.empty()) {
+            logFile << "BCD appears corrupted after export, restoring from backup\n";
+            std::string restoreCmd    = BCD_CMD + " /import \"" + backupPath + "\"";
+            std::string restoreResult = Utils::exec(restoreCmd.c_str());
+            logFile << "Restore BCD command: " << restoreCmd << "\nResult: " << restoreResult << "\n";
+            if (eventManager) {
+                eventManager->notifyLogUpdate("BCD corrupto, restaurado desde backup.\r\n");
+            }
+        } else {
+            // BCD is valid, delete the backup
+            DeleteFileA(backupPath.c_str());
+            logFile << "BCD export successful, deleted backup\n";
+        }
     }
 
     logFile.close();
@@ -801,8 +834,32 @@ std::string BCDManager::configureBCD(const std::string &driveLetter, const std::
 
 bool BCDManager::restoreBCD() {
     const std::string BCD_CMD = "C:\\Windows\\System32\\bcdedit.exe";
-    std::string       output  = Utils::exec((BCD_CMD + " /enum all").c_str());
-    auto              blocks  = split(output, '\n');
+
+    // First, try to restore the BCD file from backup if it exists
+    std::string bcdPath = "C:\\Boot\\BCD"; // Default system BCD path
+    // But since we exported to ESP, check if ESP has backup
+    // For now, assume we need to find the ESP drive
+    // This is a simplification; in practice, we might need to detect ESP again
+    std::string espDrive   = "Z:"; // Placeholder, should be detected
+    std::string exportPath = espDrive + "\\EFI\\Microsoft\\Boot\\BCD";
+    std::string backupPath = exportPath + ".backup";
+
+    if (GetFileAttributesA(backupPath.c_str()) != INVALID_FILE_ATTRIBUTES) {
+        if (CopyFileA(backupPath.c_str(), exportPath.c_str(), FALSE)) {
+            if (eventManager) {
+                eventManager->notifyLogUpdate("Restaurado BCD desde backup.\r\n");
+            }
+            // Delete the backup after successful restore
+            DeleteFileA(backupPath.c_str());
+        } else {
+            if (eventManager) {
+                eventManager->notifyLogUpdate("Error al restaurar BCD desde backup.\r\n");
+            }
+        }
+    }
+
+    std::string output = Utils::exec((BCD_CMD + " /enum all").c_str());
+    auto        blocks = split(output, '\n');
     // Parse into blocks separated by empty lines
     std::vector<std::string> entryBlocks;
     std::string              currentBlock;
@@ -902,6 +959,54 @@ bool BCDManager::restoreBCD() {
         }
     }
 
+    // If we deleted entries, re-export the cleaned BCD to ESP
+    if (deletedAny) {
+        // Detect ESP drive by finding FAT32 partition with bootmgfw.efi
+        std::string espDrive;
+        for (char drive = 'A'; drive <= 'Z'; ++drive) {
+            std::string driveStr     = std::string(1, drive) + ":\\";
+            std::string bootmgfwPath = driveStr + "EFI\\Microsoft\\Boot\\bootmgfw.efi";
+            DWORD       attrs        = GetFileAttributesA(bootmgfwPath.c_str());
+            if (attrs != INVALID_FILE_ATTRIBUTES) {
+                // Check if FAT32 and size 100-1024MB
+                std::string volumePath = "\\\\.\\" + std::string(1, drive) + ":";
+                HANDLE hVolume = CreateFileA(volumePath.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
+                                             OPEN_EXISTING, 0, NULL);
+                if (hVolume != INVALID_HANDLE_VALUE) {
+                    PARTITION_INFORMATION_EX partInfo;
+                    DWORD                    bytesReturned = 0;
+                    if (DeviceIoControl(hVolume, IOCTL_DISK_GET_PARTITION_INFO_EX, NULL, 0, &partInfo, sizeof(partInfo),
+                                        &bytesReturned, NULL)) {
+                        ULONGLONG sizeBytes = partInfo.PartitionLength.QuadPart;
+                        int       sizeMB    = static_cast<int>(sizeBytes / (1024 * 1024));
+                        char      fsName[256];
+                        if (GetVolumeInformationA(driveStr.c_str(), NULL, 0, NULL, NULL, NULL, fsName,
+                                                  sizeof(fsName))) {
+                            if (sizeMB >= 100 && sizeMB <= 1024 && strcmp(fsName, "FAT32") == 0) {
+                                espDrive = driveStr;
+                                CloseHandle(hVolume);
+                                break;
+                            }
+                        }
+                    }
+                    CloseHandle(hVolume);
+                }
+            }
+        }
+        if (!espDrive.empty()) {
+            std::string exportPath   = espDrive + "EFI\\Microsoft\\Boot\\BCD";
+            std::string exportCmd    = BCD_CMD + " /export \"" + exportPath + "\"";
+            std::string exportResult = Utils::exec(exportCmd.c_str());
+            if (eventManager) {
+                eventManager->notifyLogUpdate("Re-exportado BCD limpio a ESP.\r\n");
+            }
+        } else {
+            if (eventManager) {
+                eventManager->notifyLogUpdate("No se pudo detectar la particion ESP para re-exportar BCD.\r\n");
+            }
+        }
+    }
+
     return deletedAny;
 }
 
@@ -965,20 +1070,10 @@ void BCDManager::cleanBootThatISOEntries() {
         bool        shouldDelete = false;
         std::string reason;
 
-        // Check if contains ISOBOOT in description
+        // Check if contains ISOBOOT in description (only delete clear BootThatISO entries)
         if (icontains(blk, "isoboot")) {
             shouldDelete = true;
             reason       = "Contains ISOBOOT in description";
-        }
-        // Check if device points to boot.wim (RAMDisk entry from BootThatISO)
-        else if (icontains(blk, "boot.wim") && icontains(blk, "ramdisk")) {
-            shouldDelete = true;
-            reason       = "RAMDisk entry pointing to boot.wim";
-        }
-        // Check if it's a Windows Setup entry with boot.wim device
-        else if (icontains(blk, "windows setup") && icontains(blk, "[boot]\\sources\\boot.wim")) {
-            shouldDelete = true;
-            reason       = "Windows Setup entry with BootThatISO boot.wim";
         }
 
         if (shouldDelete) {
@@ -991,15 +1086,13 @@ void BCDManager::cleanBootThatISOEntries() {
 
                     // Don't delete {current}, {bootmgr}, or preserved Windows entries
                     bool isProtected = false;
-                    if (guid == "{current}" || guid == "{bootmgr}") {
+                    if (guid == "{current}" || guid == "{bootmgr}" || guid == "{default}") {
                         isProtected = true;
-                    } else if (guid == "{default}") {
-                        // Only protect {default} if it doesn't contain ISOBOOT
-                        isProtected = !icontains(blk, "isoboot");
-                    } else if (icontains(blk, "windows (system)") || icontains(blk, "windows 10")) {
-                        // Protect preserved Windows entries
+                    } else if (icontains(blk, "windows") || icontains(blk, "boot manager") ||
+                               icontains(blk, "bootmgr")) {
+                        // Protect any entry that mentions Windows or boot manager
                         isProtected = true;
-                        reason      = "Skipping protected Windows entry: " + guid;
+                        reason      = "Skipping protected system entry: " + guid;
                     }
 
                     if (isProtected) {

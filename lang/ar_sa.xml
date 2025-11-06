@@ -81,6 +81,7 @@
     <string id="log.iso.analyzing">جارٍ تحليل محتوى ISO...</string>
     <string id="log.iso.windowsDetected">تم اكتشاف Windows ISO.</string>
     <string id="log.iso.nonWindowsDetected">تم اكتشاف ISO غير Windows.</string>
+    <string id="log.iso.typeDetected">Tipo de ISO detectado</string>
     <string id="log.iso.copyingInstallFile">جارٍ نسخ ملف التثبيت...</string>
     <string id="log.iso.installFileCopied">تم نسخ ملف التثبيت والتحقق منه بنجاح.</string>
     <string id="log.iso.installFileError">خطأ/تحذير في التحقق من install.*؛ تحقق من iso_extract.log.</string>

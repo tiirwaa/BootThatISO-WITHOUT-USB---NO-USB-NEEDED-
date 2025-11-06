@@ -81,6 +81,7 @@
     <string id="log.iso.analyzing">ISO 콘텐츠를 분석하는 중...</string>
     <string id="log.iso.windowsDetected">Windows ISO가 감지되었습니다.</string>
     <string id="log.iso.nonWindowsDetected">비Windows ISO가 감지되었습니다.</string>
+    <string id="log.iso.typeDetected">Tipo de ISO detectado</string>
     <string id="log.iso.copyingInstallFile">설치 파일을 복사하는 중...</string>
     <string id="log.iso.installFileCopied">설치 파일이 성공적으로 복사되고 검증되었습니다.</string>
     <string id="log.iso.installFileError">install.* 검증 중 오류/경고; iso_extract.log를 확인하세요.</string>

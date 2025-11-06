@@ -350,28 +350,8 @@ bool PartitionReformatter::reformatPartition(const std::string &format) {
 }
 
 bool PartitionReformatter::reformatEfiPartition() {
-    // Check if Windows is using the ISOEFI partition
-    VolumeDetector volumeDetector(eventManager_);
-    if (volumeDetector.isWindowsUsingEfiPartition()) {
-        if (eventManager_)
-            eventManager_->notifyLogUpdate(LocalizedOrUtf8("log.reformatter.windowsUsingEfi",
-                                                           "ADVERTENCIA: Windows está usando la partición ISOEFI. No "
-                                                           "se formateará para preservar la instalación de Windows. "
-                                                           "Solo se limpiarán los archivos de BootThatISO.") +
-                                           "\r\n");
-
-        // Log this detection
-        std::string logDir = Utils::getExeDirectory() + "logs";
-        CreateDirectoryA(logDir.c_str(), NULL);
-        std::ofstream logFile((logDir + "\\" + REFORMAT_LOG_FILE).c_str(), std::ios::app);
-        if (logFile) {
-            logFile << "Windows installation detected in ISOEFI - skipping format, will clean BootThatISO files only\n";
-            logFile.close();
-        }
-
-        // Instead of formatting, just clean BootThatISO-specific files
-        return cleanBootThatISOFiles();
-    }
+    // Always try to create/reformat ISOEFI partition, regardless of Windows EFI usage
+    // The ISOEFI partition should be separate from Windows system EFI partition
 
     if (eventManager_)
         eventManager_->notifyLogUpdate(

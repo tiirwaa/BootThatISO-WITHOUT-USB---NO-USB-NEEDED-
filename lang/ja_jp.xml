@@ -78,10 +78,11 @@
     <string id="editionSelector.infoIndex">インデックス：</string>
     
     <!-- Log messages - ISO Processing -->
-    <string id="log.iso.analyzing">ISOコンテンツを分析しています...</string>
+    <string id="log.iso.analyzing">ISOコンテンツを分析中...</string>
     <string id="log.iso.windowsDetected">Windows ISOが検出されました。</string>
     <string id="log.iso.nonWindowsDetected">非Windows ISOが検出されました。</string>
-    <string id="log.iso.copyingInstallFile">インストールファイルをコピーしています...</string>
+    <string id="log.iso.typeDetected">Tipo de ISO detectado</string>
+    <string id="log.iso.copyingInstallFile">インストールファイルをコピー中...</string>
     <string id="log.iso.installFileCopied">インストールファイルが正常にコピーおよび検証されました。</string>
     <string id="log.iso.installFileError">install.*の検証中にエラー/警告が発生しました。iso_extract.logを確認してください。</string>
     <string id="log.iso.retryingInstall">install.*の抽出を再試行しています...</string>

@@ -78,9 +78,10 @@
     <string id="editionSelector.infoIndex">索引：</string>
     
     <!-- Log messages - ISO Processing -->
-    <string id="log.iso.analyzing">正在分析ISO内容...</string>
-    <string id="log.iso.windowsDetected">检测到Windows ISO。</string>
-    <string id="log.iso.nonWindowsDetected">检测到非Windows ISO。</string>
+    <string id="log.iso.analyzing">正在分析 ISO 内容...</string>
+    <string id="log.iso.windowsDetected">检测到 Windows ISO。</string>
+    <string id="log.iso.nonWindowsDetected">检测到非 Windows ISO。</string>
+    <string id="log.iso.typeDetected">Tipo de ISO detectado</string>
     <string id="log.iso.copyingInstallFile">正在复制安装文件...</string>
     <string id="log.iso.installFileCopied">安装文件已成功复制并验证。</string>
     <string id="log.iso.installFileError">验证install.*时出错/警告；请检查iso_extract.log。</string>

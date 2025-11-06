@@ -19,6 +19,7 @@ public:
     std::string getEfiPartitionDriveLetter();
     std::string getPartitionFileSystem();
     int         getEfiPartitionSizeMB(); // Get EFI partition size in MB
+    std::string getIsoEfiPartitionDriveLetter();
 
     // Public method to log disk structure using DiskLogger service
     void logDiskStructure();

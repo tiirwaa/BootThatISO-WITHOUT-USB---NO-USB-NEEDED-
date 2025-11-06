@@ -26,8 +26,12 @@ bool VolumeDetector::partitionExists() {
 }
 
 bool VolumeDetector::efiPartitionExists() {
-    // Return true if any EFI partition exists (ISOEFI or SYSTEM)
-    return !getEfiPartitionDriveLetter().empty();
+    // Return true only if EFI partition exists with correct size
+    std::string drive = getEfiPartitionDriveLetter();
+    if (drive.empty())
+        return false;
+    int size = getEfiPartitionSizeMB();
+    return size == REQUIRED_EFI_SIZE_MB;
 }
 
 std::string VolumeDetector::getPartitionDriveLetter() {
@@ -35,12 +39,29 @@ std::string VolumeDetector::getPartitionDriveLetter() {
 }
 
 std::string VolumeDetector::getEfiPartitionDriveLetter() {
-    // Try ISOEFI first, then SYSTEM
-    std::string driveLetter = volumeManager_->getPartitionDriveLetter(EFI_VOLUME_LABEL, eventManager_);
-    if (!driveLetter.empty()) {
-        return driveLetter;
+    std::string logDir = Utils::getExeDirectory() + "logs";
+    CreateDirectoryA(logDir.c_str(), NULL);
+    std::ofstream logFile((logDir + "\\debug_efi_check.log").c_str(), std::ios::app);
+    // Try EFI labels in order: prefer ISOEFI first, then SYSTEM/EFI/ESP
+    std::vector<std::string> labels = {EFI_VOLUME_LABEL, "SYSTEM", "EFI", "ESP"};
+    for (const auto &label : labels) {
+        std::string driveLetter = volumeManager_->getPartitionDriveLetter(label.c_str(), eventManager_);
+        if (logFile) {
+            logFile << "Trying EFI label '" << label << "': '" << driveLetter << "'\n";
+        }
+        if (!driveLetter.empty()) {
+            if (logFile) {
+                logFile << "Found EFI partition with label '" << label << "' at " << driveLetter << "\n";
+                logFile.close();
+            }
+            return driveLetter;
+        }
     }
-    return volumeManager_->getPartitionDriveLetter("SYSTEM", eventManager_);
+    if (logFile) {
+        logFile << "No EFI partition found with any known labels\n";
+        logFile.close();
+    }
+    return "";
 }
 
 std::string VolumeDetector::getPartitionFileSystem() {
@@ -110,9 +131,109 @@ int VolumeDetector::countEfiPartitions() {
 }
 
 bool VolumeDetector::isWindowsUsingEfiPartition() {
-    return volumeManager_->isWindowsUsingEfiPartition(eventManager_);
+    std::string efiDrive = getEfiPartitionDriveLetter();
+    std::string logDir   = Utils::getExeDirectory() + "logs";
+    CreateDirectoryA(logDir.c_str(), NULL);
+    std::ofstream logFile((logDir + "\\debug_efi_check.log").c_str(), std::ios::app);
+    if (logFile) {
+        logFile << "Checking if Windows is using EFI partition\n";
+        logFile << "EFI drive letter: '" << efiDrive << "'\n";
+    }
+    if (!efiDrive.empty()) {
+        std::string bootmgfwPath = efiDrive + "\\EFI\\Microsoft\\Boot\\bootmgfw.efi";
+        if (logFile) {
+            logFile << "Checking path: " << bootmgfwPath << "\n";
+        }
+        DWORD attrs = GetFileAttributesA(bootmgfwPath.c_str());
+        if (logFile) {
+            logFile << "File attributes: " << attrs << " (INVALID_FILE_ATTRIBUTES = " << INVALID_FILE_ATTRIBUTES
+                    << ")\n";
+        }
+        if (attrs != INVALID_FILE_ATTRIBUTES) {
+            if (logFile) {
+                logFile << "bootmgfw.efi found - Windows is using EFI\n";
+                logFile.close();
+            }
+            return true;
+        } else {
+            if (logFile) {
+                logFile << "bootmgfw.efi NOT found on labeled EFI partition\n";
+            }
+        }
+    } else {
+        if (logFile) {
+            logFile << "EFI drive letter is empty\n";
+        }
+    }
+
+    // Fallback: search all mounted drives for bootmgfw.efi
+    if (logFile) {
+        logFile << "Searching all drives for bootmgfw.efi as fallback\n";
+    }
+    for (char drive = 'A'; drive <= 'Z'; ++drive) {
+        std::string driveStr     = std::string(1, drive) + ":\\";
+        std::string bootmgfwPath = driveStr + "EFI\\Microsoft\\Boot\\bootmgfw.efi";
+        DWORD       attrs        = GetFileAttributesA(bootmgfwPath.c_str());
+        if (attrs != INVALID_FILE_ATTRIBUTES) {
+            // Check if it's FAT32 and size ~500MB
+            std::string volumePath = "\\\\.\\" + std::string(1, drive) + ":";
+            HANDLE hVolume = CreateFileA(volumePath.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL,
+                                         OPEN_EXISTING, 0, NULL);
+            if (hVolume != INVALID_HANDLE_VALUE) {
+                PARTITION_INFORMATION_EX partInfo;
+                DWORD                    bytesReturned = 0;
+                if (DeviceIoControl(hVolume, IOCTL_DISK_GET_PARTITION_INFO_EX, NULL, 0, &partInfo, sizeof(partInfo),
+                                    &bytesReturned, NULL)) {
+                    ULONGLONG sizeBytes = partInfo.PartitionLength.QuadPart;
+                    int       sizeMB    = static_cast<int>(sizeBytes / (1024 * 1024));
+                    // Check filesystem
+                    char fsName[256];
+                    if (GetVolumeInformationA(driveStr.c_str(), NULL, 0, NULL, NULL, NULL, fsName, sizeof(fsName))) {
+                        if (logFile) {
+                            logFile << "Found bootmgfw.efi on " << driveStr << ", size " << sizeMB << "MB, FS "
+                                    << fsName << "\n";
+                        }
+                        if (sizeMB >= 100 && sizeMB <= 1024 && strcmp(fsName, "FAT32") == 0) {
+                            if (logFile) {
+                                logFile << "EFI partition found via fallback on " << driveStr
+                                        << " - Windows is using EFI\n";
+                                logFile.close();
+                            }
+                            CloseHandle(hVolume);
+                            return true;
+                        }
+                    }
+                }
+                CloseHandle(hVolume);
+            }
+        }
+    }
+
+    if (logFile) {
+        logFile << "Windows is NOT using EFI partition\n";
+        logFile.close();
+    }
+    return false;
 }
 
 void VolumeDetector::logDiskStructure() {
     diskLogger_->logDiskStructure();
+}
+
+std::string VolumeDetector::getIsoEfiPartitionDriveLetter() {
+    std::string logDir = Utils::getExeDirectory() + "logs";
+    CreateDirectoryA(logDir.c_str(), NULL);
+    std::ofstream logFile((logDir + "\\debug_efi_check.log").c_str(), std::ios::app);
+
+    std::string driveLetter = volumeManager_->getPartitionDriveLetter(EFI_VOLUME_LABEL, eventManager_);
+    if (logFile) {
+        logFile << "Trying ISOEFI label '" << EFI_VOLUME_LABEL << "': '" << driveLetter << "'\n";
+        if (!driveLetter.empty()) {
+            logFile << "Found ISOEFI partition at " << driveLetter << "\n";
+        } else {
+            logFile << "No ISOEFI partition found\n";
+        }
+        logFile.close();
+    }
+    return driveLetter;
 }

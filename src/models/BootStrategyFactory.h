@@ -4,6 +4,7 @@
 #include "BootStrategy.h"
 #include "RamdiskBootStrategy.h"
 #include "ExtractedBootStrategy.h"
+#include "LinuxBootStrategy.h"
 #include <memory>
 #include <string>
 #include "../utils/AppKeys.h"
@@ -16,6 +17,9 @@ public:
         }
         if (modeKey == AppKeys::BootModeExtract) {
             return std::make_unique<ExtractedBootStrategy>();
+        }
+        if (modeKey == AppKeys::BootModeLinux) {
+            return std::make_unique<LinuxBootStrategy>();
         }
         return nullptr;
     }

@@ -79,8 +79,9 @@
     
     <!-- Log messages - ISO Processing -->
     <string id="log.iso.analyzing">Анализ содержимого ISO...</string>
-    <string id="log.iso.windowsDetected">Обнаружен Windows ISO.</string>
+    <string id="log.iso.windowsDetected">Обнаружен ISO Windows.</string>
     <string id="log.iso.nonWindowsDetected">Обнаружен не-Windows ISO.</string>
+    <string id="log.iso.typeDetected">Tipo de ISO detectado</string>
     <string id="log.iso.copyingInstallFile">Копирование файла установки...</string>
     <string id="log.iso.installFileCopied">Файл установки успешно скопирован и проверен.</string>
     <string id="log.iso.installFileError">Ошибка/Предупреждение при проверке install.*; проверьте iso_extract.log.</string>

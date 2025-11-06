@@ -264,7 +264,7 @@ bool ISOCopyManager::extractISOContents(EventManager &eventManager, const std::s
                                      "\r\n");
     }
 
-    eventManager.notifyDetailedProgress(25, 100, "Tipo de ISO detectado");
+    eventManager.notifyDetailedProgress(25, 100, LocalizedOrUtf8("log.iso.typeDetected", "Tipo de ISO detectado"));
     isWindowsISODetected = isWindowsISO;
 
     // Calculate MD5 of the ISO

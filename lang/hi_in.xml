@@ -81,6 +81,7 @@
     <string id="log.iso.analyzing">ISO सामग्री का विश्लेषण किया जा रहा है...</string>
     <string id="log.iso.windowsDetected">Windows ISO पता चला।</string>
     <string id="log.iso.nonWindowsDetected">गैर-Windows ISO पता चला।</string>
+    <string id="log.iso.typeDetected">Tipo de ISO detectado</string>
     <string id="log.iso.copyingInstallFile">इंस्टॉलेशन फ़ाइल कॉपी की जा रही है...</string>
     <string id="log.iso.installFileCopied">इंस्टॉलेशन फ़ाइल सफलतापूर्वक कॉपी और सत्यापित की गई।</string>
     <string id="log.iso.installFileError">install.* सत्यापित करने में त्रुटि/चेतावनी; iso_extract.log जांचें।</string>

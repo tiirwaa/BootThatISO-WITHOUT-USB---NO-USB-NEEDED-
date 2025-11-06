@@ -80,7 +80,8 @@
     <!-- Log messages - ISO Processing -->
     <string id="log.iso.analyzing">ISO içeriği analiz ediliyor...</string>
     <string id="log.iso.windowsDetected">Windows ISO algılandı.</string>
-    <string id="log.iso.nonWindowsDetected">Windows olmayan ISO algılandı.</string>
+    <string id="log.iso.nonWindowsDetected">Windows dışı ISO algılandı.</string>
+    <string id="log.iso.typeDetected">Tipo de ISO detectado</string>
     <string id="log.iso.copyingInstallFile">Kurulum dosyası kopyalanıyor...</string>
     <string id="log.iso.installFileCopied">Kurulum dosyası başarıyla kopyalandı ve doğrulandı.</string>
     <string id="log.iso.installFileError">install.* doğrulanırken hata/uyarı; iso_extract.log'u kontrol edin.</string>

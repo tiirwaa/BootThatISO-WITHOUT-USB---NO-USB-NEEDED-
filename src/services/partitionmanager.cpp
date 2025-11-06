@@ -354,8 +354,8 @@ bool PartitionManager::createPartition(const std::string &format, bool skipInteg
 
     // Step 4: Create partitions using diskpart (only if needed)
     if (needsToCreatePartitions) {
-        bool createIsoBoot = !partitionExists();    // Create ISOBOOT if it doesn't exist
-        bool createEfi     = !efiPartitionExists(); // Create EFI if it doesn't exist
+        bool createIsoBoot = !partitionExists();                                  // Create ISOBOOT if it doesn't exist
+        bool createEfi = volumeDetector->getIsoEfiPartitionDriveLetter().empty(); // Create ISOEFI if it doesn't exist
         if (!partitionCreator->performDiskpartOperations(format, createIsoBoot, createEfi)) {
             return false;
         }

@@ -81,6 +81,7 @@
     <string id="log.iso.analyzing">Analisi del contenuto ISO...</string>
     <string id="log.iso.windowsDetected">Rilevato ISO Windows.</string>
     <string id="log.iso.nonWindowsDetected">Rilevato ISO non-Windows.</string>
+    <string id="log.iso.typeDetected">Tipo de ISO detectado</string>
     <string id="log.iso.copyingInstallFile">Copia del file di installazione...</string>
     <string id="log.iso.installFileCopied">File di installazione copiato e validato con successo.</string>
     <string id="log.iso.installFileError">Errore/Avviso nella validazione di install.*; controllare iso_extract.log.</string>
