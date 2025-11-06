@@ -33,6 +33,7 @@ Website: [English](https://agsoft.co.cr/en/software-and-services/) | [Spanish](h
 - Runs optional integrity checks (`chkdsk`), generates detailed logs, and allows cancellation or space recovery.
 - Provides unattended mode for script integrations via command-line arguments.
 - **ISO hash cache (ISOBOOTHASH)**: Compares the ISO MD5, selected boot mode, and format against values stored in the `ISOBOOTHASH` file on the target. If they match, it skips formatting and content copy to speed up repeated runs.
+- **Self-contained executable**: Includes embedded GRUB EFI bootloader (~652KB) for Linux ISO booting, eliminating external dependencies.
 
 ## Tested ISOs
 
