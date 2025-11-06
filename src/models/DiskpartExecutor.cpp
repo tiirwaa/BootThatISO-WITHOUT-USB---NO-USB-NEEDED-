@@ -266,7 +266,7 @@ bool DiskpartExecutor::isDiskGpt() {
     // Log the output
     std::string logDir = Utils::getExeDirectory() + "logs";
     CreateDirectoryA(logDir.c_str(), NULL);
-    std::ofstream logFile((logDir + "\\diskpart_list_disk.log").c_str());
+    std::ofstream logFile((logDir + "\\" + DISKPART_LIST_LOG_FILE).c_str());
     if (logFile) {
         logFile << "Diskpart list disk output:\n" << Utils::ansi_to_utf8(output) << "\n";
         logFile << "Exit code: " << exitCode << "\n";

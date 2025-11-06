@@ -22,7 +22,6 @@
 #define WM_UPDATE_DETAILED_PROGRESS (WM_USER + 5)
 #define WM_UPDATE_ERROR (WM_USER + 6)
 #define WM_RECOVER_COMPLETE (WM_USER + 7)
-#define WM_UPDATE_DISK_SPACE (WM_USER + 8)
 
 namespace {
 constexpr int      LOGO_TARGET_WIDTH             = 56;
@@ -122,6 +121,9 @@ MainWindow::MainWindow(HWND parent)
     // Setup UI immediately (fast operations)
     SetupUI(parent);
 
+    // Update disk space info immediately (fast operation)
+    UpdateDiskSpaceInfo();
+
     // Start heavy initialization in background thread
     std::thread([this]() { PerformHeavyInitialization(); }).detach();
 }
@@ -132,8 +134,7 @@ void MainWindow::PerformHeavyInitialization() {
         bcdManager->restoreBCD();
     }
 
-    // Update disk space info on main thread
-    PostMessage(hWndParent, WM_UPDATE_DISK_SPACE, 0, 0);
+    // Disk space info is already updated in constructor
 }
 
 MainWindow::~MainWindow() {
@@ -546,9 +547,6 @@ LRESULT MainWindow::HandleCommand(UINT msg, WPARAM wParam, LPARAM lParam) {
             PostMessage(hWndParent, WM_CLOSE, 0, 0);
         }
     } break;
-    case WM_UPDATE_DISK_SPACE:
-        UpdateDiskSpaceInfo();
-        break;
     }
     return 0;
 }
@@ -751,6 +749,19 @@ void MainWindow::UpdateDiskSpaceInfo() {
     long long availableGB        = partitionManager->getAvailableSpaceGB();
     bool      partitionExists    = partitionManager->partitionExists();
     bool      efiPartitionExists = !partitionManager->getEfiPartitionDriveLetter().empty();
+
+    // Log the values for debugging
+    std::string debugMsg = "Disk space info - Available: " + std::to_string(availableGB) +
+                           " GB, ISOBOOT exists: " + (partitionExists ? "yes" : "no") +
+                           ", ISOEFI exists: " + (efiPartitionExists ? "yes" : "no");
+
+    std::string logDir = Utils::getExeDirectory() + "logs";
+    CreateDirectoryA(logDir.c_str(), NULL);
+    std::ofstream logFile((logDir + "\\" + GENERAL_LOG_FILE).c_str(), std::ios::app);
+    if (logFile) {
+        logFile << debugMsg << std::endl;
+        logFile.close();
+    }
 
     std::wstring        yesText      = LocalizedOrW("common.yes", L"Si");
     std::wstring        noText       = LocalizedOrW("common.no", L"No");

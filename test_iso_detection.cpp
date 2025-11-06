@@ -24,7 +24,7 @@ std::string exec(const char* cmd) {
     si.wShowWindow = SW_HIDE;
 
     PROCESS_INFORMATION pi;
-    if (!CreateProcessA(NULL, const_cast<char*>(cmd), NULL, NULL, TRUE, 0, NULL, NULL, &si, &pi)) {
+    if (!CreateProcessA(NULL, const_cast<char*>(cmd), NULL, NULL, TRUE, CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) {
         CloseHandle(hReadPipe);
         CloseHandle(hWritePipe);
         throw std::runtime_error("CreateProcess failed");

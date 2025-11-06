@@ -34,17 +34,17 @@ bool VolumeEnumerator::execute() {
     }
 
     // Use diskpart to list volumes and parse the output
-    std::string   listCmd = "diskpart /s " + Utils::getExeDirectory() + "list_volumes.txt";
-    std::ofstream listScript((Utils::getExeDirectory() + "list_volumes.txt").c_str());
+    std::string   listCmd = "diskpart /s " + Utils::getExeDirectory() + "logs\\" + LIST_VOLUMES_SCRIPT_FILE;
+    std::ofstream listScript((Utils::getExeDirectory() + "logs\\" + LIST_VOLUMES_SCRIPT_FILE).c_str());
     if (listScript) {
         listScript << "list volume\n";
         listScript.close();
     }
 
     // Execute diskpart to get volume list
-    std::string outputPath = Utils::getExeDirectory() + "volume_list.txt";
+    std::string outputPath = Utils::getExeDirectory() + "logs\\" + VOLUME_LIST_OUTPUT_FILE;
     std::string cmd        = listCmd + " > \"" + outputPath + "\" 2>&1";
-    system(cmd.c_str());
+    Utils::exec(cmd.c_str());
 
     // Parse the output
     std::ifstream                                          outputFile(outputPath.c_str());
@@ -135,8 +135,10 @@ bool VolumeEnumerator::execute() {
                 std::string driveCandidate = std::string(1, l) + ":\\";
                 if (GetDriveTypeA(driveCandidate.c_str()) == DRIVE_NO_ROOT_DIR) {
                     // Use diskpart to assign letter
-                    std::string   assignCmd = "diskpart /s " + Utils::getExeDirectory() + "assign_letter.txt";
-                    std::ofstream assignScript((Utils::getExeDirectory() + "assign_letter.txt").c_str());
+                    std::string assignCmd =
+                        "diskpart /s " + Utils::getExeDirectory() + "logs\\" + ASSIGN_LETTER_SCRIPT_FILE;
+                    std::ofstream assignScript(
+                        (Utils::getExeDirectory() + "logs\\" + ASSIGN_LETTER_SCRIPT_FILE).c_str());
                     if (assignScript) {
                         assignScript << "select volume " << volNum << "\n";
                         assignScript << "assign letter=" << l << "\n";
@@ -146,8 +148,8 @@ bool VolumeEnumerator::execute() {
                         PROCESS_INFORMATION pi;
                         si.dwFlags     = STARTF_USESHOWWINDOW;
                         si.wShowWindow = SW_HIDE;
-                        if (CreateProcessA(NULL, const_cast<char *>(assignCmd.c_str()), NULL, NULL, FALSE, 0, NULL,
-                                           NULL, &si, &pi)) {
+                        if (CreateProcessA(NULL, const_cast<char *>(assignCmd.c_str()), NULL, NULL, FALSE,
+                                           CREATE_NO_WINDOW, NULL, NULL, &si, &pi)) {
                             WaitForSingleObject(pi.hProcess, INFINITE);
                             DWORD exitCode;
                             GetExitCodeProcess(pi.hProcess, &exitCode);
@@ -217,42 +219,31 @@ bool VolumeDeleter::execute() {
         const std::string &label       = it->first;
         const std::string &driveLetter = it->second;
 
-        std::string   deleteCmd = "diskpart /s " + Utils::getExeDirectory() + "delete_volume.txt";
-        std::ofstream deleteScript((Utils::getExeDirectory() + "delete_volume.txt").c_str());
+        std::string   deleteCmd = "diskpart /s " + Utils::getExeDirectory() + "logs\\" + DELETE_VOLUME_SCRIPT_FILE;
+        std::ofstream deleteScript((Utils::getExeDirectory() + "logs\\" + DELETE_VOLUME_SCRIPT_FILE).c_str());
         if (deleteScript) {
             deleteScript << "select volume=" << driveLetter << "\n";
             deleteScript << "delete volume override\n";
             deleteScript.close();
 
-            STARTUPINFOA        si = {sizeof(si)};
-            PROCESS_INFORMATION pi;
-            si.dwFlags     = STARTF_USESHOWWINDOW;
-            si.wShowWindow = SW_HIDE;
-            if (CreateProcessA(NULL, const_cast<char *>(deleteCmd.c_str()), NULL, NULL, FALSE, 0, NULL, NULL, &si,
-                               &pi)) {
-                WaitForSingleObject(pi.hProcess, INFINITE);
-                DWORD exitCode;
-                GetExitCodeProcess(pi.hProcess, &exitCode);
-                CloseHandle(pi.hProcess);
-                CloseHandle(pi.hThread);
+            std::string result = Utils::exec(deleteCmd.c_str());
+            // Check if command succeeded (empty result typically means success for diskpart)
+            if (result.find("DiskPart successfully") != std::string::npos || result.empty()) {
+                if (eventManager_)
+                    eventManager_->notifyLogUpdate(LocalizedFormatUtf8(
+                        "log.space.volume_deleted", {Utils::utf8_to_wstring(label)}, "Volumen {0} eliminado.\r\n"));
 
-                if (exitCode == 0) {
-                    if (eventManager_)
-                        eventManager_->notifyLogUpdate(LocalizedFormatUtf8(
-                            "log.space.volume_deleted", {Utils::utf8_to_wstring(label)}, "Volumen {0} eliminado.\r\n"));
-
-                    char        volumeGuid[MAX_PATH];
-                    std::string mountPoint = driveLetter + ":\\";
-                    if (!GetVolumeNameForVolumeMountPointA(mountPoint.c_str(), volumeGuid, sizeof(volumeGuid))) {
-                        std::string mountPointToRemove = driveLetter + ":";
-                        DeleteVolumeMountPointA(mountPointToRemove.c_str());
-                    }
-                } else {
-                    if (eventManager_)
-                        eventManager_->notifyLogUpdate(LocalizedFormatUtf8("log.space.volume_delete_failed",
-                                                                           {Utils::utf8_to_wstring(label)},
-                                                                           "Error al eliminar volumen {0}.\r\n"));
+                char        volumeGuid[MAX_PATH];
+                std::string mountPoint = driveLetter + ":\\";
+                if (!GetVolumeNameForVolumeMountPointA(mountPoint.c_str(), volumeGuid, sizeof(volumeGuid))) {
+                    std::string mountPointToRemove = driveLetter + ":";
+                    DeleteVolumeMountPointA(mountPointToRemove.c_str());
                 }
+            } else {
+                if (eventManager_)
+                    eventManager_->notifyLogUpdate(LocalizedFormatUtf8("log.space.volume_delete_failed",
+                                                                       {Utils::utf8_to_wstring(label)},
+                                                                       "Error al eliminar volumen {0}.\r\n"));
             }
         }
     }
@@ -272,8 +263,8 @@ bool PartitionResizer::execute() {
     if (eventManager_)
         eventManager_->notifyLogUpdate(LocalizedOrUtf8("log.space.resizing_c", "Resizing C: partition...\r\n"));
 
-    std::string   resizeCmd = "diskpart /s " + Utils::getExeDirectory() + "resize_script.txt";
-    std::ofstream resizeScript((Utils::getExeDirectory() + "resize_script.txt").c_str());
+    std::string   resizeCmd = "diskpart /s " + Utils::getExeDirectory() + "logs\\" + RESIZE_SCRIPT_FILE;
+    std::ofstream resizeScript((Utils::getExeDirectory() + "logs\\" + RESIZE_SCRIPT_FILE).c_str());
     if (resizeScript) {
         resizeScript << "select disk 0\n";
         resizeScript << "select partition 3\n"; // Assume C: is partition 3
@@ -281,14 +272,9 @@ bool PartitionResizer::execute() {
         resizeScript.close();
     }
 
-    STARTUPINFOA        si = {sizeof(si)};
-    PROCESS_INFORMATION pi;
-    si.dwFlags     = STARTF_USESHOWWINDOW;
-    si.wShowWindow = SW_HIDE;
-    if (CreateProcessA(NULL, const_cast<char *>(resizeCmd.c_str()), NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
-        WaitForSingleObject(pi.hProcess, INFINITE);
-        CloseHandle(pi.hProcess);
-        CloseHandle(pi.hThread);
+    std::string result = Utils::exec(resizeCmd.c_str());
+    // Check if command succeeded
+    if (result.find("DiskPart successfully") != std::string::npos || result.empty()) {
         if (eventManager_)
             eventManager_->notifyLogUpdate(LocalizedOrUtf8("log.space.resize_completed", "Resize completed.\r\n"));
         return true;

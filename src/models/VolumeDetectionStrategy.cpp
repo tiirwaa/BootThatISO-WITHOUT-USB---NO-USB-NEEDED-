@@ -239,8 +239,8 @@ bool AssignDriveLetterCommand::execute(EventManager *eventManager) {
             }
 
             // Execute mountvol command
-            int result = system(mountvolCmd.c_str());
-            if (result == 0) {
+            std::string result = Utils::exec(mountvolCmd.c_str());
+            if (result.find("successfully") != std::string::npos || result.empty()) {
                 if (eventManager) {
                     eventManager->notifyLogUpdate("Successfully assigned drive letter " + std::string(1, letter) +
                                                   ": to volume " + volumePath + "\r\n");
@@ -249,8 +249,8 @@ bool AssignDriveLetterCommand::execute(EventManager *eventManager) {
             } else {
                 if (eventManager) {
                     eventManager->notifyLogUpdate("Failed to assign drive letter " + std::string(1, letter) +
-                                                  ": to volume " + volumePath +
-                                                  " (mountvol exit code: " + std::to_string(result) + ")\r\n");
+                                                  ": to volume " + volumePath + " (mountvol output: " + result +
+                                                  ")\r\n");
                 }
             }
         }

@@ -380,7 +380,7 @@ std::string BCDManager::configureBCD(const std::string &driveLetter, const std::
         }
     }
 
-    // Delete any existing ISOBOOT entries to avoid duplicates
+    // Delete any existing ISOBOOT entries and duplicate Windows (System) entries to avoid duplicates
     // Use block parsing and case-insensitive search to handle localized bcdedit output
     std::string enumOutput = Utils::exec((BCD_CMD + " /enum all").c_str());
     auto        blocks     = split(enumOutput, '\n');
@@ -408,6 +408,37 @@ std::string BCDManager::configureBCD(const std::string &driveLetter, const std::
         return h.find(n) != std::string::npos;
     };
 
+    // First, collect all Windows (System) entries to identify duplicates
+    std::vector<std::pair<std::string, std::string>> windowsSystemEntries; // GUID, block
+    for (const auto &blk : entryBlocks) {
+        if (icontains(blk, "windows (system)")) {
+            size_t pos = blk.find('{');
+            if (pos != std::string::npos) {
+                size_t end = blk.find('}', pos);
+                if (end != std::string::npos) {
+                    std::string guid = blk.substr(pos, end - pos + 1);
+                    windowsSystemEntries.emplace_back(guid, blk);
+                }
+            }
+        }
+    }
+
+    // Delete duplicate Windows (System) entries, keeping only {current} and {default}
+    std::vector<std::string> entriesToRemoveFromDisplayOrder;
+    for (const auto &[guid, blk] : windowsSystemEntries) {
+        if (guid != "{current}" && guid != "{default}") {
+            std::string deleteCmd = BCD_CMD + " /delete " + guid + " /f";
+            Utils::exec(deleteCmd.c_str());
+            entriesToRemoveFromDisplayOrder.push_back(guid);
+        }
+    }
+
+    // Remove deleted entries from display order
+    for (const auto &guid : entriesToRemoveFromDisplayOrder) {
+        Utils::exec((BCD_CMD + " /displayorder " + guid + " /remove").c_str());
+    }
+
+    // Then delete any existing ISOBOOT entries
     std::string labelToFind = "ISOBOOT";
     for (const auto &blk : entryBlocks) {
         if (icontains(blk, labelToFind)) {
@@ -419,6 +450,8 @@ std::string BCDManager::configureBCD(const std::string &driveLetter, const std::
                     std::string guid      = blk.substr(pos, end - pos + 1);
                     std::string deleteCmd = BCD_CMD + " /delete " + guid + " /f"; // force remove
                     Utils::exec(deleteCmd.c_str());
+                    // Also remove from display order
+                    Utils::exec((BCD_CMD + " /displayorder " + guid + " /remove").c_str());
                 }
             }
         }
@@ -875,7 +908,7 @@ bool BCDManager::restoreBCD() {
 void BCDManager::cleanBootThatISOEntries() {
     std::string logDir = Utils::getExeDirectory() + "logs";
     CreateDirectoryA(logDir.c_str(), NULL);
-    std::ofstream bcdLog((logDir + "\\bcd_cleanup_log.log").c_str(), std::ios::app);
+    std::ofstream bcdLog((logDir + "\\" + BCD_CLEANUP_LOG_FILE).c_str(), std::ios::app);
 
     if (bcdLog) {
         time_t    now = time(nullptr);

@@ -39,9 +39,19 @@ bool PartitionCreator::performDiskpartOperations(const std::string &format, bool
         fsFormat = "fat32";
     }
 
+    // Calculate required shrink size dynamically
+    int requiredShrinkMB = 0;
+    if (createIsoBoot) {
+        requiredShrinkMB += 10000; // ISOBOOT partition size
+    }
+    if (createEfi) {
+        requiredShrinkMB += REQUIRED_EFI_SIZE_MB; // EFI partition size
+    }
+    requiredShrinkMB += 100; // Additional margin for alignment and filesystem overhead
+
     scriptFile << "select disk 0\n";
     scriptFile << "select volume C\n";
-    scriptFile << "shrink desired=12000 minimum=12000\n";
+    scriptFile << "shrink desired=" << requiredShrinkMB << " minimum=" << requiredShrinkMB << "\n";
     if (createIsoBoot) {
         scriptFile << "create partition primary size=10000\n";
         scriptFile << "format fs=" << fsFormat << " quick label=\"" << VOLUME_LABEL << "\"\n";
@@ -138,7 +148,7 @@ bool PartitionCreator::performDiskpartOperations(const std::string &format, bool
         logFile << "Script content:\n";
         logFile << "select disk 0\n";
         logFile << "select volume C\n";
-        logFile << "shrink desired=12000 minimum=12000\n";
+        logFile << "shrink desired=" << requiredShrinkMB << " minimum=" << requiredShrinkMB << "\n";
         if (createIsoBoot) {
             logFile << "create partition primary size=10000\n";
             logFile << "format fs=" << fsFormat << " quick label=\"" << VOLUME_LABEL << "\"\n";

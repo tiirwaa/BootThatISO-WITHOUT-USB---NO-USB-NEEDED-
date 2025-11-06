@@ -1,5 +1,6 @@
 #include "PartitionDetector.h"
 #include "../utils/Utils.h"
+#include "../utils/constants.h"
 #include <comutil.h>
 #include <iostream>
 #include <sstream>
@@ -275,7 +276,8 @@ std::vector<PartitionInfo> PartitionDetector::getAllPartitions() {
         pEnumerator->Release();
     } catch (const std::exception &e) {
         // Log exception but don't crash
-        std::ofstream logFile((Utils::getExeDirectory() + "logs\\partition_detector_error.log").c_str(), std::ios::app);
+        std::ofstream logFile((Utils::getExeDirectory() + "logs\\" + PARTITION_DETECTOR_ERROR_LOG_FILE).c_str(),
+                              std::ios::app);
         if (logFile) {
             logFile << "Exception in getAllPartitions: " << e.what() << std::endl;
             logFile.close();
@@ -283,7 +285,8 @@ std::vector<PartitionInfo> PartitionDetector::getAllPartitions() {
         return partitions;
     } catch (...) {
         // Log unknown exception but don't crash
-        std::ofstream logFile((Utils::getExeDirectory() + "logs\\partition_detector_error.log").c_str(), std::ios::app);
+        std::ofstream logFile((Utils::getExeDirectory() + "logs\\" + PARTITION_DETECTOR_ERROR_LOG_FILE).c_str(),
+                              std::ios::app);
         if (logFile) {
             logFile << "Unknown exception in getAllPartitions" << std::endl;
             logFile.close();

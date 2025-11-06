@@ -74,7 +74,7 @@ bool FileCopyManager::copyDirectoryWithProgress(const std::string &source, const
         if (!result) {
             DWORD error = GetLastError();
             if (error != ERROR_ALREADY_EXISTS) {
-                std::ofstream errorLog(logDir + "\\copy_error.log", std::ios::app);
+                std::ofstream errorLog(logDir + "\\" + COPY_ERROR_LOG_FILE, std::ios::app);
                 errorLog << getTimestamp() << "Failed to create directory: " << dest << " Error code: " << error
                          << "\n";
                 errorLog.close();
@@ -82,12 +82,12 @@ bool FileCopyManager::copyDirectoryWithProgress(const std::string &source, const
                                              std::to_string(error) + ")\r\n");
                 return false;
             } else {
-                std::ofstream errorLog(logDir + "\\copy_error.log", std::ios::app);
+                std::ofstream errorLog(logDir + "\\" + COPY_ERROR_LOG_FILE, std::ios::app);
                 errorLog << getTimestamp() << "Directory already exists: " << dest << "\n";
                 errorLog.close();
             }
         } else {
-            std::ofstream errorLog(logDir + "\\copy_error.log", std::ios::app);
+            std::ofstream errorLog(logDir + "\\" + COPY_ERROR_LOG_FILE, std::ios::app);
             errorLog << getTimestamp() << "Created directory: " << dest << "\n";
             errorLog.close();
         }
@@ -112,7 +112,7 @@ bool FileCopyManager::copyDirectoryWithProgress(const std::string &source, const
                         FindClose(hFind);
                         return false;
                     }
-                    std::ofstream errorLog(logDir + "\\copy_error.log", std::ios::app);
+                    std::ofstream errorLog(logDir + "\\" + COPY_ERROR_LOG_FILE, std::ios::app);
                     errorLog << getTimestamp() << "Failed to copy directory: " << srcItem << " to " << destItem << "\n";
                     errorLog.close();
                     eventManager.notifyLogUpdate("Error: Failed to copy directory " + srcItem + " to " + destItem +
@@ -144,7 +144,7 @@ bool FileCopyManager::copyDirectoryWithProgress(const std::string &source, const
                                 CopyFileProgressRoutine, &ctx, NULL, 0);
                 if (!copyResult) {
                     DWORD         error = GetLastError();
-                    std::ofstream errorLog2(logDir + "\\copy_error.log", std::ios::app);
+                    std::ofstream errorLog2(logDir + "\\" + COPY_ERROR_LOG_FILE, std::ios::app);
                     errorLog2 << getTimestamp() << "Failed to copy file: " << srcItem << " to " << destItem
                               << " Error code: " << error << "\n";
                     // Additional error details
@@ -190,7 +190,7 @@ bool FileCopyManager::copyDirectoryWithProgress(const std::string &source, const
                 };
                 if (isEfiFile(destItem)) {
                     if (!isValidPE(destItem)) {
-                        std::ofstream errorLog2(logDir + "\\copy_error.log", std::ios::app);
+                        std::ofstream errorLog2(logDir + "\\" + COPY_ERROR_LOG_FILE, std::ios::app);
                         errorLog2 << getTimestamp() << "Copied file appears invalid (not PE): " << destItem << "\n";
                         errorLog2.close();
                         eventManager.notifyLogUpdate("Error: Copied file appears invalid (not PE): " + destItem +

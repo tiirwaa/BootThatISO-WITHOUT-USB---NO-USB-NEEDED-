@@ -390,7 +390,7 @@ bool DiskIntegrityChecker::RestartComputer() {
 void DiskIntegrityChecker::logToGeneral(const std::string &message) {
     std::string logDir = Utils::getExeDirectory() + "logs";
     CreateDirectoryA(logDir.c_str(), NULL);
-    std::ofstream logFile((logDir + "\\general.log").c_str(), std::ios::app);
+    std::ofstream logFile((logDir + "\\" + GENERAL_ALT_LOG_FILE).c_str(), std::ios::app);
     if (logFile) {
         logFile << message;
         logFile.close();

@@ -355,7 +355,7 @@ bool EFIManager::validateAndFixEFIFiles(const std::string &efiDestPath, std::ofs
 }
 bool EFIManager::ensureBootFileExists(const std::string &espPath) {
     std::string   logDir = Utils::getExeDirectory() + "logs";
-    std::ofstream logFile(logDir + "\\iso_extract.log", std::ios::app);
+    std::ofstream logFile(logDir + "\\" + ISO_EXTRACT_LOG_FILE, std::ios::app);
 
     // Check if BOOTX64.EFI is missing, copy from system to ensure compatibility
     std::string bootFilePath   = espPath + "EFI\\BOOT\\BOOTX64.EFI";
@@ -629,7 +629,7 @@ bool EFIManager::ensureSecureBootCompatibleBootloader(const std::string &espPath
 
 void EFIManager::createPartitionMarkerFile(const std::string &espPath) {
     std::string   logDir = Utils::getExeDirectory() + "logs";
-    std::ofstream logFile(logDir + "\\iso_extract.log", std::ios::app);
+    std::ofstream logFile(logDir + "\\" + ISO_EXTRACT_LOG_FILE, std::ios::app);
 
     std::string   markerPath = espPath + "BOOTTHATISO_TEMP_PARTITION.txt";
     std::ofstream markerFile(markerPath);
