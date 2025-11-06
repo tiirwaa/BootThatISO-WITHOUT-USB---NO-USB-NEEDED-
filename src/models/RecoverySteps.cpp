@@ -34,7 +34,7 @@ bool VolumeEnumerator::execute() {
     }
 
     // Use diskpart to list volumes and parse the output
-    std::string   listCmd = "diskpart /s " + Utils::getExeDirectory() + "logs\\" + LIST_VOLUMES_SCRIPT_FILE;
+    std::string   listCmd = "diskpart /s \"" + Utils::getExeDirectory() + "logs\\" + LIST_VOLUMES_SCRIPT_FILE + "\"";
     std::ofstream listScript((Utils::getExeDirectory() + "logs\\" + LIST_VOLUMES_SCRIPT_FILE).c_str());
     if (listScript) {
         listScript << "list volume\n";
@@ -42,84 +42,85 @@ bool VolumeEnumerator::execute() {
     }
 
     // Execute diskpart to get volume list
-    std::string outputPath = Utils::getExeDirectory() + "logs\\" + VOLUME_LIST_OUTPUT_FILE;
-    std::string cmd        = listCmd + " > \"" + outputPath + "\" 2>&1";
-    Utils::exec(cmd.c_str());
+    std::string cmd            = listCmd;
+    std::string diskpartOutput = Utils::exec(cmd.c_str());
 
     // Parse the output
-    std::ifstream                                          outputFile(outputPath.c_str());
+    std::istringstream                                     outputStream(diskpartOutput);
     std::vector<std::tuple<int, std::string, std::string>> isoVolumes; // volume number, label, letter (if any)
 
-    if (outputFile) {
-        std::string line;
-        bool        inVolumeList = false;
-        while (std::getline(outputFile, line)) {
-            // Look for the volume list section
-            if (line.find("Ltr  Etiqueta") != std::string::npos) {
-                inVolumeList = true;
-                continue;
-            }
-            if (inVolumeList && line.find("---") != std::string::npos) {
-                continue; // Skip separator
-            }
-            if (inVolumeList && !line.empty() && line.find("Volumen") != std::string::npos) {
-                // Parse volume line: "  Volumen 1         ISOBOOT     FAT32  Partición      9 GB  Correcto"
-                std::istringstream iss(line);
-                std::string        token;
-                int                volNum = -1;
-                std::string        letter = " ";
-                std::string        label;
+    std::string line;
+    bool        inVolumeList = false;
+    while (std::getline(outputStream, line)) {
+        // Remove carriage return if present
+        if (!line.empty() && line.back() == '\r') {
+            line.pop_back();
+        }
 
-                // Skip "Volumen"
-                iss >> token; // "Volumen"
-                if (token == "Volumen") {
-                    iss >> volNum;
+        // Look for the volume list section
+        if (line.find("Ltr  Etiqueta") != std::string::npos) {
+            inVolumeList = true;
+            continue;
+        }
+        if (inVolumeList && line.find("---") != std::string::npos) {
+            continue; // Skip separator
+        }
+        if (inVolumeList && !line.empty() && line.find("Volumen") != std::string::npos) {
+            // Parse volume line: "  Volumen 1         ISOBOOT     FAT32  Partición      9 GB  Correcto"
+            std::istringstream iss(line);
+            std::string        token;
+            int                volNum = -1;
+            std::string        letter = " ";
+            std::string        label;
 
-                    // Next token might be letter or spaces then label
-                    std::getline(iss, token);
-                    // token now contains "     c   label..." or "         label..."
+            // Skip "Volumen"
+            iss >> token; // "Volumen"
+            if (token == "Volumen") {
+                iss >> volNum;
 
-                    // Find the position after volume number
-                    size_t pos = line.find(std::to_string(volNum)) + std::to_string(volNum).length();
+                // Next token might be letter or spaces then label
+                std::getline(iss, token);
+                // token now contains "     c   label..." or "         label..."
 
-                    // Skip spaces to find letter or label
+                // Find the position after volume number
+                size_t pos = line.find(std::to_string(volNum)) + std::to_string(volNum).length();
+
+                // Skip spaces to find letter or label
+                while (pos < line.length() && line[pos] == ' ')
+                    pos++;
+
+                if (pos < line.length() && isalpha(line[pos]) && pos + 1 < line.length() && line[pos + 1] == ' ') {
+                    // There's a drive letter (single letter followed by space)
+                    letter = line[pos];
+                    pos += 2; // Skip letter and space
                     while (pos < line.length() && line[pos] == ' ')
                         pos++;
-
-                    if (pos < line.length() && isalpha(line[pos]) && pos + 1 < line.length() && line[pos + 1] == ' ') {
-                        // There's a drive letter (single letter followed by space)
-                        letter = line[pos];
-                        pos += 2; // Skip letter and space
-                        while (pos < line.length() && line[pos] == ' ')
-                            pos++;
-                        // Now get label
-                        size_t endPos = line.find_first_of(" \t", pos);
-                        if (endPos != std::string::npos) {
-                            label = line.substr(pos, endPos - pos);
-                        } else {
-                            label = line.substr(pos);
-                        }
+                    // Now get label
+                    size_t endPos = line.find_first_of(" \t", pos);
+                    if (endPos != std::string::npos) {
+                        label = line.substr(pos, endPos - pos);
                     } else {
-                        // No drive letter, this is the label
-                        letter        = " ";
-                        size_t endPos = line.find_first_of(" \t", pos);
-                        if (endPos != std::string::npos) {
-                            label = line.substr(pos, endPos - pos);
-                        } else {
-                            label = line.substr(pos);
-                        }
+                        label = line.substr(pos);
+                    }
+                } else {
+                    // No drive letter, this is the label
+                    letter        = " ";
+                    size_t endPos = line.find_first_of(" \t", pos);
+                    if (endPos != std::string::npos) {
+                        label = line.substr(pos, endPos - pos);
+                    } else {
+                        label = line.substr(pos);
                     }
                 }
+            }
 
-                if (volNum != -1 && (label == VOLUME_LABEL || label == EFI_VOLUME_LABEL)) {
-                    isoVolumes.push_back(std::make_tuple(volNum, label, letter));
-                    if (eventManager_)
-                        eventManager_->notifyLogUpdate("Found ISO volume: " + label + " (Volume " +
-                                                       std::to_string(volNum) + ", Letter: " + letter + ")\r\n");
-                }
+            if (volNum != -1 && (label == VOLUME_LABEL || label == EFI_VOLUME_LABEL)) {
+                isoVolumes.push_back(std::make_tuple(volNum, label, letter));
+                if (eventManager_)
+                    eventManager_->notifyLogUpdate("Found ISO volume: " + label + " (Volume " + std::to_string(volNum) +
+                                                   ", Letter: " + letter + ")\r\n");
             }
         }
-        outputFile.close();
     }
 
     // For volumes without letters, assign temporary ones
