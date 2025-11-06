@@ -21,21 +21,21 @@ public:
                       const std::string &efiPath) override {
         const std::string BCD_CMD = "C:\\Windows\\System32\\bcdedit.exe";
 
-        // For Linux ISOs, use our EFI chainloader that will find and execute the correct Linux bootloader
+        // For Linux ISOs, use GRUB EFI compiled with /EFI/grub prefix
         // This resolves the 0xc000007b compatibility error by using a proper EFI intermediary
 
-        // First, copy the correct Linux bootloader to the ESP as our "chainloader"
-        copyChainloaderToESP(espDevice, efiPath);
+        // First, copy GRUB EFI and create grub.cfg in /EFI/grub directory
+        setupGrubEFI(espDevice, efiPath);
 
-        // Configure BCD to point to our chainloader.efi (which is actually the Linux bootloader)
-        std::string chainloaderPath = "\\EFI\\BootThatISO\\chainloader.efi";
-        std::string cmd1            = BCD_CMD + " /set " + guid + " device partition=" + espDevice;
-        std::string cmd2            = BCD_CMD + " /set " + guid + " path " + chainloaderPath;
-        std::string cmd3            = BCD_CMD + " /set " + guid + " description \"Linux ISO Boot\"";
-        std::string cmd4            = BCD_CMD + " /set " + guid + " systemroot \\EFI";
-        std::string cmd5            = BCD_CMD + " /set " + guid + " detecthal No";
-        std::string cmd6            = BCD_CMD + " /set " + guid + " winpe No";
-        std::string cmd7            = BCD_CMD + " /set " + guid + " ems No";
+        // Configure BCD to point to our GRUB EFI bootloader
+        std::string grubPath = "\\EFI\\grub\\grubx64.efi";
+        std::string cmd1     = BCD_CMD + " /set " + guid + " device partition=" + espDevice;
+        std::string cmd2     = BCD_CMD + " /set " + guid + " path " + grubPath;
+        std::string cmd3     = BCD_CMD + " /set " + guid + " description \"Linux ISO Boot\"";
+        std::string cmd4     = BCD_CMD + " /set " + guid + " systemroot \\EFI";
+        std::string cmd5     = BCD_CMD + " /set " + guid + " detecthal No";
+        std::string cmd6     = BCD_CMD + " /set " + guid + " winpe No";
+        std::string cmd7     = BCD_CMD + " /set " + guid + " ems No";
 
         // Log commands for debugging
         std::string logDir = Utils::getExeDirectory() + "logs";
@@ -43,9 +43,9 @@ public:
         std::string   logFilePath = logDir + "\\" + BCD_CONFIG_LOG_FILE;
         std::ofstream logFile(logFilePath.c_str(), std::ios::app);
         if (logFile) {
-            logFile << "Executing BCD commands for LinuxBootStrategy (using EFI chainloader):" << std::endl;
+            logFile << "Executing BCD commands for LinuxBootStrategy (using GRUB EFI):" << std::endl;
             logFile << "  GUID: " << guid << std::endl;
-            logFile << "  Chainloader EFI path: " << chainloaderPath << std::endl;
+            logFile << "  GRUB EFI path: " << grubPath << std::endl;
             logFile << "  ESP device: " << espDevice << std::endl;
             logFile << "  Original Linux EFI path: " << efiPath << std::endl;
             std::string result1 = Utils::exec(cmd1.c_str());
@@ -75,20 +75,21 @@ public:
     }
 
 private:
-    void copyChainloaderToESP(const std::string &espDevice, const std::string &efiPath) {
-        // Copy GRUB EFI as chainloader and generate grub.cfg for ISO booting
+    void setupGrubEFI(const std::string &espDevice, const std::string &efiPath) {
+        // Copy GRUB EFI to /EFI/grub/ directory and generate grub.cfg
+        // According to README, GRUB was compiled with -p /EFI/grub prefix
 
-        std::string grubSrc            = Utils::getExeDirectory() + "chainloader\\grubx64.efi";
-        std::string chainloaderDestDir = espDevice + "EFI\\BootThatISO";
-        std::string chainloaderDest    = chainloaderDestDir + "\\chainloader.efi";
-        std::string cfgDest            = chainloaderDestDir + "\\grub.cfg";
+        std::string grubSrc     = Utils::getExeDirectory() + "chainloader\\grubx64.efi";
+        std::string grubDestDir = espDevice + "EFI\\grub";
+        std::string grubDest    = grubDestDir + "\\grubx64.efi";
+        std::string cfgDest     = grubDestDir + "\\grub.cfg";
 
         // Create destination directory
-        CreateDirectoryA(chainloaderDestDir.c_str(), NULL);
+        CreateDirectoryA(grubDestDir.c_str(), NULL);
 
-        // Copy GRUB EFI as chainloader
-        if (CopyFileA(grubSrc.c_str(), chainloaderDest.c_str(), FALSE)) {
-            // Generate grub.cfg
+        // Copy GRUB EFI
+        if (CopyFileA(grubSrc.c_str(), grubDest.c_str(), FALSE)) {
+            // Generate grub.cfg in /EFI/grub/
             generateGrubCfg(cfgDest, espDevice, efiPath);
 
             // Log success
@@ -97,9 +98,9 @@ private:
             std::string   logFilePath = logDir + "\\" + BCD_CONFIG_LOG_FILE;
             std::ofstream logFile(logFilePath.c_str(), std::ios::app);
             if (logFile) {
-                logFile << "GRUB EFI chainloader copied to ESP:" << std::endl;
+                logFile << "GRUB EFI setup completed:" << std::endl;
                 logFile << "  Source: " << grubSrc << std::endl;
-                logFile << "  Destination: " << chainloaderDest << std::endl;
+                logFile << "  GRUB EFI: " << grubDest << std::endl;
                 logFile << "  GRUB cfg: " << cfgDest << std::endl;
                 logFile.close();
             }
@@ -110,9 +111,9 @@ private:
             std::string   logFilePath = logDir + "\\" + BCD_CONFIG_LOG_FILE;
             std::ofstream logFile(logFilePath.c_str(), std::ios::app);
             if (logFile) {
-                logFile << "Failed to copy GRUB EFI chainloader to ESP:" << std::endl;
+                logFile << "Failed to setup GRUB EFI:" << std::endl;
                 logFile << "  Source: " << grubSrc << std::endl;
-                logFile << "  Destination: " << chainloaderDest << std::endl;
+                logFile << "  Destination: " << grubDest << std::endl;
                 logFile << "  Error: " << GetLastError() << std::endl;
                 logFile.close();
             }

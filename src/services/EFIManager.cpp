@@ -67,6 +67,12 @@ std::vector<std::string> EFIManager::getCandidates(const std::string &espDriveLe
                       espDriveLetter + "\\EFI\\microsoft\\boot\\bootmgfw.efi",
                       espDriveLetter + "\\EFI\\BOOT\\BOOTX64.EFI", espDriveLetter + "\\EFI\\boot\\BOOTX64.EFI",
                       espDriveLetter + "\\EFI\\boot\\bootx64.efi"};
+    } else if (strategyType == "linux") {
+        // For Linux, prioritize GRUB EFI in /EFI/grub/ directory (compiled with -p /EFI/grub), then fall back to ISO
+        // EFI files
+        candidates = {espDriveLetter + "\\EFI\\grub\\grubx64.efi",  espDriveLetter + "\\EFI\\BOOT\\BOOTX64.EFI",
+                      espDriveLetter + "\\EFI\\boot\\BOOTX64.EFI",  espDriveLetter + "\\EFI\\boot\\bootx64.efi",
+                      espDriveLetter + "\\EFI\\boot\\BOOTIA32.EFI", espDriveLetter + "\\EFI\\boot\\bootia32.efi"};
     } else {
         candidates = {espDriveLetter + "\\EFI\\BOOT\\BOOTX64.EFI",
                       espDriveLetter + "\\EFI\\boot\\BOOTX64.EFI",

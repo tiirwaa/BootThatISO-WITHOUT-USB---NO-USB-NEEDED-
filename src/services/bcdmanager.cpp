@@ -231,17 +231,15 @@ public:
         if (!efiFileOpt) {
             return "Archivo EFI boot no encontrado en ESP";
         }
-        efiBootFile_ = *efiFileOpt;
-
-        // Step 7: Validate architecture
+        efiBootFile_ = *efiFileOpt; // Step 6: Validate architecture
         if (!validateArchitecture()) {
             return "Arquitectura EFI no compatible con el sistema";
         }
 
-        // Step 8: Configure strategy
+        // Step 7: Configure strategy
         strategy_->configureBCD(guid_, dataDriveLetter_, espDriveLetter_, getEfiPath());
 
-        // Step 9: Finalize BCD
+        // Step 8: Finalize BCD
         return finalizeBCD();
     }
 
