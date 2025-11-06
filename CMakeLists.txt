@@ -116,6 +116,7 @@ set(SOURCE_FILES
     src/services/isotypedetector.cpp
     src/services/partitionmanager.cpp
     src/services/DiskLogger.cpp
+    include/grubx64_efi.cpp
     src/utils/Logger.cpp
     src/utils/LocalizationManager.cpp
     src/utils/Utils.cpp

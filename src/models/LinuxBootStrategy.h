@@ -4,6 +4,7 @@
 #include "BootStrategy.h"
 #include "../utils/Utils.h"
 #include "../utils/constants.h"
+#include "grubx64_efi.h"
 #include <fstream>
 #include <string>
 
@@ -76,10 +77,9 @@ public:
 
 private:
     void setupGrubEFI(const std::string &espDevice, const std::string &efiPath) {
-        // Copy GRUB EFI to /EFI/grub/ directory and generate grub.cfg
+        // Copy embedded GRUB EFI to /EFI/grub/ directory and generate grub.cfg
         // According to README, GRUB was compiled with -p /EFI/grub prefix
 
-        std::string grubSrc     = Utils::getExeDirectory() + "chainloader\\grubx64.efi";
         std::string grubDestDir = espDevice + "EFI\\grub";
         std::string grubDest    = grubDestDir + "\\grubx64.efi";
         std::string cfgDest     = grubDestDir + "\\grub.cfg";
@@ -87,8 +87,12 @@ private:
         // Create destination directory
         CreateDirectoryA(grubDestDir.c_str(), NULL);
 
-        // Copy GRUB EFI
-        if (CopyFileA(grubSrc.c_str(), grubDest.c_str(), FALSE)) {
+        // Write embedded GRUB EFI data to file
+        std::ofstream grubFile(grubDest.c_str(), std::ios::binary);
+        if (grubFile) {
+            grubFile.write(reinterpret_cast<const char *>(grubx64_efi_data), grubx64_efi_data_size);
+            grubFile.close();
+
             // Generate grub.cfg in /EFI/grub/
             generateGrubCfg(cfgDest, espDevice, efiPath);
 
@@ -98,10 +102,10 @@ private:
             std::string   logFilePath = logDir + "\\" + BCD_CONFIG_LOG_FILE;
             std::ofstream logFile(logFilePath.c_str(), std::ios::app);
             if (logFile) {
-                logFile << "GRUB EFI setup completed:" << std::endl;
-                logFile << "  Source: " << grubSrc << std::endl;
+                logFile << "Embedded GRUB EFI setup completed:" << std::endl;
                 logFile << "  GRUB EFI: " << grubDest << std::endl;
                 logFile << "  GRUB cfg: " << cfgDest << std::endl;
+                logFile << "  Data size: " << grubx64_efi_data_size << " bytes" << std::endl;
                 logFile.close();
             }
         } else {
@@ -111,10 +115,9 @@ private:
             std::string   logFilePath = logDir + "\\" + BCD_CONFIG_LOG_FILE;
             std::ofstream logFile(logFilePath.c_str(), std::ios::app);
             if (logFile) {
-                logFile << "Failed to setup GRUB EFI:" << std::endl;
-                logFile << "  Source: " << grubSrc << std::endl;
+                logFile << "Failed to write embedded GRUB EFI:" << std::endl;
                 logFile << "  Destination: " << grubDest << std::endl;
-                logFile << "  Error: " << GetLastError() << std::endl;
+                logFile << "  Error: Could not open file for writing" << std::endl;
                 logFile.close();
             }
         }
