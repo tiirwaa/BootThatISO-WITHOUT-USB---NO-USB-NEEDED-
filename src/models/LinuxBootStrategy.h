@@ -10,7 +10,7 @@
 class LinuxBootStrategy : public BootStrategy {
 public:
     std::string getBCDLabel() const override {
-        return "Linux ISO Boot (Firmware)";
+        return "Linux ISO Boot";
     }
 
     std::string getType() const override {
@@ -21,19 +21,16 @@ public:
                       const std::string &efiPath) override {
         const std::string BCD_CMD = "C:\\Windows\\System32\\bcdedit.exe";
 
-        // For Linux ISOs, we cannot use Windows Boot Manager to execute Linux EFI bootloaders
-        // Instead, we'll configure the firmware boot manager directly using bcdedit /set {fwbootmgr}
+        // For Linux ISOs, create a BCD entry that points directly to the Linux EFI bootloader
+        // We'll configure it as an OSLOADER entry but point it to the Linux EFI file directly
 
-        // Create a firmware boot entry that points directly to the Linux EFI bootloader
-        std::string fwGuid = createFirmwareBootEntry(espDevice, efiPath);
-
-        // Configure BCD to use the firmware boot manager instead of Windows boot manager
+        // Configure BCD to point directly to the Linux EFI bootloader
         std::string cmd1 = BCD_CMD + " /set " + guid + " device partition=" + espDevice;
-        std::string cmd2 = BCD_CMD + " /set " + guid + " osdevice partition=" + espDevice;
-        std::string cmd3 = BCD_CMD + " /set " + guid + " path \\EFI\\Microsoft\\Boot\\bootmgfw.efi";
-        std::string cmd4 = BCD_CMD + " /set " + guid + " systemroot \\Windows";
-        std::string cmd5 = BCD_CMD + " /set " + guid + " detecthal Yes";
-        std::string cmd6 = BCD_CMD + " /set " + guid + " winpe Yes";
+        std::string cmd2 = BCD_CMD + " /set " + guid + " path " + efiPath;
+        std::string cmd3 = BCD_CMD + " /set " + guid + " description \"Linux ISO Boot\"";
+        std::string cmd4 = BCD_CMD + " /set " + guid + " systemroot \\EFI";
+        std::string cmd5 = BCD_CMD + " /set " + guid + " detecthal No";
+        std::string cmd6 = BCD_CMD + " /set " + guid + " winpe No";
         std::string cmd7 = BCD_CMD + " /set " + guid + " ems No";
 
         // Log commands for debugging
@@ -43,8 +40,9 @@ public:
         std::ofstream logFile(logFilePath.c_str(), std::ios::app);
         if (logFile) {
             logFile << "Executing BCD commands for LinuxBootStrategy:" << std::endl;
-            logFile << "  Firmware GUID: " << fwGuid << std::endl;
+            logFile << "  GUID: " << guid << std::endl;
             logFile << "  Target EFI path: " << efiPath << std::endl;
+            logFile << "  ESP device: " << espDevice << std::endl;
             logFile << "  " << cmd1 << std::endl;
             std::string result1 = Utils::exec(cmd1.c_str());
             logFile << "  Result: " << result1 << std::endl;
@@ -68,16 +66,13 @@ public:
         Utils::exec(cmd6.c_str());
         Utils::exec(cmd7.c_str());
 
-        // Try to add to firmware boot order
-        if (!fwGuid.empty()) {
-            std::string fwCmd = BCD_CMD + " /set {fwbootmgr} displayorder " + fwGuid + " /addfirst";
-            Utils::exec(fwCmd.c_str());
-            if (logFile.is_open()) {
-                logFile << "  " << fwCmd << std::endl;
-                std::string fwResult = Utils::exec(fwCmd.c_str());
-                logFile << "  Result: " << fwResult << std::endl;
-            }
-        }
+        // Add to display order so it appears in boot menu
+        std::string displayCmd = BCD_CMD + " /displayorder " + guid + " /addfirst";
+        Utils::exec(displayCmd.c_str());
+
+        // Set as default to make it boot automatically
+        std::string defaultCmd = BCD_CMD + " /default " + guid;
+        Utils::exec(defaultCmd.c_str());
     }
 
 private:
