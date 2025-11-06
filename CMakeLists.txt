@@ -108,6 +108,10 @@ set(SOURCE_FILES
     src/models/PartitionReformatter.cpp
     src/models/PartitionCreator.cpp
     src/services/bcdmanager.cpp
+    src/services/BCDVolumeManager.cpp
+    src/services/EFIManager.cpp
+    src/services/BCDEntryManager.cpp
+    src/services/BCDLogger.cpp
     src/services/isocopymanager.cpp
     src/services/isotypedetector.cpp
     src/services/partitionmanager.cpp
@@ -224,6 +228,10 @@ add_executable(TestRecoverSpace
     tests/test_recover_space.cpp
     src/services/partitionmanager.cpp
     src/services/bcdmanager.cpp
+    src/services/BCDVolumeManager.cpp
+    src/services/EFIManager.cpp
+    src/services/BCDEntryManager.cpp
+    src/services/BCDLogger.cpp
     src/models/DiskIntegrityChecker.cpp
     src/models/VolumeDetector.cpp
     src/models/VolumeDetectionStrategy.cpp
@@ -260,6 +268,10 @@ add_executable(TestPartitionStatus
     tests/test_partition_status.cpp
     src/services/partitionmanager.cpp
     src/services/bcdmanager.cpp
+    src/services/BCDVolumeManager.cpp
+    src/services/EFIManager.cpp
+    src/services/BCDEntryManager.cpp
+    src/services/BCDLogger.cpp
     src/models/DiskIntegrityChecker.cpp
     src/models/VolumeDetector.cpp
     src/models/VolumeDetectionStrategy.cpp
