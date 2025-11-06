@@ -11,7 +11,9 @@ int execWithExitCode(const char *cmd, std::string &output);
 // Execute a command with real-time output callback for progress monitoring
 int execWithCallback(const char *cmd, std::string &output, std::function<void(const std::string &)> callback);
 // Returns full path to dism.exe (typically %SystemRoot%\System32\dism.exe)
-std::string  getDismPath();
+std::string getDismPath();
+// Returns full path to bcdedit.exe (typically %SystemRoot%\System32\bcdedit.exe)
+std::string  getBcdeditPath();
 long long    getFileSize(const std::string &filePath);
 long long    getDirectorySize(const std::string &dirPath);
 std::string  getExeDirectory();

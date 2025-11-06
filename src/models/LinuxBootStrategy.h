@@ -18,9 +18,14 @@ public:
         return "linux";
     }
 
+    void setup(const std::string &espDevice) override {
+        // Copy embedded GRUB EFI to /EFI/grub/ directory
+        setupGrubEFI(espDevice, "");
+    }
+
     void configureBCD(const std::string &guid, const std::string &dataDevice, const std::string &espDevice,
                       const std::string &efiPath) override {
-        const std::string BCD_CMD = "C:\\Windows\\System32\\bcdedit.exe";
+        const std::string BCD_CMD = Utils::getBcdeditPath();
 
         // For Linux ISOs, use GRUB EFI compiled with /EFI/grub prefix
         // This resolves the 0xc000007b compatibility error by using a proper EFI intermediary
@@ -140,7 +145,7 @@ private:
     }
 
     std::string createFirmwareBootEntry(const std::string &espDevice, const std::string &targetEfiPath) {
-        const std::string BCD_CMD = "C:\\Windows\\System32\\bcdedit.exe";
+        const std::string BCD_CMD = Utils::getBcdeditPath();
 
         // Create a firmware boot entry that points to the Linux EFI bootloader
         std::string targetPath  = espDevice + targetEfiPath;

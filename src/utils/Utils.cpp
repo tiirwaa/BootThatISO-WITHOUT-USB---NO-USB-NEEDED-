@@ -327,3 +327,18 @@ std::string Utils::getDismPath() {
     path += "\\dism.exe";
     return path;
 }
+
+std::string Utils::getBcdeditPath() {
+    char sysdir[MAX_PATH] = {0};
+    UINT n                = GetSystemDirectoryA(sysdir, MAX_PATH);
+    if (n == 0 || n >= MAX_PATH) {
+        // Fallback to default location
+        return "C:\\Windows\\System32\\bcdedit.exe";
+    }
+    std::string path(sysdir);
+    if (!path.empty() && (path.back() == '\\' || path.back() == '/')) {
+        path.pop_back();
+    }
+    path += "\\bcdedit.exe";
+    return path;
+}

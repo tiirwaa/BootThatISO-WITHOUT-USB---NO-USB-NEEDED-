@@ -20,7 +20,7 @@ static HashInfo readHashInfo(const std::string &path) {
 }
 
 ProcessService::ProcessService(PartitionManager *pm, ISOCopyManager *icm, BCDManager *bcm, EventManager &em)
-    : partitionManager(pm), isoCopyManager(icm), bcdManager(bcm), eventManager(em) {}
+    : partitionManager(pm), isoCopyManager(icm), bcdManager(bcm), eventManager(em), isWindowsISO(false) {}
 
 ProcessService::ProcessResult ProcessService::validateAndPrepare(const std::string &isoPath, const std::string &format,
                                                                  bool skipIntegrityCheck) {
@@ -148,16 +148,27 @@ ProcessService::ProcessResult ProcessService::copyIsoContent(const std::string &
 }
 
 ProcessService::ProcessResult ProcessService::configureBoot(const std::string &modeKey) {
-    if (modeKey == AppKeys::BootModeRam || modeKey == AppKeys::BootModeExtract) {
-        auto strategy = BootStrategyFactory::createStrategy(modeKey);
-        if (!strategy) {
-            return {false, "Modo de boot no válido."};
+    std::unique_ptr<BootStrategy> strategy;
+
+    if (modeKey == AppKeys::BootModeRam) {
+        strategy = std::make_unique<RamdiskBootStrategy>();
+    } else if (modeKey == AppKeys::BootModeExtract) {
+        if (isWindowsISO) {
+            strategy = std::make_unique<ExtractedBootStrategy>();
+        } else {
+            strategy = std::make_unique<LinuxBootStrategy>();
         }
-        std::string error = bcdManager->configureBCD(partitionDrive.substr(0, 2), espDrive.substr(0, 2), *strategy);
-        if (!error.empty()) {
-            return {false, LocalizedFormatUtf8("error.bcd.configureFailed", {Utils::utf8_to_wstring(error)},
-                                               "Error configuring BCD: {0}")};
-        }
+    } else {
+        return {false, "Modo de boot no válido."};
+    }
+
+    if (!strategy) {
+        return {false, "Modo de boot no válido."};
+    }
+    std::string error = bcdManager->configureBCD(partitionDrive.substr(0, 2), espDrive.substr(0, 2), *strategy);
+    if (!error.empty()) {
+        return {false, LocalizedFormatUtf8("error.bcd.configureFailed", {Utils::utf8_to_wstring(error)},
+                                           "Error configuring BCD: {0}")};
     }
     return {true, ""};
 }
@@ -170,17 +181,19 @@ bool ProcessService::copyISO(const std::string &isoPath, const std::string &dest
 
     // Pre-detect if this is a Windows ISO by checking for sources/boot.wim or sources/install.wim
     ISOReader tempReader;
-    bool      isWindowsISO = tempReader.fileExists(isoPath, "sources/boot.wim") ||
-                        tempReader.fileExists(isoPath, "sources/install.wim") ||
-                        tempReader.fileExists(isoPath, "sources/install.esd");
+    bool      detectedWindowsISO = tempReader.fileExists(isoPath, "sources/boot.wim") ||
+                              tempReader.fileExists(isoPath, "sources/install.wim") ||
+                              tempReader.fileExists(isoPath, "sources/install.esd");
+
+    this->isWindowsISO = detectedWindowsISO;
 
     if (modeKey == AppKeys::BootModeRam) {
         // In RAM mode:
         // - Windows ISOs: Extract boot.wim AND copy install.wim/esd + Setup files
         // - Non-Windows ISOs: Just extract all content, no boot.wim processing needed
-        bool extractBootWim = isWindowsISO;  // Only extract boot.wim for Windows ISOs
-        bool extractContent = !isWindowsISO; // Extract full content only for non-Windows ISOs
-        bool copyInstallWim = isWindowsISO;  // Copy install.wim/esd + Setup for Windows ISOs
+        bool extractBootWim = detectedWindowsISO;  // Only extract boot.wim for Windows ISOs
+        bool extractContent = !detectedWindowsISO; // Extract full content only for non-Windows ISOs
+        bool copyInstallWim = detectedWindowsISO;  // Copy install.wim/esd + Setup for Windows ISOs
 
         if (isoCopyManager->extractISOContents(eventManager, isoPath, drive, espDriveLocal, extractContent,
                                                extractBootWim, copyInstallWim, modeKey, format, injectDrivers)) {
@@ -190,8 +203,8 @@ bool ProcessService::copyISO(const std::string &isoPath, const std::string &dest
         // In disk mode (EXTRACT):
         // - Windows ISOs: Extract all content, process boot.wim, and copy install.wim
         // - Non-Windows ISOs: Just extract all content, no Windows-specific processing
-        bool extractBootWim = isWindowsISO; // Only process boot.wim for Windows ISOs
-        bool copyInstallWim = isWindowsISO; // Only copy install.wim/esd for Windows ISOs
+        bool extractBootWim = detectedWindowsISO; // Only process boot.wim for Windows ISOs
+        bool copyInstallWim = detectedWindowsISO; // Only copy install.wim/esd for Windows ISOs
 
         if (isoCopyManager->extractISOContents(eventManager, isoPath, drive, espDriveLocal, true, extractBootWim,
                                                copyInstallWim, modeKey, format, injectDrivers)) {

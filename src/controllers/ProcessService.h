@@ -31,6 +31,7 @@ private:
 
     std::string partitionDrive;
     std::string espDrive;
+    bool        isWindowsISO;
 
     bool copyISO(const std::string &isoPath, const std::string &destPath, const std::string &espPath,
                  const std::string &modeKey, const std::string &modeLabel, const std::string &format,

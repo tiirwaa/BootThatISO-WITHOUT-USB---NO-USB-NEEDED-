@@ -23,17 +23,7 @@
 namespace {
 namespace fs = std::filesystem;
 
-std::string getBcdCmdPath() {
-    char systemDir[MAX_PATH];
-    if (GetSystemDirectoryA(systemDir, sizeof(systemDir))) {
-        return std::string(systemDir) + "\\bcdedit.exe";
-    } else {
-        // Fallback to default location
-        return "C:\\Windows\\System32\\bcdedit.exe";
-    }
-}
-
-constexpr const char *BCD_CMD_PATH        = nullptr; // Deprecated, use getBcdCmdPath()
+constexpr const char *BCD_CMD_PATH        = nullptr; // Deprecated, use Utils::getBcdeditPath()
 constexpr const char *BOOTMGR_BACKUP_FILE = "bootmgr_backup.ini";
 
 std::string trimString(const std::string &input) {
@@ -51,7 +41,7 @@ struct BootmgrState {
 };
 
 std::optional<BootmgrState> queryBootmgrState() {
-    std::string        output = Utils::exec((getBcdCmdPath() + " /enum {bootmgr}").c_str());
+    std::string        output = Utils::exec((Utils::getBcdeditPath() + " /enum {bootmgr}").c_str());
     BootmgrState       state;
     bool               foundDefault = false;
     bool               foundTimeout = false;
@@ -226,6 +216,11 @@ public:
         }
         guid_ = *guidOpt;
 
+        // Step 5.5: Setup strategy (e.g., copy GRUB for Linux)
+        if (strategy_->getType() == "linux") {
+            strategy_->setup(espDriveLetter_);
+        }
+
         // Step 6: Select EFI file
         auto efiFileOpt = efiManager_.selectEFIBootFile(espDriveLetter_, strategy_->getType(), eventManager_);
         if (!efiFileOpt) {
@@ -352,12 +347,12 @@ std::vector<std::string> split(const std::string &s, char delim) {
 
 std::string BCDManager::configureBCD(const std::string &driveLetter, const std::string &espDriveLetter,
                                      BootStrategy &strategy) {
-    BCDConfigurator configurator(eventManager, getBcdCmdPath());
+    BCDConfigurator configurator(eventManager, Utils::getBcdeditPath());
     return configurator.setDriveLetters(driveLetter, espDriveLetter).setStrategy(&strategy).build();
 }
 
 bool BCDManager::restoreBCD() {
-    const std::string BCD_CMD = getBcdCmdPath();
+    const std::string BCD_CMD = Utils::getBcdeditPath();
 
     // First, try to restore the BCD file from backup if it exists
     std::string bcdPath = "C:\\Boot\\BCD"; // Default system BCD path
@@ -556,7 +551,7 @@ void BCDManager::cleanBootThatISOEntries() {
     }
 
     // Enumerate all BCD entries
-    std::string enumOutput = Utils::exec((getBcdCmdPath() + " /enum all").c_str());
+    std::string enumOutput = Utils::exec((Utils::getBcdeditPath() + " /enum all").c_str());
 
     if (bcdLog) {
         bcdLog << "BCD enum output:\n" << enumOutput << "\n\n";
@@ -631,7 +626,7 @@ void BCDManager::cleanBootThatISOEntries() {
                         bcdLog << "Entry details:\n" << blk << "\n";
                     }
 
-                    std::string deleteCmd    = getBcdCmdPath() + " /delete " + guid + " /f";
+                    std::string deleteCmd    = Utils::getBcdeditPath() + " /delete " + guid + " /f";
                     std::string deleteResult = Utils::exec(deleteCmd.c_str());
 
                     if (bcdLog) {
