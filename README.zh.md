@@ -7,6 +7,11 @@
 <img src="res/ag.png" alt="Company Logo">
 </div>
 
+## Videos
+
+- [Hirens Boot — No USB Needed — Boot ISO Directly (No USB Required)](https://www.youtube.com/watch?v=RaRJTmek0W8)
+- [Install Windows 10/11 Without USB | BootThatISO (No Flash Drive Needed!)](https://www.youtube.com/watch?v=Fo6poEWZNew)
+
 BootThatISO! 是一款创新的 Windows 工具，允许**从 ISO 文件启动操作系统而无需 USB 驱动器**。非常适合在没有 USB 设备的情况下使用，例如旅行、借用设备或紧急情况。它自动化了在内部磁盘上创建 EFI 和数据分区、直接读取 ISO 和文件提取以及 BCD 配置，提供直观的图形界面并支持无人值守执行。
 
 此实用程序特别适用于：
